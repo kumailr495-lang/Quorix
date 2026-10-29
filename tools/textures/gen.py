@@ -342,8 +342,27 @@ def fluted(n=256):
     return save('fluted', rel(g, 1.0), prof, 2.5, 256)
 
 
+def brick(n=512):
+    """Dark city brick in running bond: per-brick tone, recessed mortar, soot variation (street facades)."""
+    x, y = grid(n)
+    rows, cols = 16, 8
+    Y = y * rows
+    r = np.floor(Y).astype(int)
+    X = x * cols + (r % 2) * 0.5
+    c = np.floor(X).astype(int)
+    fx, fy = X - c, Y - r
+    tones = RNG.uniform(-0.12, 0.12, (rows, cols + 2))
+    tone = tones[r % rows, c % cols]
+    mort = np.clip(np.minimum(np.minimum(fx, 1 - fx) / 0.04, np.minimum(fy, 1 - fy) / 0.08), 0, 1)
+    base = hexrgb('#6a3a2a') * (1 + tone[..., None]) * (0.85 + 0.3 * fbm(n, 6, 3, 221)[..., None])
+    soot = fbm(n, 2, 3, 222)[..., None]
+    base = base * (0.75 + 0.35 * soot)
+    out = base * mort[..., None] + hexrgb('#3b3530') * (1 - mort[..., None])
+    return save('brick', to_srgb(out), mort * 0.8 + fnoise(n, 60, 200, 223) * 0.2, 2.5, 256)
+
+
 ALL = [velvet, leather, walnut, slats, chevron, geotile, terrazzo, marble, brushed, powder, flat, plaster, concrete, woven,
-       carpet_deco, carpet_hall, asphalt, paving, squaretile, granite, fluted]
+       carpet_deco, carpet_hall, asphalt, paving, squaretile, granite, fluted, brick]
 
 if __name__ == '__main__':
     sheet = sys.argv[sys.argv.index('--sheet') + 1] if '--sheet' in sys.argv else None

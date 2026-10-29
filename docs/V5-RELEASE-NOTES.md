@@ -1,3 +1,20 @@
+# LUMIERE v5.11 (versionCode 511)
+
+APK: `lumiere-v5.11.apk`, same signing key as v4 and v5.10 (installs over either). Not yet run on the phone.
+
+## v5.11 on top of v5.10
+- 14 more Kiln models replace the last box props people see most:
+  street facade bays (dark brick, stone sills and lintels, modelled windows lit or dark at random), shopfronts with awnings,
+  street lamps, parked sedans, a back bar with lit glass shelves and about forty bottles, a drinks fountain, a pick-and-mix
+  wall with heaped sweets, ticket kiosks, card terminals, velvet benches, brass-topped bins, the usher's podium with a reading
+  lamp, a brass ring chandelier over the island, padded leather doors with portholes.
+- The pixelated street outside the glass (a 256 px window texture) is gone: buildings are now geometry with a brick texture.
+- New brick texture set; lobby light raised a little (ambient 0.10 -> 0.13, downlights brighter).
+- Kiln QA found floating parts (shop interior, scoop rail, card reader, door handle); fixed. `check-world.mjs` found new shared
+  planes (sills, mullion crossings, cornices, candy wall panels, chandelier canopies); fixed. **0 in all 8 rooms.**
+- Validation: run-tests pass; check-world 0 overlaps, 40/40 nav; full flow 0 console errors; APK v2 verified.
+- Lobby views now 125k to 139k triangles and 61 to 73 draw calls (SwiftShader counters) with the street visible.
+
 # LUMIERE v5.10 (versionCode 510)
 
 APK: `lumiere-v5.10.apk`, 3.24 MB, APK Signature Scheme v2, signed with the same key as v4 (installs as an update, no uninstall).

@@ -37,6 +37,7 @@ export const LIB = {
   25: { tex: 'powder', mode: 'rel', mpt: 0.5, rough: 0.5, metal: 0.6, nstr: 0.3 },
   26: { tex: 'asphalt', mode: 'rel', mpt: 3.0, rough: 0.9, metal: 0, nstr: 0.6 },
   27: { tex: 'paving', mode: 'rel', mpt: 2.4, rough: 0.8, metal: 0, nstr: 0.8 },
+  28: { tex: 'brick', mode: 'abs', mpt: 1.6, rough: 0.9, metal: 0, nstr: 1, relief: 0.5 },
 };
 // Kiln assets name their materials; the name picks a library entry and the tint (sRGB hex)
 export const NAMED = {
@@ -45,8 +46,9 @@ export const NAMED = {
   walnut: [2, '#6b4630'], walnut_dark: [2, '#3e2618'], oak: [2, '#b08458'], slats_walnut: [17, '#6b4630'], fluted_walnut: [23, '#6b4630'], fluted_plaster: [23, '#d8cbb8'],
   brass: [24, '#c9a061'], bronze: [24, '#8a6440'], chrome: [14, '#e8e8e8'], blackmetal: [25, '#1c1c1f'], charcoal: [25, '#26262b'], steel: [4, '#9a9ca2'],
   marble_nero: [12, '#ffffff'], terrazzo: [3, '#ffffff'], granite: [11, '#3a3a3c'], lacquer_black: [15, '#141416'], lacquer_red: [15, '#8a1522'], lacquer_cream: [15, '#e9e1d2'],
-  glass: [10, '#2a3036'], glass_amber: [10, '#6a4a22'], rubber: [13, '#1a1a1a'], plastic_black: [15, '#18181a'], paint_black: [0, '#121214'], paint_cream: [0, '#e7dfd0'], paint_red: [0, '#9e1c26'],
-  fabric_black: [9, '#141416'], acoustic: [9, '#2a2a30'], carpet_deco: [22, '#ffffff'], plant: [0, '#2f5a2a'], soil: [18, '#2b2119'], ceramic: [15, '#e6e0d6'], popcorn: [6, '#f2dca0'], paper_red: [0, '#c4202c'],
+  glass: [10, '#2a3036'], glass_amber: [10, '#6a4a22'], bottle_green: [10, '#1f4a2a'], bottle_clear: [10, '#9aa8ae'], rubber: [13, '#1a1a1a'], plastic_black: [15, '#18181a'], paint_black: [0, '#121214'], paint_cream: [0, '#e7dfd0'], paint_red: [0, '#9e1c26'],
+  fabric_black: [9, '#141416'], brick: [28, '#ffffff'], stone: [18, '#8a7d6c'], stone_dark: [18, '#4a4038'], awning_red: [1, '#7a1622'], awning_green: [1, '#1d4a3a'], tyre: [13, '#141414'], car_red: [15, '#7a1c24'], car_blue: [15, '#22324a'], car_silver: [4, '#b8bcc2'], mirror: [14, '#d8dce0'],
+  candy_pink: [15, '#e0558a'], candy_yellow: [15, '#f2c230'], candy_green: [15, '#4caf50'], candy_blue: [15, '#3a7bd5'], candy_orange: [15, '#f07a2a'], candy_red: [15, '#c62a36'], screen_black: [15, '#0a0a0c'], acoustic: [9, '#2a2a30'], carpet_deco: [22, '#ffffff'], plant: [0, '#2f5a2a'], soil: [18, '#2b2119'], ceramic: [15, '#e6e0d6'], popcorn: [6, '#f2dca0'], paper_red: [0, '#c4202c'],
 };
 const _c = new THREE.Color();
 export function named(name) { const k = String(name || '').toLowerCase().replace(/[^a-z_]/g, '').replace(/_+$/, ''); const e = NAMED[k] || NAMED[k.replace(/_lod\d$/, '')]; return e ? { id: e[0], tint: _c.set(e[1]).toArray() } : null; }

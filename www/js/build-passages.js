@@ -5,6 +5,7 @@ import { MAT } from './geom.js';
 import { PASSAGES, DOOR_W, DOOR_H, hallById, CONC } from './layout.js';
 import { signTexture, posterTexture, FILMS } from './textures.js';
 import * as P from './props.js';
+import { placeAsset } from './assets.js';
 export function buildPassages(ctx) {
   return PASSAGES.map((p) => {
     const room = new Room(p.key, { ceil: p.h, rect: [p.x0, p.z0, p.x1, p.z1], soft: 0.4 }), L = room.lights, top = p.h, zIn = CONC.z0 - 0.3;   // zIn: inner face of the wall the door sits in
@@ -26,9 +27,9 @@ export function buildPassages(ctx) {
         room.tex(signTexture(H.name, 512, 96, { color: '#ffffff', size: 0.5, weight: 600, spacing: 0.18 }), x + dir * 0.012, DOOR_H + 0.3, hall.z, dir > 0 ? Math.PI / 2 : -Math.PI / 2, 1.3, 0.24, { emit: 1.2, transparent: true });
         L.point(x + dir * 0.8, 2.4, hall.z, '#ffd9b0', 0.6, 3.5, 'f'); }
     }
-    for (const [x, dir] of [[p.x0, 1], [p.x1, -1]]) { const fi = (p.key === 'passW' ? 0 : 3) + (dir > 0 ? 0 : 1), z = zIn - 2.4; room.kit(P.lightboxKit(0.9, 1.35), x + dir * 0.001, 1.2, z, dir > 0 ? Math.PI / 2 : -Math.PI / 2); room.tex(posterTexture(FILMS[fi % 6]), x + dir * 0.07, 1.875, z, dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0.9, 1.35, { emit: 1.2 }); L.area(x + dir * 0.3, 1.85, z, [0, 0, 0.45], [0, 0.65, 0], [dir, 0, 0], '#fff0e0', 0.8, 3.5, 'f', 2, 2); }
+    for (const [x, dir] of [[p.x0, 1], [p.x1, -1]]) { const fi = (p.key === 'passW' ? 0 : 3) + (dir > 0 ? 0 : 1), z = zIn - 2.4; placeAsset(room, 'poster_case', x + dir * 0.002, 1.2, z, dir > 0 ? Math.PI / 2 : -Math.PI / 2, { scale: 0.75 }); room.tex(posterTexture(FILMS[fi % 6]), x + dir * 0.07, 1.875, z, dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0.9, 1.35, { emit: 1.2 }); L.area(x + dir * 0.3, 1.85, z, [0, 0, 0.45], [0, 0.65, 0], [dir, 0, 0], '#fff0e0', 0.8, 3.5, 'f', 2, 2); }
     room.wall('x', p.z0, p.x0, p.x1, 0, top, 1, '#4a3f3e', [], { mat: MAT.acoustic, thick: 0.3, skirt: { h: 0.08, color: '#0b0b0d' } });
-    { const fe = p.key === 'passW' ? 2 : 5; room.kit(P.lightboxKit(1.0, 1.5), cx, 0.9, p.z0 + 0.001, 0); room.tex(posterTexture(FILMS[fe]), cx, 1.65, p.z0 + 0.07, 0, 1.0, 1.5, { emit: 1.2 }); L.area(cx, 1.65, p.z0 + 0.3, [0.5, 0, 0], [0, 0.75, 0], [0, 0, 1], '#fff0e0', 0.8, 3.5, 'f', 2, 2); }   // end-of-corridor poster case
+    { const fe = p.key === 'passW' ? 2 : 5; placeAsset(room, 'poster_case', cx, 0.9, p.z0 + 0.002, 0, { scale: 0.8333 }); room.tex(posterTexture(FILMS[fe]), cx, 1.65, p.z0 + 0.07, 0, 1.0, 1.5, { emit: 1.2 }); L.area(cx, 1.65, p.z0 + 0.3, [0.5, 0, 0], [0, 0.75, 0], [0, 0, 1], '#fff0e0', 0.8, 3.5, 'f', 2, 2); }   // end-of-corridor poster case
     for (let z = p.z0 + 1.6; z < zIn - 0.8; z += 2.6) { const x = (p.x0 + p.x1) / 2; room.box(x - 0.07, top - 0.01, z - 0.07, x + 0.07, top - 0.002, z + 0.07, '#fff0d8', { glow: true, grp: 0, faces: 'ny' }); L.spot(x, top - 0.1, z, '#ffd2a2', 3.2, 7, 'f', [0, -1, 0], 28, 65); }
     L.ambient('#ffe2c8', '#a08a7c', 0.15, 'f');
     return room;

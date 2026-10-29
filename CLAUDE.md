@@ -73,11 +73,11 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - Never read pixels back synchronously from video frames on phones.
 
 ## Current state (2026-10-29)
-- v5.10 built: 3.24 MB, v2 verified, same certificate as v4. See `docs/V5-RELEASE-NOTES.md` for validation and limitations.
+- v5.11 built (33 Kiln models, street rebuilt): v2 verified, same certificate as v4. See `docs/V5-RELEASE-NOTES.md`.
 
 ## Next steps
 1. Get the user's phone recording of v5.10; check frame time per graphics preset, light levels, any flicker, UI touch targets.
 2. Ideas waiting for approval (list them, don't build unasked): Kiln-modelled people with better faces and outfits; a Dolby-style
-   video-wall entrance tunnel; Kiln versions of the remaining box props (back bar, fountain, candy wall, kiosks, doors);
+   video-wall entrance tunnel; Kiln versions of the last box props (cup stacks, menu boards, guide sign);
    popcorn and drinks the player carries to the seat with refill; trailers before the film; a photo spot with a poster frame;
    seat-number brass plates; rain/night street views through the glass; a balcony in Screen 3.

@@ -21,6 +21,11 @@ writes the GLB.
 | poster_case | 1.2 x 1.8 m back-lit poster frame | the engine adds the poster texture |
 | banquette_seg | 1/8 of the round lobby banquette | the engine places 8 |
 | planter_tall, planter_tree | snake-plant pot, island tree planter | |
+| facade_bay, shopfront | street building storey and ground-floor shop | windows lit/dark per placement (`glowMul`) |
+| lamp_post, car_sedan | street lamp, parked sedan | car paint via `swap` |
+| back_bar, drinks_fountain, candy_wall | bar and concession fittings | |
+| kiosk, pos_terminal | ticket kiosk, counter card terminal | |
+| bench_velvet, bin_brass, usher_podium, chandelier_ring, door_padded | lobby furniture and fittings | |
 
 Conventions: metres; Kiln's +X is the front of the prop (the engine turns it to face +Z); floor at Y = 0. Materials are named
 after `www/js/library.js` `NAMED` keys and carry no textures (the engine supplies them). Names starting with `glow` are emitters.

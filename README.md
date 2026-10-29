@@ -1,4 +1,4 @@
-# LUMIERE v5.10
+# LUMIERE v5.11
 A first-person cinema for Android: a static three.js app (`www/`) in a WebView wrapper APK.
 
 What's in it:
@@ -17,7 +17,7 @@ Where to look:
 Quick commands:
 - `sh tools/run-tests.sh`: Node checks (logic, syntax, comment lint).
 - `node tools/dev/check-world.mjs www`: z-fighting and navigation check in headless Chromium (desktop/cloud only).
-- `python tools/make-apk.py lumiere-v4.apk www out.apk 511 5.11`: repack and sign.
+- `python tools/make-apk.py lumiere-v4.apk www out.apk 512 5.12`: repack and sign.
 - `python -m http.server 3000 -d www`, then open http://127.0.0.1:3000/index.html?play=1 in a browser.
 
 Screenshots in `docs/screens-v5/` are real engine renders from headless Chromium with SwiftShader (a software GPU), not phone captures.
