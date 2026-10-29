@@ -13,7 +13,7 @@ async function build() {
   createPart('Band', uv(await extrudeProfile(sector(2.28, 2.31, -A + gap + 0.25, A - gap - 0.25, 10), { depth: 0.05, axis: 'y', center: false })), brass, { position: [0, 0.08, 0], parent: root });
   createPart('Seat', uv(await extrudeProfile(sector(1.7, 2.36, -A + gap, A - gap, 10), { depth: 0.36, axis: 'y', center: false, bevel: 0.04, smooth: true })), v, { position: [0, 0.08, 0], parent: root });
   // back ring: three tufted channels per segment (every part ends at its own angle: no coplanar end faces at the seams)
-  for (let i = 0; i < 3; i++) { const a0 = -A + gap + ((2 * A - 2 * gap) / 3) * i, a1 = a0 + (2 * A - 2 * gap) / 3 - 0.6;
+  for (let i = 0; i < 3; i++) { const a0 = -A + gap + 0.1 + ((2 * A - 2 * gap) / 3) * i, a1 = a0 + (2 * A - 2 * gap) / 3 - 0.7;
     createPart(`Back${i}`, uv(await extrudeProfile(sector(1.48, 1.72, a0, a1, 4), { depth: 0.46, axis: 'y', center: false, bevel: 0.05, smooth: true })), v, { position: [0, 0.44, 0], parent: root }); }
   createPart('BackBase', uv(await extrudeProfile(sector(1.46, 1.69, -A + gap + 0.15, A - gap - 0.15, 10), { depth: 0.359, axis: 'y', center: false })), v, { position: [0, 0.081, 0], parent: root });
   return root;

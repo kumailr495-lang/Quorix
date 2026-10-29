@@ -222,3 +222,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 html[lang=hi] *,html[lang=ur] *{letter-spacing:0!important}
 html[lang=ur] body{font-family:"Noto Nastaliq Urdu","Noto Naskh Arabic",var(--font)}html[lang=ur] #talkText,html[lang=ur] .body{line-height:1.9}
 html[lang=hi] .who b,html[lang=ur] .who b,html[lang=hi] h2,html[lang=ur] h2,html[lang=hi] .tag,html[lang=ur] .tag{font-family:var(--font);font-weight:600;font-style:normal}
+/* right-to-left: numbers stay left-to-right, direction arrows mirror */
+#bkStepLbl{direction:ltr;unicode-bidi:isolate}
+[dir=rtl] #bkNext .ic,[dir=rtl] #bkBack .ic,[dir=rtl] .mn-list .ic.dir{transform:scaleX(-1)}

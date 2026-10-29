@@ -49,7 +49,7 @@ export class UI {
   buildBook() {
     const st = this.step; for (let i = 1; i <= 3; i++) $('#bkStep' + i).hidden = i !== st;
     [...$('#bkSteps').children].forEach((li, i) => { li.className = i + 1 === st ? 'on' : i + 1 < st ? 'done' : ''; });
-    $('#bkStepLbl').textContent = `${st} / 3`; $('#bkTitle').textContent = t(st === 1 ? 'book.step1' : st === 2 ? 'book.seat' : 'book.step3');
+    $('#bkStepLbl').textContent = `${st} / 3`; $('#bkStepLbl').dir = 'ltr'; $('#bkTitle').textContent = t(st === 1 ? 'book.step1' : st === 2 ? 'book.seat' : 'book.step3');
     $('#bkBack').hidden = st === 1; $('#times').hidden = st !== 1; $('#bkNextLbl').textContent = t(st === 3 ? 'book.confirm' : 'book.next');
     if (st === 1) this.filmsStep(); else if (st === 2) this.seatMap(); else this.summary();
     const sel = this.sel.seat && this.hall().seats.find((q) => q.id === this.sel.seat), hc = this.hall().cfg;
