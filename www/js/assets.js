@@ -49,7 +49,8 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
   return b;
 }
 // one merged geometry (per material groups, 'occ' attribute) for instancing, e.g. hall seats. extra: matrix applied after the Kiln->engine turn
-export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null) {   // over: { meshName: { id?, tint? } } per-hall material swaps
+// over = per-hall material swaps keyed by mesh name, each with an optional library id and tint
+export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null) {
   const A = ASSETS[name]; if (!A) return null; const acc = new Acc(), m = extra || new THREE.Matrix4();
   for (const p of A.parts) { if (p.lod !== lod || p.glow) continue;
     // cheap baked occlusion for an instanced prop: undersides and low parts darker

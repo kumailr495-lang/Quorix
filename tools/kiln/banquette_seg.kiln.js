@@ -9,12 +9,12 @@ function sector(r0, r1, a0, a1, n) { const p = []; for (let i = 0; i <= n; i++) 
 async function build() {
   const root = createRoot('BanquetteSeg'), v = mat('velvet_teal', 0x1d5a56, 0.9), brass = mat('brass', 0xc9a061, 0.3, 1), black = mat('lacquer_black', 0x141416, 0.3);
   const A = 22.5, gap = 0.35;
-  createPart('Plinth', uv(await extrudeProfile(sector(1.6, 2.3, -A + gap, A - gap, 10), { depth: 0.08, axis: 'y', center: false })), black, { parent: root });
-  createPart('Band', uv(await extrudeProfile(sector(2.28, 2.31, -A + gap, A - gap, 10), { depth: 0.05, axis: 'y', center: false })), brass, { position: [0, 0.08, 0], parent: root });
+  createPart('Plinth', uv(await extrudeProfile(sector(1.6, 2.3, -A + gap + 0.5, A - gap - 0.5, 10), { depth: 0.08, axis: 'y', center: false })), black, { parent: root });
+  createPart('Band', uv(await extrudeProfile(sector(2.28, 2.31, -A + gap + 0.25, A - gap - 0.25, 10), { depth: 0.05, axis: 'y', center: false })), brass, { position: [0, 0.08, 0], parent: root });
   createPart('Seat', uv(await extrudeProfile(sector(1.7, 2.36, -A + gap, A - gap, 10), { depth: 0.36, axis: 'y', center: false, bevel: 0.04, smooth: true })), v, { position: [0, 0.08, 0], parent: root });
-  // back ring: three tufted channels per segment
+  // back ring: three tufted channels per segment (every part ends at its own angle: no coplanar end faces at the seams)
   for (let i = 0; i < 3; i++) { const a0 = -A + gap + ((2 * A - 2 * gap) / 3) * i, a1 = a0 + (2 * A - 2 * gap) / 3 - 0.6;
     createPart(`Back${i}`, uv(await extrudeProfile(sector(1.48, 1.72, a0, a1, 4), { depth: 0.46, axis: 'y', center: false, bevel: 0.05, smooth: true })), v, { position: [0, 0.44, 0], parent: root }); }
-  createPart('BackBase', uv(await extrudeProfile(sector(1.46, 1.72, -A + gap, A - gap, 10), { depth: 0.36, axis: 'y', center: false })), v, { position: [0, 0.08, 0], parent: root });
+  createPart('BackBase', uv(await extrudeProfile(sector(1.46, 1.69, -A + gap + 0.15, A - gap - 0.15, 10), { depth: 0.359, axis: 'y', center: false })), v, { position: [0, 0.081, 0], parent: root });
   return root;
 }

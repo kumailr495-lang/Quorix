@@ -1,12 +1,13 @@
 #!/bin/sh
-# LUMIERE v4 headless checks (no GPU needed). Termux: pkg install nodejs
-#   world  : builds all 7 rooms from the real GLBs, counts triangles / draw calls per view, checks every seat and door is reachable
-#   crowd  : 6 simulated minutes of NPC life - arrivals, film, usher guiding, applause, leaving; NaN / stuck / off-grid checks
-#   npc    : loads a skinned character GLB, poses it, checks every skinned vertex is finite
-#   lint   : flags // comments that swallowed code (the v4 bug class)
-#   shader : patches the vendored three.js Lambert shader with the LUMIERE materials and sanity-checks the result
+# LUMIERE v5 checks. Termux: pkg install nodejs
+#   logic : hall maths (seats, aisle steps, sightlines), layout (doors on walls, no overlapping rooms), the film-event director
+#           (no reactions on steady sound, one scare on a real jump, cool-downs), every language covers every English key
+#   lint  : finds // comments that swallowed code in the dense one-line style (needs acorn once: npm i --no-save acorn; skipped if missing)
+# Browser checks (desktop/cloud only, need Playwright + Chromium):
+#   node tools/dev/check-world.mjs www        z-fight (coplanar overlaps) per room and per Kiln asset, navigation reachability
+#   node tools/dev/shoot.mjs www <out> <shots.json>   posed screenshots + console errors
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-for t in test-world4 test-crowd test-npc test-shader; do echo "== $t"; sh "$ROOT/tools/run-dev.sh" "tools/dev/$t.mjs"; done
-# comments that swallowed code (needs acorn once: npm i --no-save acorn ; skipped if missing)
-echo "== lint-comments"; cd "$ROOT" && node tools/dev/lint-comments.mjs www/js/*.js tools/*.js tools/lib/*.js tools/models/*.js tools/dev/*.mjs
+echo "== logic"; sh "$ROOT/tools/run-dev.sh" tools/dev/test-logic.mjs
+for f in "$ROOT"/www/js/*.js "$ROOT"/www/js/lang/*.js; do node --check "$f"; done; echo "== syntax ok"
+echo "== lint-comments"; cd "$ROOT" && node tools/dev/lint-comments.mjs www/js/*.js tools/kiln/build.mjs tools/dev/*.mjs

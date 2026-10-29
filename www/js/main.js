@@ -4,7 +4,7 @@ import { Engine } from './engine.js';
 import { Materials, G } from './materials.js';
 import { buildWorld } from './world.js';
 import { texturesReady } from './library.js';
-import { loadAssets, ASSET_LIST } from './assets.js';
+import { loadAssets, ASSET_LIST, ASSETS } from './assets.js';
 import { Player, EYE } from './player.js';
 import { Sound } from './sound.js';
 import { Shows } from './film.js';
@@ -178,6 +178,6 @@ async function boot() {
   clearInterval(tipT); prog(1, 'ready'); $('#ldStep').textContent = t('load.ready');
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); ui.showMenu(true, false); player.locked = true; if (!settings.lang) { ui.openLang(); } setTimeout(() => $('#loader') && $('#loader').remove(), 800); }, 120); });
   if (Q.get('play')) setTimeout(() => enterPlay(), 300);
-  window.__lumiere = { engine, world, player, shows, sound, ui, crowd, talk, mats, director, settings, buildMs: performance.now() - t0, get ticket() { return ticket; }, book: (tk) => book(tk), jumpToSeat, findSeat, sitSeat, startTalk, takeItem, enterPlay, toMenu, get mode() { return mode; }, ready: true };
+  window.__lumiereAssets = ASSETS; window.__lumiere = { engine, world, player, shows, sound, ui, crowd, talk, mats, director, settings, buildMs: performance.now() - t0, get ticket() { return ticket; }, book: (tk) => book(tk), jumpToSeat, findSeat, sitSeat, startTalk, takeItem, enterPlay, toMenu, get mode() { return mode; }, ready: true };
 }
 boot().catch((e) => { console.error(e); const m = $('#ldStep'); if (m) m.textContent = 'Error: ' + (e && e.message ? e.message : e); });

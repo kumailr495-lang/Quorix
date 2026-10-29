@@ -45,9 +45,9 @@ export function reclinerKit(leather = '#3b3c42', lod = 0, w = 0.86) {
   return k;
 }
 // guard rail along the crossing aisle (posts + two rails), length along x
-export function railKit(len, h = 0.8) {   // low glass balustrade with a slim top rail: guards the high riser without cutting the picture
+export function railKit(len, h = 0.8, endPost = true) {   // low glass balustrade with a slim top rail: guards the high riser without cutting the picture
   const k = new Kit(), n = Math.max(2, Math.round(len / 1.6) + 1);
-  for (let i = 0; i < n; i++) { const x = -len / 2 + len * i / (n - 1); k.box(x - 0.015, 0, -0.02, x + 0.015, h, 0.02, C.steel, { mat: MAT.metal }); }
+  for (let i = 0; i < (endPost ? n : n - 1); i++) { const x = -len / 2 + len * i / (n - 1); k.box(x - 0.015, 0, -0.02, x + 0.015, h, 0.02, C.steel, { mat: MAT.metal }); }
   k.cyl(0, h, 0, 0.022, 0.022, len, C.steel, { mat: MAT.metal, rz: Math.PI / 2, s: 10 });
   k.box(-len / 2, 0.02, -0.004, len / 2, 0.06, 0.004, '#ffb066', { glow: true, grp: 0, faces: 'pz nz' });
   return k;

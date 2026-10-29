@@ -14,6 +14,6 @@ async function build() {
   createPart('Fork1', uv(pipeAlongPath([[0.03, 1.6, 0], [0.4, 2.3, 0.2], [0.55, 2.6, 0.25]], 0.035, { tubularSegments: 6, radialSegments: 6 })), bark, { parent: root });
   createPart('Fork2', uv(pipeAlongPath([[0.02, 1.8, -0.02], [-0.35, 2.4, -0.2], [-0.5, 2.75, -0.2]], 0.035, { tubularSegments: 6, radialSegments: 6 })), bark, { parent: root });
   const rng = seededRandom(5), r = () => rng.range(0, 1), centres = [[0.55, 2.7, 0.25], [-0.5, 2.85, -0.2], [0.0, 2.95, 0.0], [0.3, 2.5, -0.35], [-0.3, 2.55, 0.35], [0.0, 2.25, 0.4]];
-  centres.forEach((c, i) => { for (let k = 0; k < 3; k++) createPart(`Leaf${i}_${k}`, cyl(sphereGeo(0.28 + r() * 0.12, 7, 5)), leaf, { position: [c[0] + (r() - 0.5) * 0.3, c[1] + (r() - 0.5) * 0.2, c[2] + (r() - 0.5) * 0.3], scale: [1, 0.7, 1], parent: root }); });
+  centres.forEach((c, i) => { for (let k = 0; k < 3; k++) createPart(`Leaf${i}_${k}`, cyl(sphereGeo(0.28 + r() * 0.12, 7, 5)), leaf, { position: [c[0] + (r() - 0.5) * 0.3, c[1] + (r() - 0.5) * 0.2, c[2] + (r() - 0.5) * 0.3], rotation: [r() * 40, r() * 360, r() * 40], scale: [1, 0.7, 1], parent: root }); });
   return root;
 }

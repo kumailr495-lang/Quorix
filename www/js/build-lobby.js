@@ -30,16 +30,16 @@ export function buildLobby(ctx) {
     if (axis === 'x') { room.box(a0, 0.1, dir > 0 ? c : c - t, a1, 1.2, dir > 0 ? c + t : c, '#6b4630', { mat: MAT.fluted, faces: dir > 0 ? 'pz py px nx' : 'nz py px nx' }); room.box(a0, 1.2, dir > 0 ? c : c - t - 0.01, a1, 1.23, dir > 0 ? c + t + 0.01 : c, '#c9a061', { mat: MAT.brass, faces: dir > 0 ? 'pz py ny px nx' : 'nz py ny px nx' }); }
     else { room.box(dir > 0 ? c : c - t, 0.1, a0, dir > 0 ? c + t : c, 1.2, a1, '#6b4630', { mat: MAT.fluted, faces: dir > 0 ? 'px py pz nz' : 'nx py pz nz' }); room.box(dir > 0 ? c : c - t - 0.01, 1.2, a0, dir > 0 ? c + t + 0.01 : c, 1.23, a1, '#c9a061', { mat: MAT.brass, faces: dir > 0 ? 'px py ny pz nz' : 'nx py ny pz nz' }); } };
   const rail = (axis, c, a0, a1, dir, y) => { if (axis === 'x') room.box(a0, y, dir > 0 ? c : c - 0.02, a1, y + 0.03, dir > 0 ? c + 0.02 : c, '#c9a061', { mat: MAT.brass, faces: dir > 0 ? 'pz py ny px nx' : 'nz py ny px nx' }); else room.box(dir > 0 ? c : c - 0.02, y, a0, dir > 0 ? c + 0.02 : c, y + 0.03, a1, '#c9a061', { mat: MAT.brass, faces: dir > 0 ? 'px py ny pz nz' : 'nx py ny pz nz' }); };
-  wains('x', z0, 7, 14, 1); wains('z', 14, z0, 5.3, -1); wains('z', 14, 17.4, 19.86, -1); wains('z', -14, 8.6, 10.35, 1); wains('z', -14, 17.95, 19.86, 1);
+  wains('x', z0, 7, 13.94, 1); wains('z', 14, z0 + 0.06, 5.3, -1); wains('z', 14, 17.4, 19.86, -1); wains('z', -14, 8.6, 10.35, 1); wains('z', -14, 17.95, 19.86, 1);
   for (const [a0, a1] of [[-14, OPEN.x0 - 0.02], [OPEN.x1 + 0.02, 14]]) rail('x', z0, a0, a1, 1, 4.55);
-  rail('z', 14, z0, 19.86, -1, 4.55); rail('z', -14, z0, 19.86, 1, 4.55);
-  room.box(-14, 4.58, z0, 14, H, z0 + 0.001, upperC, { faces: 'pz', mat: MAT.plaster, edge: 2 });
+  rail('z', 14, z0 + 0.02, 19.86, -1, 4.55); rail('z', -14, z0 + 0.02, 19.86, 1, 4.55);
+  room.box(-14, 4.58, z0, 14, H, z0 + 0.012, upperC, { faces: 'pz ny', mat: MAT.plaster, edge: 2 });   // darker upper band, 12 mm proud of the wall (no coplanar faces)
   // opening to the concourse: reveals inside the wall thickness, brass-lined
   for (const x of [OPEN.x0, OPEN.x1]) room.box(x - 0.001, 0, -0.15, x + 0.001, OPEN.h, z0, '#c9a061', { faces: x < 0 ? 'px' : 'nx', mat: MAT.brass });
   room.box(OPEN.x0, OPEN.h - 0.001, -0.15, OPEN.x1, OPEN.h + 0.001, z0, '#1a1a1d', { faces: 'ny', mat: MAT.paint });
   // glass street front: slim dark bronze mullions and transoms; transparent panes; door bay in the middle
   const bronze = '#3a2e24', bays = 12; for (let i = 0; i <= bays; i++) { const x = -14 + 28 * i / bays; if (Math.abs(x) < 1.7 && i !== bays / 2) continue; room.box(x - 0.04, 0, 19.86, x + 0.04, H, 20.0, bronze, { mat: MAT.brass, faces: 'nz px nx' }); }
-  room.box(-14, 0, 19.86, 14, 0.1, 20.0, bronze, { mat: MAT.brass, faces: 'nz py' }); room.box(-14, 3.15, 19.86, 14, 3.25, 20.0, bronze, { mat: MAT.brass, faces: 'nz py ny' }); room.box(-14, H - 0.25, 19.86, 14, H, 20.0, bronze, { mat: MAT.brass, faces: 'nz ny' });
+  room.box(-14, 0, 19.85, 14, 0.1, 20.0, bronze, { mat: MAT.brass, faces: 'nz py' }); room.box(-14, 3.15, 19.85, 14, 3.25, 20.0, bronze, { mat: MAT.brass, faces: 'nz py ny' }); room.box(-14, H - 0.25, 19.85, 14, H, 20.0, bronze, { mat: MAT.brass, faces: 'nz ny' });   // transoms 1 cm proud of the mullions where they cross
   for (const s of [-1, 1]) room.box(s * 1.65 - 0.06, 0, 19.86, s * 1.65 + 0.06, 3.15, 20.0, bronze, { mat: MAT.brass, faces: 'nz px nx' });
   const glass = mats.glassMat(); for (const [x0, x1, y0, y1] of [[-14, -1.7, 0.1, H - 0.25], [1.7, 14, 0.1, H - 0.25], [-1.7, 1.7, 3.25, H - 0.25]]) { const g = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), glass); g.position.set((x0 + x1) / 2, (y0 + y1) / 2, 19.93); g.renderOrder = 5; room.add(g); }
   room.col(-14, 19.86, -1.6, 20.3); room.col(1.6, 19.86, 14, 20.3); room.col(-1.6, 19.95, 1.6, 20.2, 0, 3); room.colliders[room.colliders.length - 1].nonav = true;   // the street door is for NPCs only: blocks the player, not the guests' paths
