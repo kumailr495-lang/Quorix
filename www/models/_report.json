@@ -1,0 +1,172 @@
+{
+ "lumiere-npc-patron-m3": {
+  "bytes": 400932,
+  "lods": [
+   {
+    "name": "lumiere-npc-patron-m3_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-patron-m3_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-patron-m3_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-receptionist": {
+  "bytes": 400084,
+  "lods": [
+   {
+    "name": "lumiere-npc-receptionist_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-receptionist_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-receptionist_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-usher": {
+  "bytes": 400688,
+  "lods": [
+   {
+    "name": "lumiere-npc-usher_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-usher_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-usher_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-bartender": {
+  "bytes": 400912,
+  "lods": [
+   {
+    "name": "lumiere-npc-bartender_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-bartender_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-bartender_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-patron-m1": {
+  "bytes": 400932,
+  "lods": [
+   {
+    "name": "lumiere-npc-patron-m1_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-patron-m1_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-patron-m1_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-patron-m2": {
+  "bytes": 399636,
+  "lods": [
+   {
+    "name": "lumiere-npc-patron-m2_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-patron-m2_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-patron-m2_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-patron-f1": {
+  "bytes": 400064,
+  "lods": [
+   {
+    "name": "lumiere-npc-patron-f1_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-patron-f1_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-patron-f1_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-patron-f2": {
+  "bytes": 399852,
+  "lods": [
+   {
+    "name": "lumiere-npc-patron-f2_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-patron-f2_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-patron-f2_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-npc-patron-f3": {
+  "bytes": 400064,
+  "lods": [
+   {
+    "name": "lumiere-npc-patron-f3_LOD0",
+    "tris": 6500
+   },
+   {
+    "name": "lumiere-npc-patron-f3_LOD1",
+    "tris": 2200
+   },
+   {
+    "name": "lumiere-npc-patron-f3_LOD2",
+    "tris": 700
+   }
+  ]
+ },
+ "lumiere-lightbox": {
+  "bytes": 49312,
+  "lods": [
+   {
+    "name": "lumiere-lightbox_LOD0",
+    "tris": 900
+   },
+   {
+    "name": "lumiere-lightbox_LOD1",
+    "tris": 360
+   },
+   {
+    "name": "lumiere-lightbox_LOD2",
+    "tris": 150
+   }
+  ]
+ }
+}

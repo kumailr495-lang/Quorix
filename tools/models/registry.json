@@ -1,0 +1,222 @@
+[
+ {
+  "name": "lumiere-theatre-seat",
+  "module": "seat",
+  "fn": "makeSeat"
+ },
+ {
+  "name": "lumiere-lounge-sofa",
+  "module": "props",
+  "fn": "makeSofa"
+ },
+ {
+  "name": "lumiere-reception-desk",
+  "module": "props",
+  "fn": "makeReceptionDesk"
+ },
+ {
+  "name": "lumiere-console-table",
+  "module": "props",
+  "fn": "makeConsoleTable"
+ },
+ {
+  "name": "lumiere-nesting-table-large",
+  "module": "props",
+  "fn": "makeNestingLarge"
+ },
+ {
+  "name": "lumiere-nesting-table-small",
+  "module": "props",
+  "fn": "makeNestingSmall"
+ },
+ {
+  "name": "lumiere-round-table",
+  "module": "props",
+  "fn": "makeRoundTable"
+ },
+ {
+  "name": "lumiere-bar-stool",
+  "module": "props",
+  "fn": "makeStool"
+ },
+ {
+  "name": "lumiere-floor-lamp",
+  "module": "props",
+  "fn": "makeFloorLamp"
+ },
+ {
+  "name": "lumiere-pendant-chandelier",
+  "module": "props",
+  "fn": "makeChandelier"
+ },
+ {
+  "name": "lumiere-potted-plant",
+  "module": "props",
+  "fn": "makePlant"
+ },
+ {
+  "name": "lumiere-display-case",
+  "module": "props",
+  "fn": "makeDisplayCase"
+ },
+ {
+  "name": "lumiere-ticket-dispenser",
+  "module": "props",
+  "fn": "makeTicketDispenser"
+ },
+ {
+  "name": "lumiere-poster-frame-set",
+  "module": "props",
+  "fn": "makePosterFrame"
+ },
+ {
+  "name": "lumiere-npc-receptionist",
+  "module": "people",
+  "fn": "npc_receptionist"
+ },
+ {
+  "name": "lumiere-npc-usher",
+  "module": "people",
+  "fn": "npc_usher"
+ },
+ {
+  "name": "lumiere-npc-bartender",
+  "module": "people",
+  "fn": "npc_bartender"
+ },
+ {
+  "name": "lumiere-npc-patron-m1",
+  "module": "people",
+  "fn": "npc_patron_m1"
+ },
+ {
+  "name": "lumiere-npc-patron-m2",
+  "module": "people",
+  "fn": "npc_patron_m2"
+ },
+ {
+  "name": "lumiere-npc-patron-f1",
+  "module": "people",
+  "fn": "npc_patron_f1"
+ },
+ {
+  "name": "lumiere-npc-patron-f2",
+  "module": "people",
+  "fn": "npc_patron_f2"
+ },
+ {
+  "name": "lumiere-npc-patron-f3",
+  "module": "people",
+  "fn": "npc_patron_f3"
+ },
+ {
+  "name": "lumiere-npc-patron-m3",
+  "module": "people",
+  "fn": "npc_patron_m3"
+ },
+ {
+  "name": "lumiere-armchair",
+  "module": "props2",
+  "fn": "makeArmchair"
+ },
+ {
+  "name": "lumiere-coffee-table",
+  "module": "props2",
+  "fn": "makeCoffeeTable"
+ },
+ {
+  "name": "lumiere-bench",
+  "module": "props2",
+  "fn": "makeBench"
+ },
+ {
+  "name": "lumiere-stanchion",
+  "module": "props2",
+  "fn": "makeStanchion"
+ },
+ {
+  "name": "lumiere-velvet-rope",
+  "module": "props2",
+  "fn": "makeRope"
+ },
+ {
+  "name": "lumiere-statue-deco",
+  "module": "props2",
+  "fn": "makeStatue"
+ },
+ {
+  "name": "lumiere-column",
+  "module": "props2",
+  "fn": "makeColumn"
+ },
+ {
+  "name": "lumiere-wall-mirror",
+  "module": "props2",
+  "fn": "makeMirror"
+ },
+ {
+  "name": "lumiere-wall-clock",
+  "module": "props2",
+  "fn": "makeClock"
+ },
+ {
+  "name": "lumiere-popcorn-machine",
+  "module": "props2",
+  "fn": "makePopcornMachine"
+ },
+ {
+  "name": "lumiere-concession-counter",
+  "module": "props2",
+  "fn": "makeConcession"
+ },
+ {
+  "name": "lumiere-bar-counter",
+  "module": "props2",
+  "fn": "makeBar"
+ },
+ {
+  "name": "lumiere-coat-rack",
+  "module": "props2",
+  "fn": "makeCoatRack"
+ },
+ {
+  "name": "lumiere-trash-bin",
+  "module": "props2",
+  "fn": "makeTrashBin"
+ },
+ {
+  "name": "lumiere-standee",
+  "module": "props2",
+  "fn": "makeStandee"
+ },
+ {
+  "name": "lumiere-lightbox",
+  "module": "props2",
+  "fn": "makeLightbox"
+ },
+ {
+  "name": "lumiere-palm-tall",
+  "module": "props2",
+  "fn": "makePalm"
+ },
+ {
+  "name": "lumiere-door-leaf",
+  "module": "props2",
+  "fn": "makeDoorLeaf"
+ },
+ {
+  "name": "lumiere-marquee",
+  "module": "props2",
+  "fn": "makeMarquee"
+ },
+ {
+  "name": "lumiere-candy-cabinet",
+  "module": "props2",
+  "fn": "makeCandyCabinet"
+ },
+ {
+  "name": "lumiere-fan-sconce",
+  "module": "props2",
+  "fn": "makeFanSconce"
+ }
+]

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0706"><title>LUMIÈRE</title>
+<link rel="stylesheet" href="css/app.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head><body>
+<canvas id="gl"></canvas>
+<div id="bubbles"></div>
+<div id="loader"><div class="marquee"><div class="bulbs"></div><h1>LUMIÈRE</h1><div class="rule"></div><p>The doors are opening</p><div class="bar"><i id="barfill"></i></div><small id="loadmsg">Lighting the foyer</small></div></div>
+<div id="hud" hidden>
+  <div id="brand"><b>L</b><span>LUMIÈRE</span><em id="now"></em></div>
+  <div id="tools">
+    <button id="bFull" aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button id="bBright" aria-label="Brightness"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
+    <button id="bMute" aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="wave" d="M16 8c2 2 2 6 0 8M19 5c4 4 4 10 0 14"/></svg></button>
+  </div>
+  <button id="findSeat" class="pill">Find my seat</button>
+  <div id="stick"><i id="knob"></i></div>
+  <button id="sprint" class="pill">Sprint</button>
+  <div id="toast"></div><button id="prompt" class="pill" hidden></button>
+  <div id="bright" hidden><label>Brightness</label><input id="brightRange" type="range" min="45" max="170" value="100"></div>
+  <div id="cross"></div>
+</div>
+<div id="card" hidden><div class="eyebrow">RECEPTION</div><p>Three screens tonight · first show 19:30</p><button class="cta" id="cardGo">Reserve a screening</button></div>
+<div id="talk" hidden><div class="talk-in">
+  <button class="x" id="talkX" aria-label="Close">×</button>
+  <div class="who"><b id="talkName"></b><span id="talkRole"></span></div>
+  <p id="talkText"></p><div id="talkOpts"></div>
+</div></div>
+<div id="sheet" hidden><div class="sheet-in">
+  <button class="x" id="sheetX" aria-label="Close">×</button>
+  <div class="eyebrow">TONIGHT AT THE LUMIÈRE</div><h2>Three ways to disappear</h2>
+  <div id="films"></div>
+  <div class="eyebrow">CHOOSE A SHOWTIME</div><div id="times" class="chips"></div>
+  <div class="eyebrow">CHOOSE YOUR SEAT · <span id="hallName"></span></div><div id="seatmap"></div><div id="seatSel" class="sel"></div>
+  <div class="eyebrow">BEGIN IN</div><div id="begin" class="chips"></div>
+  <div class="eyebrow">YOUR OWN FILM (OPTIONAL)</div>
+  <div class="row"><input id="url" placeholder="Paste a video link (.mp4 / .webm)" autocomplete="off"><button class="ghost" id="urlPlay">USE LINK</button></div>
+  <button class="ghost wide" id="pick">Pick from your gallery / files</button><div id="ownState" class="sel"></div>
+  <button class="cta" id="confirm">CONFIRM RESERVATION</button>
+</div></div>
+<div id="ticket" hidden><div class="tk"><div class="eyebrow">ADMIT ONE</div><h3 id="tkTitle"></h3><small id="tkKind" class="dim"></small>
+  <div class="tkrow"><div><small>SCREEN</small><b id="tkScreen"></b></div><div><small>ROW</small><b id="tkRow"></b></div><div><small>SEAT</small><b id="tkSeat"></b></div></div>
+  <p>Walk in, find the brass tag. It will be lit for you.</p><button class="cta" id="tkGo">FIND MY SEAT</button><button class="ghost wide" id="tkJump">TAKE ME TO MY SEAT</button></div></div>
+<div id="fade"></div>
+<input type="file" id="file" accept="video/*" hidden>
+<script type="module" src="js/main.js"></script>
+</body></html>

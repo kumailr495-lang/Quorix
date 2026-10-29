@@ -1,0 +1,5 @@
+node_modules/
+*.unsigned
+*.apk
+*.mp4
+__pycache__/
