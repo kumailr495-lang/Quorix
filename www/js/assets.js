@@ -7,7 +7,8 @@ import { GLTFLoader } from '../vendor/addons/GLTFLoader.js';
 import { named } from './library.js';
 export const ASSETS = {};
 // every GLB the world uses (tools/kiln/<name>.kiln.js -> www/models/<name>.glb)
-export const ASSET_LIST = ['seat_standard', 'arm_standard', 'recliner', 'console_recliner', 'seat_giant'];
+export const ASSET_LIST = ['seat_standard', 'arm_standard', 'recliner', 'console_recliner', 'seat_giant', 'column_fluted', 'column_fluted_5', 'counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
+  'pendant_dish', 'stanchion', 'rope_velvet', 'poster_case', 'banquette_seg', 'planter_tall', 'planter_tree'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;

@@ -10,10 +10,10 @@ import { assetGeometry } from './assets.js';
 import { HALLS, DOOR_W, DOOR_H, PASSAGES } from './layout.js';
 import { hallFloorY, hallSeats, BEHIND, TREAD } from './hallmath.js';
 import { slateTexture } from './textures.js';
-export const THEME = {
-  I: { seat: '#8e1b24', wall: '#2a2a30', wall2: '#1d1d22', led: '#ffb066', carpet: '#24222a', riser: '#121215', curtain: '#6f1520', ceil: '#0f0f12', accent: '#ff8a3d' },
-  II: { seat: '#3e3d44', wall: '#4a3125', wall2: '#2a1d17', led: '#ffc58a', carpet: '#1c2230', riser: '#101216', curtain: '#22343c', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true },
-  III: { seat: '#1f3c78', wall: '#141418', wall2: '#0f0f12', led: '#4c9dff', carpet: '#16161c', riser: '#0e0e11', curtain: null, ceil: '#0b0b0e', accent: '#4c9dff' },
+export const THEME = {   // docs/V5-ART-DIRECTION.md: I = Everyman teal and red velvet, II = walnut and burgundy romance, III = Dolby-style black with blue light lines
+  I: { seat: '#1d5a56', wall: '#18403f', wall2: '#0d1416', led: '#ffb066', carpet: '#4a1a22', riser: '#121215', curtain: '#6f1520', ceil: '#0e0e10', accent: '#ff8a3d' },
+  II: { seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#3a1418', riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true },
+  III: { seat: '#1e2c4a', wall: '#141418', wall2: '#0c0c0f', led: '#4c9dff', carpet: '#1a1d26', riser: '#0e0e11', curtain: null, ceil: '#0b0b0e', accent: '#4c9dff', cove: true },
 };
 // quads -> geometry (pos, normal); each quad [a, b, c, d] counter-clockwise seen from the front
 function quadGeo(quads) {
@@ -68,6 +68,7 @@ function buildHall(ctx, h) {
   }
   room.wall('x', zs, h.x0, h.x1, yF, top, 1, '#08080a', [], { mat: MAT.acoustic, thick: 0.3 });
   room.wall('x', h.zBack, h.x0, h.x1, yF, top, -1, T.wall2, [], { mat: MAT.acoustic, thick: 0.3 });
+  if (T.cove) for (const [x, d] of [[h.x0, 1], [h.x1, -1]]) { room.glowBox(d > 0 ? x : x - 0.05, top - 0.42, zs + 0.5, d > 0 ? x + 0.05 : x, top - 0.38, h.zBack - 0.3, T.led, 2.2, 1, d > 0 ? 'px ny' : 'nx ny'); L.line(x + d * 0.3, top - 0.5, zs + 1, x + d * 0.3, top - 0.5, h.zBack - 1, T.led, 0.5, 6, 'h', [d * 0.3, -0.9, 0]); }   // Dolby-style light line along the walls
   // projector porthole (the only trace of the projector: no fake beam)
   room.box(cx - 0.6, top - 1.9, h.zBack - 0.06, cx + 0.6, top - 1.35, h.zBack - 0.001, '#050608', { mat: MAT.glass, faces: 'nz' }); room.glowBox(cx - 0.18, top - 1.72, h.zBack - 0.07, cx + 0.18, top - 1.55, h.zBack - 0.06, '#dfe8ff', 2.2, 0, 'nz');
   // ceiling: black, recessed downlights (dimmable), star field over the premium hall

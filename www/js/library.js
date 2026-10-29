@@ -31,7 +31,7 @@ export const LIB = {
   19: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.95, metal: 0, nstr: 0 },
   20: { tex: 'chevron', mode: 'abs', mpt: 1.6, rough: 0.32, metal: 0, nstr: 0.8, spec: 1.1, relief: 0.4 },
   21: { tex: 'geotile', mode: 'abs', mpt: 1.2, rough: 0.22, metal: 0, nstr: 0.8, spec: 1.1 },
-  22: { tex: 'carpet_deco', mode: 'abs', mpt: 1.6, rough: 1, metal: 0, nstr: 0.6 },
+  22: { tex: 'carpet_deco', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6 },
   23: { tex: 'fluted', mode: 'rel', mpt: 0.4, rough: 0.5, metal: 0, nstr: 1, relief: 0.8 },
   24: { tex: 'brushed', mode: 'rel', mpt: 0.6, rough: 0.28, metal: 1, nstr: 0.3 },
   25: { tex: 'powder', mode: 'rel', mpt: 0.5, rough: 0.5, metal: 0.6, nstr: 0.3 },

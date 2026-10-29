@@ -11,6 +11,16 @@ export function signTexture(text, w = 512, h = 128, o = {}) {
   if (o.glow) { g.shadowColor = o.glow; g.shadowBlur = h * 0.18; }
   g.fillText(text, o.align === 'left' ? h * 0.2 : w / 2, h / 2 + 1); return tex(c);
 }
+// neon tube lettering: a wide coloured halo, the tube in the colour, a hot near-white core (transparent background, shown emissive)
+export function neonTexture(text, color = '#ff4d6d', w = 1024, h = 192, o = {}) {
+  const c = makeCanvas(w, h), g = c.getContext('2d'), fs = Math.round(h * (o.size || 0.5)); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `${o.weight || 600} ${fs}px ${o.font === 'serif' ? SERIF : SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(fs * (o.spacing ?? 0.08))}px`;
+  const x = w / 2, y = h / 2 + 2; g.lineJoin = 'round';
+  g.shadowColor = color; g.shadowBlur = h * 0.22; g.strokeStyle = color; g.lineWidth = fs * 0.09; g.strokeText(text, x, y); g.strokeText(text, x, y);
+  g.shadowBlur = h * 0.06; g.lineWidth = fs * 0.05; g.strokeStyle = shade(color, 0.25); g.strokeText(text, x, y);
+  g.shadowBlur = 0; g.lineWidth = fs * 0.018; g.strokeStyle = '#fff6ee'; g.strokeText(text, x, y);
+  return tex(c);
+}
 // the programme: three house films + the posters around the building (minimal modern key art, one bold shape each)
 export const FILMS = [
   { id: 'night', t: 'The Long Night', genre: 'thriller', mins: 118, a: '#0f1a2e', b: '#e8483b', ink: '#ffffff', shape: 'moon', tag: 'One city. One night. No way out.' },
