@@ -26,7 +26,7 @@ export class Engine {
   }
   resize() {
     const w = innerWidth, h = innerHeight; this.renderer.setPixelRatio(this.scale); this.renderer.setSize(w, h, false);
-    const a = w / h; this.camera.aspect = a; this.camera.fov = a >= 1 ? 62 : 80; this.camera.updateProjectionMatrix(); this.stats.scale = this.scale;
+    const a = w / h; this.camera.aspect = a; this.baseFov = a >= 1 ? 62 : 80; this.camera.fov = this.baseFov * (this.zoom || 1); this.camera.updateProjectionMatrix(); this.stats.scale = this.scale;
   }
   // measures real frame time; steps resolution down quickly, back up slowly (hysteresis, no oscillation)
   governor(dt, now) {
@@ -36,5 +36,7 @@ export class Engine {
     else if (this.ema < 22 && this.scale < this.maxScale) { if (++this._calm >= 4) { this.scale = Math.min(this.maxScale, this.scale * 1.08); this._tAdj = now; this._calm = 0; this.resize(); } }
     else this._calm = 0;
   }
+  // seated in a hall the view narrows a little (like your attention does), so the screen fills the picture the way it does in a real cinema
+  setZoom(z, dt) { const k = this.zoom || 1, n = k + (z - k) * (1 - Math.exp(-dt * 2.5)); if (Math.abs(n - k) < 1e-4) return; this.zoom = n; this.camera.fov = this.baseFov * n; this.camera.updateProjectionMatrix(); }
   render() { this.renderer.render(this.scene, this.camera); }
 }

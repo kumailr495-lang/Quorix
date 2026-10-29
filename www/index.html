@@ -1,48 +1,107 @@
 <!doctype html>
-<html lang="en"><head>
+<html lang="en" dir="ltr"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#0b0706"><title>LUMIÈRE</title>
+<meta name="theme-color" content="#0e0e12"><title>LUMIÈRE</title>
 <link rel="stylesheet" href="css/app.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head><body>
 <canvas id="gl"></canvas>
 <div id="bubbles"></div>
-<div id="loader"><div class="marquee"><div class="bulbs"></div><h1>LUMIÈRE</h1><div class="rule"></div><p>The doors are opening</p><div class="bar"><i id="barfill"></i></div><small id="loadmsg">Lighting the foyer</small></div></div>
+<!-- loading -->
+<div id="loader"><div class="ld-in">
+  <div class="logo">LUMIÈRE</div><div class="ld-sub" data-i18n="load.sub">Cinema</div>
+  <div class="ld-bar"><i id="ldFill"></i></div>
+  <div class="ld-row"><span id="ldStep">…</span><span id="ldPct">0%</span></div>
+  <p id="ldTip" class="ld-tip"></p>
+</div></div>
+<!-- main menu (over a live flythrough of the lobby) -->
+<div id="menu" hidden><div class="mn-in">
+  <div class="logo">LUMIÈRE</div><p class="tag" data-i18n="menu.tagline"></p>
+  <button class="btn primary" id="mnPlay" data-i18n="menu.play"></button>
+  <button class="btn" id="mnSettings" data-i18n="menu.settings"></button>
+  <button class="btn" id="mnLang" data-i18n="menu.language"></button>
+  <div class="btn-row"><button class="btn small" id="mnHelp" data-i18n="menu.help"></button><button class="btn small" id="mnCredits" data-i18n="menu.credits"></button></div>
+  <small class="ver">v5.00</small>
+</div></div>
+<!-- in-game HUD -->
 <div id="hud" hidden>
-  <div id="brand"><b>L</b><span>LUMIÈRE</span><em id="now"></em></div>
+  <div id="where"><b id="whereA"></b><span id="whereB"></span></div>
+  <button id="ticketChip" hidden><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span id="tcText"></span></button>
   <div id="tools">
-    <button id="bFull" aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-    <button id="bBright" aria-label="Brightness"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
-    <button id="bMute" aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="wave" d="M16 8c2 2 2 6 0 8M19 5c4 4 4 10 0 14"/></svg></button>
+    <button id="bHide" class="icon" data-i18n-aria="hud.hide"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button id="bMenu" class="icon" data-i18n-aria="hud.menu"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
   </div>
-  <button id="findSeat" class="pill">Find my seat</button>
+  <div id="fps" hidden></div>
   <div id="stick"><i id="knob"></i></div>
-  <button id="sprint" class="pill">Sprint</button>
-  <div id="toast"></div><button id="prompt" class="pill" hidden></button>
-  <div id="bright" hidden><label>Brightness</label><input id="brightRange" type="range" min="45" max="170" value="100"></div>
-  <div id="cross"></div>
+  <button id="sprint" class="round" data-i18n-aria="hud.sprint"><svg viewBox="0 0 24 24"><circle cx="14.5" cy="4.5" r="2"/><path d="M8 21l3-6 3 2 1 5M6 12l3-3h4l3 3 3 1M10 9l-2 5"/></svg></button>
+  <button id="itemBtn" class="round small" hidden><span id="itemLbl"></span></button>
+  <button id="prompt" class="action" hidden></button>
+  <div id="toast"></div>
 </div>
-<div id="card" hidden><div class="eyebrow">RECEPTION</div><p>Three screens tonight · first show 19:30</p><button class="cta" id="cardGo">Reserve a screening</button></div>
+<button id="bShow" class="icon faint" hidden data-i18n-aria="hud.show"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><path d="M4 20L20 4"/></svg></button>
+<!-- conversation -->
 <div id="talk" hidden><div class="talk-in">
-  <button class="x" id="talkX" aria-label="Close">×</button>
-  <div class="who"><b id="talkName"></b><span id="talkRole"></span></div>
+  <div class="who"><b id="talkName"></b><span id="talkRole"></span><button class="x" id="talkX" aria-label="×">×</button></div>
   <p id="talkText"></p><div id="talkOpts"></div>
 </div></div>
-<div id="sheet" hidden><div class="sheet-in">
-  <button class="x" id="sheetX" aria-label="Close">×</button>
-  <div class="eyebrow">TONIGHT AT THE LUMIÈRE</div><h2>Three ways to disappear</h2>
-  <div id="films"></div>
-  <div class="eyebrow">CHOOSE A SHOWTIME</div><div id="times" class="chips"></div>
-  <div class="eyebrow">CHOOSE YOUR SEAT · <span id="hallName"></span></div><div id="seatmap"></div><div id="seatSel" class="sel"></div>
-  <div class="eyebrow">BEGIN IN</div><div id="begin" class="chips"></div>
-  <div class="eyebrow">YOUR OWN FILM (OPTIONAL)</div>
-  <div class="row"><input id="url" placeholder="Paste a video link (.mp4 / .webm)" autocomplete="off"><button class="ghost" id="urlPlay">USE LINK</button></div>
-  <button class="ghost wide" id="pick">Pick from your gallery / files</button><div id="ownState" class="sel"></div>
-  <button class="cta" id="confirm">CONFIRM RESERVATION</button>
+<!-- booking -->
+<div id="book" class="modal" hidden><div class="sheet wide">
+  <div class="sh-head"><h2 data-i18n="book.title"></h2><button class="x" id="bookX">×</button></div>
+  <div class="cols">
+    <div class="col">
+      <div class="label" data-i18n="book.film"></div><div id="films"></div>
+      <div class="label" data-i18n="book.when"></div><div id="times" class="chips"></div>
+      <div class="label" data-i18n="book.own"></div>
+      <div class="own"><button class="btn small" id="pick" data-i18n="book.gallery"></button><input id="url" data-i18n-ph="book.link" autocomplete="off"><button class="btn small" id="urlUse" data-i18n="book.useLink"></button></div>
+      <div id="ownState" class="note"></div>
+    </div>
+    <div class="col">
+      <div class="label"><span data-i18n="book.seat"></span> · <span id="hallName"></span></div>
+      <div id="seatmap"></div>
+      <div class="legend"><i class="sw free"></i><span data-i18n="book.free"></span><i class="sw taken"></i><span data-i18n="book.taken"></span><i class="sw sel"></i><span data-i18n="book.yours"></span></div>
+      <div id="seatSel" class="note"></div>
+      <button class="btn primary" id="confirm" data-i18n="book.confirm"></button>
+    </div>
+  </div>
 </div></div>
-<div id="ticket" hidden><div class="tk"><div class="eyebrow">ADMIT ONE</div><h3 id="tkTitle"></h3><small id="tkKind" class="dim"></small>
-  <div class="tkrow"><div><small>SCREEN</small><b id="tkScreen"></b></div><div><small>ROW</small><b id="tkRow"></b></div><div><small>SEAT</small><b id="tkSeat"></b></div></div>
-  <p>Walk in, find the brass tag. It will be lit for you.</p><button class="cta" id="tkGo">FIND MY SEAT</button><button class="ghost wide" id="tkJump">TAKE ME TO MY SEAT</button></div></div>
+<!-- ticket -->
+<div id="ticket" class="modal" hidden><div class="sheet tk">
+  <div class="tk-top"><small data-i18n="tk.admit"></small><h3 id="tkTitle"></h3><small id="tkKind"></small></div>
+  <div class="tk-row"><div><small data-i18n="tk.screen"></small><b id="tkScreen"></b></div><div><small data-i18n="tk.row"></small><b id="tkRow"></b></div><div><small data-i18n="tk.seat"></small><b id="tkSeat"></b></div></div>
+  <p class="note" data-i18n="tk.hint"></p>
+  <div class="btn-row"><button class="btn" id="tkWalk" data-i18n="tk.walk"></button><button class="btn primary" id="tkJump" data-i18n="tk.jump"></button></div>
+</div></div>
+<!-- settings -->
+<div id="settings" class="modal" hidden><div class="sheet">
+  <div class="sh-head"><h2 data-i18n="set.title"></h2><button class="x" id="setX">×</button></div>
+  <div class="set-body">
+    <div class="label" data-i18n="set.controls"></div>
+    <div class="set-row"><span data-i18n="set.sens"></span><input type="range" id="sSens" min="0.3" max="2.5" step="0.05"><output id="oSens"></output></div>
+    <div class="set-row"><span data-i18n="set.invert"></span><button class="toggle" id="sInvert"></button></div>
+    <div class="label" data-i18n="set.graphics"></div>
+    <div class="set-row"><span data-i18n="set.quality"></span><div class="seg" id="sGfx"><button data-v="low" data-i18n="set.low"></button><button data-v="medium" data-i18n="set.medium"></button><button data-v="high" data-i18n="set.high"></button></div></div>
+    <div class="set-row"><span data-i18n="set.autores"></span><button class="toggle" id="sAuto"></button></div>
+    <div class="set-row"><span data-i18n="set.bright"></span><input type="range" id="sBright" min="0.6" max="1.6" step="0.02"><output id="oBright"></output></div>
+    <div class="set-row"><span data-i18n="set.fps"></span><button class="toggle" id="sFps"></button></div>
+    <div class="label" data-i18n="set.sound"></div>
+    <div class="set-row"><span data-i18n="set.master"></span><input type="range" id="sMaster" min="0" max="1" step="0.02"><output id="oMaster"></output></div>
+    <div class="set-row"><span data-i18n="set.film"></span><input type="range" id="sFilm" min="0" max="1.5" step="0.02"><output id="oFilm"></output></div>
+    <div class="set-row"><span data-i18n="set.crowd"></span><input type="range" id="sCrowd" min="0" max="1.5" step="0.02"><output id="oCrowd"></output></div>
+    <div class="set-row"><span data-i18n="set.bubbles"></span><button class="toggle" id="sBubbles"></button></div>
+    <div class="label" data-i18n="set.lang"></div><div class="seg wrap" id="sLang"></div>
+    <p class="note" data-i18n="set.restart"></p>
+  </div>
+</div></div>
+<!-- language picker (first launch / menu) -->
+<div id="langPick" class="modal" hidden><div class="sheet narrow"><div class="sh-head"><h2 data-i18n="menu.language"></h2><button class="x" id="langX">×</button></div><div id="langList" class="list"></div></div></div>
+<!-- help / credits -->
+<div id="info" class="modal" hidden><div class="sheet narrow"><div class="sh-head"><h2 id="infoTitle"></h2><button class="x" id="infoX">×</button></div><p id="infoBody" class="body"></p></div></div>
+<!-- pause -->
+<div id="pause" class="modal" hidden><div class="sheet narrow center">
+  <h2 data-i18n="menu.paused"></h2>
+  <button class="btn primary" id="psResume" data-i18n="menu.resume"></button><button class="btn" id="psSettings" data-i18n="menu.settings"></button><button class="btn" id="psQuit" data-i18n="menu.quit"></button>
+</div></div>
+<div id="rotate" hidden><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M20 15a8 8 0 0 1-8 7M4 9a8 8 0 0 1 8-7"/></svg><span data-i18n="rotate"></span></div>
 <div id="fade"></div>
 <input type="file" id="file" accept="video/*" hidden>
 <script type="module" src="js/main.js"></script>

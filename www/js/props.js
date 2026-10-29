@@ -45,10 +45,11 @@ export function reclinerKit(leather = '#3b3c42', lod = 0, w = 0.86) {
   return k;
 }
 // guard rail along the crossing aisle (posts + two rails), length along x
-export function railKit(len, h = 0.9) {
-  const k = new Kit(), n = Math.max(2, Math.round(len / 1.4) + 1);
-  for (let i = 0; i < n; i++) { const x = -len / 2 + len * i / (n - 1); k.cyl(x, h / 2, 0, 0.02, 0.02, h, C.steel, { mat: MAT.metal, s: 10 }); }
-  k.cyl(0, h, 0, 0.025, 0.025, len, C.steel, { mat: MAT.metal, rz: Math.PI / 2, s: 10 }); k.cyl(0, h * 0.5, 0, 0.012, 0.012, len, C.steel, { mat: MAT.metal, rz: Math.PI / 2, s: 8 });
+export function railKit(len, h = 0.8) {   // low glass balustrade with a slim top rail: guards the high riser without cutting the picture
+  const k = new Kit(), n = Math.max(2, Math.round(len / 1.6) + 1);
+  for (let i = 0; i < n; i++) { const x = -len / 2 + len * i / (n - 1); k.box(x - 0.015, 0, -0.02, x + 0.015, h, 0.02, C.steel, { mat: MAT.metal }); }
+  k.cyl(0, h, 0, 0.022, 0.022, len, C.steel, { mat: MAT.metal, rz: Math.PI / 2, s: 10 });
+  k.box(-len / 2, 0.02, -0.004, len / 2, 0.06, 0.004, '#ffb066', { glow: true, grp: 0, faces: 'pz nz' });
   return k;
 }
 export function speakerKit() { const k = new Kit(); k.rbox(0, 0, 0, 0.42, 0.62, 0.3, 0.03, '#141416', { mat: MAT.lacquer }); k.box(-0.17, -0.27, -0.155, 0.17, 0.27, -0.15, '#1d1d20', { mat: MAT.acoustic, faces: 'nz' }); return k; }

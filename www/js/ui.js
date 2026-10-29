@@ -1,67 +1,101 @@
-// HUD, reception card, booking sheet (three films -> three halls, each with its own seat map), ticket, now-showing line.
-import { posterCanvas } from './textures.js';
-import { ROW_LETTERS, HALLS } from './layout.js';
-export const FILMS = [
-  { t: 'The Long Night', hall: 'I', m: 'a film by D. Verhoef · 112 min · drama · 1958', h: [12, 340] },
-  { t: 'Velvet Hour', hall: 'II', m: 'with Camille Roux · 94 min · romance · 1961', h: [330, 280] },
-  { t: 'A Quiet Room', hall: 'III', m: 'fiction from the afternoon · 88 min · mystery · 1952', h: [150, 200] },
-];
-const TIMES = ['19:30', '21:45'], BEGIN = [['Now', 0], ['10 s', 10], ['1 min', 60], ['Custom…', -1]];
+// LUMIERE v5 - interface: loading screen, main menu, HUD (where-chip, ticket chip, hide-UI, menu, stick, sprint, context action, item button),
+// booking sheet (film, start time, your own video, seat map per hall), ticket, settings, language picker, help/credits, pause.
+import { t, setLang, LANGS, lang, fmtTime } from './i18n.js';
+import { FILMS, posterCanvas } from './textures.js';
+import { HOUSE, PROGRAMME } from './films.js';
+import { ROW_LETTERS } from './layout.js';
+const $ = (s) => document.querySelector(s);
+const BOOK_FILMS = [{ film: 'night', hall: 'I' }, { film: 'velvet', hall: 'II' }, { film: 'quiet', hall: 'III' }];
+const WHEN = [['book.now', 0], ['book.1m', 60], ['book.3m', 180]];
 export class UI {
-  constructor(world, shows, sound, hooks) {
-    this.world = world; this.shows = shows; this.sound = sound; this.hooks = hooks; this.q = (s) => document.querySelector(s); this.promptFn = null; this._toastT = 0; this.own = null;
-    this.sel = { film: 0, time: TIMES[0], seat: null, begin: 0, custom: 30 }; this.pickDefaultSeat(); this.buildSheet(); this.bind();
+  constructor(world, shows, sound, settings, hooks) {
+    this.world = world; this.shows = shows; this.sound = sound; this.settings = settings; this.hooks = hooks; this.promptFn = null; this._toastT = 0; this.own = null; this.hidden = false;
+    this.sel = { film: 0, when: 0, seat: null }; this.pickDefaultSeat(); this.bind(); this.posterURL = {};
   }
-  hall() { return this.world.halls.find((h) => h.cfg.id === FILMS[this.sel.film].hall); }
-  pickDefaultSeat() { const h = this.hall(), c = h.cfg, row = Math.min(c.rows - 2, 3); const best = h.seats.filter((s) => !s.taken && !s.npc).sort((a, b) => Math.abs(a.row - row) * 3 + Math.abs(a.col - (c.perBlock + 0.5)) - (Math.abs(b.row - row) * 3 + Math.abs(b.col - (c.perBlock + 0.5))))[0]; this.sel.seat = best ? best.id : null; }
-  toast(msg, ms = 2600, quote = false) { const t = this.q('#toast'); t.textContent = msg; t.classList.toggle('quote', quote); t.classList.add('show'); clearTimeout(this._toastT); this._toastT = setTimeout(() => t.classList.remove('show'), ms); }
-  setPrompt(label, fn) { const p = this.q('#prompt'); if (!label) { if (!p.hidden) p.hidden = true; this.promptFn = null; return; } if (p.textContent !== label) p.textContent = label; if (p.hidden) p.hidden = false; this.promptFn = fn; }
-  setCard(on) { const c = this.q('#card'), want = on && !this.modalOpen(); if (c.hidden === want) c.hidden = !want; }
-  modalOpen() { return !this.q('#sheet').hidden || !this.q('#ticket').hidden || !this.q('#talk').hidden; }
-  openSheet() { this.q('#sheet').hidden = false; this.q('#card').hidden = true; this.sound.click(); const s = this.sel.seat && this.hall().seats.find((q) => q.id === this.sel.seat); if (!s || s.taken || s.npc) this.pickDefaultSeat(); this.buildSheet(); this.hooks.onModal && this.hooks.onModal(true); }
-  closeSheet() { this.q('#sheet').hidden = true; this.hooks.onModal && this.hooks.onModal(this.modalOpen()); }
-  buildSheet() {
-    const films = this.q('#films'); films.innerHTML = '';
-    FILMS.forEach((f, i) => { const hc = HALLS.find((h) => h.id === f.hall), d = document.createElement('div'); d.className = 'film' + (i === this.sel.film ? ' on' : ''); const img = new Image(); img.alt = ''; img.src = posterCanvas(f.t, f.h[0], f.h[1], '').toDataURL('image/jpeg', 0.7); d.appendChild(img);
-      const tx = document.createElement('div'); tx.innerHTML = `<b></b><small></small><em></em>`; tx.querySelector('b').textContent = f.t; tx.querySelector('small').textContent = f.m; tx.querySelector('em').textContent = `${hc.name} · ${hc.kind}`; d.appendChild(tx);
-      const b = document.createElement('button'); b.className = 'chip' + (i === this.sel.film ? ' on' : ''); b.textContent = i === this.sel.film ? 'SELECTED' : 'SELECT'; d.appendChild(b);
-      d.addEventListener('click', () => { if (this.sel.film !== i) { this.sel.film = i; this.pickDefaultSeat(); } this.sound.click(); this.buildSheet(); }); films.appendChild(d); });
-    const chips = (id, items, cur, fn) => { const el = this.q(id); el.innerHTML = ''; items.forEach(([label, val]) => { const b = document.createElement('button'); b.className = 'chip' + (val === cur ? ' on' : ''); b.textContent = label; b.addEventListener('click', () => { fn(val); this.sound.click(); this.buildSheet(); }); el.appendChild(b); }); };
-    chips('#times', TIMES.map((t) => [t, t]), this.sel.time, (v) => { this.sel.time = v; }); chips('#begin', BEGIN, this.sel.begin, (v) => { this.sel.begin = v; });
-    if (this.sel.begin === -1) { const el = this.q('#begin'), inp = document.createElement('input'); inp.type = 'number'; inp.min = 1; inp.value = this.sel.custom; inp.className = 'num'; inp.addEventListener('input', () => { this.sel.custom = Math.max(1, +inp.value || 1); }); el.appendChild(inp); const s = document.createElement('small'); s.textContent = ' seconds'; s.className = 'dim'; el.appendChild(s); }
-    this.q('#ownState').textContent = this.own ? `Ready: ${this.own.label}` : 'Nothing threaded yet — the house presentation will play.';
-    this.refreshSeatMap();
+  // ---------------- loading / menu ----------------
+  progress(p, step) { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; $('#ldPct').textContent = Math.round(p * 100) + '%'; if (step) $('#ldStep').textContent = step; }
+  tip() { $('#ldTip').textContent = t('tips'); }
+  loaded() { const l = $('#loader'); l.classList.add('gone'); setTimeout(() => l.remove(), 700); }
+  showMenu(on, cont) { $('#menu').hidden = !on; $('#mnPlay').textContent = t(cont ? 'menu.continue' : 'menu.play'); $('#hud').hidden = on || this.hidden; $('#bShow').hidden = on || !this.hidden; }
+  fade(v, dur = 0.6) { const f = $('#fade'); f.style.transition = `opacity ${dur}s ease`; f.style.opacity = String(v); }
+  // ---------------- HUD ----------------
+  toast(msg, ms = 2600) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(this._toastT); this._toastT = setTimeout(() => el.classList.remove('show'), ms); }
+  setPrompt(label, fn) { const p = $('#prompt'); if (!label) { if (!p.hidden) p.hidden = true; this.promptFn = null; return; } if (p.textContent !== label) p.textContent = label; if (p.hidden) p.hidden = false; this.promptFn = fn; }
+  setWhere(a, b) { const A = $('#whereA'), B = $('#whereB'); if (A.textContent !== a) A.textContent = a; if (B.textContent !== (b || '')) B.textContent = b || ''; }
+  setTicketChip(text) { const c = $('#ticketChip'); if (!text) { c.hidden = true; return; } c.hidden = false; const s = $('#tcText'); if (s.textContent !== text) s.textContent = text; }
+  setItem(kind) { const b = $('#itemBtn'); if (!kind) { b.hidden = true; return; } b.hidden = false; $('#itemLbl').textContent = t(kind === 'drink' ? 'hud.sip' : 'hud.eat'); }
+  setFps(text) { const f = $('#fps'); f.hidden = !this.settings.showFps; if (!f.hidden) f.textContent = text; }
+  setHidden(h) { this.hidden = h; $('#hud').hidden = h; $('#bShow').hidden = !h; if (h) this.toast(t('toast.uiHidden'), 2200); this.hooks.onHide && this.hooks.onHide(h); }
+  modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk'].some((s) => !$(s).hidden) || !$('#menu').hidden; }
+  // ---------------- booking ----------------
+  hallFor(i) { return this.world.hallById(BOOK_FILMS[i].hall); }
+  hall() { return this.hallFor(this.sel.film); }
+  pickDefaultSeat() { const h = this.hall(), c = h.cfg, row = Math.min(c.rows - 2, Math.round(c.rows * 0.45)); const free = h.seats.filter((s) => !s.taken && !s.npc).sort((a, b) => (Math.abs(a.row - row) * 3 + Math.abs(a.u)) - (Math.abs(b.row - row) * 3 + Math.abs(b.u)))[0]; this.sel.seat = free ? free.id : null; }
+  openBook() { $('#book').hidden = false; this.sound.click(); const s = this.sel.seat && this.hall().seats.find((q) => q.id === this.sel.seat); if (!s || s.taken || s.npc) this.pickDefaultSeat(); this.buildBook(); this.hooks.onModal(true); }
+  closeBook() { $('#book').hidden = true; this.hooks.onModal(this.modalOpen()); }
+  buildBook() {
+    const films = $('#films'); films.innerHTML = '';
+    BOOK_FILMS.forEach((bf, i) => { const H = HOUSE[bf.film], hc = this.hallFor(i).cfg, f = FILMS.find((q) => q.id === bf.film), d = document.createElement('div'); d.className = 'film' + (i === this.sel.film ? ' on' : '');
+      const img = new Image(); img.alt = ''; img.src = this.posterURL[bf.film] || (this.posterURL[bf.film] = posterCanvas(f, 128, 192).toDataURL('image/jpeg', 0.75)); d.appendChild(img);
+      const tx = document.createElement('div'); tx.innerHTML = '<b></b><small></small><em></em>'; tx.querySelector('b').textContent = H.title; tx.querySelector('small').textContent = `${t('genre.' + H.genre)} · ${t('book.mins', { n: f.mins })}`; tx.querySelector('em').textContent = `${hc.name} · ${t('kind.' + hc.kind)}`; d.appendChild(tx);
+      d.addEventListener('click', () => { if (this.sel.film !== i) { this.sel.film = i; this.pickDefaultSeat(); } this.sound.click(); this.buildBook(); }); films.appendChild(d); });
+    const times = $('#times'); times.innerHTML = ''; WHEN.forEach(([k, v], i) => { const b = document.createElement('button'); b.className = 'chip' + (i === this.sel.when ? ' on' : ''); b.textContent = t(k); b.addEventListener('click', () => { this.sel.when = i; this.sound.click(); this.buildBook(); }); times.appendChild(b); });
+    $('#ownState').textContent = this.own ? t('book.ownSet', { name: this.own.label }) : t('book.ownNone');
+    this.seatMap();
   }
-  refreshSeatMap() {
-    const h = this.hall(), c = h.cfg, m = this.q('#seatmap'); m.innerHTML = ''; this.q('#hallName').textContent = `${c.name} · ${c.kind}`;
-    const scr = document.createElement('div'); scr.className = 'scr'; scr.textContent = 'SCREEN'; m.appendChild(scr);
-    for (let r = 0; r < c.rows; r++) { const row = document.createElement('div'); row.className = 'srow'; const lab = document.createElement('i'); lab.textContent = ROW_LETTERS[r]; row.appendChild(lab);
-      for (let col = 1; col <= c.perBlock * 2; col++) { if (col === c.perBlock + 1) { const g = document.createElement('span'); g.className = 'seat gap'; row.appendChild(g); } const id = ROW_LETTERS[r] + col, s = h.seats.find((q) => q.id === id), b = document.createElement('button'), taken = (s.taken || s.npc) && !s.player;
-        b.className = 'seat' + (taken ? ' taken' : '') + (id === this.sel.seat ? ' sel' : ''); b.setAttribute('aria-label', `Row ${ROW_LETTERS[r]} seat ${col}${taken ? ' taken' : ''}`);
-        if (!taken) b.addEventListener('click', () => { this.sel.seat = id; this.sound.click(); this.refreshSeatMap(); }); row.appendChild(b); }
+  seatMap() {
+    const h = this.hall(), c = h.cfg, m = $('#seatmap'); m.innerHTML = ''; $('#hallName').textContent = `${c.name} · ${t('kind.' + c.kind)}`;
+    const scr = document.createElement('div'); scr.className = 'scr'; scr.textContent = t('book.screen').toUpperCase(); if (c.kind === 'giant') scr.style.margin = '0 2% 10px'; m.appendChild(scr);
+    const cols = c.perRow, curve = c.rowR ? (u) => (c.rowR - Math.sqrt(c.rowR * c.rowR - u * u)) * 9 : () => 0;
+    for (let r = 0; r < c.rows; r++) { const row = document.createElement('div'); row.className = 'srow'; row.style.gridTemplateColumns = `12px repeat(${cols}, 1fr)`; if (r === c.cross.row) row.style.marginTop = '8px';
+      const lab = document.createElement('i'); lab.textContent = ROW_LETTERS[r]; row.appendChild(lab);
+      for (let col = 1; col <= cols; col++) { const id = ROW_LETTERS[r] + col, s = h.seats[r * cols + col - 1], b = document.createElement('button'), taken = (s.taken || s.npc) && !s.player;
+        b.className = 'seat' + (taken ? ' taken' : '') + (id === this.sel.seat ? ' sel' : ''); b.setAttribute('aria-label', `${ROW_LETTERS[r]}${col}`); const y = -curve(s.u); if (y) b.style.transform = `translateY(${y.toFixed(1)}px)`;
+        if (!taken) b.addEventListener('click', () => { this.sel.seat = id; this.sound.click(); this.seatMap(); }); row.appendChild(b); }
       m.appendChild(row); }
-    const sel = this.sel.seat ? h.seats.find((q) => q.id === this.sel.seat) : null; this.q('#seatSel').textContent = sel ? `Selected: Row ${ROW_LETTERS[sel.row]} · Seat ${sel.col}` : 'This screen is full — choose another film';
+    const sel = this.sel.seat && h.seats.find((q) => q.id === this.sel.seat); $('#seatSel').textContent = sel ? t('book.selected', { row: ROW_LETTERS[sel.row], seat: sel.col }) : t('book.full');
   }
-  reserve() {
-    const f = FILMS[this.sel.film], h = this.hall(), s = this.sel.seat && h.seats.find((q) => q.id === this.sel.seat); if (!s) { this.toast('Choose a free seat first.', 2400); return null; }
-    const delay = this.sel.begin === -1 ? this.sel.custom : this.sel.begin, t = { hall: h.cfg.id, hallKey: h.cfg.key, hallName: h.cfg.name, kind: h.cfg.kind, film: f, title: this.own ? this.own.label : f.t, own: !!this.own, seat: s.id, row: ROW_LETTERS[s.row], col: s.col, time: this.sel.time, delay };
-    this.closeSheet(); this.showTicket(t); this.sound.chime(); this.hooks.onTicket && this.hooks.onTicket(t, this.own); this.own = null; return t;
+  confirm() {
+    const bf = BOOK_FILMS[this.sel.film], h = this.hall(), s = this.sel.seat && h.seats.find((q) => q.id === this.sel.seat); if (!s || ((s.taken || s.npc) && !s.player)) { this.toast(t('toast.seatTaken')); return; }
+    const tk = { hall: h.cfg.id, hallKey: h.cfg.key, hallName: h.cfg.name, kind: h.cfg.kind, film: bf.film, title: this.own ? this.own.label : HOUSE[bf.film].title, own: !!this.own, seat: s.id, row: ROW_LETTERS[s.row], col: s.col, delay: WHEN[this.sel.when][1] };
+    this.closeBook(); this.showTicket(tk); this.sound.chime(); this.hooks.onTicket(tk); this.own = null;
   }
-  showTicket(t) { this.q('#tkTitle').textContent = t.title; this.q('#tkScreen').textContent = t.hall; this.q('#tkRow').textContent = t.row; this.q('#tkSeat').textContent = t.col; this.q('#tkKind').textContent = `${t.hallName} · ${t.kind}`; this.q('#ticket').hidden = false; this.hooks.onModal && this.hooks.onModal(true); }
-  setNow(text) { const n = this.q('#now'); if (n.textContent !== text) n.textContent = text; }
+  showTicket(tk) { $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = tk.row; $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = `${tk.hallName} · ${t('kind.' + tk.kind)}`; $('#ticket').hidden = false; this.hooks.onModal(true); }
+  // ---------------- settings / language / info / pause ----------------
+  openSettings() { $('#settings').hidden = false; this.syncSettings(); this.hooks.onModal(true); }
+  syncSettings() {
+    const S = this.settings, setT = (id, v) => $(id).classList.toggle('on', !!v), num = (id, out, v, f = (x) => x.toFixed(2)) => { $(id).value = v; $(out).textContent = f(+v); };
+    num('#sSens', '#oSens', S.sensitivity); num('#sBright', '#oBright', S.brightness); num('#sMaster', '#oMaster', S.master, (x) => Math.round(x * 100)); num('#sFilm', '#oFilm', S.film, (x) => Math.round(x * 100)); num('#sCrowd', '#oCrowd', S.crowd, (x) => Math.round(x * 100));
+    setT('#sInvert', S.invertY); setT('#sAuto', S.autoRes); setT('#sFps', S.showFps); setT('#sBubbles', S.bubbles);
+    for (const b of document.querySelectorAll('#sGfx button')) b.classList.toggle('on', b.dataset.v === S.graphics);
+    const L = $('#sLang'); L.innerHTML = ''; for (const l of LANGS) { const b = document.createElement('button'); b.textContent = l.name; b.classList.toggle('on', l.code === lang()); b.addEventListener('click', () => this.chooseLang(l.code)); L.appendChild(b); }
+  }
+  chooseLang(code) { this.settings.lang = code; setLang(code); this.hooks.onSettings(); this.syncSettings(); this.langList(); if (!$('#book').hidden) this.buildBook(); }
+  langList() { const L = $('#langList'); L.innerHTML = ''; for (const l of LANGS) { const b = document.createElement('button'); b.className = 'btn' + (l.code === lang() ? ' on' : ''); b.textContent = l.name; b.addEventListener('click', () => { this.chooseLang(l.code); this.sound.click(); $('#langPick').hidden = true; this.hooks.onModal(this.modalOpen()); this.hooks.onLangPicked && this.hooks.onLangPicked(); }); L.appendChild(b); } }
+  openLang() { this.langList(); $('#langPick').hidden = false; this.hooks.onModal(true); }
+  openInfo(kind) { $('#infoTitle').textContent = t(kind === 'help' ? 'menu.help' : 'menu.credits'); $('#infoBody').textContent = t(kind === 'help' ? 'help.body' : 'credits.body'); $('#info').hidden = false; this.hooks.onModal(true); }
+  openPause() { $('#pause').hidden = false; this.hooks.onModal(true); this.hooks.onPause && this.hooks.onPause(true); }
+  closeModal(sel) { $(sel).hidden = true; this.hooks.onModal(this.modalOpen()); }
   bind() {
-    const $ = (s) => this.q(s), tap = (el, fn) => el.addEventListener('click', fn);
-    tap($('#cardGo'), () => this.openSheet()); tap($('#sheetX'), () => { this.sound.click(); this.closeSheet(); }); tap($('#confirm'), () => this.reserve());
-    tap($('#tkGo'), () => { $('#ticket').hidden = true; this.hooks.onModal && this.hooks.onModal(this.modalOpen()); this.hooks.findSeat && this.hooks.findSeat(); });
-    tap($('#tkJump'), () => { $('#ticket').hidden = true; this.hooks.onModal && this.hooks.onModal(this.modalOpen()); this.hooks.jumpToSeat && this.hooks.jumpToSeat(); });
-    tap($('#pick'), () => $('#file').click());
-    $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; this.sound.unlock(); this.shows.loadFile(f); this.own = { kind: 'file', label: f.name ? f.name.replace(/\.[^.]+$/, '').slice(0, 40) : 'From your gallery' }; this.toast('Your film is threaded — confirm your seat', 3000); this.buildSheet(); e.target.value = ''; });
-    tap($('#urlPlay'), () => { const u = $('#url').value.trim(); if (!/^https?:\/\//i.test(u)) { this.toast('Paste a direct link that starts with http(s)://', 3000); return; } this.sound.unlock(); this.shows.loadURL(u); this.own = { kind: 'url', label: 'From a link' }; this.toast('Your film is threaded — confirm your seat', 3000); this.buildSheet(); });
-    tap($('#findSeat'), () => this.hooks.findSeat && this.hooks.findSeat());
-    tap($('#bBright'), () => { const b = $('#bright'); b.hidden = !b.hidden; });
-    $('#brightRange').addEventListener('input', (e) => this.hooks.brightness && this.hooks.brightness(+e.target.value / 100));
-    tap($('#bMute'), () => { const m = !document.body.classList.contains('muted'); document.body.classList.toggle('muted', m); this.sound.unlock(); this.sound.setMuted(m); });
-    tap($('#bFull'), () => { try { const d = document; if (d.fullscreenElement) d.exitFullscreen(); else d.documentElement.requestFullscreen && d.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch (e) {} });
+    const tap = (sel, fn) => $(sel).addEventListener('click', (e) => { e.stopPropagation(); this.sound.unlock(); fn(e); });
+    tap('#mnPlay', () => { this.sound.click(); this.hooks.onPlay(); }); tap('#mnSettings', () => { this.sound.click(); this.openSettings(); }); tap('#mnLang', () => { this.sound.click(); this.openLang(); }); tap('#mnHelp', () => this.openInfo('help')); tap('#mnCredits', () => this.openInfo('credits'));
+    tap('#bookX', () => { this.sound.click(); this.closeBook(); }); tap('#confirm', () => this.confirm());
+    tap('#tkWalk', () => { $('#ticket').hidden = true; this.hooks.onModal(this.modalOpen()); this.hooks.findSeat(); }); tap('#tkJump', () => { $('#ticket').hidden = true; this.hooks.onModal(this.modalOpen()); this.hooks.jumpToSeat(); });
+    tap('#pick', () => $('#file').click());
+    $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; this.shows.loadFile(f); this.own = { kind: 'file', label: f.name ? f.name.replace(/\.[^.]+$/, '').slice(0, 40) : 'Video' }; this.toast(t('toast.ownReady'), 3000); this.buildBook(); e.target.value = ''; });
+    tap('#urlUse', () => { const u = $('#url').value.trim(); if (!/^https?:\/\//i.test(u)) { this.toast(t('toast.badLink'), 3000); return; } this.shows.loadURL(u); this.own = { kind: 'url', label: u.split('/').pop().slice(0, 32) || 'Link' }; this.toast(t('toast.ownReady'), 3000); this.buildBook(); });
+    tap('#ticketChip', () => this.hooks.findSeat());
+    tap('#bHide', () => { this.sound.click(); this.setHidden(true); }); tap('#bShow', () => { this.sound.click(); this.setHidden(false); });
+    tap('#bMenu', () => { this.sound.click(); this.openPause(); });
+    tap('#psResume', () => { this.closeModal('#pause'); this.hooks.onPause && this.hooks.onPause(false); }); tap('#psSettings', () => { $('#pause').hidden = true; this.openSettings(); this._fromPause = true; }); tap('#psQuit', () => { this.closeModal('#pause'); this.hooks.onQuit(); });
+    tap('#setX', () => { this.closeModal('#settings'); if (this._fromPause) { this._fromPause = false; $('#pause').hidden = false; this.hooks.onModal(true); } });
+    tap('#langX', () => this.closeModal('#langPick')); tap('#infoX', () => this.closeModal('#info'));
+    tap('#itemBtn', () => this.hooks.useItem());
+    const S = this.settings, live = (id, key, out, f) => $(id).addEventListener('input', (e) => { S[key] = +e.target.value; $(out).textContent = f(S[key]); this.hooks.onSettings(); });
+    live('#sSens', 'sensitivity', '#oSens', (x) => x.toFixed(2)); live('#sBright', 'brightness', '#oBright', (x) => x.toFixed(2)); live('#sMaster', 'master', '#oMaster', (x) => Math.round(x * 100)); live('#sFilm', 'film', '#oFilm', (x) => Math.round(x * 100)); live('#sCrowd', 'crowd', '#oCrowd', (x) => Math.round(x * 100));
+    for (const [id, key] of [['#sInvert', 'invertY'], ['#sAuto', 'autoRes'], ['#sFps', 'showFps'], ['#sBubbles', 'bubbles']]) tap(id, () => { S[key] = !S[key]; this.sound.click(); this.syncSettings(); this.hooks.onSettings(); });
+    for (const b of document.querySelectorAll('#sGfx button')) b.addEventListener('click', () => { S.graphics = b.dataset.v; this.sound.click(); this.syncSettings(); this.hooks.onSettings(true); });
     const p = $('#prompt'); p.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.sound.unlock(); this.promptFn && this.promptFn(); });
+    for (const m of ['#book', '#ticket', '#settings', '#langPick', '#info']) $(m).addEventListener('click', (e) => { if (e.target === $(m)) { if (m === '#book') this.closeBook(); else this.closeModal(m); } });
   }
 }

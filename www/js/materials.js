@@ -123,12 +123,20 @@ uniform sampler2D uFace; uniform vec2 uEyes; uniform vec2 uMouth; uniform vec3 u
 varying vec3 vAlb; varying vec3 vWN; varying vec2 vFuv; varying float vDist; varying vec3 vWP;
 void main() {
   vec3 N = normalize(vWN); vec3 alb = vAlb;
-  if (vFuv.x > -0.5) { vec2 cell = vFuv.y > 0.46 ? uEyes : uMouth; vec4 f = texture2D(uFace, (cell + clamp(vFuv, 0.002, 0.998)) * 0.25); alb = mix(alb, f.rgb, f.a); }
+  if (vFuv.x > 0.004 && vFuv.x < 0.996 && vFuv.y > 0.004 && vFuv.y < 0.996) { vec2 cell = vFuv.y > 0.46 ? uEyes : uMouth; vec4 f = texture2D(uFace, (cell + vFuv) * 0.25); alb = mix(alb, f.rgb, f.a); }
   vec3 V = normalize(cameraPosition - vWP); float rim = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
   float hemi = N.y * 0.5 + 0.5; float k = max(dot(N, uKeyDir) * 0.75 + 0.25, 0.0);
   vec3 L = uAmb * (0.55 + 0.6 * hemi) + uKey * k + uScreenL * max(dot(N, vec3(0.0, 0.2, -1.0)) * 0.6 + 0.4, 0.0);
   vec3 col = alb * L + alb * rim * (uAmb + uKey) * 0.35;
   gl_FragColor = vec4(lumFog(lumTone(col), vDist), 1.0);
+  #include <colorspace_fragment>
+}`;
+// ---------------- hand props (popcorn bucket, cup): vertex colours, lit by their holder's probe (shared uniform objects) ----------------
+const PROP_VERT = `attribute vec3 color; varying vec3 vAlb; varying vec3 vWN; varying vec3 vWP; varying float vDist;
+void main() { vAlb = color; vWN = normalize(mat3(modelMatrix) * normal); vec4 wp = modelMatrix * vec4(position, 1.0); vWP = wp.xyz; vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
+const PROP_FRAG = COMMON_FRAG + `uniform vec3 uAmb; uniform vec3 uKey; uniform vec3 uKeyDir; uniform vec3 uScreenL; varying vec3 vAlb; varying vec3 vWN; varying vec3 vWP; varying float vDist;
+void main() { vec3 N = normalize(vWN); float k = max(dot(N, uKeyDir) * 0.75 + 0.25, 0.0); vec3 L = uAmb * (0.6 + 0.4 * (N.y * 0.5 + 0.5)) + uKey * k + uScreenL * 0.6; vec3 V = normalize(cameraPosition - vWP); float sp = pow(max(dot(reflect(-V, N), uKeyDir), 0.0), 24.0) * 0.4;
+  gl_FragColor = vec4(lumFog(lumTone(vAlb * L + sp * (uAmb + uKey)), vDist), 1.0);
   #include <colorspace_fragment>
 }`;
 // ---------------- far audience: instanced seated people, vertex-shader animation ----------------
@@ -143,10 +151,10 @@ mat3 rotY(float a) { float c = cos(a), s = sin(a); return mat3(c, 0.0, -s, 0.0, 
 void main() {
   int p = int(part + 0.5); float act = iAct.x; float amt = iAct.y; float ph = iAct.z + uTime; float seed = iAct.w;
   vec3 pos = position; vec3 nrm = normal;
-  if (p == 0) vAlb = iTop; else if (p == 1) vAlb = iBot; else if (p == 2) vAlb = iHair; else if (p == 3) vAlb = iSkin; else if (p == 4) vAlb = vec3(0.03); else vAlb = iTop;
+  if (p == 0 || p == 5) vAlb = iTop; else if (p == 1) vAlb = iBot; else if (p == 2) vAlb = iHair; else if (p == 3 || p == 6) vAlb = iSkin; else vAlb = vec3(0.03);
   float side = pivot.x > 0.0 ? 1.0 : -1.0;
   mat3 R = mat3(1.0);
-  if (part > 4.5) {
+  if (p >= 5) {
     float up = 0.0; float fw = 0.0; float tw = 0.0;
     if (act > 0.5 && act < 1.5) { fw = -1.15; tw = side * (0.25 + 0.18 * sin(ph * 15.0)); }
     else if (act > 1.5 && act < 2.5) { up = 2.6 + 0.25 * sin(ph * 7.0 + side); fw = -0.3; }
@@ -193,6 +201,7 @@ export class Materials {
   picMat(map) { return this._t(mk(TEX_VERT, PIC_FRAG, { ...G, uRep: { value: new THREE.Vector2(1, 1) }, map: { value: map }, uGain: { value: 1.6 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } })); }
   glassMat(tint = 0x8fa3b8, alpha = 0.08) { if (!this._glass) this._glass = this._t(mk(GLASS_VERT, GLASS_FRAG, { ...G, uTint: { value: new THREE.Color(tint) }, uAlpha: { value: alpha } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide })); return this._glass; }
   peopleMat(face) { return this._t(mk(PEOPLE_VERT, PEOPLE_FRAG, { ...G, uFace: { value: face }, uEyes: { value: new THREE.Vector2(0, 3) }, uMouth: { value: new THREE.Vector2(0, 1) }, uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.6, 0.55, 0.5) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) }, uPal: { value: Array.from({ length: 8 }, () => new THREE.Color(0.5, 0.5, 0.5)) } })); }
+  propMat(PU) { return this._t(mk(PROP_VERT, PROP_FRAG, { ...G, uAmb: PU.uAmb, uKey: PU.uKey, uKeyDir: PU.uKeyDir, uScreenL: PU.uScreenL })); }
   crowdMat(U) { return this._t(mk(CROWD_VERT, CROWD_FRAG, { ...G, uHouse: U.uHouse, uScreen: U.uScreen })); }
   _t(m) { this.all.push(m); return m; }
 }

@@ -42,7 +42,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   for (const p of PASSAGES) { const d = new SlideDoor(world, world.rooms[p.key], (p.x0 + p.x1) / 2, CONC.z0 - 0.15, 'z', p.x1 - p.x0, 2.6, { solid: '#1c1d22', key: p.key, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(d); }
   world.streetDoor = new SlideDoor(world, world.rooms.lobby, 0, 19.93, 'z', 3.3, 2.95, { npcOnly: true, key: 'street', reach: 2.6, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(world.streetDoor);
   // navigation
-  const rects = ROOM_KEYS.filter((k) => k !== 'street').map((k) => RECTS[k]).concat(NAV_PASSAGES, world.extraNav || []);
+  const rects = ROOM_KEYS.filter((k) => k !== 'street').map((k) => RECTS[k]).concat(NAV_PASSAGES, [[-14, 20.0, 14, 25.4], [-1.5, 19.5, 1.5, 20.5]]);   // guests also walk the pavement and through the street door
   world.nav = new Nav(rects, world.colliders);
   // collision lookup grid (2 m buckets)
   const B = new Map(), key = (i, j) => i * 1000 + j; for (const c of world.colliders) for (let i = Math.floor(c.x0 / 2); i <= Math.floor(c.x1 / 2); i++) for (let j = Math.floor(c.z0 / 2); j <= Math.floor(c.z1 / 2); j++) { const k = key(i, j); if (!B.has(k)) B.set(k, []); B.get(k).push(c); }

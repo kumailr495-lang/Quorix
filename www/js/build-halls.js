@@ -106,9 +106,10 @@ function buildHall(ctx, h) {
   L.spot(cx, top - 0.3, zs + sd + 5, '#ffcf9e', 3.2 * top, top + 8, 'h', [0, -0.55, -0.83], 25, 55);
   // ---------- crossing aisle guard rail (the riser in front of it is high) ----------
   const cr = h.cross.row, railD = h.pf[cr] + 0.05;
-  if (!h.rowR) { room.kit(railKit(h.B), cx, h.rowY[cr], Z(railD, 0), 0); room.col(cx - hb, Z(railD, 0) - 0.05, cx + hb, Z(railD, 0) + 0.05); }
+  const glass = mats.glassMat(), pane = (x0, z0, x1, z1) => { const len = Math.hypot(x1 - x0, z1 - z0), m = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.72), glass); m.position.set((x0 + x1) / 2, h.rowY[cr] + 0.41, (z0 + z1) / 2); m.rotation.y = -Math.atan2(z1 - z0, x1 - x0); m.renderOrder = 5; room.add(m); };
+  if (!h.rowR) { room.kit(railKit(h.B), cx, h.rowY[cr], Z(railD, 0), 0); room.col(cx - hb, Z(railD, 0) - 0.05, cx + hb, Z(railD, 0) + 0.05); pane(cx - hb, Z(railD, 0), cx + hb, Z(railD, 0)); }
   else for (let i = 0; i < 6; i++) { const u0 = -hb + h.B * i / 6, u1 = -hb + h.B * (i + 1) / 6, um = (u0 + u1) / 2, len = Math.hypot(u1 - u0, h.rowSag(u1) - h.rowSag(u0)), yaw = -Math.atan2(h.rowSag(u1) - h.rowSag(u0), u1 - u0);
-    room.kit(railKit(len), cx + um, h.rowY[cr], Z(railD, um), yaw); room.col(cx + u0, Math.min(Z(railD, u0), Z(railD, u1)) - 0.05, cx + u1, Math.max(Z(railD, u0), Z(railD, u1)) + 0.05); }
+    room.kit(railKit(len), cx + um, h.rowY[cr], Z(railD, um), yaw); room.col(cx + u0, Math.min(Z(railD, u0), Z(railD, u1)) - 0.05, cx + u1, Math.max(Z(railD, u0), Z(railD, u1)) + 0.05); pane(cx + u0, Z(railD, u0), cx + u1, Z(railD, u1)); }
   // ---------- doors: exit sign above each, light from the passage spills in ----------
   for (const side of doorSides) { const x = side < 0 ? h.x0 : h.x1, z = h.doorZ(side), inX = x - side * 0.02;
     room.glowBox(side < 0 ? x : x - 0.04, DOOR_H + 0.25, z - 0.28, side < 0 ? x + 0.04 : x, DOOR_H + 0.47, z + 0.28, '#27e36b', 1.8, 0, side < 0 ? 'px' : 'nx');
@@ -130,7 +131,8 @@ function buildHall(ctx, h) {
   if (!h.rowR) for (let r = 0; r < h.rows; r++) { const d = h.dHip[r]; room.col(cx - hb - 0.05, zs + d - h.seat.fr, cx + hb + 0.05, zs + d + h.seat.bk); }
   else for (const s of seats) room.col(s.x - h.seatW / 2, s.z - h.seat.fr, s.x + h.seatW / 2, s.z + h.seat.bk);
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9, 9];
-  const hall = { cfg: h, key: h.key, id: h.id, room, seats, meshes, theme: T, picGeo, patches, ptAt, curtains: null,
+  seats.forEach((s, i) => { s.i = i; });
+  const hall = { cfg: h, key: h.key, id: h.id, room, seats, meshes, theme: T, picGeo, patches, ptAt, curtains: null, seatLit: lit,
     updateLOD(cam, force, far = 7) {
       const px = cam.position.x, pz = cam.position.z; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.7) return; last = [px, pz];
       const cnt = [0, 0], f2 = far * far;

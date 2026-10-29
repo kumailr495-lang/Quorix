@@ -31,7 +31,7 @@ export function buildLobby(ctx) {
   room.box(-14, 0, 19.86, 14, 0.1, 20.0, '#2a2b30', { mat: MAT.metal, faces: 'nz py' }); room.box(-14, 3.15, 19.86, 14, 3.25, 20.0, '#2a2b30', { mat: MAT.metal, faces: 'nz py ny' }); room.box(-14, H - 0.25, 19.86, 14, H, 20.0, '#2a2b30', { mat: MAT.metal, faces: 'nz ny' });
   for (const s of [-1, 1]) room.box(s * 1.65 - 0.06, 0, 19.86, s * 1.65 + 0.06, 3.15, 20.0, '#2a2b30', { mat: MAT.metal, faces: 'nz px nx' });
   const glass = mats.glassMat(); for (const [x0, x1, y0, y1] of [[-14, -1.7, 0.1, H - 0.25], [1.7, 14, 0.1, H - 0.25], [-1.7, 1.7, 3.25, H - 0.25]]) { const g = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), glass); g.position.set((x0 + x1) / 2, (y0 + y1) / 2, 19.93); g.renderOrder = 5; room.add(g); }
-  room.col(-14, 19.86, -1.6, 20.3); room.col(1.6, 19.86, 14, 20.3); room.col(-1.6, 19.95, 1.6, 20.2, 0, 3);   // the street door is for NPCs only
+  room.col(-14, 19.86, -1.6, 20.3); room.col(1.6, 19.86, 14, 20.3); room.col(-1.6, 19.95, 1.6, 20.2, 0, 3); room.colliders[room.colliders.length - 1].nonav = true;   // the street door is for NPCs only: blocks the player, not the guests' paths
   // ---------- ceiling: light lines, downlights, ring light over the island ----------
   room.flat(-14, z0, 14, 20, H, false, '#f3f0eb', { mat: MAT.plaster });
   for (const z of [4.2, 15.8]) { room.glowBox(-13.8, H - 0.012, z - 0.04, 13.8, H - 0.002, z + 0.04, '#fff1de', 2.2, 1, 'ny'); L.line(-13.5, H - 0.15, z, 13.5, H - 0.15, z, '#ffe8cc', 0.9, 9, 'h', [0, -1, 0]); }

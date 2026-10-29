@@ -10,7 +10,7 @@ export const SPECS = [
   { id: 'III', key: 'hallIII', name: 'SCREEN 3', kind: 'giant', aspect: 1.90, W: 20.0, D1: 9.0, pitch: 1.2, rows: 9, crossAfter: 3, crossW: 1.6, eye: 1.2, hB: 0.6, c: 0.18, seatW: 0.62, perRow: 30, sag: 0.025, rowR: 0, x0: -11, x1: 11 },
 ];
 // seat footprint relative to the hip point (seat cushion centre): front edge fr, back of the backrest bk
-export const SEAT = { standard: { fr: 0.3, bk: 0.32, eye: 1.15 }, curved: { fr: 0.42, bk: 0.42, eye: 1.05 }, giant: { fr: 0.3, bk: 0.32, eye: 1.15 } };
+export const SEAT = { standard: { fr: 0.3, bk: 0.32, eye: 1.2 }, curved: { fr: 0.42, bk: 0.42, eye: 1.1 }, giant: { fr: 0.3, bk: 0.32, eye: 1.2 } };
 export const BACK_Z = -6.3, BEHIND = 1.0, TREAD = 0.3, MAX_STEP = 0.2;
 // riser formula (UNIC 4.7): Y_n = X_n (Y_1 / X_1 + c * sum_{m=1..n} 1/X_m) - c   (Y = eye height above the bottom picture line)
 export function calc(s) {
