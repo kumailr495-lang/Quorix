@@ -22,7 +22,7 @@ export class Talk {
     this.full = text; this.shown = 0; this.typing = true; this.textEl.textContent = ''; this.optsEl.innerHTML = ''; this.pending = opts; this._t = 0; if (this.npc) this.npc.talkUntil = (this.npc.crowd ? this.npc.crowd.now : 0) + Math.min(6000, text.length * 45);
     this.sound.blip((this.npc?.name || 'x').length * 7 + text.length, 1);
   }
-  _options() { this.optsEl.innerHTML = ''; for (const [label, target] of this.pending) { const b = document.createElement('button'); b.className = 'opt'; b.textContent = t(label); b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.go(target); }); this.optsEl.appendChild(b); } }
+  _options() { this.optsEl.innerHTML = ''; let n = 0; for (const [label, target] of this.pending) { const b = document.createElement('button'); b.className = 'opt'; const i = document.createElement('i'); i.textContent = String(++n); const s = document.createElement('span'); s.textContent = t(label); b.append(i, s); b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.go(target); }); this.optsEl.appendChild(b); } }
   close() { if (!this.npc) return; const n = this.npc; this.npc = null; this.el.hidden = true; this.hooks.closed && this.hooks.closed(n); }
   bubble(npc, text, dur = 3.2) {
     if (!this.enabled || !text) return; if (this.npc === npc) return;

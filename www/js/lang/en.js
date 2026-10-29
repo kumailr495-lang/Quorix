@@ -74,4 +74,5 @@ export const EN = {
   'aud.laugh': ['Ha! Classic.', 'Did not see that coming.', 'Stop, I’m crying.'], 'aud.aww': ['Aww.', 'That’s so sweet.', 'I’m not crying, you’re crying.'], 'aud.climax': ['YES!', 'Let’s go!', 'Whoa!'],
   'aud.shush': ['Shh!', 'Some of us are watching!', 'Shhh!'], 'aud.end': ['Bravo!', 'That was amazing!', 'Okay, that was worth it.', 'I need a minute.'], 'aud.cat': 'It was a cat. Of course it was a cat.',
   'aud.excuse': ['Excuse me.', 'Squeeze by, it’s fine.', 'Mind my popcorn!'], 'aud.downFront': ['Down in front!', 'Excuse you!'],
+  'menu.nowShowing': 'Now showing', 'book.step1': 'Choose a film', 'book.step3': 'Confirm your ticket', 'book.next': 'Next', 'book.back': 'Back', 'book.fullHint': 'Every seat is taken. Try another film.', 'lang.title': 'Choose your language',
 };

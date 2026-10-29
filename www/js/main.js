@@ -58,7 +58,7 @@ async function boot() {
   shows = new Shows(world, sound, crowd, director, engine, {
     onBegin: (id) => { if (ticket && ticket.hall === id) ui.toast(room === ticket.hallKey ? t('toast.lightsDown') : t('toast.starting', { screen: ticket.hallName }), 3200); },
     onEnd: (id, applause) => { if (ticket && ticket.hall === id) { if (applause) ui.toast(t('toast.end'), 3600); endTicket(); } },
-    onError: () => ui.toast(t('toast.videoError'), 4600), silenceText: () => t('pre.silence'),
+    onError: () => ui.toast(t('toast.videoError'), 4600, 'error'), silenceText: () => t('pre.silence'),
   });
   talk = new Talk(sound, { action: (a, npc, tk) => action(a, npc, tk), distance: dist, closed: (npc) => { crowd.endTalk(npc); modal = ui.modalOpen(); player.locked = modal || mode !== 'play'; } });
   ui = new UI(world, shows, sound, settings, {
@@ -108,7 +108,7 @@ async function boot() {
       trail.n = n; trail.pts.geometry.setDrawRange(0, n); trail.pts.geometry.attributes.position.needsUpdate = true; trail.pts.visible = n > 0; }
     const c = trail.pts.geometry.attributes.color.array, ph = now / 1000 * 4; for (let i = 0; i < trail.n; i++) { const k = 0.25 + 0.75 * Math.max(0, Math.sin(ph - i * 0.4)) ** 3; c[i * 3] = 1.0 * k; c[i * 3 + 1] = 0.3 * k; c[i * 3 + 2] = 0.35 * k; } trail.pts.geometry.attributes.color.needsUpdate = true;
   }
-  function findSeat() { if (!ticket) { ui.toast(t('toast.noTicket'), 2800); return; } startTrail(); markerPulse = 5; ui.toast(t('toast.follow'), 2600); }
+  function findSeat() { if (!ticket) { ui.toast(t('toast.noTicket'), 2800, 'error'); return; } startTrail(); markerPulse = 5; ui.toast(t('toast.follow'), 2600); }
   let fading = false;
   function fadeTo(dur, cb) { if (fading) return; fading = true; ui.fade(1, dur); setTimeout(() => { try { cb(); } finally { setTimeout(() => { ui.fade(0, 0.7); fading = false; }, 200); } }, dur * 1000 + 40); }
   function seatPose(h, s) { const H = h.cfg, eye = H.seat.eye; return { x: s.x - Math.sin(s.yaw) * 0.04, y: s.y + eye, z: s.z - Math.cos(s.yaw) * 0.04, yaw: s.yaw }; }

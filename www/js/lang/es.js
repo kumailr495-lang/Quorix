@@ -61,4 +61,5 @@ export const ES = {
   'aud.laugh': ['¡Ja! Clásico.', 'No me lo esperaba.', 'Para, que me meo.'], 'aud.aww': ['Ooh.', 'Qué bonito.', 'No estoy llorando, tú estás llorando.'], 'aud.climax': ['¡SÍ!', '¡Vamos!', '¡Hala!'],
   'aud.shush': ['¡Chist!', '¡Algunos estamos viendo la peli!', '¡Shhh!'], 'aud.end': ['¡Bravo!', '¡Ha sido increíble!', 'Vale, ha merecido la pena.', 'Necesito un minuto.'], 'aud.cat': 'Era un gato. Cómo no, era un gato.',
   'aud.excuse': ['Perdón.', 'Pasa, pasa, no pasa nada.', '¡Cuidado con mis palomitas!'], 'aud.downFront': ['¡Agáchate!', '¡Oye, que no se ve!'],
+  'menu.nowShowing': 'En cartelera', 'book.step1': 'Elige una película', 'book.step3': 'Confirma tu entrada', 'book.next': 'Siguiente', 'book.back': 'Atrás', 'book.fullHint': 'No quedan butacas. Prueba otra película.', 'lang.title': 'Elige tu idioma',
 };

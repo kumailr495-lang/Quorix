@@ -1,107 +1,163 @@
 <!doctype html>
 <html lang="en" dir="ltr"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#0e0e12"><title>LUMIÈRE</title>
+<meta name="theme-color" content="#0b0a0c"><title>LUMIÈRE</title>
 <link rel="stylesheet" href="css/app.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head><body>
 <canvas id="gl"></canvas>
 <div id="bubbles"></div>
+<!-- icon sprite (stroke icons, 24 px grid) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.9M12 17h.01"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></symbol>
+  <symbol id="i-run" viewBox="0 0 24 24"><circle cx="14.5" cy="4.5" r="2"/><path d="M8 21l3-6 3 2 1 5M6 12l3-3h4l3 3 3 1M10 9l-2 5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v5M12 16.5h.01M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M17 9h4M3 15h4M17 15h4"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M20.5 14.5a8.5 8.5 0 0 1-6.5 6.4M3.5 9.5A8.5 8.5 0 0 1 10 3.1"/></symbol>
+  <symbol id="i-talk" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-seat" viewBox="0 0 24 24"><path d="M6 11V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5M4 11h16v5H4zM6 16v4M18 16v4"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M7 11V6.5a1.5 1.5 0 0 1 3 0V11M10 10V4.5a1.5 1.5 0 0 1 3 0V10M13 10V5.5a1.5 1.5 0 0 1 3 0V12M16 11v-1.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.4-2.6L3 15.2a1.6 1.6 0 0 1 2.4-2.1L7 15"/></symbol>
+</svg>
 <!-- loading -->
 <div id="loader"><div class="ld-in">
-  <div class="logo">LUMIÈRE</div><div class="ld-sub" data-i18n="load.sub">Cinema</div>
+  <div class="wordmark">LUMIÈRE</div><div class="ld-sub" data-i18n="load.sub">Cinema</div>
   <div class="ld-bar"><i id="ldFill"></i></div>
   <div class="ld-row"><span id="ldStep">…</span><span id="ldPct">0%</span></div>
   <p id="ldTip" class="ld-tip"></p>
 </div></div>
 <!-- main menu (over a live flythrough of the lobby) -->
-<div id="menu" hidden><div class="mn-in">
-  <div class="logo">LUMIÈRE</div><p class="tag" data-i18n="menu.tagline"></p>
-  <button class="btn primary" id="mnPlay" data-i18n="menu.play"></button>
-  <button class="btn" id="mnSettings" data-i18n="menu.settings"></button>
-  <button class="btn" id="mnLang" data-i18n="menu.language"></button>
-  <div class="btn-row"><button class="btn small" id="mnHelp" data-i18n="menu.help"></button><button class="btn small" id="mnCredits" data-i18n="menu.credits"></button></div>
-  <small class="ver">v5.00</small>
-</div></div>
+<div id="menu" hidden>
+  <div class="mn-left">
+    <div class="wordmark xl">LUMIÈRE</div>
+    <p class="tag" data-i18n="menu.tagline"></p>
+    <button class="btn primary lg" id="mnPlay"><svg class="ic"><use href="#i-play"/></svg><span id="mnPlayLbl" data-i18n="menu.play"></span></button>
+    <nav class="mn-list">
+      <button id="mnSettings"><svg class="ic"><use href="#i-gear"/></svg><span data-i18n="menu.settings"></span></button>
+      <button id="mnLang"><svg class="ic"><use href="#i-globe"/></svg><span data-i18n="menu.language"></span><em id="mnLangCur"></em></button>
+      <button id="mnHelp"><svg class="ic"><use href="#i-help"/></svg><span data-i18n="menu.help"></span></button>
+      <button id="mnCredits"><svg class="ic"><use href="#i-star"/></svg><span data-i18n="menu.credits"></span></button>
+    </nav>
+    <small class="ver">v5.10</small>
+  </div>
+  <aside class="mn-now"><div class="label" data-i18n="menu.nowShowing"></div><div id="nowList"></div></aside>
+</div>
 <!-- in-game HUD -->
 <div id="hud" hidden>
-  <div id="where"><b id="whereA"></b><span id="whereB"></span></div>
-  <button id="ticketChip" hidden><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span id="tcText"></span></button>
+  <div id="where"><i class="dot"></i><b id="whereA"></b><span id="whereB"></span></div>
+  <button id="ticketChip" hidden><svg class="ic"><use href="#i-pin"/></svg><span id="tcText"></span></button>
   <div id="tools">
-    <button id="bHide" class="icon" data-i18n-aria="hud.hide"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
-    <button id="bMenu" class="icon" data-i18n-aria="hud.menu"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+    <button id="bHide" class="icon" data-i18n-aria="hud.hide"><svg class="ic"><use href="#i-eyeoff"/></svg></button>
+    <button id="bMenu" class="icon" data-i18n-aria="hud.menu"><svg class="ic"><use href="#i-menu"/></svg></button>
   </div>
   <div id="fps" hidden></div>
   <div id="stick"><i id="knob"></i></div>
-  <button id="sprint" class="round" data-i18n-aria="hud.sprint"><svg viewBox="0 0 24 24"><circle cx="14.5" cy="4.5" r="2"/><path d="M8 21l3-6 3 2 1 5M6 12l3-3h4l3 3 3 1M10 9l-2 5"/></svg></button>
+  <button id="sprint" class="round" data-i18n-aria="hud.sprint"><svg class="ic"><use href="#i-run"/></svg></button>
   <button id="itemBtn" class="round small" hidden><span id="itemLbl"></span></button>
-  <button id="prompt" class="action" hidden></button>
-  <div id="toast"></div>
+  <button id="prompt" class="action" hidden><span class="act-ic"><svg class="ic"><use id="promptIcon" href="#i-hand"/></svg></span><span id="promptLbl"></span></button>
+  <div id="toast" role="status"><svg class="ic"><use id="toastIcon" href="#i-check"/></svg><span id="toastText"></span></div>
 </div>
-<button id="bShow" class="icon faint" hidden data-i18n-aria="hud.show"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><path d="M4 20L20 4"/></svg></button>
-<!-- conversation -->
+<button id="bShow" class="icon faint" hidden data-i18n-aria="hud.show"><svg class="ic"><use href="#i-eye"/></svg></button>
+<!-- conversation: cinematic subtitle bar, choices stacked on the right -->
 <div id="talk" hidden><div class="talk-in">
-  <div class="who"><b id="talkName"></b><span id="talkRole"></span><button class="x" id="talkX" aria-label="×">×</button></div>
-  <p id="talkText"></p><div id="talkOpts"></div>
+  <div class="talk-line">
+    <div class="who"><b id="talkName"></b><span id="talkRole" class="badge"></span></div>
+    <p id="talkText"></p>
+  </div>
+  <div id="talkOpts"></div>
+  <button class="icon x" id="talkX" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
 </div></div>
-<!-- booking -->
-<div id="book" class="modal" hidden><div class="sheet wide">
-  <div class="sh-head"><h2 data-i18n="book.title"></h2><button class="x" id="bookX">×</button></div>
-  <div class="cols">
-    <div class="col">
-      <div class="label" data-i18n="book.film"></div><div id="films"></div>
-      <div class="label" data-i18n="book.when"></div><div id="times" class="chips"></div>
-      <div class="label" data-i18n="book.own"></div>
-      <div class="own"><button class="btn small" id="pick" data-i18n="book.gallery"></button><input id="url" data-i18n-ph="book.link" autocomplete="off"><button class="btn small" id="urlUse" data-i18n="book.useLink"></button></div>
-      <div id="ownState" class="note"></div>
+<!-- booking: right-hand sheet, three steps -->
+<div id="book" class="scrim" hidden><section class="sheet side">
+  <header class="sh-head">
+    <div><div class="label" id="bkStepLbl"></div><h2 id="bkTitle"></h2></div>
+    <ol class="steps" id="bkSteps"><li></li><li></li><li></li></ol>
+    <button class="icon x" id="bookX" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="sh-body">
+    <div class="step" id="bkStep1">
+      <div id="films" class="films"></div>
     </div>
-    <div class="col">
-      <div class="label"><span data-i18n="book.seat"></span> · <span id="hallName"></span></div>
+    <div class="step" id="bkStep2" hidden>
+      <div class="map-head"><span id="hallName"></span><span class="legend"><i class="sw free"></i><span data-i18n="book.free"></span><i class="sw taken"></i><span data-i18n="book.taken"></span><i class="sw sel"></i><span data-i18n="book.yours"></span></span></div>
       <div id="seatmap"></div>
-      <div class="legend"><i class="sw free"></i><span data-i18n="book.free"></span><i class="sw taken"></i><span data-i18n="book.taken"></span><i class="sw sel"></i><span data-i18n="book.yours"></span></div>
-      <div id="seatSel" class="note"></div>
-      <button class="btn primary" id="confirm" data-i18n="book.confirm"></button>
+      <div id="seatEmpty" class="empty" hidden><svg class="ic"><use href="#i-seat"/></svg><b data-i18n="book.full"></b><p data-i18n="book.fullHint"></p><button class="btn secondary" id="bkOther" data-i18n="book.back"></button></div>
+    </div>
+    <div class="step" id="bkStep3" hidden>
+      <div class="summary" id="bkSummary"></div>
+      <div class="field"><div class="label" data-i18n="book.own"></div>
+        <div class="own"><button class="btn secondary sm" id="pick"><svg class="ic"><use href="#i-upload"/></svg><span data-i18n="book.gallery"></span></button><div class="inp"><svg class="ic"><use href="#i-link"/></svg><input id="url" data-i18n-ph="book.link" autocomplete="off"></div><button class="btn secondary sm" id="urlUse" data-i18n="book.useLink"></button></div>
+        <p id="ownState" class="note"></p></div>
     </div>
   </div>
-</div></div>
+  <footer class="sh-foot">
+    <button class="btn ghost" id="bkBack"><svg class="ic"><use href="#i-back"/></svg><span data-i18n="book.back"></span></button>
+    <div id="times" class="seg" aria-label="Starts"></div><span id="seatSel" class="sel-note"></span>
+    <button class="btn primary" id="bkNext"><span id="bkNextLbl" data-i18n="book.next"></span><svg class="ic"><use href="#i-chev"/></svg></button>
+  </footer>
+</section></div>
 <!-- ticket -->
-<div id="ticket" class="modal" hidden><div class="sheet tk">
-  <div class="tk-top"><small data-i18n="tk.admit"></small><h3 id="tkTitle"></h3><small id="tkKind"></small></div>
-  <div class="tk-row"><div><small data-i18n="tk.screen"></small><b id="tkScreen"></b></div><div><small data-i18n="tk.row"></small><b id="tkRow"></b></div><div><small data-i18n="tk.seat"></small><b id="tkSeat"></b></div></div>
-  <p class="note" data-i18n="tk.hint"></p>
-  <div class="btn-row"><button class="btn" id="tkWalk" data-i18n="tk.walk"></button><button class="btn primary" id="tkJump" data-i18n="tk.jump"></button></div>
+<div id="ticket" class="scrim center" hidden><div class="ticket">
+  <div class="tk-band"><span data-i18n="tk.admit"></span><span class="wm">LUMIÈRE</span></div>
+  <div class="tk-main"><h3 id="tkTitle"></h3><small id="tkKind"></small>
+    <div class="tk-row"><div><small data-i18n="tk.screen"></small><b id="tkScreen"></b></div><div><small data-i18n="tk.row"></small><b id="tkRow"></b></div><div><small data-i18n="tk.seat"></small><b id="tkSeat"></b></div></div></div>
+  <div class="tk-perf"></div>
+  <div class="tk-foot"><p class="note" data-i18n="tk.hint"></p>
+    <div class="btn-row"><button class="btn secondary" id="tkWalk" data-i18n="tk.walk"></button><button class="btn primary" id="tkJump" data-i18n="tk.jump"></button></div></div>
 </div></div>
-<!-- settings -->
-<div id="settings" class="modal" hidden><div class="sheet">
-  <div class="sh-head"><h2 data-i18n="set.title"></h2><button class="x" id="setX">×</button></div>
-  <div class="set-body">
-    <div class="label" data-i18n="set.controls"></div>
-    <div class="set-row"><span data-i18n="set.sens"></span><input type="range" id="sSens" min="0.3" max="2.5" step="0.05"><output id="oSens"></output></div>
-    <div class="set-row"><span data-i18n="set.invert"></span><button class="toggle" id="sInvert"></button></div>
-    <div class="label" data-i18n="set.graphics"></div>
-    <div class="set-row"><span data-i18n="set.quality"></span><div class="seg" id="sGfx"><button data-v="low" data-i18n="set.low"></button><button data-v="medium" data-i18n="set.medium"></button><button data-v="high" data-i18n="set.high"></button></div></div>
-    <div class="set-row"><span data-i18n="set.autores"></span><button class="toggle" id="sAuto"></button></div>
-    <div class="set-row"><span data-i18n="set.bright"></span><input type="range" id="sBright" min="0.6" max="1.6" step="0.02"><output id="oBright"></output></div>
-    <div class="set-row"><span data-i18n="set.fps"></span><button class="toggle" id="sFps"></button></div>
-    <div class="label" data-i18n="set.sound"></div>
-    <div class="set-row"><span data-i18n="set.master"></span><input type="range" id="sMaster" min="0" max="1" step="0.02"><output id="oMaster"></output></div>
-    <div class="set-row"><span data-i18n="set.film"></span><input type="range" id="sFilm" min="0" max="1.5" step="0.02"><output id="oFilm"></output></div>
-    <div class="set-row"><span data-i18n="set.crowd"></span><input type="range" id="sCrowd" min="0" max="1.5" step="0.02"><output id="oCrowd"></output></div>
-    <div class="set-row"><span data-i18n="set.bubbles"></span><button class="toggle" id="sBubbles"></button></div>
-    <div class="label" data-i18n="set.lang"></div><div class="seg wrap" id="sLang"></div>
-    <p class="note" data-i18n="set.restart"></p>
+<!-- settings: right-hand sheet with tabs -->
+<div id="settings" class="scrim" hidden><section class="sheet side">
+  <header class="sh-head"><div><div class="label">LUMIÈRE</div><h2 data-i18n="set.title"></h2></div><button class="icon x" id="setX" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button></header>
+  <nav class="tabs" id="setTabs"><button data-tab="controls" data-i18n="set.controls"></button><button data-tab="graphics" data-i18n="set.graphics"></button><button data-tab="sound" data-i18n="set.sound"></button><button data-tab="lang" data-i18n="set.lang"></button></nav>
+  <div class="sh-body">
+    <div class="tab" data-tab="controls">
+      <div class="set-row"><span data-i18n="set.sens"></span><input type="range" id="sSens" min="0.3" max="2.5" step="0.05"><output id="oSens"></output></div>
+      <div class="set-row"><span data-i18n="set.invert"></span><button class="toggle" id="sInvert"></button></div>
+      <div class="set-row"><span data-i18n="set.bubbles"></span><button class="toggle" id="sBubbles"></button></div>
+    </div>
+    <div class="tab" data-tab="graphics">
+      <div class="set-row"><span data-i18n="set.quality"></span><div class="seg" id="sGfx"><button data-v="low" data-i18n="set.low"></button><button data-v="medium" data-i18n="set.medium"></button><button data-v="high" data-i18n="set.high"></button></div></div>
+      <div class="set-row"><span data-i18n="set.autores"></span><button class="toggle" id="sAuto"></button></div>
+      <div class="set-row"><span data-i18n="set.bright"></span><input type="range" id="sBright" min="0.6" max="1.6" step="0.02"><output id="oBright"></output></div>
+      <div class="set-row"><span data-i18n="set.fps"></span><button class="toggle" id="sFps"></button></div>
+      <p class="note" data-i18n="set.restart"></p>
+    </div>
+    <div class="tab" data-tab="sound">
+      <div class="set-row"><span data-i18n="set.master"></span><input type="range" id="sMaster" min="0" max="1" step="0.02"><output id="oMaster"></output></div>
+      <div class="set-row"><span data-i18n="set.film"></span><input type="range" id="sFilm" min="0" max="1.5" step="0.02"><output id="oFilm"></output></div>
+      <div class="set-row"><span data-i18n="set.crowd"></span><input type="range" id="sCrowd" min="0" max="1.5" step="0.02"><output id="oCrowd"></output></div>
+    </div>
+    <div class="tab" data-tab="lang"><div class="lang-grid" id="sLang"></div></div>
   </div>
+</section></div>
+<!-- language picker (first launch) -->
+<div id="langPick" class="scrim center solid" hidden><div class="lp">
+  <div class="wordmark">LUMIÈRE</div><h2 class="lp-title" data-i18n="lang.title"></h2>
+  <div id="langList" class="lang-grid big"></div>
 </div></div>
-<!-- language picker (first launch / menu) -->
-<div id="langPick" class="modal" hidden><div class="sheet narrow"><div class="sh-head"><h2 data-i18n="menu.language"></h2><button class="x" id="langX">×</button></div><div id="langList" class="list"></div></div></div>
 <!-- help / credits -->
-<div id="info" class="modal" hidden><div class="sheet narrow"><div class="sh-head"><h2 id="infoTitle"></h2><button class="x" id="infoX">×</button></div><p id="infoBody" class="body"></p></div></div>
+<div id="info" class="scrim" hidden><section class="sheet side narrow"><header class="sh-head"><div><div class="label">LUMIÈRE</div><h2 id="infoTitle"></h2></div><button class="icon x" id="infoX" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button></header><div class="sh-body"><p id="infoBody" class="body"></p></div></section></div>
 <!-- pause -->
-<div id="pause" class="modal" hidden><div class="sheet narrow center">
-  <h2 data-i18n="menu.paused"></h2>
-  <button class="btn primary" id="psResume" data-i18n="menu.resume"></button><button class="btn" id="psSettings" data-i18n="menu.settings"></button><button class="btn" id="psQuit" data-i18n="menu.quit"></button>
+<div id="pause" class="scrim center" hidden><div class="dialog">
+  <div class="wordmark sm">LUMIÈRE</div><h2 data-i18n="menu.paused"></h2>
+  <button class="btn primary" id="psResume"><svg class="ic"><use href="#i-play"/></svg><span data-i18n="menu.resume"></span></button>
+  <button class="btn secondary" id="psSettings"><svg class="ic"><use href="#i-gear"/></svg><span data-i18n="menu.settings"></span></button>
+  <button class="btn ghost" id="psQuit" data-i18n="menu.quit"></button>
 </div></div>
-<div id="rotate" hidden><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M20 15a8 8 0 0 1-8 7M4 9a8 8 0 0 1 8-7"/></svg><span data-i18n="rotate"></span></div>
+<div id="rotate" hidden><svg class="ic"><use href="#i-rotate"/></svg><span data-i18n="rotate"></span></div>
 <div id="fade"></div>
 <input type="file" id="file" accept="video/*" hidden>
 <script type="module" src="js/main.js"></script>
