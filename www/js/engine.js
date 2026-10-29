@@ -1,38 +1,40 @@
-// LUMIERE v4 - renderer, adaptive fps governor and the global light-scale (all brightness goes through here)
+// LUMIERE v5 - renderer, camera, graphics presets and the resolution governor.
+// stencil:true makes the browser allocate a packed 24-bit depth + 8-bit stencil buffer: phones often give only 16-bit depth without it (z-fighting).
 import * as THREE from 'three';
+import { G } from './materials.js';
+export const PRESETS = {
+  low: { scale: 0.75, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 5, aa: false },
+  medium: { scale: 1.0, people: 10, crowd: 140, peopleFar: 12, detail: 1, seatLod: 7, aa: false },
+  high: { scale: 1.5, people: 16, crowd: 220, peopleFar: 16, detail: 1, seatLod: 9, aa: true },
+};
 export class Engine {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, alpha: false });
-    this.renderer.setClearColor(0x050403, 1);
-    this.maxScale = Math.min(window.devicePixelRatio || 1, 1.5); this.minScale = 0.55; this.scale = this.maxScale;
-    const fs = +new URLSearchParams(location.search).get('fixscale'); this.fixed = fs > 0; if (this.fixed) this.scale = this.maxScale = this.minScale = fs;   // test hook: pin the render scale
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(68, 1, 0.12, 60); this.camera.rotation.order = 'YXZ';
-    this.lightScale = 1; this._lights = []; this._glows = [];
-    this.ema = 16.7; this._tAdj = 0; this._calm = 0; this.stats = { scale: this.scale, ms: 16.7, cpu: 0 };
-    this.resize(); addEventListener('resize', () => this.resize());
+  constructor(canvas, settings) {
+    this.canvas = canvas; this.settings = settings; const P = PRESETS[settings.graphics] || PRESETS.medium; this.preset = P;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: P.aa, stencil: true, depth: true, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.setClearColor(0x0b0b0e, 1); this.renderer.sortObjects = true;
+    const gl = this.renderer.getContext(); try { this.depthBits = gl.getParameter(gl.DEPTH_BITS); } catch (e) { this.depthBits = 0; }
+    this.scene = new THREE.Scene(); this.scene.matrixWorldAutoUpdate = true;
+    this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 160); this.camera.rotation.order = 'YXZ'; this.scene.add(this.camera);
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2); this.maxScale = Math.min(P.scale, this.dpr); this.minScale = Math.max(0.5, this.maxScale * 0.6); this.scale = this.maxScale;
+    const fs = +new URLSearchParams(location.search).get('fixscale'); this.fixed = fs > 0; if (this.fixed) this.scale = this.maxScale = this.minScale = fs;
+    this.ema = 16.7; this._tAdj = 0; this._calm = 0; this.stats = { scale: this.scale, ms: 16.7, cpu: 0, fps: 60 };
+    this.resize(); addEventListener('resize', () => this.resize()); addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250));
+  }
+  applySettings(s) {
+    this.settings = s; const P = PRESETS[s.graphics] || PRESETS.medium; this.preset = P; this.maxScale = Math.min(P.scale, this.dpr); this.minScale = Math.max(0.5, this.maxScale * 0.6);
+    if (!this.fixed) this.scale = this.maxScale; this.auto = s.autoRes !== false; G.uDetail.value = P.detail; G.uBright.value = s.brightness ?? 1; this.resize();
   }
   resize() {
     const w = innerWidth, h = innerHeight; this.renderer.setPixelRatio(this.scale); this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h; this.camera.fov = w / h < 1 ? 78 : 68; this.camera.updateProjectionMatrix();
+    const a = w / h; this.camera.aspect = a; this.camera.fov = a >= 1 ? 62 : 80; this.camera.updateProjectionMatrix(); this.stats.scale = this.scale;
   }
-  addLight(light) { this._lights.push({ l: light, base: light.intensity }); this.scene.add(light); return light; }
-  addGlowMaterial(mat, baseColor) { this._glows.push({ m: mat, c: baseColor.clone() }); mat.color.copy(baseColor).multiplyScalar(this.lightScale); return mat; }
-  setLightScale(v) {
-    this.lightScale = v; for (const e of this._lights) e.l.intensity = e.base * v;
-    for (const g of this._glows) g.m.color.copy(g.c).multiplyScalar(Math.min(1.6, 0.35 + 0.65 * v));
-  }
-  // per-frame light update: base intensity x global light-scale x a per-light factor (userData.k) set by the house-light logic
-  applyLights() { for (const e of this._lights) e.l.intensity = (e.l.userData.base ?? e.base) * this.lightScale * (e.l.userData.k ?? 1); }
-  // measures real frame time, steps render resolution down quickly and back up slowly (hysteresis -> no oscillation)
+  // measures real frame time; steps resolution down quickly, back up slowly (hysteresis, no oscillation)
   governor(dt, now) {
-    this.ema = this.ema * 0.94 + Math.min(dt, 0.2) * 1000 * 0.06; this.stats.ms = this.ema; if (this.fixed) return;
-    if (now - this._tAdj < 1200) return;
-    if (this.ema > 37 && this.scale > this.minScale) { this.scale = Math.max(this.minScale, this.scale * 0.85); this._apply(now); this._calm = 0; }
-    else if (this.ema < 21 && this.scale < this.maxScale) { if (++this._calm >= 4) { this.scale = Math.min(this.maxScale, this.scale * 1.1); this._apply(now); this._calm = 0; } }
+    this.ema = this.ema * 0.94 + Math.min(dt, 0.2) * 1000 * 0.06; this.stats.ms = this.ema; this.stats.fps = 1000 / this.ema; if (this.fixed || this.auto === false) return;
+    if (now - this._tAdj < 1500) return;
+    if (this.ema > 36 && this.scale > this.minScale) { this.scale = Math.max(this.minScale, this.scale * 0.87); this._tAdj = now; this._calm = 0; this.resize(); }
+    else if (this.ema < 22 && this.scale < this.maxScale) { if (++this._calm >= 4) { this.scale = Math.min(this.maxScale, this.scale * 1.08); this._tAdj = now; this._calm = 0; this.resize(); } }
     else this._calm = 0;
   }
-  _apply(now) { this._tAdj = now; this.stats.scale = this.scale; this.resize(); }
   render() { this.renderer.render(this.scene, this.camera); }
 }

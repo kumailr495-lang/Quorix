@@ -1,11 +1,10 @@
 // Grid navigation over the whole building: walkable mask from room rectangles minus inflated colliders; A* + line-of-sight smoothing.
-import { ROOMS, HALLS, roomRects, PASSAGES } from './layout.js';
+// Floors may step (stadium aisles): the grid is 2D, floorY() gives the height. Seat rows are colliders, so paths use the aisles.
 export class Nav {
-  constructor(colliders, radius = 0.34, cell = 0.4) {
-    this.cell = cell; this.x0 = -38; this.z0 = -35; this.w = Math.ceil(78 / cell); this.h = Math.ceil(56 / cell); this.ok = new Uint8Array(this.w * this.h);
-    const rects = []; for (const k of [...Object.keys(ROOMS), ...HALLS.map((q) => q.key)]) for (const r of roomRects(k)) rects.push(r); for (const r of PASSAGES) rects.push(r);
+  constructor(rects, colliders, radius = 0.32, cell = 0.4, bounds = [-40, -36, 40, 26]) {
+    this.cell = cell; this.x0 = bounds[0]; this.z0 = bounds[1]; this.w = Math.ceil((bounds[2] - bounds[0]) / cell); this.h = Math.ceil((bounds[3] - bounds[1]) / cell); this.ok = new Uint8Array(this.w * this.h);
     for (let j = 0; j < this.h; j++) for (let i = 0; i < this.w; i++) { const x = this.x0 + (i + 0.5) * cell, z = this.z0 + (j + 0.5) * cell; let inside = false;
-      for (const [a, b, c, d] of rects) if (x >= a && x <= c && z >= b && z <= d) { inside = true; break; } this.ok[j * this.w + i] = inside ? 1 : 0; }
+      for (const [a, b, c, d] of rects) if (x >= a + radius * 0.5 && x <= c - radius * 0.5 && z >= b + radius * 0.5 && z <= d - radius * 0.5) { inside = true; break; } this.ok[j * this.w + i] = inside ? 1 : 0; }
     this.block(colliders, radius);
   }
   block(colliders, r) {
@@ -20,9 +19,9 @@ export class Nav {
       const px = x + di * this.cell, pz = z + dj * this.cell; if (this.walkable(px, pz)) return [px, pz]; } return null;
   }
   los(ax, az, bx, bz) { const d = Math.hypot(bx - ax, bz - az), n = Math.ceil(d / (this.cell * 0.5)); for (let s = 1; s < n; s++) { const t = s / n; if (!this.walkable(ax + (bx - ax) * t, az + (bz - az) * t)) return false; } return true; }
-  // A* (octile) on typed arrays + line-of-sight smoothing; results cached by start/end cell (arrivals all start at the street doors)
+  // A* (octile) on typed arrays + line-of-sight smoothing; results cached by start/end cell
   path(ax, az, bx, bz) {
-    const s = this.nearest(ax, az), e = this.nearest(bx, bz); if (!s || !e) return null; const si = this.idx(s[0], s[1]), ei = this.idx(e[0], e[1]), key = si * 65536 + ei;
+    const s = this.nearest(ax, az), e = this.nearest(bx, bz); if (!s || !e) return null; const si = this.idx(s[0], s[1]), ei = this.idx(e[0], e[1]), key = si * 131072 + ei;
     this.cache = this.cache || new Map(); const hit = this.cache.get(key); if (hit) { const p = hit.map((q) => q.slice()); p[0] = [s[0], s[1]]; p[p.length - 1] = [e[0], e[1]]; return p; }
     const w = this.w, N = w * this.h; if (!this.G || this.G.length !== N) { this.G = new Float32Array(N); this.FROM = new Int32Array(N); this.STAMP = new Int32Array(N); this.CLOSED = new Int32Array(N); this.HEAP = new Int32Array(N * 4); this.HF = new Float32Array(N * 4); this.stamp = 0; }
     const G = this.G, FROM = this.FROM, ST = this.STAMP, CL = this.CLOSED, H = this.HEAP, HF = this.HF, stamp = ++this.stamp; let n = 0;
@@ -36,6 +35,6 @@ export class Nav {
         if (k >= 4 && (!this.ok[cy * w + nx] || !this.ok[ny * w + cx])) continue; const ng = gc + DC[k]; if (ST[ni] !== stamp || ng < G[ni]) { ST[ni] = stamp; G[ni] = ng; FROM[ni] = c; push(ng + hcost(nx, ny), ni); } } }
     if (!found) return null; const pts = []; for (let c = ei; c !== -1; c = FROM[c]) pts.push([this.x0 + ((c % w) + 0.5) * this.cell, this.z0 + (((c / w) | 0) + 0.5) * this.cell]); pts.reverse(); pts[0] = [s[0], s[1]]; pts[pts.length - 1] = [e[0], e[1]];
     const out = [pts[0]]; let a = 0; while (a < pts.length - 1) { let b = pts.length - 1; while (b > a + 1 && !this.los(pts[a][0], pts[a][1], pts[b][0], pts[b][1])) b--; out.push(pts[b]); a = b; }
-    this.cache.set(key, out.map((q) => q.slice())); if (this.cache.size > 600) this.cache.delete(this.cache.keys().next().value); return out;
+    this.cache.set(key, out.map((q) => q.slice())); if (this.cache.size > 800) this.cache.delete(this.cache.keys().next().value); return out;
   }
 }

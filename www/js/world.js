@@ -1,92 +1,57 @@
-// LUMIERE v4 - orchestrator: loads models, creates the shared build context, runs the room builders, merges, wires lights/nav/doors.
+// LUMIERE v5 - world orchestrator: builds every room (geometry + baked light), doors, colliders, navigation, visibility and light probes.
 import * as THREE from 'three';
-import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
-import { signTexture, posterTexture, slateTexture } from './textures.js';
-import { Arch } from './arch.js';
+import { HALLS, RECTS, NAV_PASSAGES, PASSAGES, PORTALS, ROOM_KEYS, roomAt, floorY, visibleRooms, hallByKey, CONC } from './layout.js';
 import { Nav } from './nav.js';
-import { glowPoints } from './fx.js';
-import { parseNPC, NPC_IDS } from './characters.js';
-import { ROOMS, HALLS, ADJ, ROW_LETTERS, roomAt, floorY, visibleSet, visibleRooms, portalDist } from './layout.js';
-import { buildLobby } from './build-lobby.js';
-import { buildWings } from './build-wings.js';
 import { buildHalls } from './build-halls.js';
-export { ROW_LETTERS, roomAt, floorY, HALLS, ROOMS, ADJ, visibleSet };
-export const D2R = Math.PI / 180;
-const LOD1 = new Set(['lumiere-column', 'lumiere-palm-tall', 'lumiere-floor-lamp', 'lumiere-lightbox', 'lumiere-bench', 'lumiere-trash-bin', 'lumiere-bar-stool', 'lumiere-fan-sconce', 'lumiere-standee', 'lumiere-coat-rack', 'lumiere-wall-clock', 'lumiere-ticket-dispenser', 'lumiere-round-table', 'lumiere-console-table', 'lumiere-display-case', 'lumiere-nesting-table-large', 'lumiere-nesting-table-small', 'lumiere-stanchion', 'lumiere-velvet-rope', 'lumiere-door-leaf']);
-const PROPS = ['lumiere-theatre-seat', 'lumiere-lounge-sofa', 'lumiere-reception-desk', 'lumiere-console-table', 'lumiere-nesting-table-large', 'lumiere-round-table', 'lumiere-bar-stool', 'lumiere-floor-lamp', 'lumiere-pendant-chandelier',
-  'lumiere-potted-plant', 'lumiere-nesting-table-small', 'lumiere-display-case', 'lumiere-ticket-dispenser', 'lumiere-poster-frame-set', 'lumiere-armchair', 'lumiere-coffee-table', 'lumiere-bench', 'lumiere-stanchion', 'lumiere-velvet-rope', 'lumiere-statue-deco', 'lumiere-column',
-  'lumiere-wall-mirror', 'lumiere-wall-clock', 'lumiere-popcorn-machine', 'lumiere-concession-counter', 'lumiere-bar-counter', 'lumiere-coat-rack', 'lumiere-trash-bin', 'lumiere-standee', 'lumiere-lightbox', 'lumiere-palm-tall', 'lumiere-door-leaf', 'lumiere-marquee', 'lumiere-candy-cabinet', 'lumiere-fan-sconce'];
-
-export class Door {   // double door; opens when any actor is close, closes when clear
-  constructor(group, geo, mat, x, z, yawDeg, halfW, h, onToggle) {
-    this.g = new THREE.Group(); this.g.position.set(x, 0, z); this.g.rotation.y = yawDeg * D2R; group.add(this.g); this.x = x; this.z = z; this.open = 0; this.target = 0; this.onToggle = onToggle;
-    const sc = halfW / 1.1; this.pivL = new THREE.Group(); this.pivR = new THREE.Group(); this.pivL.position.x = -halfW; this.pivR.position.x = halfW;
-    const mL = new THREE.Mesh(geo, mat), mR = new THREE.Mesh(geo, mat); mL.scale.set(sc, h / 2.4, 1); mR.scale.set(-sc, h / 2.4, 1); this.pivL.add(mL); this.pivR.add(mR); this.g.add(this.pivL, this.pivR);
+import { buildPassages } from './build-passages.js';
+import { buildLobby, buildConcourse, buildStreet } from './build-lobby.js';
+import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
+const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+// automatic sliding door (two leaves, glass in a slim frame); opens for anyone within reach
+export class SlideDoor {
+  constructor(world, room, x, z, axis, width, height, o = {}) {
+    this.x = x; this.z = z; this.axis = axis; this.w = width; this.open = 0; this.target = 0; this.reach = o.reach ?? 2.4; this.onToggle = o.onToggle; this.key = o.key; this.npcOnly = !!o.npcOnly;
+    this.group = new THREE.Group(); this.group.position.set(x, 0, z); this.group.rotation.y = axis === 'z' ? 0 : Math.PI / 2; room.group.add(this.group);
+    const half = width / 2, frameC = o.frame || '#2b2c30', mkLeaf = () => { const a = new Acc(), t = 0.04, fw = 0.05;
+      a.add(boxGeo(half, fw, t), M(-half / 2, height - fw / 2, 0), frameC, { mat: MAT.metal }); a.add(boxGeo(half, fw, t), M(-half / 2, fw / 2, 0), frameC, { mat: MAT.metal });
+      a.add(boxGeo(fw, height, t), M(-fw / 2, height / 2, 0), frameC, { mat: MAT.metal }); a.add(boxGeo(fw, height, t), M(-half + fw / 2, height / 2, 0), frameC, { mat: MAT.metal });
+      if (o.solid) a.add(boxGeo(half - 2 * fw, height - 2 * fw, 0.03), M(-half / 2, height / 2, 0), o.solid, { mat: MAT.lacquer });
+      const g = toGeometry(a); return g; };
+    this.leaves = [-1, 1].map((s) => { const g = mkLeaf(); if (s > 0) g.scale(-1, 1, 1); const wx = new THREE.Matrix4().makeRotationY(this.group.rotation.y).setPosition(x, 0, z); g.applyMatrix4(wx); room.lights.bake(g); g.applyMatrix4(wx.clone().invert());
+      const m = new THREE.Mesh(g, world.mats.staticMat(room.U)); m.position.x = 0; this.group.add(m); return { m, s }; });
+    if (!o.solid) { const glass = new THREE.Mesh(new THREE.PlaneGeometry(half - 0.1, height - 0.1), world.mats.glassMat()); this.glass = [-1, 1].map((s) => { const q = glass.clone(); q.position.set(s * (half / 2), height / 2, 0); this.group.add(q); return q; }); }
   }
   update(dt, actors) {
-    let near = false; for (let i = this.npcOnly ? 1 : 0; i < actors.length; i++) { const a = actors[i]; if (Math.hypot(a.x - this.x, a.z - this.z) < 2.5) { near = true; break; } }
+    let near = false; for (let i = this.npcOnly ? 1 : 0; i < actors.length; i++) { const a = actors[i]; if (Math.abs(a.x - this.x) < (this.axis === 'z' ? this.w / 2 + 0.8 : this.reach) && Math.abs(a.z - this.z) < (this.axis === 'z' ? this.reach : this.w / 2 + 0.8)) { near = true; break; } }
     const t = near ? 1 : 0; if (t !== this.target) { this.target = t; this.onToggle && this.onToggle(t, this); }
-    this.open += (this.target - this.open) * (1 - Math.exp(-dt * 4.5)); const th = this.open * 1.7; this.pivL.rotation.y = -th; this.pivR.rotation.y = th;
+    this.open += (this.target - this.open) * (1 - Math.exp(-dt * (this.target ? 5 : 3))); const off = this.open * (this.w / 2 - 0.06);
+    this.leaves[0].m.position.x = -off; this.leaves[1].m.position.x = off; if (this.glass) { this.glass[0].position.x = -this.w / 4 - off; this.glass[1].position.x = this.w / 4 + off; }
   }
 }
-export function curvedScreen(w, h, bendDeg, segs = 28) {
-  const a = bendDeg * D2R, R = w / (2 * Math.sin(a / 2)), pos = [], uv = [], idx = [];
-  for (let i = 0; i <= segs; i++) { const t = i / segs, th = (t - 0.5) * a, x = R * Math.sin(th), z = R * (1 - Math.cos(th)); pos.push(x, -h / 2, z, x, h / 2, z); uv.push(t, 0, t, 1); if (i < segs) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); } }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); return g;
-}
-
-export async function buildWorld(engine, mats, onProgress = () => {}, sound = null) {
-  const world = { colliders: [], interact: [], sitSpots: [], mats, doors: [], halls: [], glowPts: {}, lightSpecs: {}, spawns: [], ready: false, house: { screen: 1, house: 1 } };
-  engine.scene.background = new THREE.Color(0x050403); engine.scene.fog = new THREE.Fog(0x070504, 22, 62);
-  const keys = ['lobby', 'c0', 'wingW', 'wingE', 'hallI', 'hallII', 'hallIII']; const rooms = {};
-  for (const k of keys) { rooms[k] = new THREE.Group(); rooms[k].name = k; engine.scene.add(rooms[k]); world.glowPts[k] = []; world.lightSpecs[k] = []; } world.rooms = rooms; world.keys = keys;
-  // ---- models
-  const loader = new GLTFLoader(), geo = {}; let done = 0; const total = PROPS.length + NPC_IDS.length; world.npcDefs = {};
-  const fix = (g) => { if (g.attributes._matid) { g.setAttribute('matid', g.attributes._matid); g.deleteAttribute('_matid'); } else g.setAttribute('matid', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count), 1)); };
-  await Promise.all([...PROPS.map(async (n) => { const gltf = await loader.loadAsync(`models/${n}.glb`); gltf.scene.traverse((o) => { if (o.isMesh) { fix(o.geometry); geo[o.name] = o.geometry; } }); onProgress(++done / total, n); }),
-    ...NPC_IDS.map(async (id) => { const gltf = await loader.loadAsync(`models/lumiere-npc-${id}.glb`); gltf.scene.traverse((o) => { if (o.isMesh) fix(o.geometry); }); world.npcDefs[id] = parseNPC(gltf, id); onProgress(++done / total, 'npc ' + id); })]);
-  world.geo = geo; const G = (n, lod = 0) => geo[`${n}_LOD${lod}`];
-  // ---- shared builders
-  const A = {}; for (const k of keys) A[k] = new Arch(); const batch = new Map(), glowBatch = new Map(), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
-  const place = (g, x, y, z, yaw, sc = 1) => { const c = g.clone(); e.set(0, yaw * D2R, 0); q.setFromEuler(e); mtx.compose(v3.set(x, y, z), q, s3.set(sc, sc, sc)); c.applyMatrix4(mtx); return c; };
-  const col = (x0, z0, x1, z1) => world.colliders.push({ x0, x1, z0, z1, y0: 0, y1: 2 });
-  const prop = (room, name, x, y, z, yaw, o = {}) => {
-    const lod = o.lod ?? (LOD1.has(name) ? 1 : 0), g = G(name, lod); if (!g) throw new Error('missing geometry ' + name); const sc = o.sc ?? 1; if (!batch.has(room)) batch.set(room, []); batch.get(room).push(place(g, x, y, z, yaw, sc));
-    if (!o.noGlow) for (const k of Object.keys(geo)) if (k.startsWith(name + '-') && k.endsWith('_LOD' + lod) && k !== name + '_LOD' + lod) { if (!glowBatch.has(room)) glowBatch.set(room, []); glowBatch.get(room).push(place(geo[k], x, y, z, yaw, sc)); }
-    if (o.box) col(x - o.box[0], z - o.box[1], x + o.box[0], z + o.box[1]); if (o.halo) for (const hp of o.halo) glow(room, x + hp[0], y + hp[1], z + hp[2], hp[3] ?? 0.5, hp[4] ?? '#ffc27a', hp[5] ?? 1);
-  };
-  const glow = (room, x, y, z, size, hex = '#ffc27a', k = 1) => { const c = new THREE.Color(hex); world.glowPts[room].push([x, y, z, size, c.r * k, c.g * k, c.b * k]); };
-  const sign = (room, text, x, y, z, yaw, w, h, script = false, cw = 512, ch = 128) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: signTexture(text, cw, ch, script), transparent: true, toneMapped: false, depthWrite: false })); m.position.set(x, y, z); m.rotation.y = yaw * D2R; rooms[room].add(m); return m; };
-  const curvedSign = (room, text, cx, cz, r, y, centerDeg, arcLen, h, script = true) => { const th = arcLen / r, g = new THREE.CylinderGeometry(r, r, h, 24, 1, true, centerDeg * D2R - th / 2, th); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: signTexture(text, 512, 128, script), transparent: true, toneMapped: false, depthWrite: false })); m.position.set(cx, y, cz); rooms[room].add(m); return m; };
-  const POST = [['The Long Night', 12, 340, 'a film by D. Verhoef'], ['Velvet Hour', 330, 280, 'with Camille Roux'], ['A Quiet Room', 150, 200, 'a story of the afternoon'], ['Midnight Fanfare', 40, 300, 'the new print'], ['Brass & Rain', 205, 250, 'a city symphony'], ['The Last Reel', 285, 215, 'restored in 4K']], pcache = {};
-  const poster = (room, i, x, y, z, yaw, w = 0.9, h = 1.28) => { const P = POST[i % 6]; const tex = pcache[i % 6] || (pcache[i % 6] = posterTexture(P[0], P[1], P[2], P[3])); const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); m.position.set(x, y, z); m.rotation.y = yaw * D2R; rooms[room].add(m); return m; };
-  const sit = (label, x, z, yawProp, eyeY, floor = 0, standDist = 0.95, standAt = null) => { const f = [Math.sin(yawProp * D2R), Math.cos(yawProp * D2R)]; const s = { id: 'spot' + world.sitSpots.length, label, x, z, floor, eyeY: floor + eyeY, yaw: yawProp + 180, face: yawProp, stand: standAt || { x: x + f[0] * standDist, z: z + f[1] * standDist }, taken: null }; world.sitSpots.push(s); return s; };
-  const lightAt = (room, x, y, z, color, i, d, group = 'house') => world.lightSpecs[room].push({ x, y, z, color, i, d, group });
-  const slate = slateTexture();
-  const ctx = { world, engine, mats, rooms, A, G, geo, prop, glow, sign, curvedSign, poster, col, sit, place, lightAt, slate, Door, curvedScreen, THREE, sound };
-  buildLobby(ctx); buildWings(ctx); buildHalls(ctx);
-  // ---- merge architecture + props
-  for (const k of keys) { for (const kind of ['solid', 'decal', 'glow']) { const g = A[k].merged(kind); if (g) { const m = new THREE.Mesh(g, mats[kind]); m.matrixAutoUpdate = false; rooms[k].add(m); } } world.colliders.push(...A[k].col); }
-  for (const [room, list] of batch) { const m = new THREE.Mesh(mergeGeometries(list, false), mats.solid); m.matrixAutoUpdate = false; rooms[room].add(m); }
-  for (const [room, list] of glowBatch) { for (const g of list) for (const n of Object.keys(g.attributes)) if (!['position', 'normal', 'color', 'uv'].includes(n)) g.deleteAttribute(n); const m = new THREE.Mesh(mergeGeometries(list, false), mats.glow); m.matrixAutoUpdate = false; rooms[room].add(m); }
-  world.clouds = []; for (const k of keys) if (world.glowPts[k].length) { const p = glowPoints(world.glowPts[k]); rooms[k].add(p); world.clouds.push(p); }
-  world.nav = new Nav(world.colliders);
-  // ---- light slots: 8 point lights re-assigned to the current room's specs (fades out, moves, fades in)
-  world.hemi = engine.addLight(new THREE.HemisphereLight(0x7a5c40, 0x2a1b13, 2.3));
-  world.slots = Array.from({ length: 8 }, () => { const l = new THREE.PointLight(0xffffff, 1, 10, 2); l.userData.k = 0; l.userData.base = 0; engine.addLight(l); return { l, spec: null, want: null, fade: 0 }; });
-  // 8 point-light slots: the current room's lights plus the first light of up to 2 portal-visible neighbours; slots that keep their light never flicker
-  world.setLights = (room, vis, px = 0, pz = 0) => {
-    const own = (world.lightSpecs[room] || []).slice(0, 8), extra = []; if (vis) for (const k of vis) if (k !== room && (world.lightSpecs[k] || [])[0] && portalDist(room, k, px, pz) < 6) extra.push(world.lightSpecs[k][0]);
-    const n = Math.min(2, extra.length), want = [...own.slice(0, 8 - n), ...extra.slice(0, n)], free = [];
-    for (const s of world.slots) { if (s.want && want.includes(s.want)) continue; s.want = null; free.push(s); }
-    for (const sp of want) if (!world.slots.some((s) => s.want === sp)) { const s = free.shift(); if (s) s.want = sp; }
-  };
-  world.tickLights = (dt) => { for (const s of world.slots) { if (s.want !== s.spec) { s.fade = Math.max(0, s.fade - dt * 4); if (s.fade <= 0.03) { s.spec = s.want; if (s.spec) { s.l.position.set(s.spec.x, s.spec.y, s.spec.z); s.l.color.set(s.spec.color); s.l.distance = s.spec.d; s.l.userData.base = s.spec.i; } else s.l.userData.base = 0; } } else s.fade = Math.min(1, s.fade + dt * 2.4); s.l.userData.k = s.fade * (s.spec ? (world.house[s.spec.group] ?? 1) : 0); } };
-  world.setVisibility = (room, x = 0, z = 0) => { const v = visibleRooms(room, x, z); world.vis = v; for (const k of keys) rooms[k].visible = v.has(k); for (const c of world.clouds) c.visible = c.parent.visible; };
-  world.update = (dt, actors, now) => { for (const d of world.doors) d.update(dt, actors); for (const h of world.halls) h.update && h.update(dt, now); };
-  world.seatById = (hall, id) => world.halls.find((h) => h.cfg.id === hall).seats.find((s) => s.id === id);
+export async function buildWorld(engine, mats, onProgress = () => {}) {
+  const world = { mats, engine, rooms: {}, colliders: [], doors: [], halls: [], sitSpots: [], posts: {}, spots: {}, vis: new Set(['lobby']) };
+  engine.scene.background = new THREE.Color(0x0b0b0e);
+  const ctx = { world, engine, mats };
+  const steps = [['lobby', () => buildLobby(ctx)], ['concourse', () => buildConcourse(ctx)], ['street', () => buildStreet(ctx)], ['passages', () => buildPassages(ctx)], ['halls', () => buildHalls(ctx)]];
+  const rooms = []; let i = 0;
+  for (const [name, f] of steps) { onProgress(i / steps.length * 0.5, name); await frame(); const r = f(); if (name === 'halls') { world.halls = r; rooms.push(...r.map((h) => h.room)); } else rooms.push(...[].concat(r)); i++; }
+  // bake + finalize, one room per frame so the loader keeps moving
+  for (let k = 0; k < rooms.length; k++) { const r = rooms[k]; onProgress(0.5 + 0.45 * k / rooms.length, 'bake:' + r.key); await frame(); r.finalize(mats); world.rooms[r.key] = r; engine.scene.add(r.group); world.colliders.push(...r.colliders); }
+  for (const h of world.halls) h.updateLOD({ position: { x: h.cfg.cx, z: h.cfg.zBack } }, true);
+  // doors between concourse and passages, street door
+  for (const p of PASSAGES) { const d = new SlideDoor(world, world.rooms[p.key], (p.x0 + p.x1) / 2, CONC.z0 - 0.15, 'z', p.x1 - p.x0, 2.6, { solid: '#1c1d22', key: p.key, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(d); }
+  world.streetDoor = new SlideDoor(world, world.rooms.lobby, 0, 19.93, 'z', 3.3, 2.95, { npcOnly: true, key: 'street', reach: 2.6, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(world.streetDoor);
+  // navigation
+  const rects = ROOM_KEYS.filter((k) => k !== 'street').map((k) => RECTS[k]).concat(NAV_PASSAGES, world.extraNav || []);
+  world.nav = new Nav(rects, world.colliders);
+  // collision lookup grid (2 m buckets)
+  const B = new Map(), key = (i, j) => i * 1000 + j; for (const c of world.colliders) for (let i = Math.floor(c.x0 / 2); i <= Math.floor(c.x1 / 2); i++) for (let j = Math.floor(c.z0 / 2); j <= Math.floor(c.z1 / 2); j++) { const k = key(i, j); if (!B.has(k)) B.set(k, []); B.get(k).push(c); }
+  world.collidersNear = (x, z, out) => { out.length = 0; const seen = new Set(); for (let i = Math.floor((x - 1) / 2); i <= Math.floor((x + 1) / 2); i++) for (let j = Math.floor((z - 1) / 2); j <= Math.floor((z + 1) / 2); j++) { const l = B.get(key(i, j)); if (l) for (const c of l) if (!seen.has(c)) { seen.add(c); out.push(c); } } return out; };
   world.floorY = floorY; world.roomAt = roomAt;
-  world.spawn = { x: 0, z: 15.6, yaw: 0 }; world.setVisibility('lobby', 0, 15.6); world.setLights('lobby', world.vis); world.ready = true;
+  world.probe = (x, y, z) => { const r = world.rooms[roomAt(x, z)]; return r ? r.lights.probe(x, y, z) : null; };
+  world.setVisibility = (room, x, z) => { const v = visibleRooms(room, x, z); world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); };
+  world.update = (dt, actors, now) => { for (const d of world.doors) d.update(dt, actors); for (const h of world.halls) if (h.curtains) { const c = h.curtains; if (c.open !== c.target) { c.open += Math.sign(c.target - c.open) * Math.min(Math.abs(c.target - c.open), dt / 3.2); const e = c.open * c.open * (3 - 2 * c.open); for (const m of c.meshes) m.scale.x = 1 - 0.93 * e; } } };
+  world.hallByKey = (k) => world.halls.find((h) => h.key === k); world.hallById = (id) => world.halls.find((h) => h.id === id);
+  world.setVisibility('lobby', 0, 15); onProgress(1, 'ready');
   return world;
 }
