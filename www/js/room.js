@@ -48,7 +48,10 @@ export class Room {
   add(obj) { this.extra.push(obj); return this; }
   finalize(mats) {
     const out = { solid: null, glow: null };
-    if (this.acc.count) { const g = this.lights.bake(toGeometry(this.acc)); const m = new THREE.Mesh(g, mats.staticMat(this.U)); m.matrixAutoUpdate = false; m.name = this.key + '-solid'; this.group.add(m); out.solid = m; }
+    if (this.acc.count) { const g = this.lights.bake(toGeometry(this.acc)); const m = new THREE.Mesh(g, mats.litFor(this.U, g)); m.matrixAutoUpdate = false; m.name = this.key + '-solid'; this.group.add(m); out.solid = m;
+      // reflection strength scale: 1 / the room's typical light level, so env reflections follow local brightness
+      const lh = g.attributes.lh.array, lf = g.attributes.lf.array; let sum = 0; for (let i = 0; i < lh.length; i += 3) sum += 0.3 * (lh[i] + lf[i]) + 0.55 * (lh[i + 1] + lf[i + 1]) + 0.15 * (lh[i + 2] + lf[i + 2]);
+      this.U.uEnvK.value = 1 / Math.max(0.05, sum / (lh.length / 3)); }
     if (this.gacc.count) { const g = toGeometry(this.gacc, false); const m = new THREE.Mesh(g, mats.glowMat(this.U)); m.matrixAutoUpdate = false; m.name = this.key + '-glow'; this.group.add(m); out.glow = m; }
     const H = [0, 0, 0], F = [0, 0, 0];
     for (const p of this.panels) {

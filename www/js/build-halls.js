@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { Room } from './room.js';
 import { Acc, toGeometry, M, MAT, col } from './geom.js';
-import { seatKit, armKit, reclinerKit, railKit, speakerKit } from './props.js';
+import { railKit, speakerKit } from './props.js';
+import { assetGeometry } from './assets.js';
 import { HALLS, DOOR_W, DOOR_H, PASSAGES } from './layout.js';
 import { hallFloorY, hallSeats, BEHIND, TREAD } from './hallmath.js';
 import { slateTexture } from './textures.js';
@@ -117,16 +118,19 @@ function buildHall(ctx, h) {
     // door reveal inside the wall thickness (black) so the opening reads as a portal
     for (const s2 of [-1, 1]) room.box(side < 0 ? x - 0.3 : x, 0, z + s2 * DOOR_W / 2 - (s2 > 0 ? 0 : 0.001), side < 0 ? x : x + 0.3, DOOR_H, z + s2 * DOOR_W / 2 + (s2 > 0 ? 0.001 : 0), '#0b0b0d', { faces: s2 > 0 ? 'nz' : 'pz', mat: MAT.paint });
     room.box(side < 0 ? x - 0.3 : x, DOOR_H, z - DOOR_W / 2, side < 0 ? x : x + 0.3, DOOR_H + 0.001, z + DOOR_W / 2, '#0b0b0d', { faces: 'ny', mat: MAT.paint }); }
-  // ---------- seats: two instanced LODs, light baked per seat ----------
-  const seats = hallSeats(h), kitFor = (lod) => (h.kind === 'curved' ? reclinerKit(T.seat, lod, h.seatW) : seatKit(T.seat, lod, h.seatW));
-  const geoOf = (kit) => { const a = new Acc(); kit.emit(a, null, new THREE.Matrix4()); return toGeometry(a, 'occ'); };
-  const lods = [geoOf(kitFor(0)), geoOf(kitFor(1))], H3 = [0, 0, 0], F3 = [0, 0, 0];
-  const lit = new Float32Array(seats.length * 7);
-  seats.forEach((s, i) => { L.at(s.x, s.y + 0.9, s.z + 0.2, 0, 0.6, 0.8, H3, F3); lit.set([H3[0], H3[1], H3[2], F3[0], F3[1], F3[2], L.screenAt(s.x, s.y + 0.8, s.z - 0.3, 0, 0.29, -0.96)], i * 7); });
-  const seatU = room.U, meshes = lods.map((g) => { const m = new THREE.InstancedMesh(g, mats.instMat(seatU), seats.length); m.count = 0; m.frustumCulled = false;
-    m.geometry.setAttribute('iLh', new THREE.InstancedBufferAttribute(new Float32Array(seats.length * 3), 3)); m.geometry.setAttribute('iLf', new THREE.InstancedBufferAttribute(new Float32Array(seats.length * 3), 3)); m.geometry.setAttribute('iLs', new THREE.InstancedBufferAttribute(new Float32Array(seats.length), 1)); room.add(m); return m; });
-  // row-end armrests (the right end of each row) are static: bake them into the room
-  for (let r = 0; r < h.rows; r++) { if (h.kind === 'curved') break; const s = seats[r * h.perRow + h.perRow - 1]; room.kit(armKit(0), s.x + h.seatW / 2, s.y, s.z, s.yaw); }
+  // ---------- seats and arms: Kiln assets (tools/kiln), two instanced LODs each, light baked per instance ----------
+  const seats = hallSeats(h), curvedK = h.kind === 'curved', seatName = { standard: 'seat_standard', curved: 'recliner', giant: 'seat_giant' }[h.kind], armName = curvedK ? 'console_recliner' : 'arm_standard';
+  const flip = new THREE.Matrix4().makeRotationY(Math.PI);   // assets face +z; a seat with yaw 0 faces the screen (-z)
+  const armOver = h.kind === 'standard' ? { Mesh_Panel: { id: MAT.velvet, tint: col('#1d5a56') } } : h.kind === 'giant' ? { Mesh_Cap: { id: MAT.leather, tint: col('#1c1a1a') } } : null;
+  const seatGeo = [0, 1].map((l) => assetGeometry(seatName, l, flip, toGeometry, Acc)), armGeo = [0, 1].map((l) => assetGeometry(armName, l, flip, toGeometry, Acc, armOver));
+  // arm positions: every seat boundary of every row (n + 1 per row), following curved rows like the seats do
+  const arms = [];
+  for (let r = 0; r < h.rows; r++) for (let c = 0; c <= h.perRow; c++) { const u = -h.B / 2 + c * h.seatW; arms.push({ x: h.cx + u, y: h.rowY[r], z: zs + h.dHip[r] - h.rowSag(u), yaw: h.rowR ? -Math.asin(u / h.rowR) : 0 }); }
+  const H3 = [0, 0, 0], F3 = [0, 0, 0], litOf = (list) => { const a = new Float32Array(list.length * 7); list.forEach((s, i) => { L.at(s.x, s.y + 0.9, s.z + 0.2, 0, 0.6, 0.8, H3, F3); a.set([H3[0], H3[1], H3[2], F3[0], F3[1], F3[2], L.screenAt(s.x, s.y + 0.8, s.z - 0.3, 0, 0.29, -0.96)], i * 7); }); return a; };
+  const lit = litOf(seats), armLit = litOf(arms), seatU = room.U;
+  const instanced = (geos, n) => geos.map((g) => { const m = new THREE.InstancedMesh(g, mats.litFor(seatU, g, true), n); m.count = 0; m.frustumCulled = false;
+    m.geometry.setAttribute('iLh', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLf', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLs', new THREE.InstancedBufferAttribute(new Float32Array(n), 1)); room.add(m); return m; });
+  const meshes = instanced(seatGeo, seats.length), armMeshes = instanced(armGeo, arms.length);
   // colliders: one per row (straight) or per seat (curved)
   if (!h.rowR) for (let r = 0; r < h.rows; r++) { const d = h.dHip[r]; room.col(cx - hb - 0.05, zs + d - h.seat.fr, cx + hb + 0.05, zs + d + h.seat.bk); }
   else for (const s of seats) room.col(s.x - h.seatW / 2, s.z - h.seat.fr, s.x + h.seatW / 2, s.z + h.seat.bk);
@@ -135,11 +139,14 @@ function buildHall(ctx, h) {
   const hall = { cfg: h, key: h.key, id: h.id, room, seats, meshes, theme: T, picGeo, patches, ptAt, curtains: null, seatLit: lit,
     updateLOD(cam, force, far = 7) {
       const px = cam.position.x, pz = cam.position.z; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.7) return; last = [px, pz];
-      const cnt = [0, 0], f2 = far * far;
-      for (let i = 0; i < seats.length; i++) { const s = seats[i], dx = s.x - px, dz = s.z - pz, l = dx * dx + dz * dz < f2 ? 0 : 1, m = meshes[l], k = cnt[l]++;
-        tmp.position.set(s.x, s.y, s.z); tmp.rotation.y = s.yaw; tmp.updateMatrix(); m.setMatrixAt(k, tmp.matrix);
-        const a = m.geometry.attributes; a.iLh.setXYZ(k, lit[i * 7], lit[i * 7 + 1], lit[i * 7 + 2]); a.iLf.setXYZ(k, lit[i * 7 + 3], lit[i * 7 + 4], lit[i * 7 + 5]); a.iLs.setX(k, lit[i * 7 + 6]); }
-      meshes.forEach((m, i) => { m.count = cnt[i]; m.instanceMatrix.needsUpdate = true; for (const n of ['iLh', 'iLf', 'iLs']) m.geometry.attributes[n].needsUpdate = true; });
+      const f2 = far * far;
+      for (const [list, ms, lt] of [[seats, meshes, lit], [arms, armMeshes, armLit]]) {
+        const cnt = [0, 0];
+        for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, l = dx * dx + dz * dz < f2 ? 0 : 1, m = ms[l], k = cnt[l]++;
+          tmp.position.set(s.x, s.y, s.z); tmp.rotation.y = s.yaw; tmp.updateMatrix(); m.setMatrixAt(k, tmp.matrix);
+          const a = m.geometry.attributes; a.iLh.setXYZ(k, lt[i * 7], lt[i * 7 + 1], lt[i * 7 + 2]); a.iLf.setXYZ(k, lt[i * 7 + 3], lt[i * 7 + 4], lt[i * 7 + 5]); a.iLs.setX(k, lt[i * 7 + 6]); }
+        ms.forEach((m, i) => { m.count = cnt[i]; m.instanceMatrix.needsUpdate = true; for (const n of ['iLh', 'iLf', 'iLs']) m.geometry.attributes[n].needsUpdate = true; });
+      }
     },
   };
   // ---------- curtains (H1, H2): separate baked meshes that slide open ----------
@@ -149,7 +156,7 @@ function buildHall(ctx, h) {
       const a = new Acc(), n = 28, pos = [], idx = [];
       for (let i = 0; i <= n; i++) { const t = i / n, x = -s * t * cw, fold = (i % 2 ? 1 : -1) * 0.07; pos.push(x, yF + 0.33, fold, x, ch, fold); if (i < n) { const k = i * 2; if (s < 0) idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); else idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); a.add(g, null, T.curtain, { mat: MAT.fabric }); return toGeometry(a); };
-    const cms = [-1, 1].map((s) => { const geo = mkCurtain(s), px = cx + s * cw; geo.translate(px, 0, zC); L.bake(geo); geo.translate(-px, 0, -zC); const m = new THREE.Mesh(geo, mats.staticMat(room.U)); m.position.set(px, 0, zC); room.add(m); return m; });
+    const cms = [-1, 1].map((s) => { const geo = mkCurtain(s), px = cx + s * cw; geo.translate(px, 0, zC); L.bake(geo); geo.translate(-px, 0, -zC); const m = new THREE.Mesh(geo, mats.litFor(room.U, geo)); m.position.set(px, 0, zC); room.add(m); return m; });
     hall.curtains = { meshes: cms, open: 0, target: 0 };
   }
   const slate = slateTexture(h.name, 768, Math.round(768 / h.aspect)), picMat = mats.picMat(slate), pic = new THREE.Mesh(picGeo, picMat); pic.renderOrder = 1; room.add(pic);

@@ -4,6 +4,7 @@
 // Never put a `//` comment inside a GLSL line that carries code: it swallows the rest of the line (v4 lesson).
 import * as THREE from 'three';
 import { makeCanvas } from './textures.js';
+import { LIB, libTextures } from './library.js';
 export function noiseTexture(size = 128) {   // 4 independent tileable value-noise fields in RGBA
   const c = makeCanvas(size, size), g = c.getContext('2d'), img = g.createImageData(size, size); let s = 9173; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const fields = []; for (let k = 0; k < 4; k++) { const cells = [8, 16, 32, 64][k], lat = new Float32Array(cells * cells); for (let i = 0; i < lat.length; i++) lat[i] = rnd(); const f = new Float32Array(size * size);
@@ -14,7 +15,7 @@ export function noiseTexture(size = 128) {   // 4 independent tileable value-noi
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; return t;
 }
 // shared by every custom shader
-export const G = { uNoise: { value: null }, uExposure: { value: 1.0 }, uFogColor: { value: new THREE.Color(0x0b0b0e) }, uFogNear: { value: 45 }, uFogFar: { value: 150 }, uTime: { value: 0 }, uDetail: { value: 1 }, uBright: { value: 1 } };
+export const G = { uEnvOn: { value: 1 }, uNoise: { value: null }, uExposure: { value: 1.0 }, uFogColor: { value: new THREE.Color(0x0b0b0e) }, uFogNear: { value: 45 }, uFogFar: { value: 150 }, uTime: { value: 0 }, uDetail: { value: 1 }, uBright: { value: 1 } };
 const COMMON_FRAG = `
 uniform float uExposure; uniform vec3 uFogColor; uniform float uFogNear; uniform float uFogFar; uniform float uBright;
 vec3 lumTone(vec3 c) { return 1.0 - exp(-c * uExposure * uBright); }
@@ -64,6 +65,74 @@ void main() {
     float fres = pow(1.0 - ndv, 4.0);
     col += gloss * (vec3(sp * lum * 0.35) + fres * uEnv * 0.9 * (0.6 + 0.8 * nA.a));
   }
+  col = lumFog(lumTone(col), vDist);
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+// ---------------- library-lit surfaces (v5.1): albedo + normal maps from library.js, baked light, room reflection probe ----------------
+// The baked light has no direction, so the normal map shades it with a fixed "light from above" relief term and drives the reflection.
+// Reflections sample the room's own cube capture (world.js) with mip level by roughness, scaled by the local baked light so dark corners
+// stay dark and everything dims with the house lights. Velvet gets a rim sheen. Defines: USE_NMAP, USE_ENV (graphics quality).
+const LIT_VERT = `
+attribute vec3 color;
+#ifdef USE_INSTANCING
+attribute float occ; attribute vec3 iLh; attribute vec3 iLf; attribute float iLs;
+#else
+attribute vec3 lh; attribute vec3 lf; attribute float ls;
+#endif
+uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform float uRep;
+varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv;
+void main() {
+  vAlb = color; vUv = uv * uRep;
+#ifdef USE_INSTANCING
+  vec3 n = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
+  float hemi = 0.55 + 0.45 * clamp(n.y * 0.6 + n.z * 0.5 + 0.3, 0.0, 1.0);
+  vLight = (iLh * uHouse + iLf * uFix) * occ * hemi + iLs * uScreen * occ * clamp(dot(n, vec3(0.0, 0.29, -0.96)) * 0.8 + 0.2, 0.06, 1.0);
+  vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+#else
+  vec3 n = normalize(mat3(modelMatrix) * normal);
+  vLight = lh * uHouse + lf * uFix + ls * uScreen;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+#endif
+  vN = n; vWP = wp.xyz; vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv;
+}`;
+const LIT_FRAG = COMMON_FRAG + `
+uniform sampler2D uMap; uniform sampler2D uNmap; uniform samplerCube uEnvMap;
+uniform float uAbs; uniform float uRough; uniform float uMetal; uniform float uNStr; uniform float uSheen; uniform float uSpec; uniform float uRelief; uniform float uEnvK; uniform float uEnvOn;
+varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv;
+vec3 perturb(vec3 p, vec3 n, vec3 m) {
+  vec3 q0 = dFdx(p); vec3 q1 = dFdy(p); vec2 st0 = dFdx(vUv); vec2 st1 = dFdy(vUv);
+  vec3 q1p = cross(q1, n); vec3 q0p = cross(n, q0); vec3 T = q1p * st0.x + q0p * st1.x; vec3 B = q1p * st0.y + q0p * st1.y;
+  float det = max(dot(T, T), dot(B, B)); float sc = det == 0.0 ? 0.0 : inversesqrt(det);
+  return normalize(T * (m.x * sc) + B * (m.y * sc) + n * m.z);
+}
+vec3 envBRDF(vec3 F0, float r, float NoV) {
+  vec4 rr = r * vec4(-1.0, -0.0275, -0.572, 0.022) + vec4(1.0, 0.0425, 1.04, -0.04);
+  float a = min(rr.x * rr.x, exp2(-9.28 * NoV)) * rr.x + rr.y; vec2 AB = vec2(-1.04, 1.04) * a + rr.zw; return F0 * AB.x + AB.y;
+}
+void main() {
+  vec3 Ng = normalize(vN); vec3 V = normalize(cameraPosition - vWP);
+  vec4 t = texture2D(uMap, vUv);
+  vec3 alb = uAbs > 0.5 ? t.rgb * vAlb : vAlb * t.rgb * 2.0;
+  vec3 N = Ng;
+#ifdef USE_NMAP
+  vec3 mapN = texture2D(uNmap, vUv).xyz * 2.0 - 1.0; mapN.xy *= uNStr; N = perturb(vWP, Ng, normalize(mapN));
+#endif
+  float NoV = clamp(dot(N, V), 0.02, 1.0);
+  float rough = clamp(uRough + (0.5 - dot(t.rgb, vec3(0.33))) * 0.25, 0.03, 1.0);
+  float relief = clamp(1.0 + uRelief * dot(N - Ng, vec3(0.25, 0.9, 0.35)) * 1.6, 0.4, 1.6);
+  vec3 col = alb * (1.0 - uMetal) * vLight * relief;
+  col += alb * vLight * uSheen * pow(1.0 - NoV, 2.2) * 1.4;
+  vec3 F0 = mix(vec3(0.04), alb, uMetal);
+  float lumL = dot(vLight, vec3(0.3, 0.55, 0.15));
+#ifdef USE_ENV
+  vec3 R = reflect(-V, N);
+  vec3 env = textureLod(uEnvMap, R, rough * 6.0).rgb;
+  col += env * envBRDF(F0, rough, NoV) * clamp(lumL * uEnvK, 0.0, 2.0) * uSpec * uEnvOn;
+#else
+  col += alb * uMetal * vLight * (0.45 + 0.5 * pow(1.0 - NoV, 2.0));
+  col += envBRDF(F0, rough, NoV) * lumL * uSpec * 0.35 * pow(max(reflect(-V, N).y, 0.0), 6.0);
+#endif
   col = lumFog(lumTone(col), vDist);
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
@@ -190,9 +259,18 @@ void main() { vec3 V = normalize(cameraPosition - vWP); float f = pow(1.0 - abs(
   #include <colorspace_fragment>
 }`;
 // one set of per-room uniforms: house light level (1 = full), screen light colour, fixed lights multiplier, environment tint for sheen
-export function roomUniforms() { return { uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 } }; }
+export function roomUniforms() { return { uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 } }; }
 export class Materials {
-  constructor() { G.uNoise.value = noiseTexture(); this.all = []; }
+  constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; this._lit = new WeakMap(); }
+  // one library material per (room uniforms, material id, instanced?)
+  litMat(U, id, inst = false) {
+    let per = this._lit.get(U); if (!per) this._lit.set(U, per = new Map()); const key = id + (inst ? 'i' : ''); let m = per.get(key); if (m) return m;
+    const L = LIB[id] || LIB[0], T = libTextures(L === LIB[id] ? id : 0, this.renderer);
+    m = mk(LIT_VERT, LIT_FRAG, { ...G, ...U, uMap: { value: T.a }, uNmap: { value: T.n }, uRep: { value: 1 / L.mpt }, uAbs: { value: L.mode === 'abs' ? 1 : 0 }, uRough: { value: L.rough }, uMetal: { value: L.metal },
+      uNStr: { value: L.nstr ?? 0.6 }, uSheen: { value: L.sheen || 0 }, uSpec: { value: L.spec ?? 0.8 }, uRelief: { value: L.relief ?? 0.25 } }, { defines: { ...this.defines } });
+    m.name = 'lit' + id; per.set(key, m); return this._t(m);
+  }
+  litFor(U, geo, inst = false) { return (geo.userData.mats || [0]).map((id) => this.litMat(U, id, inst)); }
   staticMat(U) { return this._t(mk(STATIC_VERT, STATIC_FRAG, { ...G, ...U })); }
   instMat(U) { return this._t(mk(INST_VERT, STATIC_FRAG, { ...G, ...U })); }
   glowMat(U) { return this._t(mk(GLOW_VERT, GLOW_FRAG, { ...G, uHouse: U.uHouse, uGlow: U.uGlow })); }

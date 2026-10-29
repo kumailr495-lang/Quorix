@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { Engine } from './engine.js';
 import { Materials, G } from './materials.js';
 import { buildWorld } from './world.js';
+import { texturesReady } from './library.js';
+import { loadAssets, ASSET_LIST } from './assets.js';
 import { Player, EYE } from './player.js';
 import { Sound } from './sound.js';
 import { Shows } from './film.js';
@@ -26,8 +28,8 @@ async function boot() {
   const prog = (p, k) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; $('#ldPct').textContent = Math.round(p * 100) + '%'; if (k) $('#ldStep').textContent = k.startsWith('bake:') ? t('load.bake', { room: t('room.' + k.slice(5)) === 'room.' + k.slice(5) ? (hallByKey(k.slice(5)) || {}).name || k.slice(5) : t('room.' + k.slice(5)) }) : t(STEP[k] || 'load.ready'); };
   $('#ldTip').textContent = t('tips'); const tipT = setInterval(() => { $('#ldTip').textContent = t('tips'); }, 4000);
   try { await Promise.race([Promise.all([document.fonts.load('500 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) {}
-  const engine = new Engine($('#gl'), settings), mats = new Materials(); engine.applySettings(settings);
-  const t0 = performance.now(), world = await buildWorld(engine, mats, prog);
+  const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low', mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG }); engine.applySettings(settings);
+  const t0 = performance.now(); await loadAssets(ASSET_LIST); const world = await buildWorld(engine, mats, prog); await texturesReady();
   prog(0.97, 'people'); $('#ldStep').textContent = t('load.people'); await new Promise((r) => requestAnimationFrame(r));
   const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
   let ticket = null, room = 'lobby', talk = null, ui = null, shows = null, crowd = null, mode = 'menu', modal = false, held = null, markerPulse = 0, paused = false, played = false;

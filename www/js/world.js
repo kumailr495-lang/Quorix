@@ -6,6 +6,8 @@ import { buildHalls } from './build-halls.js';
 import { buildPassages } from './build-passages.js';
 import { buildLobby, buildConcourse, buildStreet } from './build-lobby.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
+import { G } from './materials.js';
+import { texturesReady } from './library.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 // automatic sliding door (two leaves, glass in a slim frame); opens for anyone within reach
 export class SlideDoor {
@@ -18,7 +20,7 @@ export class SlideDoor {
       if (o.solid) a.add(boxGeo(half - 2 * fw, height - 2 * fw, 0.03), M(-half / 2, height / 2, 0), o.solid, { mat: MAT.lacquer });
       const g = toGeometry(a); return g; };
     this.leaves = [-1, 1].map((s) => { const g = mkLeaf(); if (s > 0) g.scale(-1, 1, 1); const wx = new THREE.Matrix4().makeRotationY(this.group.rotation.y).setPosition(x, 0, z); g.applyMatrix4(wx); room.lights.bake(g); g.applyMatrix4(wx.clone().invert());
-      const m = new THREE.Mesh(g, world.mats.staticMat(room.U)); m.position.x = 0; this.group.add(m); return { m, s }; });
+      const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.position.x = 0; this.group.add(m); return { m, s }; });
     if (!o.solid) { const glass = new THREE.Mesh(new THREE.PlaneGeometry(half - 0.1, height - 0.1), world.mats.glassMat()); this.glass = [-1, 1].map((s) => { const q = glass.clone(); q.position.set(s * (half / 2), height / 2, 0); this.group.add(q); return q; }); }
   }
   update(dt, actors) {
@@ -28,16 +30,32 @@ export class SlideDoor {
     this.leaves[0].m.position.x = -off; this.leaves[1].m.position.x = off; if (this.glass) { this.glass[0].position.x = -this.w / 4 - off; this.glass[1].position.x = this.w / 4 + off; }
   }
 }
+const PROBE_AT = { lobby: [0, 2.2, 9], conc: [0, 2.0, -3], street: [0, 2.0, 30], passW: [-12.9, 1.6, -10], passE: [12.9, 1.6, -10] };
+export function captureReflections(world, engine) {
+  if (!world.mats.defines.USE_ENV) return;
+  const r = engine.renderer, scene = engine.scene, prevVis = new Set(world.vis);
+  G.uEnvOn.value = 0;
+  for (const key in world.rooms) {
+    const room = world.rooms[key], h = world.hallByKey && world.hallByKey(key);
+    const at = h ? [h.cfg.cx, h.cfg.rowY[h.cfg.cross.row] + 1.6, h.cfg.zs + h.cfg.cross.dDoor] : PROBE_AT[key] || [0, 2, 0];
+    const rt = new THREE.WebGLCubeRenderTarget(128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }), cam = new THREE.CubeCamera(0.1, 80, rt);
+    cam.position.set(at[0], at[1], at[2]); world.setVisibility(key, at[0], at[2]); cam.update(r, scene);
+    room.U.uEnvMap.value = rt.texture; room.probe = { rt, at };
+  }
+  G.uEnvOn.value = 1; world.vis = prevVis;
+}
 export async function buildWorld(engine, mats, onProgress = () => {}) {
   const world = { mats, engine, rooms: {}, colliders: [], doors: [], halls: [], sitSpots: [], posts: {}, spots: {}, vis: new Set(['lobby']) };
   engine.scene.background = new THREE.Color(0x0b0b0e);
   const ctx = { world, engine, mats };
+  world.hallByKey = (k) => world.halls.find((h) => h.key === k); world.hallById = (id) => world.halls.find((h) => h.id === id);
   const steps = [['lobby', () => buildLobby(ctx)], ['concourse', () => buildConcourse(ctx)], ['street', () => buildStreet(ctx)], ['passages', () => buildPassages(ctx)], ['halls', () => buildHalls(ctx)]];
   const rooms = []; let i = 0;
   for (const [name, f] of steps) { onProgress(i / steps.length * 0.5, name); await frame(); const r = f(); if (name === 'halls') { world.halls = r; rooms.push(...r.map((h) => h.room)); } else rooms.push(...[].concat(r)); i++; }
   // bake + finalize, one room per frame so the loader keeps moving
   for (let k = 0; k < rooms.length; k++) { const r = rooms[k]; onProgress(0.5 + 0.45 * k / rooms.length, 'bake:' + r.key); await frame(); r.finalize(mats); world.rooms[r.key] = r; engine.scene.add(r.group); world.colliders.push(...r.colliders); }
   for (const h of world.halls) h.updateLOD({ position: { x: h.cfg.cx, z: h.cfg.zBack } }, true);
+
   // doors between concourse and passages, street door
   for (const p of PASSAGES) { const d = new SlideDoor(world, world.rooms[p.key], (p.x0 + p.x1) / 2, CONC.z0 - 0.15, 'z', p.x1 - p.x0, 2.6, { solid: '#1c1d22', key: p.key, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(d); }
   world.streetDoor = new SlideDoor(world, world.rooms.lobby, 0, 19.93, 'z', 3.3, 2.95, { npcOnly: true, key: 'street', reach: 2.6, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(world.streetDoor);
@@ -51,7 +69,8 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   world.probe = (x, y, z) => { const r = world.rooms[roomAt(x, z)]; return r ? r.lights.probe(x, y, z) : null; };
   world.setVisibility = (room, x, z) => { const v = visibleRooms(room, x, z); world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); };
   world.update = (dt, actors, now) => { for (const d of world.doors) d.update(dt, actors); for (const h of world.halls) if (h.curtains) { const c = h.curtains; if (c.open !== c.target) { c.open += Math.sign(c.target - c.open) * Math.min(Math.abs(c.target - c.open), dt / 3.2); const e = c.open * c.open * (3 - 2 * c.open); for (const m of c.meshes) m.scale.x = 1 - 0.93 * e; } } };
-  world.hallByKey = (k) => world.halls.find((h) => h.key === k); world.hallById = (id) => world.halls.find((h) => h.id === id);
+  // reflection probes: one small cube capture per room (what the polished floors, brass and glass reflect), mip-filtered by roughness
+  onProgress(0.96, 'reflections'); await texturesReady(); await frame(); captureReflections(world, engine);
   world.setVisibility('lobby', 0, 15); onProgress(1, 'ready');
   return world;
 }
