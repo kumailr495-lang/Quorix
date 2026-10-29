@@ -11,8 +11,8 @@ const H = Object.fromEntries(HALLS.map((h) => [h.id, h]));
 const passEnd = (a, b) => Math.min(a, b) - 1.3;
 // passages: west serves SCREEN 1 (its east wall) and SCREEN 3 (its west wall); east serves SCREEN 3 and SCREEN 2
 export const PASSAGES = [
-  { key: 'passW', x0: -13.7, x1: -11.3, z0: passEnd(H.I.doorZ(1), H.III.doorZ(-1)), z1: CONC.z0, h: 3.2, doors: [{ hall: 'I', x: -13.85, z: H.I.doorZ(1), side: -1 }, { hall: 'III', x: -11.15, z: H.III.doorZ(-1), side: 1 }] },
-  { key: 'passE', x0: 11.3, x1: 13.7, z0: passEnd(H.III.doorZ(1), H.II.doorZ(-1)), z1: CONC.z0, h: 3.2, doors: [{ hall: 'III', x: 11.15, z: H.III.doorZ(1), side: -1 }, { hall: 'II', x: 13.85, z: H.II.doorZ(-1), side: 1 }] },
+  { key: 'passW', x0: -14.5, x1: -11.3, z0: passEnd(H.I.doorZ(1), H.III.doorZ(-1)), z1: CONC.z0, h: 3.6, doors: [{ hall: 'I', x: -14.65, z: H.I.doorZ(1), side: -1 }, { hall: 'III', x: -11.15, z: H.III.doorZ(-1), side: 1 }] },
+  { key: 'passE', x0: 11.3, x1: 14.5, z0: passEnd(H.III.doorZ(1), H.II.doorZ(-1)), z1: CONC.z0, h: 3.6, doors: [{ hall: 'III', x: 11.15, z: H.III.doorZ(1), side: -1 }, { hall: 'II', x: 14.65, z: H.II.doorZ(-1), side: 1 }] },
 ];
 export const DOOR_W = 1.7, DOOR_H = 2.5;
 export const ROOM_KEYS = ['lobby', 'conc', 'passW', 'passE', ...HALLS.map((h) => h.key), 'street'];
@@ -26,13 +26,13 @@ export function roomAt(x, z) {
   if (inR(RECTS.conc, x, z)) return 'conc'; if (inR(RECTS.lobby, x, z)) return 'lobby'; return z > 19 ? 'street' : 'lobby';
 }
 export function floorY(x, z) { for (const h of HALLS) if (inR(RECTS[h.key], x, z)) return hallFloorY(h, x, z); return 0; }
-export const roomHeight = (k) => k === 'lobby' ? LOBBY.h : k === 'conc' ? CONC.h : k.startsWith('pass') ? 3.2 : k === 'street' ? 30 : hallByKey(k).ceil;
+export const roomHeight = (k) => k === 'lobby' ? LOBBY.h : k === 'conc' ? CONC.h : k.startsWith('pass') ? 3.6 : k === 'street' ? 30 : hallByKey(k).ceil;
 // portals: openings between rooms (visibility, sound occlusion, navigation through wall thickness). `w` = opening width, `always` = see through at any distance
 export const PORTALS = [
   { a: 'lobby', b: 'conc', x: 0, z: 0, w: OPEN.x1 - OPEN.x0, axis: 'z', always: true },
   { a: 'lobby', b: 'street', x: 0, z: 20, w: 3.2, axis: 'z', always: true, door: 'street' },
-  { a: 'conc', b: 'passW', x: -12.5, z: CONC.z0 - 0.15, w: 2.0, axis: 'z', door: 'passW' },
-  { a: 'conc', b: 'passE', x: 12.5, z: CONC.z0 - 0.15, w: 2.0, axis: 'z', door: 'passE' },
+  { a: 'conc', b: 'passW', x: -12.9, z: CONC.z0 - 0.15, w: 2.8, axis: 'z', door: 'passW' },
+  { a: 'conc', b: 'passE', x: 12.9, z: CONC.z0 - 0.15, w: 2.8, axis: 'z', door: 'passE' },
 ];
 for (const p of PASSAGES) for (const d of p.doors) PORTALS.push({ a: p.key, b: H[d.hall].key, x: d.x, z: d.z, w: DOOR_W, axis: 'x', hallDoor: d.hall });
 // walkable strips through wall thickness (navigation only)

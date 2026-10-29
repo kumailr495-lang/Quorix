@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""LUMIERE v3 APK packager. Re-uses the proven WebView wrapper (classes.dex, resources, manifest) from a base APK, swaps in assets/www,
+"""LUMIERE APK packager (v3+; v5 also locks the app to landscape). Re-uses the proven WebView wrapper (classes.dex, resources, manifest) from a base APK, swaps in assets/www,
 bumps versionCode/versionName in place, and signs with APK Signature Scheme v2 (needs `cryptography`; Termux: pkg install python-cryptography).
-usage: make-apk.py BASE.apk WWW_DIR OUT.apk [versionCode] [versionName(4 chars)]
+usage: make-apk.py BASE.apk WWW_DIR OUT.apk [versionCode] [versionName(4 chars)] [orientation: landscape|any]
 NOT install-tested by this script: it self-verifies digests + signature only."""
 import sys, os, io, zipfile, struct, hashlib, datetime
 from cryptography import x509
@@ -9,7 +9,8 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
-def patch_manifest(d, vcode, vname):
+SENSOR_LANDSCAPE, UNSPECIFIED = 6, 0xffffffff   # android:screenOrientation values (sensorLandscape: either landscape side, follows the sensor, like games)
+def patch_manifest(d, vcode, vname, orient=SENSOR_LANDSCAPE):
     d = bytearray(d); u16 = lambda o: struct.unpack_from('<H', d, o)[0]; u32 = lambda o: struct.unpack_from('<I', d, o)[0]; off = 8; strs = []
     while off < len(d):
         t, sz = u16(off), u32(off + 4)
@@ -28,12 +29,13 @@ def patch_manifest(d, vcode, vname):
             for i in range(ac):
                 ans, an, ar, tsz, _, tt, td = struct.unpack_from('<iiiHBBI', d, ao + 20 * i); nm = strs[an][0]
                 if nm == 'versionCode': struct.pack_into('<I', d, ao + 20 * i + 16, vcode)
+                if nm == 'screenOrientation' and tt == 0x10: struct.pack_into('<I', d, ao + 20 * i + 16, orient)
                 if nm == 'versionName' and ar >= 0:
                     s, p, l, u8 = strs[ar]; nb = vname.encode('utf8' if u8 else 'utf-16-le'); assert len(nb) == l, 'versionName must keep the same length'; d[p:p + l] = nb
         off += sz
     return bytes(d)
 
-def build_unsigned(base, www, out, vcode, vname):
+def build_unsigned(base, www, out, vcode, vname, orient=SENSOR_LANDSCAPE):
     zin = zipfile.ZipFile(base); zout = zipfile.ZipFile(out, 'w'); kept = []
     def add(name, data, store):
         zi = zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0)); zi.compress_type = zipfile.ZIP_STORED if store else zipfile.ZIP_DEFLATED; zi.external_attr = 0o644 << 16; extra = b''
@@ -48,7 +50,7 @@ def build_unsigned(base, www, out, vcode, vname):
         # reference to them, and the web app ships its own fonts and builds its noise procedurally -> leave them out (~82 KB)
         if n.startswith('assets/'): print('  dropped unused wrapper asset', n); continue
         data = zin.read(n)
-        if n == 'AndroidManifest.xml': data = patch_manifest(data, vcode, vname)
+        if n == 'AndroidManifest.xml': data = patch_manifest(data, vcode, vname, orient)
         add(n, data, zi.compress_type == zipfile.ZIP_STORED); kept.append(n)
     cnt = 0
     for root, dirs, files in os.walk(www):
@@ -94,9 +96,10 @@ def verify_v2(path, cert):
     want = chunks_digest([s1, s3, s4]); got = signed[16:48]; assert want == got, 'content digest mismatch'; return True
 
 if __name__ == '__main__':
-    base, www, out = sys.argv[1:4]; vcode = int(sys.argv[4]) if len(sys.argv) > 4 else 300; vname = sys.argv[5] if len(sys.argv) > 5 else '3.00'
+    base, www, out = sys.argv[1:4]; vcode = int(sys.argv[4]) if len(sys.argv) > 4 else 500; vname = sys.argv[5] if len(sys.argv) > 5 else '5.00'
+    orient = UNSPECIFIED if len(sys.argv) > 6 and sys.argv[6] == 'any' else SENSOR_LANDSCAPE
     key, cert = keypair(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys')); tmp = out + '.unsigned'
-    kept, cnt = build_unsigned(base, www, tmp, vcode, vname); blk = sign_v2(tmp, out, key, cert); os.remove(tmp)
+    kept, cnt = build_unsigned(base, www, tmp, vcode, vname, orient); blk = sign_v2(tmp, out, key, cert); os.remove(tmp)
     ok = verify_v2(out, cert); z = zipfile.ZipFile(out); assert z.testzip() is None
     print(f'wrapper entries kept: {len(kept)} | www files: {cnt} | signing block {blk} B | v2 self-check: {ok} | size {os.path.getsize(out) / 1e6:.2f} MB')
-    print('manifest versionCode/versionName ->', vcode, vname)
+    print('manifest versionCode/versionName ->', vcode, vname, '| screenOrientation ->', 'sensorLandscape' if orient == SENSOR_LANDSCAPE else 'unspecified')

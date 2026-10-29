@@ -5,8 +5,8 @@
 //   curved screen chord depth ~5% (8% here so the curve reads on a phone); crossing aisle at entrance level (5.6.1)
 // tools/dev/hall-calc.mjs prints the resulting table; docs/V5-DESIGN.md section 3 quotes it.
 export const SPECS = [
-  { id: 'I', key: 'hallI', name: 'SCREEN 1', kind: 'standard', aspect: 1.85, W: 12.0, D1: 7.4, pitch: 1.2, rows: 11, crossAfter: 5, crossW: 1.5, eye: 1.2, hB: 1.0, c: 0.18, seatW: 0.6, perRow: 18, sag: 0, rowR: 0, x0: -28, x1: -14 },
-  { id: 'II', key: 'hallII', name: 'SCREEN 2', kind: 'curved', aspect: 2.39, W: 14.0, D1: 8.4, pitch: 1.7, rows: 7, crossAfter: 3, crossW: 1.3, eye: 1.1, hB: 1.1, c: 0.18, seatW: 0.86, perRow: 14, sag: 0.08, rowR: 24, x0: 14, x1: 30 },
+  { id: 'I', key: 'hallI', name: 'SCREEN 1', kind: 'standard', aspect: 1.85, W: 12.0, D1: 7.4, pitch: 1.2, rows: 11, crossAfter: 5, crossW: 1.5, eye: 1.2, hB: 1.0, c: 0.18, seatW: 0.6, perRow: 18, sag: 0, rowR: 0, x0: -28.8, x1: -14.8 },
+  { id: 'II', key: 'hallII', name: 'SCREEN 2', kind: 'curved', aspect: 2.39, W: 14.0, D1: 8.4, pitch: 1.7, rows: 7, crossAfter: 3, crossW: 1.3, eye: 1.1, hB: 1.1, c: 0.18, seatW: 0.86, perRow: 14, sag: 0.08, rowR: 24, x0: 14.8, x1: 30.8 },
   { id: 'III', key: 'hallIII', name: 'SCREEN 3', kind: 'giant', aspect: 1.90, W: 20.0, D1: 9.0, pitch: 1.2, rows: 9, crossAfter: 3, crossW: 1.6, eye: 1.2, hB: 0.6, c: 0.18, seatW: 0.62, perRow: 30, sag: 0.025, rowR: 0, x0: -11, x1: 11 },
 ];
 // seat footprint relative to the hip point (seat cushion centre): front edge fr, back of the backrest bk

@@ -73,7 +73,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--line);border-radius:999px;padding:7px 13px;background:transparent;font-size:12px;font-weight:500}.chip.on{background:#fff;color:#111;border-color:#fff}
 .own{display:flex;gap:6px;align-items:center}.own input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.3);color:#fff;padding:9px 10px;font:inherit;font-size:12px;user-select:text;-webkit-user-select:text}
 .note{margin:8px 0;font-size:11.5px;color:var(--dim)}
-#seatmap{display:grid;gap:3px;padding:6px 2px 2px}.srow{display:grid;gap:2px;align-items:center}.srow i{font:normal 500 9px var(--font);color:var(--dim);text-align:center}
+#seatmap{display:grid;gap:3px;padding:6px 2px 2px;direction:ltr}.srow{display:grid;gap:2px;align-items:center}.srow i{font:normal 500 9px var(--font);color:var(--dim);text-align:center}
 .seat{aspect-ratio:1;border:0;border-radius:3px 3px 2px 2px;background:rgba(255,255,255,.75);padding:0;min-width:0}.seat.taken{background:rgba(255,255,255,.14)}.seat.sel{background:var(--accent);box-shadow:0 0 0 2px rgba(255,77,90,.4)}.seat.gap{visibility:hidden}
 .scr{height:8px;margin:0 8% 10px;border-top:3px solid rgba(255,255,255,.55);border-radius:50% 50% 0 0/100% 100% 0 0;text-align:center;font-size:8px;letter-spacing:.4em;color:var(--dim);padding-top:4px}
 .legend{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--dim);margin-top:8px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px}.sw.free{background:rgba(255,255,255,.75)}.sw.taken{background:rgba(255,255,255,.14)}.sw.sel{background:var(--accent)}.legend span{margin-inline-end:8px}
@@ -92,3 +92,8 @@ body.watching #stick,body.watching #sprint,body.watching #where,body.watching #t
 #fade{position:fixed;inset:0;z-index:45;background:#000;opacity:1;pointer-events:none;transition:opacity .9s ease}
 @media (orientation:portrait){#rotate.need{display:flex!important}}
 @media (max-height:420px){.sheet{padding:10px 12px 12px}.label{margin:7px 0 4px}.film img{width:28px;height:42px}.film{padding:5px}}
+/* short landscape phones: the three films sit side by side so Starts / own video stay on screen without scrolling */
+@media (max-height:460px){#films{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#films .film{margin:0;gap:6px;padding:5px}#films .film img{width:22px;height:33px}#films .film small{display:none}#films .film b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#films .film em{display:block;font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#films .film>div{min-width:0}}
+/* Devanagari conjuncts and Urdu letter joining break with letter-spacing */
+html[lang=hi] *,html[lang=ur] *{letter-spacing:0!important}
+html[lang=ur] body{font-family:"Noto Nastaliq Urdu","Noto Naskh Arabic",var(--font)}html[lang=ur] #talkText,html[lang=ur] .body{line-height:1.9}
