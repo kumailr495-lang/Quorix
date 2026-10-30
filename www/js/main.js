@@ -5,6 +5,7 @@ import { Materials, G } from './materials.js';
 import { buildWorld } from './world.js';
 import { texturesReady } from './library.js';
 import { loadAssets, ASSET_LIST, ASSETS } from './assets.js';
+import { loadBakes } from './lightmap.js';
 import { Player, EYE } from './player.js';
 import { Sound } from './sound.js';
 import { Shows } from './film.js';
@@ -29,7 +30,9 @@ async function boot() {
   $('#ldTip').textContent = t('tips'); const tipT = setInterval(() => { $('#ldTip').textContent = t('tips'); }, 4000);
   try { await Promise.race([Promise.all([document.fonts.load('500 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) {}
   const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low', mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG, texSize: lowG ? 256 : 512 }); engine.applySettings(settings);
-  const t0 = performance.now(); await loadAssets(ASSET_LIST); const world = await buildWorld(engine, mats, prog); await texturesReady();
+  // Cycles light maps (lightmap.js) on Medium and High; Low keeps the per-vertex light. ?nobake=1 builds without them (tools/bake/export.mjs)
+  mats.lightMaps = !lowG && !Q.get('nobake');
+  const t0 = performance.now(); await Promise.all([loadAssets(ASSET_LIST), mats.lightMaps ? loadBakes() : null]); const world = await buildWorld(engine, mats, prog); await texturesReady();
   prog(0.97, 'people'); $('#ldStep').textContent = t('load.people'); await new Promise((r) => requestAnimationFrame(r));
   const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
   let ticket = null, room = 'lobby', talk = null, ui = null, shows = null, crowd = null, mode = 'menu', modal = false, held = null, markerPulse = 0, paused = false, played = false;
@@ -181,6 +184,7 @@ async function boot() {
   clearInterval(tipT); prog(1, 'ready'); $('#ldStep').textContent = t('load.ready');
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); ui.showMenu(true, false); player.locked = true; if (!settings.lang) { ui.openLang(); } setTimeout(() => $('#loader') && $('#loader').remove(), 800); }, 120); });
   if (Q.get('play')) setTimeout(() => enterPlay(), 300);
+  if (Q.get('bakeExport')) import('./bake-export.js').then((m) => { window.__lumiere.exportRoom = (k) => m.exportRoom(world, k); window.__lumiere.bakeReady = true; });   // tools/bake/export.mjs
   window.__lumiereAssets = ASSETS; window.__lumiere = { engine, world, player, shows, sound, ui, crowd, talk, mats, director, settings, buildMs: performance.now() - t0, get ticket() { return ticket; }, book: (tk) => book(tk), jumpToSeat, findSeat, sitSeat, startTalk, takeItem, enterPlay, toMenu, get mode() { return mode; }, debugCam: (c) => { dbgCam = c; }, ready: true };
 }
 boot().catch((e) => { console.error(e); const m = $('#ldStep'); if (m) m.textContent = 'Error: ' + (e && e.message ? e.message : e); });

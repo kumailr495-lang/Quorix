@@ -4,11 +4,13 @@
 // Meshes whose material name starts with "glow" are emitters: they go to the room's glow mesh in the material's colour.
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/addons/GLTFLoader.js';
-import { named } from './library.js';
+import { named, MAT } from './library.js';
 export const ASSETS = {};
-// every GLB the world uses (tools/kiln/<name>.kiln.js -> www/models/<name>.glb)
-export const ASSET_LIST = ['seat_standard', 'arm_standard', 'recliner', 'console_recliner', 'seat_giant', 'column_fluted', 'column_fluted_5', 'counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
-  'pendant_dish', 'stanchion', 'rope_velvet', 'poster_case', 'banquette_seg', 'planter_tall', 'planter_tree',
+// every GLB the world uses (tools/kiln/<name>.kiln.js or tools/blender/{seats,fixtures}.py -> www/models/<name>.glb)
+// (v5.20: the hall seats are the Blender families below; the v5.1 Kiln seats seat_standard, arm_standard, recliner, console_recliner and
+// seat_giant stay in tools/kiln and www/models but are no longer loaded)
+export const ASSET_LIST = ['column_fluted', 'column_fluted_5', 'counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
+  'seat_club', 'arm_club', 'seat_rocker', 'arm_rocker', 'seat_classic', 'arm_classic', 'sconce_deco', 'downlight', 'speaker_array', 'pendant_dish', 'stanchion', 'rope_velvet', 'poster_case', 'banquette_seg', 'planter_tall', 'planter_tree',
   'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'back_bar', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'chandelier_ring', 'door_padded'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
@@ -53,7 +55,7 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
     if (p.lod !== lod) continue;
     if (p.glow) { const k = (o.glowK ?? 1) * (o.glowMul && o.glowMul[p.name] != null ? o.glowMul[p.name] : 1); if (k <= 0) continue; room.gacc.add(p.geo, mtx, (o.glowColor || p.glowColor).map((v) => v * k), { grp: o.grp ?? 0 }); continue; }
     const sw = o.swap && o.swap[p.matName];   // swap a named material for this placement: { velvet_teal: [libraryId, linearRgb] }
-    room.acc.add(p.geo, mtx, sw ? sw[1] : o.tints && o.tints[p.name] ? o.tints[p.name] : p.tint, { mat: sw ? sw[0] : p.id, uv: 'mesh', occ: o.occ ?? 1 });
+    (room.pacc || room.acc).add(p.geo, mtx, sw ? sw[1] : o.tints && o.tints[p.name] ? o.tints[p.name] : p.tint, { mat: sw ? sw[0] : p.id, uv: 'mesh', occ: o.occ ?? 1 });
   }
   const b = A.box.clone().applyMatrix4(mtx);
   if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
@@ -63,7 +65,8 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
 // over = per-hall material swaps keyed by mesh name, each with an optional library id and tint
 export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null) {
   const A = ASSETS[name]; if (!A) return null; const acc = new Acc(), m = extra || new THREE.Matrix4();
-  for (const p of A.parts) { if (p.lod !== lod || p.glow) continue;
+  for (const p of A.parts) { if (p.lod !== lod) continue;
+    if (p.glow) { const g = p.geo.clone(); g.setAttribute('occ', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(1), 1)); acc.add(g, m, p.glowColor, { mat: MAT.emit, uv: 'mesh' }); continue; }   // seat LEDs, cup-holder rings
     // cheap baked occlusion for an instanced prop: undersides and low parts darker
     const g = p.geo.clone(), P = g.attributes.position, N = g.attributes.normal, occ = new Float32Array(P.count);
     for (let i = 0; i < P.count; i++) { const y = P.getY(i), ny = N.getY(i); occ[i] = (0.55 + 0.45 * Math.min(1, Math.max(0, (y - 0.05) / 0.7))) * (ny < -0.5 ? 0.6 : 1); }

@@ -79,6 +79,8 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   for (const [name, f] of steps) { onProgress(i / steps.length * 0.5, name); await frame(); const r = f(); if (name === 'halls') { world.halls = r; rooms.push(...r.map((h) => h.room)); } else rooms.push(...[].concat(r)); i++; }
   // bake + finalize, one room per frame so the loader keeps moving
   for (let k = 0; k < rooms.length; k++) { const r = rooms[k]; onProgress(0.5 + 0.45 * k / rooms.length, 'bake:' + r.key); await frame(); r.finalize(mats); world.rooms[r.key] = r; engine.scene.add(r.group); world.colliders.push(...r.colliders); }
+  // baked halls light their seats, arms and seated audience from the Cycles probes baked with the room (lightmap.js)
+  for (const h of world.halls) { const P = h.room.bake && h.room.bake.probes; if (P && P.seat.length === h.seats.length * 7 && P.arm.length === h.arms.length * 7) h.applyProbes(P); else if (h.room.bake) console.warn('bake ' + h.key + ': no matching seat probes, seats keep analytic light'); }
   for (const h of world.halls) h.updateLOD({ position: { x: h.cfg.cx, z: h.cfg.zBack } }, true);
 
   // hall doors (padded double doors at the crossing aisles, steel exit doors near the screens), street door

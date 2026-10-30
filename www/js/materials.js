@@ -77,13 +77,15 @@ const LIT_VERT = `
 attribute vec3 color; attribute float matid;
 #ifdef USE_INSTANCING
 attribute float occ; attribute vec3 iLh; attribute vec3 iLf; attribute float iLs;
+#elif defined(USE_LIGHTMAP)
+attribute vec2 lmuv; varying vec2 vLm;
 #else
 attribute vec3 lh; attribute vec3 lf; attribute float ls;
 #endif
-uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[96];
-varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay;
+uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[120];
+varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
 void main() {
-  int k = int(matid + 0.5) * 3; vPA = uP[k]; vPB = uP[k + 1]; vLay = uP[k + 2].x;
+  int k = int(matid + 0.5) * 3; vPA = uP[k]; vPB = uP[k + 1]; vLay = uP[k + 2].x; vEm = uP[k + 2].y;
   vAlb = color; vUv = uv * vPB.w;
 #ifdef USE_INSTANCING
   vec3 n = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
@@ -92,7 +94,11 @@ void main() {
   vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
 #else
   vec3 n = normalize(mat3(modelMatrix) * normal);
+#ifdef USE_LIGHTMAP
+  vLm = lmuv; vLight = vec3(0.0);
+#else
   vLight = lh * uHouse + lf * uFix + ls * uScreen;
+#endif
   vec4 wp = modelMatrix * vec4(position, 1.0);
 #endif
   vN = n; vWP = wp.xyz; vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv;
@@ -100,7 +106,10 @@ void main() {
 // material parameters come per vertex from uP (library.js PARAMS): vPA = rough, metal, normal strength, sheen; vPB = reflection, relief, abs, tiling
 const LIT_FRAG = COMMON_FRAG + `
 uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn;
-varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay;
+varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
+#ifdef USE_LIGHTMAP
+uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; varying vec2 vLm;
+#endif
 vec3 perturb(vec3 p, vec3 n, vec3 m) {
   vec3 q0 = dFdx(p); vec3 q1 = dFdy(p); vec2 st0 = dFdx(vUv); vec2 st1 = dFdy(vUv);
   vec3 q1p = cross(q1, n); vec3 q0p = cross(n, q0); vec3 T = q1p * st0.x + q0p * st1.x; vec3 B = q1p * st0.y + q0p * st1.y;
@@ -113,6 +122,13 @@ vec3 envBRDF(vec3 F0, float r, float NoV) {
 }
 void main() {
   vec3 Ng = normalize(vN); vec3 V = normalize(cameraPosition - vWP); vec3 uvl = vec3(vUv, floor(vLay + 0.5));
+  vec3 Lt = vLight;
+#ifdef USE_LIGHTMAP
+  Lt = texture(uLmH, vLm).rgb * (uLmK.x * uHouse);
+#ifdef LM_HALL
+  Lt += texture(uLmF, vLm).rgb * (uLmK.y * uFix) + texture(uLmS, vLm).r * uLmK.z * uScreen;
+#endif
+#endif
   float uMetal = vPA.y; float uSheen = vPA.w; float uSpec = vPB.x; float uRelief = vPB.y;
   vec4 t = texture(uMaps, uvl);
   vec3 alb = vPB.z > 0.5 ? t.rgb * vAlb : vAlb * t.rgb * 2.0;
@@ -123,18 +139,19 @@ void main() {
   float NoV = clamp(dot(N, V), 0.02, 1.0);
   float rough = clamp(vPA.x + (0.5 - dot(t.rgb, vec3(0.33))) * 0.25, 0.03, 1.0);
   float relief = clamp(1.0 + uRelief * dot(N - Ng, vec3(0.25, 0.9, 0.35)) * 1.6, 0.4, 1.6);
-  vec3 col = alb * (1.0 - uMetal) * vLight * relief;
-  col += alb * vLight * uSheen * pow(1.0 - NoV, 2.2) * 1.4;
+  vec3 col = alb * (1.0 - uMetal) * Lt * relief;
+  col += alb * Lt * uSheen * pow(1.0 - NoV, 2.2) * 1.4;
   vec3 F0 = mix(vec3(0.04), alb, uMetal);
-  float lumL = dot(vLight, vec3(0.3, 0.55, 0.15));
+  float lumL = dot(Lt, vec3(0.3, 0.55, 0.15));
 #ifdef USE_ENV
   vec3 R = reflect(-V, N);
   vec3 env = textureLod(uEnvMap, R, rough * 6.0).rgb;
   col += env * envBRDF(F0, rough, NoV) * clamp(lumL * uEnvK, 0.0, 2.0) * uSpec * uEnvOn;
 #else
-  col += alb * uMetal * vLight * (0.45 + 0.5 * pow(1.0 - NoV, 2.0));
+  col += alb * uMetal * Lt * (0.45 + 0.5 * pow(1.0 - NoV, 2.0));
   col += envBRDF(F0, rough, NoV) * lumL * uSpec * 0.35 * pow(max(reflect(-V, N).y, 0.0), 6.0);
 #endif
+  col += alb * vEm;
   col = lumFog(lumTone(col), vDist);
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
@@ -289,10 +306,13 @@ export function roomUniforms() { return { uHouse: { value: 1 }, uScreen: { value
 export class Materials {
   constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; this._lit = new WeakMap(); }
   // one library material per room (and one for its instanced props): every material id draws in the same call (texture arrays)
-  litRoom(U, inst = false) {
-    let per = this._lit.get(U); if (!per) this._lit.set(U, per = {}); const key = inst ? 'i' : 's'; if (per[key]) return per[key];
-    const A = libArrays(this.renderer, this.texSize, 'USE_NMAP' in this.defines);
-    const m = mk(LIT_VERT, LIT_FRAG, { ...G, ...U, uMaps: { value: A.a }, uNmaps: { value: A.n || A.a }, uP: { value: PARAMS } }, { defines: { ...this.defines } });
+  // bake (lightmap.js): the room's solid mesh reads its light from Cycles light maps (house; halls add fixed and screen layers)
+  litRoom(U, inst = false, bake = null) {
+    let per = this._lit.get(U); if (!per) this._lit.set(U, per = {}); const key = bake ? 'l' : inst ? 'i' : 's'; if (per[key]) return per[key];
+    const A = libArrays(this.renderer, this.texSize, 'USE_NMAP' in this.defines), defines = { ...this.defines }, lm = {};
+    if (bake) { const [h, f, s] = bake.maps; defines.USE_LIGHTMAP = ''; if (bake.hall) defines.LM_HALL = '';
+      Object.assign(lm, { uLmH: { value: h }, uLmF: { value: f || h }, uLmS: { value: s || h }, uLmK: { value: new THREE.Vector3(...bake.scale) } }); }
+    const m = mk(LIT_VERT, LIT_FRAG, { ...G, ...U, ...lm, uMaps: { value: A.a }, uNmaps: { value: A.n || A.a }, uP: { value: PARAMS } }, { defines });
     m.name = 'lit-' + key; per[key] = m; return this._t(m);
   }
   litFor(U, geo, inst = false) { return this.litRoom(U, inst); }

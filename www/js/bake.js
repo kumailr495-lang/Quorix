@@ -9,6 +9,7 @@ const STRIDE = 14;   // x y z  r g b  range ch  dx dy dz  cosIn cosOut type(0 om
 export class Lights {
   constructor(opts = {}) {
     this.L = []; this.amb = { h: { up: [0, 0, 0], down: [0, 0, 0] }, f: { up: [0, 0, 0], down: [0, 0, 0] } }; this.screen = null; this.occluders = [];
+    this.shapes = [];   // line and rectangle emitters as drawn (the light-map bake rebuilds them as real area lights, not as their samples)
     this.floorAt = opts.floorAt || (() => 0); this.ceil = opts.ceil ?? 3; this.rect = opts.rect || null; this.soft = opts.soft ?? 0.3;
   }
   _push(x, y, z, c, I, r, ch, dx = 0, dy = -1, dz = 0, ci = 1, co = -1, type = 0) { const k = rgb(c); this.L.push(x, y, z, k[0] * I, k[1] * I, k[2] * I, r, ch === 'f' ? 1 : 0, dx, dy, dz, ci, co, type); return this; }
@@ -18,12 +19,14 @@ export class Lights {
   // line light (cove, LED strip, slot): n samples, I per metre; dir optional (emits into a hemisphere)
   line(ax, ay, az, bx, by, bz, c, Ipm, r = 6, ch = 'h', dir = null, n = 0) {
     const L = Math.hypot(bx - ax, by - ay, bz - az), k = n || Math.max(2, Math.ceil(L / 1.2)), I = Ipm * L / k;
+    this.shapes.push({ kind: 'line', i0: this.L.length / STRIDE, n: k, a: [ax, ay, az], b: [bx, by, bz], dir, c: rgb(c).slice(), I: Ipm * L, ch: ch === 'f' ? 1 : 0 });
     for (let i = 0; i < k; i++) { const t = (i + 0.5) / k, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, z = az + (bz - az) * t; if (dir) this._push(x, y, z, c, I, r, ch, dir[0], dir[1], dir[2], 1, 0, 2); else this._push(x, y, z, c, I, r, ch); }
     return this;
   }
   // rectangular emitter (LED wall, menu board, light box, ceiling panel): centre, half vectors u, v, emitting along n
   area(cx, cy, cz, u, v, n, c, I, r = 10, ch = 'f', su = 3, sv = 2) {
     const k = I / (su * sv);
+    this.shapes.push({ kind: 'rect', i0: this.L.length / STRIDE, n: su * sv, c0: [cx, cy, cz], u, v, dir: n, c: rgb(c).slice(), I, ch: ch === 'f' ? 1 : 0 });
     for (let i = 0; i < su; i++) for (let j = 0; j < sv; j++) { const a = (i + 0.5) / su * 2 - 1, b = (j + 0.5) / sv * 2 - 1; this._push(cx + u[0] * a + v[0] * b, cy + u[1] * a + v[1] * b, cz + u[2] * a + v[2] * b, c, k, r, ch, n[0], n[1], n[2], 1, 0, 2); }
     return this;
   }

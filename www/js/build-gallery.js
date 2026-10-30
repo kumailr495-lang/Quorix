@@ -42,10 +42,9 @@ export function buildGallery(ctx) {
       room.box(Math.min(x, px(0.14)), 0.12, zp - 0.26, Math.max(x, px(0.14)), 3.45, zp + 0.26, WALNUT, { mat: MAT.fluted, faces: `${faces} pz nz` });
       room.box(Math.min(x, px(0.16)), 0, zp - 0.28, Math.max(x, px(0.16)), 0.12, zp + 0.28, '#0d0c0d', { mat: MAT.lacquer, faces: `${faces} py pz nz` });
       room.box(Math.min(x, px(0.17)), 3.45, zp - 0.29, Math.max(x, px(0.17)), 3.6, zp + 0.29, BRASS, { mat: MAT.brass, faces: `${faces} py ny pz nz` });
-      // brass sconce: a half-cylinder glowing up and down, washing the flutes
-      room.box(Math.min(px(0.14), px(0.26)), 2.2, zp - 0.07, Math.max(px(0.14), px(0.26)), 2.62, zp + 0.07, BRASS, { mat: MAT.brass, faces: `${faces} py ny pz nz`, edge: 0 });
-      room.glowBox(Math.min(px(0.15), px(0.25)), 2.62, zp - 0.06, Math.max(px(0.15), px(0.25)), 2.63, zp + 0.06, '#ffe0b0', 2.2, 1, 'py');
-      L.spot(px(0.3), 2.65, zp, '#ffcf96', 1.6, 4, 'h', [0, 1, 0], 25, 70); L.spot(px(0.3), 2.18, zp, '#ffcf96', 1.2, 3.5, 'h', [0, -1, 0], 25, 70); }
+      // deco sconce on the pilaster (tools/blender/fixtures.py): fluted opal shade glowing up and down, washing the flutes
+      placeAsset(room, 'sconce_deco', px(0.14), 2.42, zp, side < 0 ? PI / 2 : -PI / 2, { grp: 1, glowK: 0.9, scale: 1.15 });
+      L.spot(px(0.3), 2.72, zp, '#ffcf96', 1.6, 4, 'h', [0, 1, 0], 25, 70); L.spot(px(0.3), 2.12, zp, '#ffcf96', 1.2, 3.5, 'h', [0, -1, 0], 25, 70); }
     // framed openings: architraves, reveals, signs
     for (const [a, b, top, kind, data] of ops) {
       const zc = (a + b) / 2, rx0 = Math.min(x, x + side * 0.3), rx1 = Math.max(x, x + side * 0.3);   // reveals: inside the wall thickness, away from the gallery
@@ -82,7 +81,7 @@ export function buildGallery(ctx) {
   for (const zp of BAYS) { if (zp >= 0) continue; room.box(GAL.x0 + 0.55, H, zp - 0.3, GAL.x1 - 0.55, HC - 0.001, zp + 0.3, PLASTER, { mat: MAT.plaster, faces: 'ny pz nz', edge: 2 });
     room.box(GAL.x0 + 0.55, H - 0.02, zp - 0.31, GAL.x1 - 0.55, H, zp + 0.31, BRASS, { mat: MAT.brass, faces: 'ny pz nz', edge: 0 }); }
   for (let i = 0; i < BAYS.length; i++) { const za = Math.max(z0, BAYS[i] - 5) + 0.3, zb = BAYS[i] - (BAYS[i] >= 0 ? 0.15 : 0.3), zc = (za + zb) / 2; if (zb - za < 1) continue;   // two recessed downlights per coffer
-    for (const xx of [-1.2, 1.2]) { room.box(xx - 0.07, HC - 0.012, zc - 0.07, xx + 0.07, HC - 0.002, zc + 0.07, '#fff1dc', { glow: true, grp: 1, faces: 'ny' }); L.spot(xx, HC - 0.1, zc, '#ffd2a0', 5.5, 7, 'h', [0, -1, 0], 20, 55); } }
+    for (const xx of [-1.2, 1.2]) { placeAsset(room, 'downlight', xx, HC, zc, 0, { grp: 1, glowK: 1.1 }); L.spot(xx, HC - 0.1, zc, '#ffd2a0', 5.5, 7, 'h', [0, -1, 0], 20, 55); } }
   // ---------- north end: the tunnel mouth, framed in brass, IMAX header ----------
   for (const [a, b] of [[GAL.x0, TUN.x0], [TUN.x1, GAL.x1]]) room.box(a, 0, z0 - 0.001, b, TUN.h, z0, LACQ, { mat: MAT.lacquer, faces: 'pz' });
   room.box(GAL.x0, TUN.h, z0 - 0.001, GAL.x1, HC, z0, '#0c0c10', { mat: MAT.lacquer, faces: 'pz' });

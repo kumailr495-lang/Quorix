@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { G } from './materials.js';
 export const PRESETS = {
   low: { scale: 0.75, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 5, aa: false },
-  medium: { scale: 1.0, people: 10, crowd: 140, peopleFar: 12, detail: 1, seatLod: 7, aa: false },
+  medium: { scale: 1.0, people: 10, crowd: 140, peopleFar: 12, detail: 1, seatLod: 7, aa: true },
   high: { scale: 1.3, people: 16, crowd: 220, peopleFar: 16, detail: 1, seatLod: 9, aa: true },
 };
 const LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0];
