@@ -20,11 +20,11 @@ file name ("BrahmÄ_stra.Part.One...").
 ## Layout and theatres
 - [ ] Corridors too close together, theatres too small, still claustrophobic.
 - [ ] Left/right doors from the middle made it look like 4 theatres.
-- [ ] Screens in order: 1 = a great curved screen, 2 = a big IMAX screen with its vibe, 3 = standard. Each must feel like its type.
+- [~] Screens in order: 1 = a great curved screen, 2 = a big IMAX screen with its vibe, 3 = standard. Each must feel like its type. (v5.20: own seats, walls, carpet, lighting per hall; not seen on the phone yet)
 - [ ] Show screens by number with good pictures; remove the fake film titles ("Velvet Hour" etc.).
 - [ ] Sliding doors are blank black: texture them or build the planned corridor.
 - [ ] Research cinema engineering (structure, entry/exit, riser heights); seats placed oddly.
-- [ ] Real male and female restrooms (only a door now).
+- [~] Real male and female restrooms (only a door now). (v5.20: full rooms with vanities, basins, mirrors, cubicles, urinals; not seen on the phone yet)
 - [ ] Approved: Dolby-style video-wall entrance tunnel; balcony in the IMAX screen.
 
 ## People
@@ -59,9 +59,9 @@ file name ("BrahmÄ_stra.Part.One...").
 - [ ] Approved: trailers before the film.
 
 ## Building
-- [ ] Outside looks bad. Approved: rain and night street.
-- [ ] Lobby grand but unfinished; barriers and sofas poor; bar should be better and feel connected.
-- [ ] Approved: photo spot with a poster frame; seat-number brass plates; Kiln cup stacks, menu boards, guide sign.
+- [~] Outside looks bad. Approved: rain and night street. (v5.20: rain and wet paving; buildings unchanged)
+- [~] Lobby grand but unfinished; barriers and sofas poor; bar should be better and feel connected. (v5.20: torchere, open bar screens, brass now reflects; sofas and barriers not remodelled yet)
+- [~] Approved: photo spot with a poster frame; seat-number brass plates; Kiln cup stacks, menu boards, guide sign. (v5.20: Screen 3 seats carry brass plates, without numbers yet)
 
 ## Sound
 - [ ] Sounds repetitive and bad; transitions sound bad.

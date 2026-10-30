@@ -119,24 +119,24 @@ def seat_club():
         m = 2 if lod == 0 else 1; ni = (2, 2, 2) if lod == 0 else (1, 1, 1)
         part('Plinth', lod, 'blackmetal', rb((0.66, W - 0.06, 0.08), 0.012, (1, 1, 1), 1), T(-0.06, 0, 0.04))
         if lod == 0: part('Underglow', 0, 'glow_warm', rb((0.008, W - 0.12, 0.006), 0.002, (1, 2, 1), 1), T(0.272, 0, 0.074), smooth=False)
-        part('Base', lod, 'leather_caramel', rb((0.80, W, 0.31), 0.05, (2, 2, 1) if lod == 0 else (1, 1, 1), m), T(-0.02, 0, 0.075 + 0.155))
-        if lod == 0: part('Footrest', 0, 'leather_caramel', rb((0.05, W - 0.07, 0.25), 0.022, (1, 2, 1), 2), T(0.375, 0, 0.235))
-        part('Cushion', lod, 'leather_caramel', rb((0.64, W - 0.04, 0.16), 0.06, ni, m, (2, 0.016) if lod == 0 else None), T(0.07, 0, top - 0.08))
+        part('Base', lod, 'leather_chocolate', rb((0.80, W, 0.31), 0.05, (2, 2, 1) if lod == 0 else (1, 1, 1), m), T(-0.02, 0, 0.075 + 0.155))
+        if lod == 0: part('Footrest', 0, 'leather_chocolate', rb((0.05, W - 0.07, 0.25), 0.022, (1, 2, 1), 2), T(0.375, 0, 0.235))
+        part('Cushion', lod, 'leather_chocolate', rb((0.64, W - 0.04, 0.16), 0.06, ni, m, (2, 0.016) if lod == 0 else None), T(0.07, 0, top - 0.08))
         if lod == 0: part('Welt', 0, 'leather_oxblood', lambda bm: tube(bm, rrect_path(0.32 - 0.017, (W - 0.04) / 2 - 0.017, 0.044, 0.0, 5), 0.0055), T(0.07, 0, top - 0.018))
         BH, BW = 0.72, W
         pivot = T(-0.3, 0, 0.40) @ RY(-20)
-        part('BackBody', lod, 'leather_caramel', rb((0.22, BW, BH), 0.07, (1, 2, 2) if lod == 0 else (1, 1, 1), m), pivot @ T(-0.06, 0, BH / 2))
+        part('BackBody', lod, 'leather_chocolate', rb((0.22, BW, BH), 0.07, (1, 2, 2) if lod == 0 else (1, 1, 1), m), pivot @ T(-0.06, 0, BH / 2))
         if lod == 0:
             for i in range(3):
-                part(f'Roll{i}', 0, 'leather_caramel', rb((0.11, BW - 0.08, 0.205), 0.05, (1, 3, 1), 2, (0, 0.015)), pivot @ T(0.075, 0, 0.12 + i * 0.185))
-            part('Headrest', 0, 'leather_caramel', rb((0.13, BW - 0.2, 0.17), 0.06, (1, 3, 1), 2, (0, 0.016)), pivot @ T(0.085, 0, 0.66))
+                part(f'Roll{i}', 0, 'leather_chocolate', rb((0.11, BW - 0.08, 0.205), 0.05, (1, 3, 1), 2, (0, 0.015)), pivot @ T(0.075, 0, 0.12 + i * 0.185))
+            part('Headrest', 0, 'leather_chocolate', rb((0.13, BW - 0.2, 0.17), 0.06, (1, 3, 1), 2, (0, 0.016)), pivot @ T(0.085, 0, 0.66))
 
 
 def arm_club():
     for lod in (0, 1):
         m = 2 if lod == 0 else 1
         part('Plinth', lod, 'blackmetal', rb((0.66, 0.12, 0.08), 0.01, (1, 1, 1), 1), T(-0.06, 0, 0.04))
-        part('Body', lod, 'leather_caramel', rb((0.80, 0.15, 0.51), 0.045, (2, 1, 2) if lod == 0 else (1, 1, 1), m), T(-0.02, 0, 0.075 + 0.255))
+        part('Body', lod, 'leather_chocolate', rb((0.80, 0.15, 0.51), 0.045, (2, 1, 2) if lod == 0 else (1, 1, 1), m), T(-0.02, 0, 0.075 + 0.255))
         part('Top', lod, 'walnut', rb((0.86, 0.17, 0.035), 0.012, (3, 1, 1), m), T(-0.01, 0, 0.6025))
         if lod == 0:
             part('Band', 0, 'brass', rb((0.866, 0.176, 0.012), 0.004, (3, 1, 1), 1), T(-0.01, 0, 0.579))

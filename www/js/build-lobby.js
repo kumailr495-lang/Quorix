@@ -53,9 +53,10 @@ export function buildLobby(ctx) {
   for (let x = -12; x <= 12; x += 4) L.spot(x, 0.3, 19.2, '#ffb87a', 2.2, 6, 'h', [0, 1, 0.1], 25, 60);   // floor uplights along the glass front
   for (const z of [2.5, 18.5]) L.spot(13.1, H - 0.4, z, '#ffc68a', 5, 8, 'h', [0.4, -1, 0], 18, 50);
   L.ambient('#ffd7ad', '#5a4236', 0.13, 'h');
-  // ---------- centre island: eight banquette segments round a tree planter on a deco rug ----------
+  // ---------- centre island: eight banquette segments round a deco torchere (v5.20: replaces the low-poly tree) on a deco rug ----------
   for (let i = 0; i < 8; i++) placeAsset(room, 'banquette_seg', 0, 0, 10, (i + 0.5) / 8 * PI * 2);
-  placeAsset(room, 'planter_tree', 0, 0, 10, 0.4); room.col(-2.3, 7.7, 2.3, 12.3); L.occluder(-2.3, 7.7, 2.3, 12.3, 0, 0.9, 0.35);
+  placeAsset(room, 'torchere_deco', 0, 0, 10, 0, { glowK: 1.0 });   // opal bowl glows; it washes the ceiling under the chandelier ring
+  L.spot(0, 3.3, 10, '#ffd6a2', 9, 9, 'h', [0, 1, 0], 45, 80); L.point(0, 3.05, 10, '#ffd9a8', 1.6, 6, 'h'); room.col(-2.3, 7.7, 2.3, 12.3); L.occluder(-2.3, 7.7, 2.3, 12.3, 0, 0.9, 0.35);
   for (let i = 0; i < 8; i++) { const a = (i + 0.5) / 8 * PI * 2, sx = Math.sin(a), sz = Math.cos(a); sitSpot(world, 'lobby', 'sofa', sx * 1.98, 10 + sz * 1.98, a, 0.44, { x: sx * 2.95, z: 10 + sz * 2.95 }, 'sit.sofa'); }
   // ---------- fluted walnut columns ----------
   for (const [x, z] of [[-5.2, 3.6], [5.2, 3.6], [-7.2, 13.2], [7.2, 13.2]]) { placeAsset(room, 'column_fluted', x, 0, z); room.col(x - 0.45, z - 0.45, x + 0.45, z + 0.45); L.occluder(x - 0.4, z - 0.4, x + 0.4, z + 0.4, 0, 3, 0.3); L.point(x, H - 0.45, z, '#ffc888', 0.9, 4, 'h'); }
@@ -72,7 +73,8 @@ export function buildLobby(ctx) {
   world.posts.receptionist = { x: -12.45, z: 14.2, yaw: PI / 2, room: 'lobby' }; world.spots.tickets = { x: -10.6, z: 14.2 };
   // ---------- bar-cafe (north-west): walnut slat ceiling and screens, marble counter, velvet stools, deco armchairs, brass dish pendants ----------
   room.box(-14, 3.4, z0, -6.6, 3.5, 8.4, '#6b4630', { mat: MAT.slats, faces: 'ny px pz' });
-  for (const [x0, z0b, x1, z1] of [[-14, 8.46, -9.8, 8.54], [-6.54, z0, -6.46, 3.9]]) { room.box(x0, 0, z0b, x1, 2.5, z1, '#6b4630', { mat: MAT.slats }); room.col(x0, z0b - 0.02, x1, z1 + 0.02); }
+  // v5.20: half-height screens (1.1 m, brass capped) instead of 2.5 m slat walls, so the bar opens onto the lobby (phone feedback: "feel connected")
+  for (const [x0, z0b, x1, z1] of [[-14, 8.44, -9.8, 8.56], [-6.56, z0, -6.44, 3.9]]) { room.box(x0, 0, z0b, x1, 1.1, z1, '#6b4630', { mat: MAT.slats }); room.box(x0 - 0.015, 1.1, z0b - 0.015, x1 + 0.015, 1.13, z1 + 0.015, '#c9a061', { mat: MAT.brass, edge: 0 }); room.col(x0, z0b - 0.02, x1, z1 + 0.02); }
   placeAsset(room, 'planter_tall', -9.4, 0, 8.5); placeAsset(room, 'planter_tall', -6.5, 0, 4.3); room.col(-9.7, 8.2, -9.1, 8.8); room.col(-6.8, 4.0, -6.2, 4.6);
   for (const z of [1.8, 3.8, 5.8]) placeAsset(room, 'counter_module', -11.4, 0, z, PI / 2);
   room.col(-11.8, 0.8, -11.0, 6.8); L.occluder(-11.8, 0.8, -11.0, 6.8, 0, 1.1, 0.45);

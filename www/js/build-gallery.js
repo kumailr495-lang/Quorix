@@ -4,7 +4,7 @@
 // every opening framed (architrave, reveals, threshold) and signed (screen number, restroom pictogram, exit).
 import * as THREE from 'three';
 import { Room } from './room.js';
-import { MAT, M } from './geom.js';
+import { MAT, M, col } from './geom.js';
 import { GAL, TUN, WC, HALL_DOORS, hallById, DOOR_H } from './layout.js';
 import { screenSignTexture, restroomSignTexture, exitSignTexture, printTexture, PRINTS, signTexture } from './textures.js';
 import { placeAsset } from './assets.js';
@@ -121,41 +121,56 @@ export function buildTunnel(ctx) {
   world.tunnel = { room, halfW };
   return room;
 }
-// ---------- restrooms: privacy screen at the entrance, vanity with mirror, cubicles (and urinals in the men's), tiled walls ----------
+// ---------- restrooms (v5.20 redesign, docs/V6-ENVIRONMENT.md): large-format stone floor with real joints, glazed wall tile to 2.4 m under a
+// brass trim, a floating walnut vanity with vessel basins, brass taps and round back-lit mirrors, walnut cubicles, urinals with glass screens.
+// The gentlemen's is bottle green over dark stone, the ladies' warm blush over white calacatta. Fittings: tools/blender/fixtures.py.
 export function buildRestrooms(ctx) {
   const { world } = ctx;
   return Object.entries(WC).map(([key, r]) => {
     const room = new Room(key, { ceil: r.h, rect: [r.x0, r.z0, r.x1, r.z1], soft: 0.35 }), L = room.lights, H = r.h, s = r.side, xi = s < 0 ? r.x1 : r.x0;   // xi: wall shared with the gallery
-    const door = r.door, tileW = '#e8e4dc', tileD = '#2a2a2e';
-    room.flat(r.x0, r.z0, r.x1, r.z1, 0, true, '#3a3a3e', { mat: MAT.tile });
-    room.flat(r.x0, r.z0, r.x1, r.z1, H, false, '#e6e2da', { mat: MAT.plaster });
-    // walls: large-format tile to 2.4 m, paint above (the tile is a box 12 mm proud: no coplanar faces)
-    room.wall('z', xi, r.z0, r.z1, 0, H, s < 0 ? -1 : 1, '#d9d4cb', [[door.z - door.w / 2, door.z + door.w / 2, 2.4]], { mat: MAT.plaster, thick: 0.3 });
-    room.wall('z', s < 0 ? r.x0 : r.x1, r.z0, r.z1, 0, H, s < 0 ? 1 : -1, '#d9d4cb', [], { mat: MAT.plaster, thick: 0.3 });
-    room.wall('x', r.z0, r.x0, r.x1, 0, H, 1, '#d9d4cb', [], { mat: MAT.plaster, thick: 0.3 });
-    room.wall('x', r.z1, r.x0, r.x1, 0, H, -1, '#d9d4cb', [], { mat: MAT.plaster, thick: 0.3 });
-    const tile = (axis, c, a0, a1, d) => { const t = 0.012; if (axis === 'x') room.box(a0, 0, d > 0 ? c : c - t, a1, 2.4, d > 0 ? c + t : c, tileD, { mat: MAT.tile, faces: d > 0 ? 'pz py' : 'nz py' }); else room.box(d > 0 ? c : c - t, 0, a0, d > 0 ? c + t : c, 2.4, a1, tileD, { mat: MAT.tile, faces: d > 0 ? 'px py' : 'nx py' }); };
-    tile('x', r.z0, r.x0 + 0.012, r.x1 - 0.012, 1); tile('x', r.z1, r.x0 + 0.012, r.x1 - 0.012, -1); tile('z', s < 0 ? r.x0 : r.x1, r.z0, r.z1, s < 0 ? 1 : -1);
+    const door = r.door, men = s < 0, TILE = men ? '#244a3e' : '#c49890', STONE = men ? MAT.marble : MAT.calacatta, WARM = '#ffe4c2';
+    // floor: a dark grout bed and 600 x 1200 mm stone tiles, 6 mm thick with 3 mm joints (the bake shades the joints)
+    room.flat(r.x0, r.z0, r.x1, r.z1, 0, true, '#16161a', { mat: MAT.paint });
+    for (let x = r.x0; x < r.x1 - 0.05; x += 0.6) for (let z = r.z0; z < r.z1 - 0.05; z += 1.2) room.box(x + 0.0015, 0, z + 0.0015, Math.min(x + 0.6, r.x1) - 0.0015, 0.006, Math.min(z + 1.2, r.z1) - 0.0015, '#ffffff', { mat: STONE, faces: 'py px nx pz nz', edge: 0 });
+    room.flat(r.x0, r.z0, r.x1, r.z1, H, false, '#ebe5da', { mat: MAT.plaster });
+    // walls: glazed tile to 2.4 m (a box 12 mm proud: no coplanar faces), brass trim on top, warm plaster above
+    room.wall('z', xi, r.z0, r.z1, 0, H, s < 0 ? -1 : 1, '#e4ddd0', [[door.z - door.w / 2, door.z + door.w / 2, 2.4]], { mat: MAT.plaster, thick: 0.3 });
+    room.wall('z', s < 0 ? r.x0 : r.x1, r.z0, r.z1, 0, H, s < 0 ? 1 : -1, '#e4ddd0', [], { mat: MAT.plaster, thick: 0.3 });
+    room.wall('x', r.z0, r.x0, r.x1, 0, H, 1, '#e4ddd0', [], { mat: MAT.plaster, thick: 0.3 });
+    room.wall('x', r.z1, r.x0, r.x1, 0, H, -1, '#e4ddd0', [], { mat: MAT.plaster, thick: 0.3 });
+    const tile = (axis, c, a0, a1, d) => { const t = 0.012, u = 0.016;
+      if (axis === 'x') { room.box(a0, 0, d > 0 ? c : c - t, a1, 2.4, d > 0 ? c + t : c, TILE, { mat: MAT.walltile, faces: d > 0 ? 'pz' : 'nz' }); room.box(a0, 2.4, d > 0 ? c : c - u, a1, 2.415, d > 0 ? c + u : c, BRASS, { mat: MAT.brass, faces: d > 0 ? 'pz py ny' : 'nz py ny', edge: 0 }); }
+      else { room.box(d > 0 ? c : c - t, 0, a0, d > 0 ? c + t : c, 2.4, a1, TILE, { mat: MAT.walltile, faces: d > 0 ? 'px' : 'nx' }); room.box(d > 0 ? c : c - u, 2.4, a0, d > 0 ? c + u : c, 2.415, a1, BRASS, { mat: MAT.brass, faces: d > 0 ? 'px py ny' : 'nx py ny', edge: 0 }); } };
+    tile('x', r.z0, r.x0 + 0.016, r.x1 - 0.016, 1); tile('x', r.z1, r.x0 + 0.016, r.x1 - 0.016, -1); tile('z', s < 0 ? r.x0 : r.x1, r.z0, r.z1, s < 0 ? 1 : -1);
     tile('z', xi, r.z0, door.z - door.w / 2, s < 0 ? -1 : 1); tile('z', xi, door.z + door.w / 2, r.z1, s < 0 ? -1 : 1);
     // privacy screen in front of the entrance: walnut slats on a black frame
     const pz = door.z, ix = (d) => xi + s * d;   // ix(d): d metres into the restroom from the gallery wall
     room.box(Math.min(ix(1.55), ix(1.65)), 0, pz - 1.3, Math.max(ix(1.55), ix(1.65)), 2.4, pz + 1.3, WALNUT, { mat: MAT.slats }); room.col(Math.min(ix(1.55), ix(1.65)), pz - 1.3, Math.max(ix(1.55), ix(1.65)), pz + 1.3);
-    // vanity along the lobby-side wall: marble top, three basins (see the Kiln fixtures), back-lit mirror
-    const vx0 = Math.min(ix(2.4), ix(6.9)), vx1 = Math.max(ix(2.4), ix(6.9)), vz = r.z1 - 0.3;
-    room.box(vx0, 0.84, vz - 0.32, vx1, 0.88, r.z1 - 0.012, '#ffffff', { mat: MAT.marble }); room.box(vx0, 0.15, vz - 0.3, vx1, 0.84, r.z1 - 0.012, WALNUT, { mat: MAT.wood, faces: 'nz px nx' }); room.col(vx0, vz - 0.35, vx1, r.z1);
-    room.box(vx0 + 0.1, 1.1, r.z1 - 0.032, vx1 - 0.1, 2.2, r.z1 - 0.02, '#c9d2d8', { mat: MAT.chrome, faces: 'nz' });
-    room.glowBox(vx0 + 0.05, 2.22, r.z1 - 0.04, vx1 - 0.05, 2.25, r.z1 - 0.012, '#fff3e0', 1.6, 0, 'ny nz'); L.line(vx0 + 0.2, 2.15, r.z1 - 0.3, vx1 - 0.2, 2.15, r.z1 - 0.3, '#fff0dc', 2.4, 4, 'f', [0, -0.3, -1]);
-    // cubicles along the far wall: full-height lacquer partitions and doors
+    // floating vanity along the lobby-side wall: walnut cabinet with a warm light line under it, stone top, three vessel basins with brass taps,
+    // a round back-lit mirror over each basin
+    const vx0 = Math.min(ix(2.4), ix(6.9)), vx1 = Math.max(ix(2.4), ix(6.9)), zw = r.z1 - 0.012, vz = zw - 0.3;
+    room.box(vx0, 0.84, zw - 0.6, vx1, 0.88, zw, '#ffffff', { mat: STONE, faces: 'py nz px nx' }); room.box(vx0 + 0.02, 0.2, zw - 0.56, vx1 - 0.02, 0.84, zw, WALNUT, { mat: MAT.wood, faces: 'nz px nx ny' }); room.col(vx0, zw - 0.65, vx1, r.z1);
+    room.glowBox(vx0 + 0.08, 0.196, zw - 0.5, vx1 - 0.08, 0.2, zw - 0.47, WARM, 1.1, 0, 'ny'); L.line(vx0 + 0.15, 0.18, zw - 0.45, vx1 - 0.15, 0.18, zw - 0.45, WARM, 0.9, 3, 'f', [0, -1, 0]);
+    for (let i = 0; i < 3; i++) { const bx = vx0 + (i + 0.5) * (vx1 - vx0) / 3;
+      placeAsset(room, 'basin_vessel', bx, 0.88, vz - 0.03, 0); placeAsset(room, 'tap_brass', bx, 0.88, zw - 0.07, PI);
+      placeAsset(room, 'mirror_round', bx, 1.66, zw, PI, { glowK: 1.2 }); L.point(bx, 1.66, zw - 0.05, WARM, 0.45, 2.2, 'f'); }
+    L.line(vx0 + 0.2, 2.2, zw - 0.5, vx1 - 0.2, 2.2, zw - 0.5, '#fff0dc', 1.6, 4, 'f', [0, -0.5, -1]);   // face light from above the mirrors
+    // cubicles along the far wall: lacquer partitions to 2.25 m on a black rail, walnut doors with a brass pull and the occupancy light
     const nC = s < 0 ? 3 : 5, cw = 1.0, cd = 1.6, cx0 = s < 0 ? r.x0 + 0.012 : r.x1 - 0.012 - nC * cw, cz1 = r.z0 + 0.012 + cd;
-    for (let i = 0; i <= nC; i++) { const x = cx0 + i * cw; room.box(x - 0.02, 0.12, r.z0 + 0.012, x + 0.02, 2.1, cz1, '#3b2a22', { mat: MAT.lacquer }); }
-    for (let i = 0; i < nC; i++) { const x = cx0 + i * cw; room.box(x + 0.03, 0.12, cz1 - 0.02, x + cw - 0.03, 2.1, cz1 + 0.02, '#4a3328', { mat: MAT.lacquer }); room.box(x + cw - 0.18, 1.0, cz1 + 0.02, x + cw - 0.1, 1.06, cz1 + 0.05, BRASS, { mat: MAT.brass });
-      room.glowBox(x + cw - 0.2, 1.12, cz1 + 0.02, x + cw - 0.12, 1.16, cz1 + 0.024, '#3dff86', 1.2, 0, 'pz'); }
+    for (let i = 0; i <= nC; i++) { const x = cx0 + i * cw; room.box(x - 0.02, 0.12, r.z0 + 0.012, x + 0.02, 2.25, cz1, '#2c2220', { mat: MAT.lacquer }); }
+    room.box(cx0 - 0.02, 2.25, cz1 - 0.02, cx0 + nC * cw + 0.02, 2.29, cz1 + 0.025, '#161618', { mat: MAT.powder });
+    for (let i = 0; i < nC; i++) { const x = cx0 + i * cw; room.box(x + 0.03, 0.12, cz1 - 0.02, x + cw - 0.03, 2.22, cz1 + 0.02, WALNUT, { mat: MAT.wood });
+      room.box(x + cw - 0.16, 0.95, cz1 + 0.02, x + cw - 0.13, 1.25, cz1 + 0.05, BRASS, { mat: MAT.brass }); room.glowBox(x + cw - 0.22, 1.3, cz1 + 0.02, x + cw - 0.14, 1.34, cz1 + 0.024, '#3dff86', 1.2, 0, 'pz'); }
     room.col(cx0, r.z0, cx0 + nC * cw, cz1 + 0.05);
-    if (s < 0) { for (let i = 0; i < 4; i++) { const z = r.z0 + 2.6 + i * 0.85; room.box(r.x0 + 0.012, 0.55, z - 0.19, r.x0 + 0.38, 1.25, z + 0.19, '#f4f2ee', { mat: MAT.lacquer }); if (i < 3) room.box(r.x0 + 0.012, 0.6, z + 0.405, r.x0 + 0.55, 1.65, z + 0.445, '#3b2a22', { mat: MAT.lacquer }); }
-      room.col(r.x0, r.z0 + 2.3, r.x0 + 0.55, r.z0 + 5.6); }
-    // light: downlights, the mirror line, a warm cove over the vanity
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const x = r.x0 + (i + 0.5) * (r.x1 - r.x0) / 3, z = r.z0 + (j + 0.5) * (r.z1 - r.z0) / 2; room.box(x - 0.08, H - 0.012, z - 0.08, x + 0.08, H - 0.002, z + 0.08, '#fff6ea', { glow: true, faces: 'ny' }); L.spot(x, H - 0.1, z, '#fff0dc', 6.5, 7, 'f', [0, -1, 0], 25, 65); }
-    L.ambient('#fff4e6', '#8a8580', 0.18, 'f');
+    // urinals with dark glass privacy screens (brass capped)
+    if (men) { for (let i = 0; i < 4; i++) { const z = r.z0 + 2.6 + i * 0.85; placeAsset(room, 'urinal', r.x0 + 0.012, 0, z, PI / 2);
+        if (i < 3) { room.box(r.x0 + 0.012, 0.55, z + 0.405, r.x0 + 0.5, 1.55, z + 0.43, '#1c2226', { mat: MAT.glass }); room.box(r.x0 + 0.012, 1.55, z + 0.4, r.x0 + 0.5, 1.565, z + 0.435, BRASS, { mat: MAT.brass, edge: 0 }); } }
+      room.col(r.x0, r.z0 + 2.3, r.x0 + 0.5, r.z0 + 5.6); }
+    placeAsset(room, 'bin_brass', vx0 > xi ? vx1 + 0.35 : vx0 - 0.35, 0, zw - 0.3, 0);
+    // light: round downlights in white trims, the vanity's face light, the mirrors' halos
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const x = r.x0 + (i + 0.5) * (r.x1 - r.x0) / 3, z = r.z0 + (j + 0.5) * (r.z1 - r.z0) / 2;
+      placeAsset(room, 'downlight', x, H, z, 0, { glowK: 1.1, swap: { brass: [MAT.paint, col('#e9e3d8')] } }); L.spot(x, H - 0.1, z, '#fff0dc', 6.5, 7, 'f', [0, -1, 0], 25, 65); }
+    L.ambient('#fff4e6', '#8a8580', 0.16, 'f');
     room.tex(signTexture(s < 0 ? 'GENTLEMEN' : 'LADIES', 512, 96, { color: '#2a2622', weight: 600, size: 0.42, spacing: 0.2 }), xi + (s < 0 ? -0.015 : 0.015), 2.7, door.z, s < 0 ? -PI / 2 : PI / 2, 1.2, 0.22, { emit: 0, transparent: true });
     world.posts[key] = { x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2, room: key };
     return room;

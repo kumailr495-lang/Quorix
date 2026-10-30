@@ -49,7 +49,7 @@ export const NUM_IDS = 40;   // uP holds NUM_IDS x 3 vec4 (materials.js)
 // Kiln assets name their materials; the name picks a library entry and the tint (sRGB hex)
 export const NAMED = {
   velvet_teal: [1, '#1d5a56'], velvet_burgundy: [1, '#6e1424'], velvet_navy: [1, '#1e2c4a'], velvet_charcoal: [1, '#2d2f36'], velvet_mustard: [1, '#a77a25'], velvet_rose: [1, '#9a4f5a'],
-  leather_caramel: [8, '#8a5430'], leather_black: [8, '#1c1a1a'], leather_oxblood: [8, '#4e1418'],
+  leather_caramel: [8, '#8a5430'], leather_cognac: [8, '#6a3a1e'], leather_chocolate: [8, '#3b2216'], leather_black: [8, '#1c1a1a'], leather_oxblood: [8, '#4e1418'],
   walnut: [2, '#6b4630'], walnut_dark: [2, '#3e2618'], oak: [2, '#b08458'], slats_walnut: [17, '#6b4630'], fluted_walnut: [23, '#6b4630'], fluted_plaster: [23, '#d8cbb8'],
   brass: [24, '#c9a061'], bronze: [24, '#8a6440'], chrome: [14, '#e8e8e8'], blackmetal: [25, '#1c1c1f'], charcoal: [25, '#26262b'], steel: [4, '#9a9ca2'],
   marble_nero: [12, '#ffffff'], marble_calacatta: [31, '#ffffff'], porcelain: [29, '#ffffff'], wall_tile: [30, '#e8e4dc'], terrazzo: [3, '#ffffff'], granite: [11, '#3a3a3c'], lacquer_black: [15, '#141416'], lacquer_red: [15, '#8a1522'], lacquer_cream: [15, '#e9e1d2'],

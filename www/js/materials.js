@@ -70,6 +70,8 @@ void main() {
   #include <colorspace_fragment>
 }`;
 // ---------------- library-lit surfaces (v5.1): albedo + normal maps from library.js, baked light, room reflection probe ----------------
+// Instanced seats: iLh / iLf are the light at the seat (Cycles probe in a baked hall, measured on a 45-degree surface); v5.20 shades it by
+// direction (tops 1.25x, sides 0.5x, undersides 0.25x: the house lights are overhead), so rows read as solid furniture, not flat cut-outs.
 // The baked light has no direction, so the normal map shades it with a fixed "light from above" relief term and drives the reflection.
 // Reflections sample the room's own cube capture (world.js) with mip level by roughness, scaled by the local baked light so dark corners
 // stay dark and everything dims with the house lights. Velvet gets a rim sheen. Defines: USE_NMAP, USE_ENV (graphics quality).
@@ -89,7 +91,7 @@ void main() {
   vAlb = color; vUv = uv * vPB.w;
 #ifdef USE_INSTANCING
   vec3 n = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
-  float hemi = 0.55 + 0.45 * clamp(n.y * 0.6 + n.z * 0.5 + 0.3, 0.0, 1.0);
+  float hemi = 0.5 + n.y * (n.y > 0.0 ? 0.75 : 0.25);
   vLight = (iLh * uHouse + iLf * uFix) * occ * hemi + iLs * uScreen * occ * clamp(dot(n, vec3(0.0, 0.29, -0.96)) * 0.8 + 0.2, 0.06, 1.0);
   vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
 #else
@@ -105,7 +107,7 @@ void main() {
 }`;
 // material parameters come per vertex from uP (library.js PARAMS): vPA = rough, metal, normal strength, sheen; vPB = reflection, relief, abs, tiling
 const LIT_FRAG = COMMON_FRAG + `
-uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn;
+uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn; uniform float uWet; uniform sampler2D uNoise;
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
 #ifdef USE_LIGHTMAP
 uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; varying vec2 vLm;
@@ -138,6 +140,9 @@ void main() {
 #endif
   float NoV = clamp(dot(N, V), 0.02, 1.0);
   float rough = clamp(vPA.x + (0.5 - dot(t.rgb, vec3(0.33))) * 0.25, 0.03, 1.0);
+  float wet = uWet * smoothstep(0.7, 0.95, Ng.y);
+  if (wet > 0.0) { float pud = smoothstep(0.46, 0.64, texture2D(uNoise, vWP.xz * 0.11).g * 0.7 + texture2D(uNoise, vWP.xz * 0.37).b * 0.3);
+    alb *= mix(1.0, 0.5, wet); rough = mix(rough, mix(0.22, 0.03, pud), wet); uSpec = mix(uSpec, 1.8, wet); N = normalize(mix(N, Ng, wet * pud)); }
   float relief = clamp(1.0 + uRelief * dot(N - Ng, vec3(0.25, 0.9, 0.35)) * 1.6, 0.4, 1.6);
   vec3 col = alb * (1.0 - uMetal) * Lt * relief;
   col += alb * Lt * uSheen * pow(1.0 - NoV, 2.2) * 1.4;
@@ -302,7 +307,8 @@ void main() { vec3 V = normalize(cameraPosition - vWP); float f = pow(1.0 - abs(
   #include <colorspace_fragment>
 }`;
 // one set of per-room uniforms: house light level (1 = full), screen light colour, fixed lights multiplier, environment tint for sheen
-export function roomUniforms() { return { uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 } }; }
+// uWet: rain on up-facing surfaces (the street): darker, glossier paving with puddles
+export function roomUniforms() { return { uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
 export class Materials {
   constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; this._lit = new WeakMap(); }
   // one library material per room (and one for its instanced props): every material id draws in the same call (texture arrays)

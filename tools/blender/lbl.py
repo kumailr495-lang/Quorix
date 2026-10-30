@@ -7,7 +7,7 @@ from mathutils import Vector, Matrix
 
 # ------------------------------------------------------------------ materials (library keys; preview colours only)
 MAT_DEF = {
-    'leather_caramel': ((0.26, 0.10, 0.035), 0.45, 0.0), 'leather_oxblood': ((0.075, 0.008, 0.01), 0.45, 0.0),
+    'leather_caramel': ((0.26, 0.10, 0.035), 0.45, 0.0), 'leather_cognac': ((0.14, 0.045, 0.014), 0.45, 0.0), 'leather_chocolate': ((0.044, 0.016, 0.008), 0.45, 0.0), 'leather_oxblood': ((0.075, 0.008, 0.01), 0.45, 0.0),
     'leather_black': ((0.012, 0.011, 0.011), 0.42, 0.0), 'velvet_teal': ((0.012, 0.10, 0.09), 0.9, 0.0),
     'velvet_charcoal': ((0.026, 0.028, 0.035), 0.9, 0.0), 'walnut': ((0.15, 0.06, 0.03), 0.42, 0.0),
     'walnut_dark': ((0.05, 0.02, 0.01), 0.42, 0.0), 'brass': ((0.58, 0.36, 0.12), 0.28, 1.0), 'chrome': ((0.8, 0.8, 0.8), 0.08, 1.0),
@@ -15,6 +15,7 @@ MAT_DEF = {
     'plastic_black': ((0.009, 0.009, 0.01), 0.35, 0.0), 'rubber': ((0.01, 0.01, 0.01), 0.9, 0.0),
     'fabric_black': ((0.007, 0.007, 0.008), 0.95, 0.0), 'paint_black': ((0.006, 0.006, 0.007), 0.7, 0.0), 'lacquer_black': ((0.007, 0.007, 0.008), 0.16, 0.0),
     'glass': ((0.02, 0.025, 0.03), 0.04, 0.0), 'paint_cream': ((0.8, 0.74, 0.63), 0.75, 0.0),
+    'ceramic': ((0.8, 0.78, 0.74), 0.12, 0.0), 'mirror': ((0.9, 0.9, 0.9), 0.03, 1.0),
 }
 GLOW_DEF = {'glow_warm': ((1.0, 0.55, 0.24), 2.2), 'glow_blue': ((0.12, 0.42, 1.0), 3.0), 'glow_opal': ((1.0, 0.72, 0.45), 1.6), 'glow_white': ((1.0, 0.86, 0.68), 3.0)}
 
@@ -81,18 +82,23 @@ def rounded_box(bm, size, r, n_in=(2, 2, 2), m=2, crown=None):
     return faces
 
 
-def lathe(bm, profile, seg=24):
+def lathe(bm, profile, seg=24, fan=True):
     """Closed solid of revolution about +Z: profile = a closed loop of (radius, z) points (the last joins the first), so the result
-    is a manifold whose normals recalc_face_normals can point outward (open strips can end up facing inward and vanish)."""
+    is a manifold whose normals recalc_face_normals can point outward (open strips can end up facing inward and vanish).
+    A point on the axis (radius < 1 mm) becomes one centre vertex with a triangle fan, not a ring of zero-size faces (those overlapped
+    between parts sharing the axis and were flagged by check-world as coplanar). fan=False keeps the old ring (baked geometry)."""
     rings = []
     for (rad, z) in profile:
-        rings.append([bm.verts.new((rad * math.cos(2 * math.pi * k / seg), rad * math.sin(2 * math.pi * k / seg), z)) for k in range(seg)])
+        if fan and rad < 1e-3: rings.append(bm.verts.new((0.0, 0.0, z)))
+        else: rings.append([bm.verts.new((rad * math.cos(2 * math.pi * k / seg), rad * math.sin(2 * math.pi * k / seg), z)) for k in range(seg)])
     for i in range(len(rings)):
         a, b = rings[i], rings[(i + 1) % len(rings)]
+        if not isinstance(a, list) and not isinstance(b, list): continue
         for k in range(seg):
             k2 = (k + 1) % seg
-            if a[k] is b[k]: continue
-            bm.faces.new((a[k], a[k2], b[k2], b[k]))
+            if isinstance(a, list) and isinstance(b, list): bm.faces.new((a[k], a[k2], b[k2], b[k]))
+            elif isinstance(a, list): bm.faces.new((a[k], a[k2], b))
+            else: bm.faces.new((a, b[k2], b[k]))
 
 
 def disc(bm, rad, z0, z1, seg=20):

@@ -57,7 +57,7 @@ export class SwingDoor {
 }
 const PROBE_AT = { lobby: [0, 2.2, 9], gal: [0, 2.0, -12], street: [0, 2.0, 30], tunnel: [0, 1.6, -36], wcM: [-8, 1.6, -4], wcF: [8, 1.6, -4] };
 export function captureReflections(world, engine) {
-  if (!world.mats.defines.USE_ENV) return;
+  if (!('USE_ENV' in world.mats.defines)) return;   // the define's value is '' (falsy): v5.10 to v5.20 tested the value and never captured, so metals and mirrors were black
   const r = engine.renderer, scene = engine.scene, prevVis = new Set(world.vis);
   G.uEnvOn.value = 0;
   for (const key in world.rooms) {

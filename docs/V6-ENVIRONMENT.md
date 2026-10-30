@@ -65,3 +65,21 @@ The v5 renderer lights the building per vertex: no real shadows, no bounce light
 Blender Cycles into per-room light maps (real soft shadows, bounce colour, contact shadows under seats and furniture), in separate
 layers the game mixes live: house lights (dimmed for the film), fixed lights (step lights, signs, LED lines) and the screen's own light
 (tinted live by the picture). Rooms without a bake fall back to the vertex lighting.
+
+## What v5.20 built (2026-10-30)
+- **Light maps** (tools/bake/README.md): every room's shell is baked in Blender Cycles (house / fixed / screen layers, real soft shadows
+  and bounce); placed props are baked per vertex (fine flutes and cushions are too small for light-map texels); hall seats and arms get
+  Cycles-baked light probes. A geometry fingerprint makes a stale bake fall back to the old per-vertex light instead of lighting the wrong place.
+- **Hall seating** (tools/blender/seats.py): Screen 1 chocolate-leather power recliners with walnut-topped consoles and brass cup holders;
+  IMAX winged black-leather rockers with blue-ringed cup holders; Screen 3 teal velvet tip-up seats with moulded walnut shells, brass caps
+  and number plates.
+- **Hall identities**: Screen 1 deco carpet; IMAX acoustic panels on a 1.2 m module with shadow gaps, overhead speaker arrays, blue nosing;
+  Screen 3 stepped walnut dado with deco sconces (shielded: up and down light only), gold nosing; round downlights everywhere.
+- **Restrooms**: 600 x 1200 stone floor tiles with real joints, glazed wall tile under a brass trim, floating walnut vanity with vessel basins,
+  brass taps, round back-lit mirrors, walnut cubicles, urinals behind glass screens. Gentlemen's: bottle green over dark stone; ladies':
+  blush over calacatta.
+- **Lobby**: deco torchere centrepiece (replaces the low-poly tree), bar screens lowered to 1.1 m so the bar opens onto the lobby.
+- **Street**: night rain (one instanced draw) and wet, glossy paving with puddles reflecting the shop windows.
+- **Fixes found on the way**: room reflection probes were never captured since v5.1 (metal and mirrors rendered black); stadium risers and
+  aisle step sides were wound backwards (culled from the front); texture scales now follow each CC0 scan's physical size.
+

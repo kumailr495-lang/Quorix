@@ -42,6 +42,9 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   - `assets.js`: loads Kiln GLBs (`ASSET_LIST`), `placeAsset(room, name, x, y, z, yaw, opts)` stamps an asset into a room
     (Kiln +X becomes engine +Z), `assetGeometry` builds instancing geometry (hall seats and arms, two LODs).
   - `world.js`: builds rooms, bakes, sliding doors, nav grid, visibility, `captureReflections` (one 128 px cube per room).
+  - `lightmap.js` (v5.20): loads `www/bake/` (index, per-room GLB + PNG light maps + props vertex light + seat probes), checks each bake's
+    geometry fingerprint against the room as built, falls back to vertex light when stale. `room.js` keeps three accumulators: `acc`
+    (shell, light-mapped), `pacc` (placed props, per-vertex light), `gacc` (emitters). `rain.js`: street rain.
 - **Building**: `hallmath.js` (UNIC auditorium maths), `layout.js`, `build-lobby.js` (lobby, concourse, street),
   `build-passages.js`, `build-halls.js` (themes per screen, instanced seats/arms, curtains, screen, rails), `props.js` (older box kits
   still used for small items), `textures.js` (posters, signs, neon, menus, facades).
@@ -54,6 +57,10 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 ### `tools/`
 - `kiln/*.kiln.js` + `kiln/build.mjs`: prop sources for Kiln (https://github.com/instruktlabs/kiln). See `tools/kiln/README.md`.
 - `textures/gen.py`: the texture library (numpy + Pillow).
+- `bake/` (cloud only): `bake-all.sh` exports rooms from the game (`export.mjs` + `www/js/bake-export.js`) and bakes them in Blender
+  Cycles (`bake_room.py`) into `www/bake/`. Re-bake a room after changing its geometry or lights. See `tools/bake/README.md`.
+- `blender/` (cloud only): `seats.py` (the three hall seating families), `fixtures.py` (sconce, downlight, speaker array, torchere, urinal,
+  basin, tap, mirror), shared helpers in `lbl.py`. `blender --background --factory-startup --python tools/blender/seats.py -- --out www/models`.
 - `make-apk.py`: repacks the wrapper with `www/`, patches versionCode/Name and screenOrientation, signs v2 with `tools/keys/`.
   **Keep that key.** versionName must be 4 characters.
 - `run-tests.sh` (Node): `dev/test-logic.mjs` (hall maths, layout, director, i18n), syntax, `dev/lint-comments.mjs`.
@@ -82,8 +89,16 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - Colours in shaders are linear; tone mapping is `1 - exp(-c * exposure)`.
 - Keep total draw calls under about 100: each library material per room is one draw.
 - Never read pixels back synchronously from video frames on phones.
+- Shader defines are present-but-empty strings: test `'USE_ENV' in defines`, never `defines.USE_ENV` (that check hid reflections v5.1-v5.20).
+- Quads built by hand: wind them so the normal faces the viewer (risers face the screen); back-face culling hides the rest.
+- After changing a room's geometry or lights, re-bake it (`sh tools/bake/bake-all.sh <room>`); the console warns about stale bakes.
+- Blender lathes: put axis points on a centre vertex (lbl.py does), or parts sharing the axis overlap coplanar faces.
 
-## Current state (2026-10-30)
+## Current state (2026-10-30, later)
+- v5.20 in progress on branch `ccr-7bb5aa6a-upup1u`: Cycles light maps for every room, new per-hall seating and hall identities, real
+  restrooms, rain and wet street, reflections fixed (docs/V6-ENVIRONMENT.md, "What v5.20 built"). Not yet built into an APK; not seen on the phone.
+
+## State before v5.20 (2026-10-30)
 - v5.11 built (33 Kiln models, street rebuilt): v2 verified, same certificate as v4. See `docs/V5-RELEASE-NOTES.md`.
 - The user tested v5.10 on the phone (10 screenshots) and approved every idea listed below. Their full feedback and the status of
   each item: `docs/PHONE-FEEDBACK.md`. Work it in that file's order and tick items there.

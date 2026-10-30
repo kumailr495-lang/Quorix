@@ -6,6 +6,7 @@ import { buildWorld } from './world.js';
 import { texturesReady } from './library.js';
 import { loadAssets, ASSET_LIST, ASSETS } from './assets.js';
 import { loadBakes } from './lightmap.js';
+import { makeRain } from './rain.js';
 import { Player, EYE } from './player.js';
 import { Sound } from './sound.js';
 import { Shows } from './film.js';
@@ -34,6 +35,7 @@ async function boot() {
   mats.lightMaps = !lowG && !Q.get('nobake');
   const t0 = performance.now(); await Promise.all([loadAssets(ASSET_LIST), mats.lightMaps ? loadBakes() : null]); const world = await buildWorld(engine, mats, prog); await texturesReady();
   prog(0.97, 'people'); $('#ldStep').textContent = t('load.people'); await new Promise((r) => requestAnimationFrame(r));
+  const rain = makeRain(world.rooms.street, { count: lowG ? 1800 : 4000 }); world.rooms.street.U.uWet.value = 1;   // night rain and wet paving outside
   const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
   let ticket = null, room = 'lobby', talk = null, ui = null, shows = null, crowd = null, mode = 'menu', modal = false, held = null, markerPulse = 0, paused = false, played = false;
   const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(0, 18.2, 0);
@@ -146,7 +148,7 @@ async function boot() {
     document.body.classList.toggle('watching', mode === 'play' && !!player.seated && room.startsWith('hall') && shows.isOn(world.hallByKey(room).id));
     const r = mode === 'menu' ? 'lobby' : roomAt(player.x, player.z); room = r; world.setVisibility(r, player.x, player.z);
     actors.length = 1; for (const a of crowd.agents) if (a.path || a.sideTo) actors.push(a);
-    world.update(dt, actors, now);
+    world.update(dt, actors, now); if (rain && world.rooms.street.group.visible) rain.update(now / 1000, engine.camera);
     for (const h of world.halls) if (world.rooms[h.key].group.visible) h.updateLOD(engine.camera, false, engine.preset.seatLod);
     crowd.update(dt, now, player, world.vis);
     shows.update(dt, now, r, world.vis);
@@ -182,7 +184,7 @@ async function boot() {
   for (const h of world.halls) h.updateLOD(engine.camera, true, engine.preset.seatLod);
   // first frame: drop the loader, show the menu (or the language picker on the very first launch)
   clearInterval(tipT); prog(1, 'ready'); $('#ldStep').textContent = t('load.ready');
-  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); ui.showMenu(true, false); player.locked = true; if (!settings.lang) { ui.openLang(); } setTimeout(() => $('#loader') && $('#loader').remove(), 800); }, 120); });
+  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); player.locked = true; } if (!settings.lang) { ui.openLang(); } setTimeout(() => $('#loader') && $('#loader').remove(), 800); }, 120); });
   if (Q.get('play')) setTimeout(() => enterPlay(), 300);
   if (Q.get('bakeExport')) import('./bake-export.js').then((m) => { window.__lumiere.exportRoom = (k) => m.exportRoom(world, k); window.__lumiere.bakeReady = true; });   // tools/bake/export.mjs
   window.__lumiereAssets = ASSETS; window.__lumiere = { engine, world, player, shows, sound, ui, crowd, talk, mats, director, settings, buildMs: performance.now() - t0, get ticket() { return ticket; }, book: (tk) => book(tk), jumpToSeat, findSeat, sitSeat, startTalk, takeItem, enterPlay, toMenu, get mode() { return mode; }, debugCam: (c) => { dbgCam = c; }, ready: true };

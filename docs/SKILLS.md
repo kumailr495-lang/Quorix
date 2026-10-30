@@ -26,6 +26,9 @@ whether they would also run inside Termux.
 - Cycles renders and bakes on the CPU (4 cores). EEVEE renders through Mesa's software OpenGL (slow: ~30 s of shader compile per session).
 - No Blender MCP (a cloud session has no Blender window). The cc-blender skills' `mcp__blender__*` calls are replaced by headless scripts.
 - `gltf-transform` 4.5.1 (on PATH after the hook) inspects and validates GLBs.
+- v5.20 uses it for real: `tools/blender/seats.py` and `fixtures.py` model the hall seating and light fittings (the blender-modeling
+  recipes: bevelled rounded parts, overlapping joins, smooth shading); `tools/bake/bake_room.py` bakes every room's light in Cycles
+  (blender-web-3d `references/baked-lighting.md`, cc-blender blender-uv-texturing / blender-lighting).
 - Textures: `tools/textures/gen.py` (procedural baseline) then `tools/textures/fetch_cc0.py` (Poly Haven / ambientCG CC0 scans; provenance in
   `tools/textures/SOURCES.md`).
 

@@ -84,8 +84,10 @@ export function screenSignTexture(num, title, sub, kind) {
   g.strokeStyle = 'rgba(201,160,97,.85)'; g.lineWidth = 6; g.strokeRect(10, 10, w - 20, h - 20);
   g.fillStyle = acc; g.font = `600 ${Math.round(h * 0.78)}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = acc; g.shadowBlur = 18; g.fillText(String(num), 150, h * 0.56); g.shadowBlur = 0;
   g.fillStyle = 'rgba(201,160,97,.6)'; g.fillRect(290, 58, 3, h - 116);
-  g.textAlign = 'left'; g.fillStyle = '#f5ede3'; g.font = `600 ${Math.round(h * 0.25)}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(h * 0.03)}px`; g.fillText(title, 340, h * 0.4);
-  g.fillStyle = acc; g.font = `500 ${Math.round(h * 0.13)}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(h * 0.035)}px`; g.fillText(sub, 342, h * 0.7);
+  // title and subtitle shrink to fit the panel (v5.10 clipped 'CURVED PREMIUM · RECLINERS' at the frame)
+  const fit = (text, px, weight, ls, maxW) => { let s = px; do { g.font = `${weight} ${s}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(s * ls)}px`; s -= 2; } while (g.measureText(text).width > maxW && s > 10); };
+  g.textAlign = 'left'; g.fillStyle = '#f5ede3'; fit(title, Math.round(h * 0.25), 600, 0.12, w - 340 - 44); g.fillText(title, 340, h * 0.4);
+  g.fillStyle = acc; fit(sub, Math.round(h * 0.13), 500, 0.27, w - 342 - 44); g.fillText(sub, 342, h * 0.7);
   return tex(c);
 }
 function figure(g, x, y, s, dress) { g.beginPath(); g.arc(x, y - s * 0.62, s * 0.13, 0, 7); g.fill(); g.beginPath();

@@ -10,7 +10,7 @@ export const ASSETS = {};
 // (v5.20: the hall seats are the Blender families below; the v5.1 Kiln seats seat_standard, arm_standard, recliner, console_recliner and
 // seat_giant stay in tools/kiln and www/models but are no longer loaded)
 export const ASSET_LIST = ['column_fluted', 'column_fluted_5', 'counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
-  'seat_club', 'arm_club', 'seat_rocker', 'arm_rocker', 'seat_classic', 'arm_classic', 'sconce_deco', 'downlight', 'speaker_array', 'pendant_dish', 'stanchion', 'rope_velvet', 'poster_case', 'banquette_seg', 'planter_tall', 'planter_tree',
+  'seat_club', 'arm_club', 'seat_rocker', 'arm_rocker', 'seat_classic', 'arm_classic', 'torchere_deco', 'sconce_deco', 'downlight', 'speaker_array', 'urinal', 'basin_vessel', 'tap_brass', 'mirror_round', 'pendant_dish', 'stanchion', 'rope_velvet', 'poster_case', 'banquette_seg', 'planter_tall',
   'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'back_bar', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'chandelier_ring', 'door_padded'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
