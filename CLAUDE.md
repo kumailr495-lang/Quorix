@@ -61,6 +61,13 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `dev/check-world.mjs` (coplanar overlaps per room and per asset, nav reachability), `dev/view-glb.mjs` (multi-angle GLB review;
   `LIB=1` applies library textures). Playwright lives at `/opt/node-tools/node_modules/playwright` in the cloud machine.
 
+## Skills (use them on every task)
+- Project skills are checked in under `.claude/skills/` (Kiln, img2threejs, three.js workflows `threejs-*`, three.js API references
+  `threejs-api-*`, `animation-forge`). Sources, licences, why chosen and which skill for which job: `docs/SKILLS.md`.
+- `.claude/hooks/session-start.sh` installs Kiln 1.6.0 + acorn in cloud sessions and exports `KILN_WS` and `ACORN`.
+- Before a feature: `superpowers:brainstorming`; before a fix: `superpowers:systematic-debugging` plus the matching `threejs-*`
+  skill; before saying done: `superpowers:verification-before-completion`.
+
 ## Rules learned the hard way
 - Never put a `//` comment mid-line in the dense one-line code or inside GLSL strings: it swallows the rest. Run the lint.
 - Kiln GLBs load with **interleaved** position attributes: read them with `getX/getY/getZ`, not `.array`.
@@ -72,12 +79,15 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - Keep total draw calls under about 100: each library material per room is one draw.
 - Never read pixels back synchronously from video frames on phones.
 
-## Current state (2026-10-29)
+## Current state (2026-10-30)
 - v5.11 built (33 Kiln models, street rebuilt): v2 verified, same certificate as v4. See `docs/V5-RELEASE-NOTES.md`.
+- The user tested v5.10 on the phone (10 screenshots) and approved every idea listed below. Their full feedback and the status of
+  each item: `docs/PHONE-FEEDBACK.md`. Work it in that file's order and tick items there.
 
 ## Next steps
-1. Get the user's phone recording of v5.10; check frame time per graphics preset, light levels, any flicker, UI touch targets.
-2. Ideas waiting for approval (list them, don't build unasked): Kiln-modelled people with better faces and outfits; a Dolby-style
-   video-wall entrance tunnel; Kiln versions of the last box props (cup stacks, menu boards, guide sign);
-   popcorn and drinks the player carries to the seat with refill; trailers before the film; a photo spot with a poster frame;
-   seat-number brass plates; rain/night street views through the glass; a balcony in Screen 3.
+1. Work through `docs/PHONE-FEEDBACK.md` (performance first, then layout, NPCs, services, presentation).
+2. Approved ideas (build them): Kiln-modelled people with better faces and outfits; a Dolby-style video-wall entrance tunnel;
+   Kiln versions of the last box props (cup stacks, menu boards, guide sign); popcorn and drinks carried to the seat with refill;
+   trailers before the film; a photo spot with a poster frame; seat-number brass plates; rain/night street views through the
+   glass; a balcony in the IMAX screen.
+3. New ideas still need the user's approval: list them first.
