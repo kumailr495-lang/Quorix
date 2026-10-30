@@ -43,3 +43,25 @@ trench to its crossing aisle. Exit doors near each screen open back into the nor
   angles before anything is called done.
 - Phone: itel P65 (Unisoc T615, Mali-G57 MP1, 720 x 1600). Medium is the default; quality is not traded away, but one draw per room
   (texture arrays) and portal culling keep the GPU work in budget.
+
+## Each hall has its own identity (the user: "the models for the screens don't match the theatre's vibe")
+Sources: UNIC handbook (stray light 6.2, house lighting 7.1, recliner sizes 5.2: seat depth 900-1400 mm at rest, width 650-900 mm,
+recliners stand on four legs; tip-up seats hang between arm standards on the riser); IMAX (Wikipedia: GT screens up to 18 x 24 m,
+steep stadium seating, IMAX with Laser adds overhead and side speakers); Dolby Cinema (signature video-wall entrance);
+AMC / Cinemark / ODEON Luxe recliner halls (power recliners, side tables, reserved premium rows).
+
+| | SCREEN 1 · Curved Premium | SCREEN 2 · IMAX | SCREEN 3 · Standard |
+|---|---|---|---|
+| Feeling | a private members' club: warm, intimate, crafted | spectacle and precision: you disappear into the picture | the classic picture palace, modernised |
+| Screen | 14 m scope, curved (8 % chord), velvet curtain | 22 m, 1.90:1, wall to wall and nearly floor to ceiling, slight curve, no curtain (a cool wash light on the screen between shows) | 12 m flat, red velvet curtain |
+| Seats | power recliners in cognac / oxblood leather, chaise footrest, headrest; walnut side tables with brass trim and a reading light between pairs; warm LED under-glow | high-back rocker seats in black leather, slim steel arms with blue cup-holder rings; blue step lights | tip-up seats in teal velvet with walnut back shells, classic arm standards with cup holders |
+| Walls | walnut slats with recessed warm light lines, black near the screen (stray light) | charcoal acoustic panels on a 1.2 m module with shadow gaps, thin blue light lines, black near the screen | teal fabric panels over a dark wood dado, deco wall sconces shielded from the screen |
+| Ceiling | matte black with a star field | matte black, visible overhead speaker arrays (IMAX with Laser) | matte black with recessed house lights |
+| Floor | thick deco carpet, walnut-edged steps | dark charcoal carpet, black risers, blue nosing lights | burgundy carpet with gold nosing lights |
+| Signature | curved screen + curtain reveal, star ceiling | the vomitory entrance from the video tunnel, the balcony tier | the curtain, the sconces, symmetry |
+
+## Lighting is the biggest lever (blender-pro-workflow: "a great model under bad lighting renders worse than a mediocre model under great lighting")
+The v5 renderer lights the building per vertex: no real shadows, no bounce light, blotchy where walls are coarse. v5.20 bakes light in
+Blender Cycles into per-room light maps (real soft shadows, bounce colour, contact shadows under seats and furniture), in separate
+layers the game mixes live: house lights (dimmed for the film), fixed lights (step lights, signs, LED lines) and the screen's own light
+(tinted live by the picture). Rooms without a bake fall back to the vertex lighting.
