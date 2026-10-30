@@ -7,7 +7,7 @@
 import { pathToFileURL } from 'node:url';
 const WWW = process.env.LUM_WWW ? pathToFileURL(process.env.LUM_WWW + '/').href : new URL('../../www/', import.meta.url).href, imp = (f) => import(WWW + f);
 const { SPECS, calc, makeHall, hallFloorY, hallSeats } = await imp('js/hallmath.js');
-const { HALLS, PASSAGES, RECTS, roomAt, DOOR_W, CONC, LOBBY } = await imp('js/layout.js');
+const { HALLS, PASSAGES, PORTALS, RECTS, roomAt, DOOR_W, CONC, LOBBY } = await imp('js/layout.js');
 const { Director } = await imp('js/react.js'), { HOUSE } = await imp('js/films.js');
 const { EN } = await imp('js/lang/en.js'), { ES } = await imp('js/lang/es.js'), { HI } = await imp('js/lang/hi.js'), { UR } = await imp('js/lang/ur.js');
 let fails = 0; const ok = (cond, msg) => { if (!cond) { fails++; console.log('  FAIL', msg); } return cond; };
@@ -43,6 +43,8 @@ for (const p of PASSAGES) for (const d of p.doors) {
   ok(inner === h.key && outer === p.key, `${p.key} door to ${d.hall}: roomAt gives ${outer} | ${inner}`);
 }
 ok(CONC.z1 === LOBBY.z0, 'concourse meets the lobby');
+// walking through any opening, the room under you is always one of the two rooms it joins (a third room there hides both: the v5.10 black flash)
+for (const p of PORTALS) for (let t = -1.2; t <= 1.2; t += 0.02) { const x = p.axis === 'x' ? p.x + t : p.x, z = p.axis === 'z' ? p.z + t : p.z, r = roomAt(x, z); if (r !== p.a && r !== p.b) { ok(false, `door ${p.a}|${p.b}: roomAt(${x.toFixed(2)}, ${z.toFixed(2)}) = ${r}`); break; } }
 console.log(`  ${keys.length} rooms, ${PASSAGES.reduce((n, p) => n + p.doors.length, 0)} hall doors`);
 
 section('director');

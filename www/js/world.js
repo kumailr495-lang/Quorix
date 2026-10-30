@@ -13,7 +13,7 @@ const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 export class SlideDoor {
   constructor(world, room, x, z, axis, width, height, o = {}) {
     this.x = x; this.z = z; this.axis = axis; this.w = width; this.open = 0; this.target = 0; this.reach = o.reach ?? 2.4; this.onToggle = o.onToggle; this.key = o.key; this.npcOnly = !!o.npcOnly;
-    this.group = new THREE.Group(); this.group.position.set(x, 0, z); this.group.rotation.y = axis === 'z' ? 0 : Math.PI / 2; room.group.add(this.group);
+    this.group = new THREE.Group(); this.group.position.set(x, 0, z); this.group.rotation.y = axis === 'z' ? 0 : Math.PI / 2; this.rooms = o.rooms || [room.key]; (o.parent || room.group).add(this.group);
     const half = width / 2, frameC = o.frame || '#2b2c30', mkLeaf = () => { const a = new Acc(), t = 0.04, fw = 0.05;
       a.add(boxGeo(half, fw, t), M(-half / 2, height - fw / 2, 0), frameC, { mat: MAT.metal }); a.add(boxGeo(half, fw, t), M(-half / 2, fw / 2, 0), frameC, { mat: MAT.metal });
       a.add(boxGeo(fw, height, t), M(-fw / 2, height / 2, 0), frameC, { mat: MAT.metal }); a.add(boxGeo(fw, height, t), M(-half + fw / 2, height / 2, 0), frameC, { mat: MAT.metal });
@@ -39,7 +39,7 @@ export function captureReflections(world, engine) {
     const room = world.rooms[key], h = world.hallByKey && world.hallByKey(key);
     const at = h ? [h.cfg.cx, h.cfg.rowY[h.cfg.cross.row] + 1.6, h.cfg.zs + h.cfg.cross.dDoor] : PROBE_AT[key] || [0, 2, 0];
     const rt = new THREE.WebGLCubeRenderTarget(128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }), cam = new THREE.CubeCamera(0.1, 80, rt);
-    cam.position.set(at[0], at[1], at[2]); world.setVisibility(key, at[0], at[2]); cam.update(r, scene);
+    cam.position.set(at[0], at[1], at[2]); world.setVisibility(key, at[0], at[2], true); cam.update(r, scene);
     room.U.uEnvMap.value = rt.texture; room.probe = { rt, at };
   }
   G.uEnvOn.value = 1; world.vis = prevVis;
@@ -57,7 +57,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   for (const h of world.halls) h.updateLOD({ position: { x: h.cfg.cx, z: h.cfg.zBack } }, true);
 
   // doors between concourse and passages, street door
-  for (const p of PASSAGES) { const d = new SlideDoor(world, world.rooms[p.key], (p.x0 + p.x1) / 2, CONC.z0 - 0.15, 'z', p.x1 - p.x0, 2.6, { solid: '#1c1d22', key: p.key, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(d); }
+  for (const p of PASSAGES) { const d = new SlideDoor(world, world.rooms[p.key], (p.x0 + p.x1) / 2, CONC.z0 - 0.15, 'z', p.x1 - p.x0, 2.6, { solid: '#1c1d22', key: p.key, rooms: [p.key, 'conc'], parent: engine.scene, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(d); }
   world.streetDoor = new SlideDoor(world, world.rooms.lobby, 0, 19.93, 'z', 3.3, 2.95, { npcOnly: true, key: 'street', reach: 2.6, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(world.streetDoor);
   // navigation
   const rects = ROOM_KEYS.filter((k) => k !== 'street').map((k) => RECTS[k]).concat(NAV_PASSAGES, [[-14, 20.0, 14, 25.4], [-1.5, 19.5, 1.5, 20.5]]);   // guests also walk the pavement and through the street door
@@ -67,10 +67,16 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   world.collidersNear = (x, z, out) => { out.length = 0; const seen = new Set(); for (let i = Math.floor((x - 1) / 2); i <= Math.floor((x + 1) / 2); i++) for (let j = Math.floor((z - 1) / 2); j <= Math.floor((z + 1) / 2); j++) { const l = B.get(key(i, j)); if (l) for (const c of l) if (!seen.has(c)) { seen.add(c); out.push(c); } } return out; };
   world.floorY = floorY; world.roomAt = roomAt;
   world.probe = (x, y, z) => { const r = world.rooms[roomAt(x, z)]; return r ? r.lights.probe(x, y, z) : null; };
-  world.setVisibility = (room, x, z) => { const v = visibleRooms(room, x, z); world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); };
+  // portal culling: a neighbour draws only while one of its openings is inside the camera's view and its door is not shut (v5.10 drew the
+  // lobby and the concourse behind a closed passage door: 115 draw calls). all = true: every neighbour (reflection captures)
+  const frustum = new THREE.Frustum(), pm = new THREE.Matrix4(), cam = engine.camera;
+  for (const p of PORTALS) { const w = (p.see || p.w) / 2, h = p.h || 3; p.box = p.axis === 'z' ? new THREE.Box3(new THREE.Vector3(p.x - w, -0.2, p.z - 0.4), new THREE.Vector3(p.x + w, h, p.z + 0.4)) : new THREE.Box3(new THREE.Vector3(p.x - 0.4, -0.2, p.z - w), new THREE.Vector3(p.x + 0.4, h, p.z + w)); }
+  const canSee = (p) => { if (p.solid) { const d = world.doors.find((q) => q.key === p.door); if (d && d.open < 0.03) return false; } return frustum.intersectsBox(p.box); };
+  world.setVisibility = (room, x, z, all = false) => { if (!all) { cam.updateMatrixWorld(); frustum.setFromProjectionMatrix(pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); }
+    const v = visibleRooms(room, x, z, all ? undefined : canSee); world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => v.has(k)); };
   world.update = (dt, actors, now) => { for (const d of world.doors) d.update(dt, actors); for (const h of world.halls) if (h.curtains) { const c = h.curtains; if (c.open !== c.target) { c.open += Math.sign(c.target - c.open) * Math.min(Math.abs(c.target - c.open), dt / 3.2); const e = c.open * c.open * (3 - 2 * c.open); for (const m of c.meshes) m.scale.x = 1 - 0.93 * e; } } };
   // reflection probes: one small cube capture per room (what the polished floors, brass and glass reflect), mip-filtered by roughness
   onProgress(0.96, 'reflections'); await texturesReady(); await frame(); captureReflections(world, engine);
-  world.setVisibility('lobby', 0, 15); onProgress(1, 'ready');
+  world.setVisibility('lobby', 0, 15, true); onProgress(1, 'ready');
   return world;
 }

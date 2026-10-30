@@ -23,26 +23,33 @@ const inR = (r, x, z) => x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3];
 export function roomAt(x, z) {
   for (const h of HALLS) if (inR(RECTS[h.key], x, z)) return h.key;
   for (const p of PASSAGES) if (inR(RECTS[p.key], x, z)) return p.key;
-  if (inR(RECTS.conc, x, z)) return 'conc'; if (inR(RECTS.lobby, x, z)) return 'lobby'; return z > 19 ? 'street' : 'lobby';
+  if (inR(RECTS.conc, x, z)) return 'conc'; if (inR(RECTS.lobby, x, z)) return 'lobby'; if (inR(RECTS.street, x, z)) return 'street';
+  // inside a doorway's wall thickness: the nearest room. v5.10 returned 'lobby' here, which hid the hall and passage around a
+  // player standing in a hall door (the black flash on the phone) and cut the film sound for the same moment
+  let best = 'lobby', bd = 1e9; for (const k of ROOM_KEYS) { const r = RECTS[k], dx = Math.max(r[0] - x, 0, x - r[2]), dz = Math.max(r[1] - z, 0, z - r[3]), d = dx * dx + dz * dz; if (d < bd) { bd = d; best = k; } }
+  return best;
 }
 export function floorY(x, z) { for (const h of HALLS) if (inR(RECTS[h.key], x, z)) return hallFloorY(h, x, z); return 0; }
 export const roomHeight = (k) => k === 'lobby' ? LOBBY.h : k === 'conc' ? CONC.h : k.startsWith('pass') ? 3.6 : k === 'street' ? 30 : hallByKey(k).ceil;
 // portals: openings between rooms (visibility, sound occlusion, navigation through wall thickness). `w` = opening width, `always` = see through at any distance
+// h = opening height, see = width seen through (the street is seen through the whole glass front, not just the door); solid doors hide what is behind them when shut
 export const PORTALS = [
-  { a: 'lobby', b: 'conc', x: 0, z: 0, w: OPEN.x1 - OPEN.x0, axis: 'z', always: true },
-  { a: 'lobby', b: 'street', x: 0, z: 20, w: 3.2, axis: 'z', always: true, door: 'street' },
-  { a: 'conc', b: 'passW', x: -12.9, z: CONC.z0 - 0.15, w: 2.8, axis: 'z', door: 'passW' },
-  { a: 'conc', b: 'passE', x: 12.9, z: CONC.z0 - 0.15, w: 2.8, axis: 'z', door: 'passE' },
+  { a: 'lobby', b: 'conc', x: 0, z: 0, w: OPEN.x1 - OPEN.x0, h: OPEN.h, axis: 'z', always: true },
+  { a: 'lobby', b: 'street', x: 0, z: 20, w: 3.2, see: LOBBY.x1 - LOBBY.x0, h: LOBBY.h, axis: 'z', always: true, door: 'street' },
+  { a: 'conc', b: 'passW', x: -12.9, z: CONC.z0 - 0.15, w: 2.8, h: 2.7, axis: 'z', door: 'passW', solid: true },
+  { a: 'conc', b: 'passE', x: 12.9, z: CONC.z0 - 0.15, w: 2.8, h: 2.7, axis: 'z', door: 'passE', solid: true },
 ];
-for (const p of PASSAGES) for (const d of p.doors) PORTALS.push({ a: p.key, b: H[d.hall].key, x: d.x, z: d.z, w: DOOR_W, axis: 'x', hallDoor: d.hall });
+for (const p of PASSAGES) for (const d of p.doors) PORTALS.push({ a: p.key, b: H[d.hall].key, x: d.x, z: d.z, w: DOOR_W, h: DOOR_H, axis: 'x', hallDoor: d.hall });
 // walkable strips through wall thickness (navigation only)
 export const NAV_PASSAGES = PORTALS.filter((p) => p.b !== 'street').map((p) => p.axis === 'z' ? [p.x - p.w / 2 + 0.05, p.z - 0.5, p.x + p.w / 2 - 0.05, p.z + 0.5] : [p.x - 0.5, p.z - p.w / 2 + 0.05, p.x + 0.5, p.z + p.w / 2 - 0.05]);
 export const portalDist = (a, b, x, z) => { let d = 1e9; for (const p of PORTALS) if ((p.a === a && p.b === b) || (p.a === b && p.b === a)) d = Math.min(d, Math.hypot(x - p.x, z - p.z)); return d; };
-// rooms to draw: the current room, plus neighbours seen through an opening that is near or always open (two hops for lobby <-> concourse <-> passage)
-export function visibleRooms(room, x, z) {
+// rooms to draw: the current room, plus neighbours seen through an opening (two hops for lobby <-> concourse <-> passage).
+// canSee(portal) is the renderer's test (opening inside the view, door not shut); within 1.5 m of an opening both sides always draw
+export function visibleRooms(room, x, z, canSee = () => true) {
   const v = new Set([room]), see = (r, depth) => { for (const p of PORTALS) { const o = p.a === r ? p.b : p.b === r ? p.a : null; if (!o || v.has(o)) continue; const dist = Math.hypot(x - p.x, z - p.z);
     if (o.startsWith('hall') && depth > 0) continue;   // light locks: a hall is only seen from its own passage
-    if (p.always || dist < (p.hallDoor ? 12 : 16)) { v.add(o); if (depth < 1 && !o.startsWith('hall')) see(o, depth + 1); } } };
+    if (!p.always && dist > 30) continue; if (dist > 1.5 && !canSee(p)) continue;
+    v.add(o); if (depth < 1 && !o.startsWith('hall')) see(o, depth + 1); } };
   see(room, 0); return v;
 }
 // people come in from the street and leave through it; the usher's guide stand; staff posts

@@ -11,6 +11,7 @@ await new Promise((ok) => srv.listen(0, '127.0.0.1', ok)); const port = srv.addr
 const spec = SHOTS ? JSON.parse(fs.readFileSync(SHOTS, 'utf8')) : { list: [{ name: 'spawn' }] };
 const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const VP = (process.env.VIEWPORT || '800x360').split('x').map(Number); const ctx = await b.newContext({ viewport: { width: VP[0], height: VP[1] }, deviceScaleFactor: +(process.env.DPR || 2), hasTouch: true, isMobile: true });
+if (!process.env.FRESH) await ctx.addInitScript(() => { try { localStorage.setItem('lumiere.settings.v5', JSON.stringify({ lang: 'en', graphics: 'medium', ...JSON.parse(localStorage.getItem('lumiere.settings.v5') || '{}') })); } catch (e) {} });   // FRESH=1: first launch (language picker)
 const p = await ctx.newPage(); const log = []; p.on('console', (m) => log.push(`[${m.type()}] ${m.text()}`)); p.on('pageerror', (e) => log.push(`[pageerror] ${e.message}`));
 const t0 = Date.now(); await p.goto(`http://127.0.0.1:${port}/index.html${spec.query || ''}`);
 try { await p.waitForFunction(() => window.__lumiere && window.__lumiere.ready, null, { timeout: 180000 }); } catch (e) { console.log('BOOT TIMEOUT'); console.log(log.slice(-30).join('\n')); await b.close(); srv.close(); process.exit(1); }

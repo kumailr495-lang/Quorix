@@ -4,7 +4,7 @@ export const DEFAULTS = { lang: null, graphics: 'medium', autoRes: true, sensiti
 export function loadSettings() {
   let s = {}; try { s = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { s = {}; }
   const out = { ...DEFAULTS, ...s };
-  if (!s.graphics) { const mem = navigator.deviceMemory || 4, cores = navigator.hardwareConcurrency || 4; out.graphics = mem <= 3 || cores <= 4 ? 'low' : mem >= 8 && cores >= 8 ? 'high' : 'medium'; }   // first launch: guess from the device
+  if (!s.graphics) { const mem = navigator.deviceMemory || 4, cores = navigator.hardwareConcurrency || 4; out.graphics = mem <= 3 || cores <= 4 ? 'low' : 'medium'; }   // first launch: guess from the device (High only when chosen)
   return out;
 }
 export function saveSettings(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }

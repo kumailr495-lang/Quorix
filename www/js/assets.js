@@ -14,10 +14,18 @@ const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> eng
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
   await Promise.all(names.map(async (n) => {
-    try { const g = await ld.loadAsync(base + n + '.glb'); ASSETS[n] = prepare(g.scene, n); } catch (e) { console.warn('asset ' + n + ' failed: ' + e.message); }
+    try { const g = await ld.loadAsync(base + n + '.glb'); await lodTiers(g); ASSETS[n] = prepare(g.scene, n); } catch (e) { console.warn('asset ' + n + ' failed: ' + e.message); }
     onEach(++done / names.length, n);
   }));
   return ASSETS;
+}
+// Kiln stores the lower detail tiers with MSFT_lod (they are not children in the scene graph) and GLTFLoader builds only the first
+// tier, so v5.1 to v5.11 had no LOD1 at all: every seat and arm beyond 7 m was an empty mesh. Build the other tiers next to it.
+async function lodTiers(g) {
+  const nodes = g.parser.json.nodes || [];
+  for (let i = 0; i < nodes.length; i++) { const ids = nodes[i].extensions && nodes[i].extensions.MSFT_lod && nodes[i].extensions.MSFT_lod.ids; if (!ids) continue;
+    let host = null; g.scene.traverse((o) => { const a = g.parser.associations.get(o); if (a && a.nodes === i) host = o; });
+    if (host && host.parent) for (const id of ids) host.parent.add(await g.parser.getDependency('node', id)); }
 }
 function prepare(scene, name) {
   scene.updateMatrixWorld(true); const parts = [], box = new THREE.Box3();
@@ -30,7 +38,7 @@ function prepare(scene, name) {
     const nm = named(mn) || { id: 0, tint: (o.material && o.material.color ? o.material.color.toArray() : [0.5, 0.5, 0.5]) };
     const c = o.material && o.material.color ? o.material.color.toArray() : [1, 1, 1], ei = o.material && o.material.emissiveIntensity != null ? o.material.emissiveIntensity : 1;
     const em = o.material && o.material.emissive ? o.material.emissive.toArray().map((v) => v * ei) : c;
-    parts.push({ geo, id: nm.id, tint: nm.tint, glow, glowColor: em.some((v) => v > 0) ? em : c, lod, name: o.name, matName: mn });
+    parts.push({ geo, id: nm.id, tint: nm.tint, glow, glowColor: em.some((v) => v > 0) ? em : c, lod, name: o.name.replace(/_\d+$/, ''), matName: mn });   // LOD tiers repeat names (loader adds _2)
     if (lod === 0) { geo.computeBoundingBox(); box.union(geo.boundingBox); }
   });
   return { name, parts, box, lods: Math.max(...parts.map((p) => p.lod)) + 1 };

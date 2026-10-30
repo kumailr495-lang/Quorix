@@ -138,12 +138,13 @@ function buildHall(ctx, h) {
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9, 9];
   seats.forEach((s, i) => { s.i = i; });
   const hall = { cfg: h, key: h.key, id: h.id, room, seats, meshes, theme: T, picGeo, patches, ptAt, curtains: null, seatLit: lit,
+    // seats near you use the detailed tier; a seat changes tier only 0.8 m past the line (no flicker while you stand near it)
     updateLOD(cam, force, far = 7) {
-      const px = cam.position.x, pz = cam.position.z; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.7) return; last = [px, pz];
-      const f2 = far * far;
+      const px = cam.position.x, pz = cam.position.z; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.5) return; last = [px, pz];
+      const fin = (far - 0.8) ** 2, fout = (far + 0.8) ** 2;
       for (const [list, ms, lt] of [[seats, meshes, lit], [arms, armMeshes, armLit]]) {
         const cnt = [0, 0];
-        for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, l = dx * dx + dz * dz < f2 ? 0 : 1, m = ms[l], k = cnt[l]++;
+        for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, d2 = dx * dx + dz * dz, l = s.lod = force ? (d2 < far * far ? 0 : 1) : s.lod === 1 ? (d2 < fin ? 0 : 1) : (d2 > fout ? 1 : 0), m = ms[l], k = cnt[l]++;
           tmp.position.set(s.x, s.y, s.z); tmp.rotation.y = s.yaw; tmp.updateMatrix(); m.setMatrixAt(k, tmp.matrix);
           const a = m.geometry.attributes; a.iLh.setXYZ(k, lt[i * 7], lt[i * 7 + 1], lt[i * 7 + 2]); a.iLf.setXYZ(k, lt[i * 7 + 3], lt[i * 7 + 4], lt[i * 7 + 5]); a.iLs.setX(k, lt[i * 7 + 6]); }
         ms.forEach((m, i) => { m.count = cnt[i]; m.instanceMatrix.needsUpdate = true; for (const n of ['iLh', 'iLf', 'iLs']) m.geometry.attributes[n].needsUpdate = true; });
@@ -161,7 +162,7 @@ function buildHall(ctx, h) {
     hall.curtains = { meshes: cms, open: 0, target: 0 };
   }
   const slate = slateTexture(h.name, 768, Math.round(768 / h.aspect)), picMat = mats.picMat(slate), pic = new THREE.Mesh(picGeo, picMat); pic.renderOrder = 1; room.add(pic);
-  hall.pic = pic; hall.picMat = picMat; hall.slate = slate; picMat.uniforms.uGain.value = 0.55;
+  hall.pic = pic; hall.picMat = picMat; hall.slate = slate; picMat.uniforms.uGain.value = 0.3;
   hall.zScreen = zs + sd; hall.screenY = cy; hall.curved = curved;
   return hall;
 }

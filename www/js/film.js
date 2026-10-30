@@ -34,8 +34,8 @@ export class Shows {
     this._slide(s);
   }
   _abort(id) { const s = this.s[id]; if (s.mode === 'user') { try { this.video.pause(); } catch (e) {} if (this.userHall === id) this.userHall = null; } this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'idle'; s.nextAuto = this.now + rnd(60, 120) * 1000; this._idle(s); this.crowd.clearAudience(id); }
-  _idle(s) { const h = s.hall; h.picMat.uniforms.map.value = h.slate; h.picMat.uniforms.uGain.value = 0.55; h.picMat.uniforms.uBox.value.set(0, 0, 1, 1); if (h.curtains) h.curtains.target = 0; }
-  _slide(s) { const h = s.hall, p = s.pre; h.picMat.uniforms.map.value = p.tex; h.picMat.uniforms.uGain.value = 0.9; h.picMat.uniforms.uBox.value.set(0, 0, 1, 1); }
+  _idle(s) { const h = s.hall; h.picMat.uniforms.map.value = h.slate; h.picMat.uniforms.uRaw.value = 0; h.picMat.uniforms.uGain.value = 0.3; h.picMat.uniforms.uBox.value.set(0, 0, 1, 1); if (h.curtains) h.curtains.target = 0; }
+  _slide(s) { const h = s.hall, p = s.pre; h.picMat.uniforms.map.value = p.tex; h.picMat.uniforms.uRaw.value = 0; h.picMat.uniforms.uGain.value = 0.75; h.picMat.uniforms.uBox.value.set(0, 0, 1, 1); }
   _fit(s, aspect) {   // letterbox / pillarbox the picture inside the screen
     const A = s.hall.cfg.aspect, b = s.hall.picMat.uniforms.uBox.value; if (aspect > A) { const hh = A / aspect; b.set(0, (1 - hh) / 2, 1, hh); } else { const ww = aspect / A; b.set((1 - ww) / 2, 0, ww, 1); }
   }
@@ -43,8 +43,8 @@ export class Shows {
     const s = this.s[id], h = s.hall; s.state = 'dimming'; s.phaseAt = this.now; if (h.curtains) h.curtains.target = 1; this.crowd.onShowPhase(id, 'dimming'); this.hooks.onBegin && this.hooks.onBegin(id);
     if (s.mode === 'user') {
       this.sound.startFilm(h.key, { video: this.video }); const v = this.video; try { v.currentTime = 0; } catch (e) {} const p = v.play(); if (p && p.catch) p.catch(() => { this.hooks.onError && this.hooks.onError(); this._abort(id); });
-      const show = () => { if (s.state !== 'dimming' && s.state !== 'playing') return; if (!this.vtex) { this.vtex = new THREE.VideoTexture(v); this.vtex.colorSpace = THREE.SRGBColorSpace; this.vtex.minFilter = THREE.LinearFilter; this.vtex.generateMipmaps = false; }
-        h.picMat.uniforms.map.value = this.vtex; h.picMat.uniforms.uGain.value = 1.55; this._fit(s, (v.videoWidth / v.videoHeight) || 16 / 9); s.state = 'playing'; s.phaseAt = this.now; this.director.startLive(id, this.now); this.hooks.onPicture && this.hooks.onPicture(id); };
+      const show = () => { if (s.state !== 'dimming' && s.state !== 'playing') return; if (!this.vtex) { const mip = this.engine.preset.detail > 0; this.vtex = new THREE.VideoTexture(v); this.vtex.colorSpace = THREE.SRGBColorSpace; this.vtex.generateMipmaps = mip; this.vtex.minFilter = mip ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter; this.vtex.anisotropy = mip ? 4 : 1; }   // mipmaps: no shimmer when the screen is far
+        h.picMat.uniforms.map.value = this.vtex; h.picMat.uniforms.uRaw.value = 1; h.picMat.uniforms.uGain.value = 1; this._fit(s, (v.videoWidth / v.videoHeight) || 16 / 9); s.state = 'playing'; s.phaseAt = this.now; this.director.startLive(id, this.now); this.hooks.onPicture && this.hooks.onPicture(id); };
       if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => show()); else v.addEventListener('playing', () => setTimeout(show, 200), { once: true });
     } else { s.house = makeHouseFilm(s.filmId, h.cfg.aspect); }
   }
@@ -59,7 +59,7 @@ export class Shows {
       if (s.state === 'idle' && s.auto && now > s.nextAuto) { s.mode = 'house'; s.filmId = PROGRAMME[id]; s.state = 'pending'; s.startAt = now + rnd(45, 75) * 1000; this.crowd.clearAudience(id); this.crowd.planAudience(id, Math.min(this.engine.preset.crowd, Math.round(h.seats.length * rnd(0.3, 0.6))), 0.35, 40000); this._slide(s); }
       else if (s.state === 'pending') { if (visible && now - (s._pd || 0) > 500) { s._pd = now; s.pre.draw(this.title(id), (s.startAt - now) / 1000, [t('kind.' + h.cfg.kind), h.cfg.name]); } if (now >= s.startAt - 8000) { s.state = 'preshow'; s.phaseAt = now; s.pre.draw(t('pre.soon'), null, [this.title(id)]); } }
       else if (s.state === 'preshow') { if (visible && now - (s._pd || 0) > 500) { s._pd = now; s.pre.draw('\u{1F4F5}  ' + (this.hooks.silenceText ? this.hooks.silenceText() : 'Silence your phone'), (s.startAt - now) / 1000, [this.title(id)]); } if (now >= s.startAt) this._begin(id); }
-      else if (s.state === 'dimming' && s.mode === 'house' && now - s.phaseAt > 3200) { s.house.start(now); s.house.draw(now); const p = h.picMat.uniforms; p.map.value = s.house.tex; p.uGain.value = 1.55; p.uBox.value.set(0, 0, 1, 1); s.state = 'playing'; s.phaseAt = now; this.director.startHouse(id, s.house, now); this.sound.startFilm(h.key, { house: s.filmId, t0: now }); this.hooks.onPicture && this.hooks.onPicture(id); }
+      else if (s.state === 'dimming' && s.mode === 'house' && now - s.phaseAt > 3200) { s.house.start(now); s.house.draw(now); const p = h.picMat.uniforms; p.map.value = s.house.tex; p.uRaw.value = 0; p.uGain.value = 1; p.uBox.value.set(0, 0, 1, 1); s.state = 'playing'; s.phaseAt = now; this.director.startHouse(id, s.house, now); this.sound.startFilm(h.key, { house: s.filmId, t0: now }); this.hooks.onPicture && this.hooks.onPicture(id); }
       else if (s.state === 'playing' && s.mode === 'house') { if (visible && now - (s._hd || 0) > 66) { s._hd = now; s.house.draw(now); } if (now - s.phaseAt > s.house.length * 1000) this._finish(id, true); }
       else if (s.state === 'ending' && now - s.phaseAt > 9000) { s.state = 'ended'; s.phaseAt = now; }
       else if (s.state === 'ended' && now - s.phaseAt > 25000) { s.state = 'idle'; s.booked = false; s.auto = true; s.nextAuto = now + rnd(50, 110) * 1000; this._idle(s); }

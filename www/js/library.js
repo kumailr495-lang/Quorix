@@ -64,8 +64,30 @@ export function libTextures(id, renderer) {
   const e = { a: prep(ld.load(base + key + '_a.jpg'), L.mode === 'abs'), n: prep(ld.load(base + key + '_n.jpg'), false) };
   cache.set(key, e); return e;
 }
+// ---- v5.20: every texture set in two texture arrays (albedo, normal), so one room draws in one call instead of one per material ----
+// Albedo layers are stored sRGB-encoded (hardware decode, correct filtering); 'rel' detail maps are linear data, so their bytes are
+// encoded on the way in and come back out of the sampler as the same linear values. Layers are resampled to one size.
+export const LAYERS = [...new Set(Object.values(LIB).map((L) => L.tex))];
+// per material id, three vec4: (rough, metal, normal strength, sheen), (reflection, relief, abs, 1 / metres per tile), (layer)
+export const PARAMS = (() => { const a = []; for (let id = 0; id < 32; id++) { const L = LIB[id] || LIB[0]; a.push(new THREE.Vector4(L.rough, L.metal, L.nstr ?? 0.6, L.sheen || 0), new THREE.Vector4(L.spec ?? 0.8, L.relief ?? 0.25, L.mode === 'abs' ? 1 : 0, 1 / L.mpt), new THREE.Vector4(LAYERS.indexOf(L.tex), 0, 0, 0)); } return a; })();
+let arrays = null;
+export function libArrays(renderer, size = 512, normals = true) {
+  if (arrays) return arrays;
+  const n = LAYERS.length, an = renderer ? Math.min(4, renderer.capabilities.getMaxAnisotropy()) : 1;
+  const mk = (srgb, fill) => { const d = new Uint8Array(size * size * 4 * n); for (let i = 0; i < d.length; i += 4) d.set(fill, i); const t = new THREE.DataArrayTexture(d, size, size, n);
+    t.format = THREE.RGBAFormat; t.type = THREE.UnsignedByteType; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.anisotropy = an; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.needsUpdate = true; return t; };
+  const enc = new Uint8Array(256); for (let i = 0; i < 256; i++) { const v = i / 255; enc[i] = Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); }
+  arrays = { a: mk(true, [enc[128], enc[128], enc[128], 255]), n: normals ? mk(false, [128, 128, 255, 255]) : null, size };
+  const rel = new Set(Object.values(LIB).filter((L) => L.mode === 'rel').map((L) => L.tex)), c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high';
+  const load = (url) => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('texture ' + url)); im.src = url; });
+  arrays.ready = Promise.all(LAYERS.flatMap((name, i) => [['a', arrays.a], ['n', arrays.n]].filter(([, T]) => T).map(async ([kind, T]) => {
+    try { const im = await load(base + name + '_' + kind + '.jpg'); g.clearRect(0, 0, size, size); g.drawImage(im, 0, 0, size, size); const px = g.getImageData(0, 0, size, size).data;
+      if (kind === 'a' && rel.has(name)) for (let k = 0; k < px.length; k += 4) { px[k] = enc[px[k]]; px[k + 1] = enc[px[k + 1]]; px[k + 2] = enc[px[k + 2]]; }
+      T.image.data.set(px, i * size * size * 4); } catch (e) { console.warn(e.message); } }))).then(() => { arrays.a.needsUpdate = true; if (arrays.n) arrays.n.needsUpdate = true; });
+  return arrays;
+}
 // wait until every texture used so far has decoded (so the first frame is not half-loaded)
-export function texturesReady() { const ps = []; for (const e of cache.values()) for (const t of [e.a, e.n]) if (!t.image) ps.push(new Promise((ok) => { const f = () => (t.image ? ok() : setTimeout(f, 30)); f(); })); return Promise.all(ps); }
+export function texturesReady() { const ps = []; for (const e of cache.values()) for (const t of [e.a, e.n]) if (!t.image) ps.push(new Promise((ok) => { const f = () => (t.image ? ok() : setTimeout(f, 30)); f(); })); if (arrays && arrays.ready) ps.push(arrays.ready); return Promise.all(ps); }
 // review tool (tools/dev/view-glb.mjs LIB=1): put library maps on a plain glTF scene as MeshStandardMaterial
 export async function applyLibrary(root, renderer) {
   setTexBase('/www/tex/');

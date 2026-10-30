@@ -28,7 +28,7 @@ async function boot() {
   const prog = (p, k) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; $('#ldPct').textContent = Math.round(p * 100) + '%'; if (k) $('#ldStep').textContent = k.startsWith('bake:') ? t('load.bake', { room: t('room.' + k.slice(5)) === 'room.' + k.slice(5) ? (hallByKey(k.slice(5)) || {}).name || k.slice(5) : t('room.' + k.slice(5)) }) : t(STEP[k] || 'load.ready'); };
   $('#ldTip').textContent = t('tips'); const tipT = setInterval(() => { $('#ldTip').textContent = t('tips'); }, 4000);
   try { await Promise.race([Promise.all([document.fonts.load('500 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) {}
-  const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low', mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG }); engine.applySettings(settings);
+  const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low', mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG, texSize: lowG ? 256 : 512 }); engine.applySettings(settings);
   const t0 = performance.now(); await loadAssets(ASSET_LIST); const world = await buildWorld(engine, mats, prog); await texturesReady();
   prog(0.97, 'people'); $('#ldStep').textContent = t('load.people'); await new Promise((r) => requestAnimationFrame(r));
   const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
@@ -127,7 +127,7 @@ async function boot() {
   addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (!$('#book').hidden) ui.closeBook(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) {} } });
   // ---------- frame loop ----------
   const fwd = new THREE.Vector3(); let last = performance.now(), frameN = 0, slowT = 0, lightT = 0, errT = -1e9, audT = 0, curFilmHall = null;
-  const actors = [player];
+  const actors = [player]; let dbgCam = null;
   function frame(now) {
     requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now; frameN++; G.uTime.value = now / 1000; const c0 = performance.now();
     try { step(dt, now); } catch (e) { if (now - errT > 5000) { errT = now; console.error('[lumiere] frame update failed (rendering anyway):', e); } }
@@ -136,6 +136,7 @@ async function boot() {
   function menuCam(now) { const k = now / 1000 * 0.045, cam = engine.camera; cam.position.set(Math.sin(k) * 6.5, 2.3 + Math.sin(k * 2.1) * 0.25, 10.5 + Math.cos(k) * 6); cam.lookAt(Math.sin(k + 1.2) * 2, 1.7, 7.5); player.x = cam.position.x; player.z = cam.position.z; }
   function step(dt, now) {
     if (mode === 'menu') menuCam(now); else player.update(dt);
+    if (dbgCam) { engine.camera.position.set(...dbgCam.p); engine.camera.lookAt(...dbgCam.t); }   // test tools only (window.__lumiere.debugCam)
     engine.setZoom(mode === 'play' && player.seated && !player.busy && room.startsWith('hall') ? 0.74 : 1, dt);
     document.body.classList.toggle('watching', mode === 'play' && !!player.seated && room.startsWith('hall') && shows.isOn(world.hallByKey(room).id));
     const r = mode === 'menu' ? 'lobby' : roomAt(player.x, player.z); room = r; world.setVisibility(r, player.x, player.z);
@@ -178,6 +179,6 @@ async function boot() {
   clearInterval(tipT); prog(1, 'ready'); $('#ldStep').textContent = t('load.ready');
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); ui.showMenu(true, false); player.locked = true; if (!settings.lang) { ui.openLang(); } setTimeout(() => $('#loader') && $('#loader').remove(), 800); }, 120); });
   if (Q.get('play')) setTimeout(() => enterPlay(), 300);
-  window.__lumiereAssets = ASSETS; window.__lumiere = { engine, world, player, shows, sound, ui, crowd, talk, mats, director, settings, buildMs: performance.now() - t0, get ticket() { return ticket; }, book: (tk) => book(tk), jumpToSeat, findSeat, sitSeat, startTalk, takeItem, enterPlay, toMenu, get mode() { return mode; }, ready: true };
+  window.__lumiereAssets = ASSETS; window.__lumiere = { engine, world, player, shows, sound, ui, crowd, talk, mats, director, settings, buildMs: performance.now() - t0, get ticket() { return ticket; }, book: (tk) => book(tk), jumpToSeat, findSeat, sitSeat, startTalk, takeItem, enterPlay, toMenu, get mode() { return mode; }, debugCam: (c) => { dbgCam = c; }, ready: true };
 }
 boot().catch((e) => { console.error(e); const m = $('#ldStep'); if (m) m.textContent = 'Error: ' + (e && e.message ? e.message : e); });
