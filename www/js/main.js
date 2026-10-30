@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Engine } from './engine.js';
 import { Materials, G } from './materials.js';
+const FOG_OUT = new THREE.Color(0x111724), FOG_IN = new THREE.Color(0x0b0b0e);
 import { buildWorld } from './world.js';
 import { texturesReady } from './library.js';
 import { loadAssets, ASSET_LIST, ASSETS } from './assets.js';
@@ -38,7 +39,7 @@ async function boot() {
   const rain = makeRain(world.rooms.street, { count: lowG ? 1800 : 4000 }); world.rooms.street.U.uWet.value = 1;   // night rain and wet paving outside
   const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
   let ticket = null, room = 'lobby', talk = null, ui = null, shows = null, crowd = null, mode = 'menu', modal = false, held = null, markerPulse = 0, paused = false, played = false;
-  const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw);   // v7: you arrive outside, at the kerb
+  const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw, PLAYER_START.pitch);   // v7: you arrive outside, across the street
   player.onStep = (s) => sound.step(s, /hall|pass/.test(room));
   const dist = (n) => Math.hypot(n.x - player.x, n.z - player.z), hallOf = (tk) => world.hallById(tk.hall), seatOf = (tk) => hallOf(tk).seats.find((s) => s.id === tk.seat);
   // ---------- hall audibility: continuous, from where you stand (in the hall, at its padded doors in the gallery, in the tunnel to the IMAX) ----------
@@ -129,7 +130,7 @@ async function boot() {
   addEventListener('pointerdown', () => sound.unlock(), { capture: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } });
   // ---------- flow: menu (live flythrough) <-> play; Android back button opens the pause menu ----------
-  function enterPlay() { if (mode === 'play') return; ui.fade(1, 0.35); setTimeout(() => { mode = 'play'; ui.showMenu(false); player.locked = false; if (!played) { played = true; player.place(PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw); ui.toast(t('toast.welcome'), 2600); } ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) {} }, 380); }
+  function enterPlay() { if (mode === 'play') return; ui.fade(1, 0.35); setTimeout(() => { mode = 'play'; ui.showMenu(false); player.locked = false; if (!played) { played = true; player.place(PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw, PLAYER_START.pitch); ui.toast(t('toast.welcome'), 2600); } ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) {} }, 380); }
   function toMenu() { mode = 'menu'; player.locked = true; ui.showMenu(true, played); talk.close(); }
   addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (!$('#book').hidden) ui.closeBook(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) {} } });
   // ---------- frame loop ----------
@@ -147,6 +148,9 @@ async function boot() {
     engine.setZoom(mode === 'play' && player.seated && !player.busy && room.startsWith('hall') ? 0.74 : 1, dt);
     document.body.classList.toggle('watching', mode === 'play' && !!player.seated && room.startsWith('hall') && shows.isOn(world.hallByKey(room).id));
     const r = mode === 'menu' ? 'lobby' : roomAt(player.x, player.z); room = r; world.setVisibility(r, player.x, player.z);
+    // distance fog (v7, the user's performance list): outside, a night rain haze softens the street and the buildings opposite; indoors the
+    // fog stays far away (no visible effect). One smoothstep in every material's shader, no extra pass.
+    { const out = r === 'street', k = 1 - Math.exp(-dt * 1.5); G.uFogNear.value += ((out ? 9 : 45) - G.uFogNear.value) * k; G.uFogFar.value += ((out ? 70 : 150) - G.uFogFar.value) * k; G.uFogColor.value.lerp(out ? FOG_OUT : FOG_IN, k); }
     actors.length = 1; for (const a of crowd.agents) if (a.path || a.sideTo) actors.push(a);
     world.update(dt, actors, now); if (rain && world.rooms.street.group.visible) rain.update(now / 1000, engine.camera);
     for (const h of world.halls) if (world.rooms[h.key].group.visible) h.updateLOD(engine.camera, false, engine.preset.seatLod);

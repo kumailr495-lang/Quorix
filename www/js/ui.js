@@ -70,11 +70,13 @@ export class UI {
     const scr = document.createElement('div'); scr.className = 'scr'; scr.innerHTML = '<span></span>'; scr.firstChild.textContent = t('book.screen').toUpperCase(); if (c.kind === 'imax') scr.style.margin = '0 1% 10px'; m.appendChild(scr);
     const cols = c.perRow, curve = c.rowR ? (u) => (c.rowR - Math.sqrt(c.rowR * c.rowR - u * u)) * 9 : () => 0;
     const body = $('#book .sh-body'), avail = body.clientHeight - 64, sh = Math.max(9, Math.min(22, avail / (c.rows + 0.7) - 3)); m.style.setProperty('--sh', sh.toFixed(1) + 'px');   // fit every row without scrolling
-    for (let r = 0; r < c.rows; r++) { const row = document.createElement('div'); row.className = 'srow'; row.style.gridTemplateColumns = `12px repeat(${cols}, 1fr) 12px`; if (r === c.cross.row) row.style.marginTop = '8px';
+    const AIS = c.aisles || [], tpl = ['12px']; for (let col = 1; col <= cols; col++) { tpl.push('1fr'); if (AIS.includes(col)) tpl.push('0.7fr'); } tpl.push('12px');   // v7: the aisles show as gaps
+    const byId = new Map(h.seats.map((q) => [q.id, q]));
+    for (let r = 0; r < c.rows; r++) { const row = document.createElement('div'); row.className = 'srow'; row.style.gridTemplateColumns = tpl.join(' '); if (r === c.cross.row) row.style.marginTop = '8px';
       const lab = document.createElement('i'); lab.textContent = ROW_LETTERS[r]; row.appendChild(lab);
-      for (let col = 1; col <= cols; col++) { const id = ROW_LETTERS[r] + col, s = h.seats[r * cols + col - 1], b = document.createElement('button'), taken = (s.taken || s.npc) && !s.player;
+      for (let col = 1; col <= cols; col++) { const id = ROW_LETTERS[r] + col, s = byId.get(id); if (!s) { row.appendChild(document.createElement('span')); continue; } const b = document.createElement('button'), taken = (s.taken || s.npc) && !s.player;
         b.className = 'seat' + (taken ? ' taken' : '') + (id === this.sel.seat ? ' sel' : ''); b.setAttribute('aria-label', `${ROW_LETTERS[r]}${col}`); const y = -curve(s.u); if (y) b.style.transform = `translateY(${y.toFixed(1)}px)`;
-        if (!taken) b.addEventListener('click', () => { this.sel.seat = id; this.sound.click(); this.buildBook(); }); row.appendChild(b); }
+        if (!taken) b.addEventListener('click', () => { this.sel.seat = id; this.sound.click(); this.buildBook(); }); row.appendChild(b); if (AIS.includes(col)) row.appendChild(document.createElement('span')); }
       const lab2 = lab.cloneNode(true); row.appendChild(lab2); m.appendChild(row); }
   }
   summary() {

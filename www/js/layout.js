@@ -37,7 +37,8 @@ export function roomAt(x, z) {
   let best = 'lobby', bd = 1e9; for (const k of ROOM_KEYS) { const r = RECTS[k], dx = Math.max(r[0] - x, 0, x - r[2]), dz = Math.max(r[1] - z, 0, z - r[3]), d = dx * dx + dz * dz; if (d < bd) { bd = d; best = k; } }
   return best;
 }
-export function floorY(x, z) { for (const h of HALLS) if (inR(RECTS[h.key], x, z)) return hallFloorY(h, x, z); return 0; }
+export const ROAD = { z0: 31.45, z1: 41.4, y: -0.15 };   // the carriageway outside, 15 cm below the pavements (build-lobby.js PLAZA)
+export function floorY(x, z) { for (const h of HALLS) if (inR(RECTS[h.key], x, z)) return hallFloorY(h, x, z); return z > ROAD.z0 && z < ROAD.z1 ? ROAD.y : 0; }
 export const roomHeight = (k) => k === 'lobby' ? LOBBY.h : k === 'gal' ? GAL.h : k === 'tunnel' ? TUN.h : WC[k] ? WC[k].h : k === 'street' ? 30 : hallByKey(k).ceil;
 // portals: openings between rooms (visibility, sound, navigation through wall thickness). w = opening width, h = height, see = width seen
 // through (the glass front), door = key of the door that can shut it, solid = the shut door hides what is behind it
@@ -62,7 +63,7 @@ export function visibleRooms(room, x, z, canSee = () => true) {
 // people come in from the street and leave through it; the usher's ticket check; staff posts
 // v7: guests walk in along the pavement from either end of the street (and leave the same way); you arrive at the kerb (PLAYER_START)
 export const ENTRANCE = { x: 0, z: 21.5 }, STREET_SPAWN = [[-38, 29.2], [38, 29.2], [-38, 27.4], [38, 27.4], [-30, 28.6], [30, 28.6]];
-export const PLAYER_START = { x: 0.6, z: 30.9, yaw: 0 };
+export const PLAYER_START = { x: 0.6, z: 43.4, yaw: 0, pitch: 0.12 };   // across the street, facing the cinema
 export const USHER_POST = { x: 2.6, z: 1.4, yaw: 180 };
 export const hallOfSeat = (s) => hallById(s.hall);
 export const aisleX = (h, s) => h.cx + aisleU(h, s);   // where a viewer leaves the aisle for the row (the nearest one that reaches it)

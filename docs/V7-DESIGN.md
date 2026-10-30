@@ -118,3 +118,11 @@ Order: textures → Kiln models → plaza + entrance → lobby → corridor → 
 shows/NPC logic → restrooms → light-map re-bake of every room → renders → APK.
 Checks per step: `tools/run-tests.sh`, `check-world.mjs` (z-fights, reachability), `shoot.mjs` renders (software GPU,
 not the phone), comment lint. Rollback: every step is its own commit on `ccr-7bb5aa6a-upup1u`; `git revert <commit>`.
+
+## 10. What v7 built (2026-10-30)
+
+All of sections 1 to 7 except: the VIP hall keeps its chocolate leather club recliners (no grey pods or lamp tables yet), the panorama
+is a drawn night-and-planet picture (idea 4 would replace it with a photo), and the new props have one detail tier. Checks run: logic
+tests (hall maths with the new aisles and side vomitories: 416 IMAX seats, aisle steps <= 0.2 m, sightlines), syntax, comment lint,
+`check-world.mjs` (navigation 64/64; coplanar overlaps fixed where it found them), software-GPU renders of every space. Light maps
+re-baked in Cycles for every changed room. Not tested on the phone.

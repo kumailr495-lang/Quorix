@@ -68,7 +68,7 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
   return b;
 }
 // one merged geometry (per material groups, 'occ' attribute) for instancing, e.g. hall seats. extra: matrix applied after the Kiln->engine turn
-// over = per-hall material swaps keyed by mesh name, each with an optional library id and tint
+// over = per-hall material swaps keyed by mesh name or material name, each with an optional library id and tint
 export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null) {
   const A = ASSETS[name]; if (!A) return null; const acc = new Acc(), m = extra || new THREE.Matrix4();
   for (const p of A.parts) { if (p.lod !== lod) continue;
@@ -76,6 +76,7 @@ export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over
     // cheap baked occlusion for an instanced prop: undersides and low parts darker
     const g = p.geo.clone(), P = g.attributes.position, N = g.attributes.normal, occ = new Float32Array(P.count);
     for (let i = 0; i < P.count; i++) { const y = P.getY(i), ny = N.getY(i); occ[i] = (0.55 + 0.45 * Math.min(1, Math.max(0, (y - 0.05) / 0.7))) * (ny < -0.5 ? 0.6 : 1); }
-    const o = over && over[p.name]; g.setAttribute('occ', new THREE.BufferAttribute(occ, 1)); acc.add(g, m, o && o.tint ? o.tint : p.tint, { mat: o && o.id != null ? o.id : p.id, uv: 'mesh' }); }
+    // a per-hall swap matches the mesh name or the material name
+    const o = over && (over[p.name] || over[p.matName]); g.setAttribute('occ', new THREE.BufferAttribute(occ, 1)); acc.add(g, m, o && o.tint ? o.tint : p.tint, { mat: o && o.id != null ? o.id : p.id, uv: 'mesh' }); }
   return toGeometry(acc, 'occ');
 }

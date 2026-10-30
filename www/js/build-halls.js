@@ -13,7 +13,7 @@ import { slateTexture } from './textures.js';
 export const THEME = {   // I = curved premium: walnut slats, burgundy, star ceiling; II = IMAX: black with blue light lines (Dolby/IMAX style); III = standard: Everyman teal
   // v5.20 identities (docs/V6-ENVIRONMENT.md): nose = step nosing light; floorMat = row carpet; trim = downlight trim (null = brass);
   // panels = IMAX acoustic panels on a 1.2 m module; arrays = overhead speaker arrays; dado + sconces = Screen 3's picture-palace walls
-  I: { lodK: 1, seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#b8a796', floorMat: MAT.deco, riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true, nose: '#ffcf96', trim: null },
+  I: { lodK: 1, seatOver: { leather_chocolate: { id: MAT.leather, tint: col('#38393e') }, leather_oxblood: { id: MAT.leather, tint: col('#1d1e21') } }, seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#b8a796', floorMat: MAT.deco, riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true, nose: '#ffcf96', trim: null },
   II: { lodK: 0.62, seat: '#1e2c4a', wall: '#141418', wall2: '#0c0c0f', led: '#4c9dff', carpet: '#1a1d26', riser: '#0e0e11', curtain: null, ceil: '#0b0b0e', accent: '#4c9dff', cove: true, fascia: '#101014', nose: '#4c9dff', trim: '#111114', panels: '#2a2b31', arrays: true,
     imaxWall: true, pods: '#5a3a26' },   // v7: IMAX letters and staggered light bars on the side walls, curved walnut balcony pods (the user's IMAX photos)
   III: { lodK: 0.75, plates: true, seat: '#1d5a56', wall: '#18403f', wall2: '#0d1416', led: '#ffb066', carpet: '#4a1a22', riser: '#121215', curtain: '#6f1520', ceil: '#0e0e10', accent: '#ff8a3d', nose: '#ffc66e', trim: '#111114', dado: '#3e2618', sconces: true },
@@ -205,7 +205,7 @@ function buildHall(ctx, h) {
   // v5.20: each hall's own seating family (tools/blender/seats.py): club recliners and walnut consoles, IMAX rockers, classic tip-up seats
   const seats = hallSeats(h), seatName = { standard: 'seat_classic', curved: 'seat_club', imax: 'seat_rocker' }[h.kind], armName = { standard: 'arm_classic', curved: 'arm_club', imax: 'arm_rocker' }[h.kind];
   const flip = new THREE.Matrix4().makeRotationY(Math.PI);   // assets face +z; a seat with yaw 0 faces the screen (-z)
-  const seatGeo = [0, 1].map((l) => assetGeometry(seatName, l, flip, toGeometry, Acc)), armGeo = [0, 1].map((l) => assetGeometry(armName, l, flip, toGeometry, Acc));
+  const seatGeo = [0, 1].map((l) => assetGeometry(seatName, l, flip, toGeometry, Acc, T.seatOver)), armGeo = [0, 1].map((l) => assetGeometry(armName, l, flip, toGeometry, Acc, T.seatOver));   // v7: Screen 1 in charcoal-grey leather (the user's VIP photo)
   // arm positions: every seat boundary of every row (n + 1 per row), following curved rows like the seats do
   const arms = [];
   const armU = []; for (let c = 1; c <= h.perRow; c++) for (const du of [-h.seatW / 2, h.seatW / 2]) { const u = Math.round((h.seatU(c) + du) * 1000) / 1000; if (!armU.includes(u)) armU.push(u); }   // every seat edge, once

@@ -94,7 +94,14 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - After changing a room's geometry or lights, re-bake it (`sh tools/bake/bake-all.sh <room>`); the console warns about stale bakes.
 - Blender lathes: put axis points on a centre vertex (lbl.py does), or parts sharing the axis overlap coplanar faces.
 
-## Current state (2026-10-30, later)
+## Current state (2026-10-30, v7 in progress)
+- v7 on branch `ccr-7bb5aa6a-upup1u` (docs/V7-DESIGN.md; feedback status at the top of docs/PHONE-FEEDBACK.md): lobby and plaza rebuilt after
+  Allu Cinemas, Dolby-style corridor, IMAX gateway hall with a panorama wall, IMAX trench removed (side vomitories, 6 + 20 + 6 aisles), Screen 1
+  centre aisle, restrooms dressed, no automatic shows (audiences only for your booking), you start outside at the kerb, outdoor distance fog.
+  New Kiln props in `tools/kiln/` (chandelier_cascade, sofa_curve, table_lounge, pendant_ring, back_bar_onyx, bar_counter, poster_totem,
+  number_totem, planter_hedge, bollard_light, restroom_set), 3D letters from `tools/blender/letters.py`. Not yet seen on the phone.
+
+## Earlier state (2026-10-30, later)
 - v5.20 in progress on branch `ccr-7bb5aa6a-upup1u`: Cycles light maps for every room, new per-hall seating and hall identities, real
   restrooms, rain and wet street, reflections fixed (docs/V6-ENVIRONMENT.md, "What v5.20 built"). Not yet built into an APK; not seen on the phone.
 
@@ -104,6 +111,7 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   each item: `docs/PHONE-FEEDBACK.md`. Work it in that file's order and tick items there.
 
 ## Next steps
+0. Build v7 into an APK, get the user's phone feedback, then work the open items at the top of docs/PHONE-FEEDBACK.md.
 1. Work through `docs/PHONE-FEEDBACK.md` (performance first, then layout, NPCs, services, presentation).
 2. Approved ideas (build them): Kiln-modelled people with better faces and outfits; a Dolby-style video-wall entrance tunnel;
    Kiln versions of the last box props (cup stacks, menu boards, guide sign); popcorn and drinks carried to the seat with refill;

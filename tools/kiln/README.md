@@ -26,6 +26,15 @@ writes the GLB.
 | back_bar, drinks_fountain, candy_wall | bar and concession fittings | |
 | kiosk, pos_terminal | ticket kiosk, counter card terminal | |
 | bench_velvet, bin_brass, usher_podium, chandelier_ring, door_padded | lobby furniture and fittings | |
+| chandelier_cascade | v7 lobby hero chandelier | 44 swept light ribbons from an elliptical brass halo into a stacked wavy core (sweepProfile) |
+| sofa_curve, table_lounge | v7 lounge: curved channel-tufted sofa, fluted brass drum table | arc sweeps, alternating channel depth |
+| pendant_ring | v7 bar pendant, 5.2 m drop | brass ring with a glowing inner band |
+| back_bar_onyx, bar_counter | v7 bar: backlit onyx panels, shelves, turned bottles; stadium counter with fluted front | lathe bottles, extrudeProfile plan |
+| poster_totem, number_totem | v7 double-sided poster lightbox; Dolby-style fluted-glass screen-number totem | the engine lays the poster / number on them |
+| planter_hedge, bollard_light | v7 plaza planter with a clipped hedge (leaf clumps), turned bronze bollard light | |
+| restroom_set | v7 restroom fittings in one GLB (Dryer, Towel, Bin, Baby, Soap) | the engine stamps one fitting with placeAsset `only` + `shift` |
+
+v7 3D signage letters (LUMIÈRE, CINEMAS, IMAX) are made in Blender from OFL fonts: `tools/blender/letters.py`.
 
 Conventions: metres; Kiln's +X is the front of the prop (the engine turns it to face +Z); floor at Y = 0. Materials are named
 after `www/js/library.js` `NAMED` keys and carry no textures (the engine supplies them). Names starting with `glow` are emitters.

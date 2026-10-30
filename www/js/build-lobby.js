@@ -247,10 +247,22 @@ export function buildStreet(ctx) {
   row(-40, -22.4, 4, 1, 20.0, 0); row(22.4, 40, 3, 3, 20.0, 0);   // neighbours on either side of the cinema, in line with its front
   room.col(-40, 6, -22.0, 20.1); room.col(22.0, 6, 40, 20.1);
   // where you may walk: the forecourt and the pavement; the road is off limits (the kerb), and the street ends
-  room.col(-40, K, 40, K + 0.6); room.col(-41, 19, -40, K + 0.6); room.col(40, 19, 41, K + 0.6);
+  // v7: you arrive on the far pavement and cross the road on a zebra crossing (the only gap in the kerb), the whole front in view
+  room.col(-40, K, -2.2, K + 0.6); room.col(2.2, K, 40, K + 0.6); room.col(-41, 19, -40, PLAZA.far + 1); room.col(40, 19, 41, PLAZA.far + 1);
+  for (const s of [-1, 1]) room.col(s * 2.2 - 0.1, K, s * 2.2 + 0.1, PLAZA.road1 + 0.25);
+  room.col(-40, PLAZA.road1, -2.2, PLAZA.road1 + 0.2); room.col(2.2, PLAZA.road1, 40, PLAZA.road1 + 0.2); room.col(-40, PLAZA.far + 0.3, 40, PLAZA.far + 1.0);
+  room.tex(zebraTexture(), 0, -0.144, (K + PLAZA.road1) / 2 + 0.125, 0, 4.0, PLAZA.road1 - K - 0.25, { transparent: true, geo: new THREE.PlaneGeometry(4.0, PLAZA.road1 - K - 0.25).rotateX(-PI / 2) });
   // light: the perforated skin glows (emissive texture) and throws soft light on the forecourt; night ambient
   L.area(0, 12.7, 20.4, [21, 0, 0], [0, 3.2, 0], [0, 0, 1], '#ffd8a6', 2.2, 18, 'f', 6, 2);
   L.ambient('#3a4766', '#151820', 0.16, 'f');
   return room;
 }
 const H0 = () => LOBBY.h;
+// zebra crossing: white bars across the road, worn a little (transparent between the bars)
+function zebraTexture() {
+  const w = 128, h = 320, c = makeCanvas(w, h), g = c.getContext('2d'); g.clearRect(0, 0, w, h);
+  let s = 5; const R = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 10; i++) { const y = 6 + i * 31.5; g.fillStyle = 'rgba(232,230,222,0.92)'; g.fillRect(6, y, w - 12, 17);
+    for (let k = 0; k < 60; k++) { g.fillStyle = `rgba(30,32,36,${0.25 + R() * 0.5})`; g.fillRect(6 + R() * (w - 14), y + R() * 15, 1 + R() * 3, 1 + R() * 2); } }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
