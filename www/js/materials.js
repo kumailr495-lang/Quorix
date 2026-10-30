@@ -15,7 +15,7 @@ export function noiseTexture(size = 128) {   // 4 independent tileable value-noi
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; return t;
 }
 // shared by every custom shader
-export const G = { uEnvOn: { value: 1 }, uNoise: { value: null }, uExposure: { value: 1.0 }, uFogColor: { value: new THREE.Color(0x0b0b0e) }, uFogNear: { value: 45 }, uFogFar: { value: 150 }, uTime: { value: 0 }, uDetail: { value: 1 }, uBright: { value: 1 } };
+export const G = { uEnvOn: { value: 1 }, uReflK: { value: 0.45 }, uNoise: { value: null }, uExposure: { value: 1.0 }, uFogColor: { value: new THREE.Color(0x0b0b0e) }, uFogNear: { value: 45 }, uFogFar: { value: 150 }, uTime: { value: 0 }, uDetail: { value: 1 }, uBright: { value: 1 } };
 const COMMON_FRAG = `
 uniform float uExposure; uniform vec3 uFogColor; uniform float uFogNear; uniform float uFogFar; uniform float uBright;
 vec3 lumTone(vec3 c) { return 1.0 - exp(-c * uExposure * uBright); }
@@ -107,7 +107,7 @@ void main() {
 }`;
 // material parameters come per vertex from uP (library.js PARAMS): vPA = rough, metal, normal strength, sheen; vPB = reflection, relief, abs, tiling
 const LIT_FRAG = COMMON_FRAG + `
-uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn; uniform float uWet; uniform sampler2D uNoise;
+uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn; uniform float uReflK; uniform float uWet; uniform sampler2D uNoise;
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
 #ifdef USE_LIGHTMAP
 uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; varying vec2 vLm;
@@ -151,7 +151,7 @@ void main() {
 #ifdef USE_ENV
   vec3 R = reflect(-V, N);
   vec3 env = textureLod(uEnvMap, R, rough * 6.0).rgb;
-  col += env * envBRDF(F0, rough, NoV) * clamp(lumL * uEnvK, 0.0, 2.0) * uSpec * uEnvOn;
+  col += env * envBRDF(F0, rough, NoV) * clamp(lumL * uEnvK, 0.0, 2.0) * uSpec * uEnvOn * uReflK;
 #else
   col += alb * uMetal * Lt * (0.45 + 0.5 * pow(1.0 - NoV, 2.0));
   col += envBRDF(F0, rough, NoV) * lumL * uSpec * 0.35 * pow(max(reflect(-V, N).y, 0.0), 6.0);
@@ -191,12 +191,14 @@ void main() { vec4 t = texture2D(map, vUv); vec3 col = t.rgb * (uLight * uHouse 
 // A projected picture is shown as it was graded: no tone curve. three uploads video frames as raw sRGB bytes (it decodes them only inside
 // its own materials), so uRaw = 1 decodes them here; v5.10 skipped that and the picture was gamma-encoded twice (washed out, banded).
 // Slides and the house films are sRGB canvas textures the GPU decodes. Output is encoded to sRGB by hand (no tone map, no fog).
-const PIC_FRAG = `uniform sampler2D map; uniform float uGain; uniform float uRaw; uniform vec4 uBox; varying vec2 vUv;
+// v8: uHole = 1 while the film plays on the phone's video layer (videolayer.js): the picture area becomes a transparent hole the video shows
+// through, the masking around it stays black.
+const PIC_FRAG = `uniform sampler2D map; uniform float uGain; uniform float uRaw; uniform vec4 uBox; uniform float uHole; varying vec2 vUv;
 vec3 s2l(vec3 c) { return mix(c * 0.0773993808, pow(c * 0.9478672986 + 0.0521327014, vec3(2.4)), step(0.04045, c)); }
 vec3 l2s(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(0.41666)) - 0.055, step(0.0031308, c)); }
 void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0);
   vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb; c = uRaw > 0.5 ? s2l(c) : c;
-  gl_FragColor = vec4(l2s(clamp(c * uGain * inside, 0.0, 1.0)), 1.0);
+  gl_FragColor = uHole > 0.5 ? vec4(0.0, 0.0, 0.0, 1.0 - inside) : vec4(l2s(clamp(c * uGain * inside, 0.0, 1.0)), 1.0);
 }`;
 // ---------------- LED video wall (the Dolby-style tunnel): moving light ribbons in the film's colours, a fine LED pixel grid that fades out
 // with distance (no moire), or the film itself when your own video plays in the IMAX (uVid). Shown as graded: no tone curve.
@@ -327,11 +329,13 @@ export class Materials {
   glowMat(U) { return this._t(mk(GLOW_VERT, GLOW_FRAG, { ...G, uHouse: U.uHouse, uGlow: U.uGlow })); }
   texMat(map, U, light = [1, 1, 1], emit = 0, transparent = false) { const L = Array.isArray(light) ? new THREE.Color(...light) : light;
     return this._t(mk(TEX_VERT, TEX_FRAG, { ...G, map: { value: map }, uLight: { value: L }, uFixL: { value: new THREE.Color(0, 0, 0) }, uRep: { value: new THREE.Vector2(1, 1) }, uEmit: { value: emit }, uHouse: U ? U.uHouse : { value: 1 }, uOpacity: { value: 1 } }, { transparent, depthWrite: !transparent, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })); }
-  picMat(map) { return this._t(mk(TEX_VERT, PIC_FRAG, { ...G, uRep: { value: new THREE.Vector2(1, 1) }, map: { value: map }, uGain: { value: 1 }, uRaw: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } })); }
+  picMat(map) { return this._t(mk(TEX_VERT, PIC_FRAG, { ...G, uRep: { value: new THREE.Vector2(1, 1) }, map: { value: map }, uGain: { value: 1 }, uRaw: { value: 0 }, uHole: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } })); }
   glassMat(tint = 0x8fa3b8, alpha = 0.08) { if (!this._glass) this._glass = this._t(mk(GLASS_VERT, GLASS_FRAG, { ...G, uTint: { value: new THREE.Color(tint) }, uAlpha: { value: alpha } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide })); return this._glass; }
   peopleMat(face) { return this._t(mk(PEOPLE_VERT, PEOPLE_FRAG, { ...G, uFace: { value: face }, uEyes: { value: new THREE.Vector2(0, 3) }, uMouth: { value: new THREE.Vector2(0, 1) }, uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.6, 0.55, 0.5) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) }, uPal: { value: Array.from({ length: 8 }, () => new THREE.Color(0.5, 0.5, 0.5)) } })); }
   propMat(PU) { return this._t(mk(PROP_VERT, PROP_FRAG, { ...G, uAmb: PU.uAmb, uKey: PU.uKey, uKeyDir: PU.uKeyDir, uScreenL: PU.uScreenL })); }
   ledWallMat() { if (!this._led) this._led = this._t(mk(LED_VERT, LED_FRAG, { uTime: G.uTime, uA: { value: new THREE.Color('#0b3cff') }, uB: { value: new THREE.Color('#7fd2ff') }, uGain: { value: 1.0 }, uVid: { value: null }, uVidOn: { value: 0 }, uRaw: { value: 0 }, uLen: { value: new THREE.Vector2(9, 3) } })); return this._led; }
   crowdMat(U) { return this._t(mk(CROWD_VERT, CROWD_FRAG, { ...G, uHouse: U.uHouse, uScreen: U.uScreen })); }
   _t(m) { this.all.push(m); return m; }
+  // Settings > Reflections Off drops the reflection lookup from every lit material (one recompile; Soft/Full only scale it, G.uReflK)
+  setReflections(on) { if (('USE_ENV' in this.defines) === !!on) return; if (on) this.defines.USE_ENV = ''; else delete this.defines.USE_ENV; for (const m of this.all) { if (!m.defines || !m.name || !m.name.startsWith('lit-')) continue; if (on) m.defines.USE_ENV = ''; else delete m.defines.USE_ENV; m.needsUpdate = true; } }
 }

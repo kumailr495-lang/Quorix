@@ -1,14 +1,16 @@
 // LUMIERE v5 - pure-Node checks (no browser, no GPU; runs in Termux): sh tools/run-dev.sh tools/dev/test-logic.mjs
 //   halls    : seat counts, seats inside the hall, aisle steps <= 0.21 m, every row sees the bottom of the screen over the head in front
 //   layout   : every hall door sits in its hall's wall at the right floor level, rooms do not overlap, roomAt agrees on both sides of every opening
-//   director : house cues fire once and on time; live sound analysis stays quiet on steady sound, fires one scare on a real jump, respects cool-downs
+//   director : every open film's offline cue track (www/films/<id>.json) fires once and on time on the video clock, cues are spaced, a seek skips
+//              what was jumped over; live sound analysis stays quiet on steady sound, fires one scare on a real jump, respects cool-downs
 //   i18n     : es / hi / ur cover every English key with the same list shapes and {placeholders}
 // run through tools/run-dev.sh (it makes `three` resolvable); LUM_WWW points at the copied www/
 import { pathToFileURL } from 'node:url';
 const WWW = process.env.LUM_WWW ? pathToFileURL(process.env.LUM_WWW + '/').href : new URL('../../www/', import.meta.url).href, imp = (f) => import(WWW + f);
 const { SPECS, calc, makeHall, hallFloorY, hallSeats, inTrench } = await imp('js/hallmath.js');
 const { HALLS, HALL_DOORS, PORTALS, RECTS, roomAt, GAL, LOBBY, TUN } = await imp('js/layout.js');
-const { Director } = await imp('js/react.js'), { HOUSE } = await imp('js/films.js');
+const { Director } = await imp('js/react.js'), { CATALOG } = await imp('js/films.js');
+import fs from 'node:fs';
 const { EN } = await imp('js/lang/en.js'), { ES } = await imp('js/lang/es.js'), { HI } = await imp('js/lang/hi.js'), { UR } = await imp('js/lang/ur.js');
 let fails = 0; const ok = (cond, msg) => { if (!cond) { fails++; console.log('  FAIL', msg); } return cond; };
 const section = (s) => console.log('== ' + s);
@@ -52,10 +54,15 @@ for (const p of PORTALS) for (let t = -1.2; t <= 1.2; t += 0.02) { const x = p.a
 console.log(`  ${keys.length} rooms, ${HALL_DOORS.length} hall doors, ${PORTALS.length} openings`);
 
 section('director');
-{ // house films: every cue exactly once, never early, at most one frame late
-  for (const [id, film] of Object.entries(HOUSE)) { const got = []; const D = new Director((h, e) => got.push(e)); D.startHouse('X', film, 0); const dt = 1 / 30, end = Math.max(...film.cues.map((c) => c.t)) + 2;
-    for (let t = 0; t <= end; t += dt) D.update(dt, t * 1000, null, 0);
-    ok(got.length === film.cues.length, `${id}: ${got.length} of ${film.cues.length} cues fired`); for (let i = 0; i < got.length; i++) ok(got[i].t >= film.cues[i].t - 1e-9 && got[i].t - film.cues[i].t < dt * 1.5, `${id}: cue ${i} at ${got[i].t.toFixed(2)} s, wanted ${film.cues[i].t}`); }
+{ // open films: every cue exactly once, never early, at most one frame late, on the video's clock; at least 10 s apart; seeking skips
+  for (const f of CATALOG) { const tr = JSON.parse(fs.readFileSync(new URL('films/' + f.id + '.json', WWW), 'utf8')), cues = tr.cues.filter((c) => c.type !== 'end');
+    ok(tr.light && atob(tr.light).length === Math.floor(tr.duration * tr.hz) * 9 || Math.abs(atob(tr.light).length / 9 - tr.duration * tr.hz) < 3, `${f.id}: light track covers the film`);
+    ok(tr.end > 0 && tr.end <= tr.duration, `${f.id}: credits start inside the film (${tr.end} of ${tr.duration} s)`);
+    for (let i = 1; i < cues.length; i++) ok(cues[i].t - cues[i - 1].t >= 10, `${f.id}: cues ${i - 1} and ${i} only ${(cues[i].t - cues[i - 1].t).toFixed(1)} s apart`);
+    const got = []; let clock = 0; const D = new Director((h, e) => got.push(e)); D.startTrack('X', tr.cues, () => clock); const dt = 1 / 30, end = tr.end + 2;
+    for (let t = 0; t <= end; t += dt) { clock = t; D.update(dt, t * 1000, null, 0); }
+    ok(got.length === cues.length, `${f.id}: ${got.length} of ${cues.length} cues fired`); for (let i = 0; i < got.length; i++) ok(got[i].t >= cues[i].t - 1e-9 && got[i].t - cues[i].t < dt * 1.5, `${f.id}: cue ${i} at ${got[i].t.toFixed(2)} s, wanted ${cues[i].t}`);
+    if (cues.length > 1) { const g2 = []; let c2 = 0; const D2 = new Director((h, e) => g2.push(e)); D2.startTrack('X', tr.cues, () => c2); const t0 = cues[cues.length - 1].t - 0.5; c2 = t0; D2.seek('X'); for (let t = t0; t <= t0 + 1; t += dt) { c2 = t; D2.update(dt, t * 1000, null, 0); } ok(g2.length === 1, `${f.id}: after a seek only the next cue fires (${g2.length})`); } }
 }
 const live = (levelAt, seconds, lumAt = () => 0.3) => { const ev = []; const D = new Director((h, e) => ev.push(e)); D.startLive('X', 0); const dt = 1 / 30; for (let t = 0; t < seconds; t += dt) D.update(dt, t * 1000, levelAt(t), lumAt(t)); return ev; };
 let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);

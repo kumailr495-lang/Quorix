@@ -1,15 +1,16 @@
 // LUMIERE v5 - the film-event director: decides WHEN an audience reacts, so reactions follow the film instead of random timers.
-//  * house films: their authored cue tracks (films.js)
+//  * the open films: their offline cue tracks (films.js, tools/films/analyse.py), timed on the video's own clock (buffering and seeking safe)
 //  * your own video: live analysis of its sound (and picture brightness): a sudden loud hit after a quiet stretch = jump scare,
 //    a long loud passage that releases = climax, a sharp onset = gasp. Cool-downs keep it from firing every second.
 export class Director {
   constructor(onEvent) { this.onEvent = onEvent; this.tracks = {}; this.live = null; }
-  startHouse(hallId, film, now) { this.tracks[hallId] = { cues: film.cues.slice().sort((a, b) => a.t - b.t), i: 0, t0: now }; }
+  startTrack(hallId, cues, clock) { const tr = { cues: cues.filter((c) => c.type !== 'end'), i: 0, clock }; this.tracks[hallId] = tr; this.seek(hallId); }
+  seek(hallId) { const tr = this.tracks[hallId]; if (!tr) return; const k = tr.clock(); tr.i = 0; while (tr.i < tr.cues.length && tr.cues[tr.i].t <= k) tr.i++; }   // after a jump nobody reacts to what was skipped
   startLive(hallId, now) { this.live = { hall: hallId, short: -90, long: -60, loudFor: 0, quietFor: 0, loudFrom: -90, lastScare: -1e9, lastGasp: -1e9, lastClimax: -1e9, lum: 0, lumT: now, t0: now }; }   // the first 3 s settle the meters; cool-downs start open
   stop(hallId) { delete this.tracks[hallId]; if (this.live && this.live.hall === hallId) this.live = null; }
   // level(): current film loudness in dBFS; lum: picture brightness 0..1 (spill sampler)
   update(dt, now, level, lum) {
-    for (const id in this.tracks) { const tr = this.tracks[id], k = (now - tr.t0) / 1000; while (tr.i < tr.cues.length && tr.cues[tr.i].t <= k) { const c = tr.cues[tr.i++]; this.onEvent(id, { type: c.type, k: c.k, sfx: c.sfx, t: k }); } }
+    for (const id in this.tracks) { const tr = this.tracks[id], k = tr.clock(); while (tr.i < tr.cues.length && tr.cues[tr.i].t <= k) { const c = tr.cues[tr.i++]; if (k - c.t < 2) this.onEvent(id, { type: c.type, k: c.k, t: k }); } }
     const L = this.live; if (!L || level == null) return;
     const db = Math.max(-90, level); if (!L.primed) { L.primed = true; L.short = L.mid = L.long = db; }   // meters start at the film's own level, not at silence
     const aS = 1 - Math.exp(-dt / 0.12), aL = 1 - Math.exp(-dt / 5);

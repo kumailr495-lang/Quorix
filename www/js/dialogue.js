@@ -7,7 +7,7 @@ export const TREES = {
     own: ['rec.own', [['opt.book', 'act:reserve'], ['opt.back', 'greet']]],
     where: ['rec.where', [['opt.thanks', 'greet'], ['opt.bye', 'end']]] } },
   usher: { start: 'greet', nodes: {
-    greet: ['ush.greet', [['opt.guide', 'act:guide'], ['opt.tips', 'tips'], ['opt.best', 'best'], ['opt.bye', 'end']]],
+    greet: ['ush.greet', [['opt.showTicket', 'act:guide'], ['opt.tips', 'tips'], ['opt.best', 'best'], ['opt.bye', 'end']]],
     noTicket: ['ush.noTicket', [['opt.tips', 'tips'], ['opt.best', 'best'], ['opt.thanks', 'end']]],
     tips: ['ush.tips', [['opt.back', 'greet'], ['opt.bye', 'end']]],
     best: ['ush.best', [['opt.back', 'greet'], ['opt.bye', 'end']]] } },
@@ -16,9 +16,13 @@ export const TREES = {
   bar: { start: 'greet', nodes: {
     greet: ['bar.greet', [['opt.coffee', 'act:buy:coffee'], ['opt.mocktail', 'act:buy:mocktail'], ['opt.soda', 'act:buy:cola'], ['opt.gossip', 'gossip'], ['opt.bye', 'end']]],
     gossip: ['bar.gossip', [['opt.back', 'greet'], ['opt.bye', 'end']]] } },
+  // v8: the server who answers your seat bell
+  server: { start: 'greet', nodes: {
+    greet: ['srv.greet', [['opt.order', 'order'], ['opt.aboutFilm', 'act:tablet'], ['opt.nothing', 'end']]],
+    order: ['srv.menu', [['opt.salted', 'act:buy:salted'], ['opt.caramel', 'act:buy:caramel'], ['opt.cola', 'act:buy:cola'], ['opt.coffee', 'act:buy:coffee'], ['opt.back', 'greet']]] } },
   guest: { start: 'greet', nodes: { greet: ['guest.small', [['opt.more', 'more'], ['opt.bye', 'end']]], more: ['guest.more', [['opt.bye', 'end']]] } },
 };
 export function treeFor(agent, ctx = {}) {
-  const r = agent.role === 'reception' ? 'reception' : agent.role === 'usher' ? 'usher' : agent.role === 'vendor' ? 'vendor' : agent.role === 'bar' ? 'bar' : 'guest';
+  const r = agent.role === 'reception' ? 'reception' : agent.role === 'usher' ? 'usher' : agent.role === 'vendor' ? 'vendor' : agent.role === 'bar' ? 'bar' : agent.role === 'server' ? 'server' : 'guest';
   const tree = TREES[r]; return { ...tree, start: r === 'usher' && !ctx.ticket ? 'noTicket' : tree.start };
 }

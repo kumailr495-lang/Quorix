@@ -60,6 +60,8 @@ export class Player {
       if (d2 > 1e-8) { const d = Math.sqrt(d2), k = (r - d) / d; this.x += dx * k; this.z += dz * k; }
       else { const l = this.x - b.x0, rr = b.x1 - this.x, t = this.z - b.z0, bt = b.z1 - this.z, m = Math.min(l, rr, t, bt); if (m === l) this.x = b.x0 - r; else if (m === rr) this.x = b.x1 + r; else if (m === t) this.z = b.z0 - r; else this.z = b.z1 + r; }
     }
+    // v8: people are solid too (circles from crowd.bodiesNear)
+    if (this.dyn) for (const c of this.dyn) { const dx = this.x - c.x, dz = this.z - c.z, d = Math.hypot(dx, dz), m = r + c.r; if (d < m && d > 1e-4) { this.x = c.x + dx / d * m; this.z = c.z + dz / d * m; } }
   }
   update(dt) {
     const cam = this.cam; if (!Number.isFinite(this.x + this.z + this.y + this.yaw)) { this.place(0, 16.5, 0); }

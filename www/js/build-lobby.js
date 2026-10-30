@@ -9,7 +9,12 @@ import { Room } from './room.js';
 import { MAT, M, col, stripGeo, ellipse, spline, rrectPts, flatShape } from './geom.js';
 import * as P from './props.js';
 import { LOBBY, OPEN } from './layout.js';
-import { menuTexture, shopTexture, makeCanvas, neonTexture, posterTexture, FILMS, SERIF } from './textures.js';
+import { menuTexture, shopTexture, makeCanvas, neonTexture, SERIF } from './textures.js';
+import { posterURL } from './films.js';
+// v8: the lobby advertises the real open films (their posters, tools/films/posters.py); one texture per film, shared by every frame it hangs in
+const POSTERS = {};
+function posterTexture(id) { if (!POSTERS[id]) { const tx = new THREE.TextureLoader().load(posterURL(id)); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; POSTERS[id] = tx; } return POSTERS[id]; }
+function signTexture(text, color) { const c = makeCanvas(256, 48), g = c.getContext('2d'); g.fillStyle = '#05080c'; g.fillRect(0, 0, 256, 48); g.fillStyle = color; g.font = `600 30px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = '10px'; g.fillText(text, 133, 26); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx; }
 import { placeAsset } from './assets.js';
 const PI = Math.PI;
 const BRASS = '#c9a061', CARPET_RED = '#6e0f1a', CHAR = '#19171a';
@@ -65,7 +70,7 @@ export function buildLobby(ctx) {
   room.box(13.96, 0.1, 3.0, 14, 5.8, 15.25, '#141215', { mat: MAT.lacquer, faces: 'nx pz nz py' });
   for (const y of [0.1, 5.78]) room.box(13.95, y, 3.0, 13.96, y + 0.022, 15.25, BRASS, { mat: MAT.brass, faces: 'nx py ny' });
   // ---------- columns: Rosso Levanto with brass corner fins and a poster screen facing the centre ----------
-  const posters = FILMS.slice(0, 4);
+  const posters = ['cosmos', 'sintel', 'bunny', 'hero'];
   [[-7.6, 5.0], [7.6, 5.0], [-7.6, 15.0], [7.6, 15.0]].forEach(([x, z], i) => { const h = 0.45;
     room.box(x - h, 0, z - h, x + h, H, z + h, '#ffffff', { mat: MAT.rosso, faces: 'px nx pz nz', edge: 1.2 });
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) room.box(x + sx * h - (sx > 0 ? 0.012 : 0.03), 0, z + sz * h - (sz > 0 ? 0.012 : 0.03), x + sx * h + (sx > 0 ? 0.03 : 0.012), H, z + sz * h + (sz > 0 ? 0.03 : 0.012), BRASS, { mat: MAT.brass, faces: 'px nx pz nz' });
@@ -157,7 +162,7 @@ export function buildLobby(ctx) {
   const led = makeCanvas(1024, 160); world.ledWall = { canvas: led, texture: null }; const ledTex = new THREE.CanvasTexture(led); ledTex.colorSpace = THREE.SRGBColorSpace; world.ledWall.texture = ledTex;
   room.tex(ledTex, 0, 6.05, z0 + 0.105, 0, 12.0, 1.875, { emit: 1.35 }); L.area(0, 6.0, 0.6, [6, 0, 0], [0, 0.9, 0], [0, 0, 1], '#d8c6ff', 2.6, 12, 'h', 4, 1);
   for (const [x, z] of [[-13.2, 19.2], [13.2, 19.2], [-5.0, 0.95], [5.0, 0.95]]) { placeAsset(room, 'planter_tall', x, 0, z); room.col(x - 0.3, z - 0.3, x + 0.3, z + 0.3); }
-  for (const x of [-4.6, 4.6]) { placeAsset(room, 'bin_brass', x, 0, 19.3); room.col(x - 0.22, 19.08, x + 0.22, 19.52); }
+  for (const x of [-4.6, 4.6]) { placeAsset(room, 'bin_brass', x, 0, 19.3, 0, { collide: false }); room.col(x - 0.22, 19.08, x + 0.22, 19.52); }
   // ---------- glass street front: slim bronze mullions and transoms, the sliding door in the middle (opens for everyone) ----------
   const bronze = '#3a2e24', bays = 12; for (let i = 0; i <= bays; i++) { const x = -14 + 28 * i / bays; if (Math.abs(x) < 1.7 && i !== bays / 2) continue; room.box(x - 0.04, 0, 19.86, x + 0.04, H, 20.0, bronze, { mat: MAT.brass, faces: 'nz px nx' }); }
   room.box(-14, 0, 19.85, 14, 0.1, 20.0, bronze, { mat: MAT.brass, faces: 'nz py' }); room.box(-14, 3.15, 19.85, 14, 3.25, 20.0, bronze, { mat: MAT.brass, faces: 'nz py ny' }); room.box(-14, H - 0.25, 19.85, 14, H, 20.0, bronze, { mat: MAT.brass, faces: 'nz ny' });
@@ -206,7 +211,7 @@ export function buildStreet(ctx) {
   room.box(-22.05, PLAZA.top, 19.95, 22.05, PLAZA.top + 0.15, 20.05, BRASS, { mat: MAT.brass, faces: 'py pz' });
   room.box(-14, H0(), 19.98, 14, C.y0, 20.0, '#0d0d0f', { mat: MAT.lacquer, faces: 'pz' });
   // big poster lightboxes on the wings
-  [[-18, FILMS[0]], [18, FILMS[2]]].forEach(([x, f]) => { room.box(x - 1.45, 1.0, 20.0, x + 1.45, 5.6, 20.12, '#141416', { mat: MAT.lacquer, faces: 'pz px nx py ny' });
+  [[-18, 'sintel'], [18, 'cosmos']].forEach(([x, f]) => { room.box(x - 1.45, 1.0, 20.0, x + 1.45, 5.6, 20.12, '#141416', { mat: MAT.lacquer, faces: 'pz px nx py ny' });
     room.tex(posterTexture(f), x, 3.3, 20.125, 0, 2.6, 3.9, { emit: 1.25 }); L.area(x, 3.3, 20.6, [1.3, 0, 0], [0, 1.9, 0], [0, 0, 1], '#ffe6c8', 2.0, 9, 'f', 2, 3); });
   // canopy: walnut slat soffit with downlights, silver fascia with face-lit gold letters, top flashing
   room.box(-C.x + 0.04, C.y0, 20.0, C.x - 0.04, C.y0 + 0.02, C.z1 - 0.04, '#6b4630', { mat: MAT.slats, faces: 'ny', edge: 2 });   // inside the fascia and the side cheeks
@@ -223,13 +228,15 @@ export function buildStreet(ctx) {
     room.col(x - 0.6, z - 0.45, x + 0.6, z + 0.45); L.occluder(x - 0.55, z - 0.4, x + 0.55, z + 0.4, 0, C.y0, 0.4);
     L.spot(x, 0.15, z + 0.75, '#ffc98e', 5, 10, 'f', [0, 1, -0.08], 8, 22); room.box(x - 0.12, 0.004, z + 0.68, x + 0.12, 0.012, z + 0.82, '#ffe2bc', { glow: true, faces: 'py' }); }
   // ---------- forecourt furniture: poster totems, hedge planters with bollards between, bins ----------
-  [[-5.0, 23.4, FILMS[1]], [5.0, 23.4, FILMS[3]], [-10.0, 23.4, FILMS[4]], [10.0, 23.4, FILMS[5]]].forEach(([x, z, f]) => {
+  [[-5.0, 23.4, 'wingit'], [5.0, 23.4, 'agent327'], [-10.0, 23.4, 'llamigos'], [10.0, 23.4, 'glasshalf']].forEach(([x, z, f]) => {
     placeAsset(room, 'poster_totem', x, 0, z, 0); room.col(x - 0.5, z - 0.17, x + 0.5, z + 0.17);
     for (const s of [-1, 1]) room.tex(posterTexture(f), x, 1.24, z + s * 0.0835, s > 0 ? 0 : PI, 0.8, 1.2, { emit: 1.2 });
     L.area(x, 1.24, z + 0.4, [0.4, 0, 0], [0, 0.6, 0], [0, 0, 1], '#fff0dc', 0.9, 5, 'f', 2, 2); });
   for (const x of [-21.3, -14.6, -7.9, 7.9, 14.6, 21.3]) { placeAsset(room, 'planter_hedge', x, 0, 30.2, 0); room.col(x - 1.45, 29.85, x + 1.45, 30.55); L.occluder(x - 1.4, 29.9, x + 1.4, 30.5, 0, 1.0, 0.4); }
   for (const x of [-18.0, -11.2, -4.2, 4.2, 11.2, 18.0]) { placeAsset(room, 'bollard_light', x, 0, 30.2, 0); room.col(x - 0.1, 30.1, x + 0.1, 30.3); L.point(x, 0.8, 30.2, '#ffd49a', 0.35, 3, 'f'); }
-  for (const x of [-3.0, 3.0]) { placeAsset(room, 'bin_brass', x, 0, 20.6); room.col(x - 0.22, 20.38, x + 0.22, 20.82); }
+  for (const x of [-3.0, 3.0]) { placeAsset(room, 'bin_brass', x, 0, 20.6, 0, { collide: false }); room.col(x - 0.22, 20.38, x + 0.22, 20.82); }
+  // v8: the ATM under the canopy, against the glass (cash for tickets and snacks; a limited allowance per visit, wallet.js)
+  placeAsset(room, 'atm', -7.4, 0, 20.42, 0); room.tex(signTexture('ATM', '#7fd0ff'), -7.41, 1.64, 20.68, 0, 0.5, 0.09, { emit: 1.6 }); ctx.world.atm = { x: -7.4, z: 21.15 };
   // ---------- the street: lamps, a car at the kerb (it brought you), parked cars, the buildings opposite and either side ----------
   for (const x of [-30, -20, 20, 30]) { placeAsset(room, 'lamp_post', x, 0, K - 0.35, 0); L.point(x, 5.6, K + 0.55, '#ffd7a0', 8, 15, 'f'); }
   for (const x of [-26, -10, 10, 26]) { placeAsset(room, 'lamp_post', x, 0, PLAZA.road1 + 0.6, PI); L.point(x, 5.6, PLAZA.road1 - 0.3, '#ffd7a0', 8, 15, 'f'); }

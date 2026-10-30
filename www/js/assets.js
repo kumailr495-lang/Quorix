@@ -15,7 +15,9 @@ export const ASSET_LIST = ['counter_module', 'popcorn_machine', 'bar_stool', 'ar
   'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'door_padded',
   // v7 (docs/V7-DESIGN.md): Kiln hero props and Blender signage letters
   'chandelier_cascade', 'sofa_curve', 'table_lounge', 'pendant_ring', 'back_bar_onyx', 'bar_counter', 'poster_totem', 'number_totem', 'planter_hedge', 'bollard_light',
-  'letters_lumiere_lit', 'letters_lumiere', 'letters_cinemas', 'letters_imax', 'restroom_set'];
+  'letters_lumiere_lit', 'letters_lumiere', 'letters_cinemas', 'letters_imax', 'restroom_set',
+  // v8 (docs/V8-PLAN.md)
+  'atm'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
@@ -65,8 +67,14 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
   }
   const b = A.box.clone().applyMatrix4(mtx);
   if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
+  else if (o.collide !== false && solidProp(name, b)) room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y);
+  if (name.startsWith('bin')) (room.bins || (room.bins = [])).push({ x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2 });   // bins you can drop empty cups into
   return b;
 }
+// v8 (phone feedback: "I am able to go through or in between them"): furniture standing on the floor blocks you and the people; hanging,
+// wall-mounted, flat and walk-through things don't. Footprints over 14 m2 (counters with walk-in gaps, facades) keep their own colliders.
+const NO_COLLIDE = /^(letters|chandelier|pendant|downlight|sconce|speaker|rug|door|seat|arm_|stair|facade|shopfront|torchere|restroom_set|poster|frame|sign|led|light|tap|mirror|basin|urinal|lamp_post)/;
+function solidProp(name, b) { const h = b.max.y - b.min.y, w = b.max.x - b.min.x, d = b.max.z - b.min.z; return !NO_COLLIDE.test(name) && b.min.y < 0.35 && h > 0.35 && w > 0.12 && d > 0.12 && w * d < 14; }
 // one merged geometry (per material groups, 'occ' attribute) for instancing, e.g. hall seats. extra: matrix applied after the Kiln->engine turn
 // over = per-hall material swaps keyed by mesh name or material name, each with an optional library id and tint
 export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null) {

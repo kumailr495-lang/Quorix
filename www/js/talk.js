@@ -2,14 +2,16 @@
 import * as THREE from 'three';
 import { t } from './i18n.js';
 const $ = (s) => document.querySelector(s);
-const ROLE = { reception: 'role.reception', usher: 'role.usher', vendor: 'role.vendor', bar: 'role.bar' };
+const ROLE = { reception: 'role.reception', usher: 'role.usher', vendor: 'role.vendor', bar: 'role.bar', server: 'role.server' };
 export class Talk {
-  constructor(sound, hooks = {}) {
+  constructor(sound, hooks = {}, settings = {}) {
     this.sound = sound; this.hooks = hooks; this.el = $('#talk'); this.nameEl = $('#talkName'); this.roleEl = $('#talkRole'); this.textEl = $('#talkText'); this.optsEl = $('#talkOpts'); this.layer = $('#bubbles');
     this.npc = null; this.tree = null; this.full = ''; this.shown = 0; this.typing = false; this.bubbles = new Map(); this.v = new THREE.Vector3(); this.enabled = true;
     this.el.addEventListener('pointerdown', (e) => { e.stopPropagation(); if (this.typing) this.shown = this.full.length; });
     $('#talkX').addEventListener('click', (e) => { e.stopPropagation(); this.close(); });
+    this.setOptions(settings);
   }
+  setOptions(s) { this.enabled = s.bubbles !== false; this.subs = s.subtitles !== false; if (!this.enabled) this.clearBubbles(); }
   get open() { return !!this.npc; }
   start(npc, tree) { this.npc = npc; this.tree = tree; this.el.hidden = false; this.nameEl.textContent = npc.name; this.roleEl.textContent = t(ROLE[npc.role] || 'role.guest'); this.removeBubble(npc); this.go(tree.start); }
   go(id) {

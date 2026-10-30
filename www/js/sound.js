@@ -1,7 +1,7 @@
 // LUMIERE v5 sound - all synthesised or routed here, no audio files.
 //  * film channel: the hall you are in / next to is heard through a continuous occlusion model (distance to the door, the light-lock passage,
 //    the automatic door's opening), not a room switch: walking in, the film grows smoothly.
-//  * house film scores + effects per genre (thriller, romance, horror), triggered by the same cues the audience reacts to.
+//  * v8: the open films are streamed and play through their own element (no CORS -> no Web Audio); only their volume follows you.
 //  * crowd voices (screams, gasps, cheers, laughter, "aww", applause) from formant synthesis, spatialised and sent to a hall reverb.
 //  * lobby: soft lounge music, murmur that follows the number of people around, the popcorn machine, the street through the glass.
 const rnd = (a, b) => a + Math.random() * (b - a), clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
@@ -43,7 +43,7 @@ export class Sound {
   // a: { room, x, z, yaw, seated, filmHall (key), audibility 0..1, lp (Hz), crowd near, lobbyPeople, popcorn distance, streetDist, verb 0..1 }
   setListener(a) {
     this.listener = a; if (!this.ready) return; const t = this.ctx.currentTime, k = 0.09;
-    this.filmG.gain.setTargetAtTime(this.film ? a.filmAud * (this.film.gain || 1) : 0, t, k); this.filmLP.frequency.setTargetAtTime(a.filmLP, t, k);
+    this.filmG.gain.setTargetAtTime(this.film ? a.filmAud * (this.film.gain || 1) : 0, t, k); this.filmLP.frequency.setTargetAtTime(a.filmLP, t, k); this._directVol();
     this.crowdLP.frequency.setTargetAtTime(a.crowdLP, t, k); this.verbIn.gain.setTargetAtTime(a.verb, t, 0.3);
   }
   _ambientTick() {
@@ -54,43 +54,19 @@ export class Sound {
     if (a.popcornDist < 7 && Math.random() < 0.55) this._pops(1 - a.popcornDist / 7);
   }
   // ---------------- film ----------------
-  // { video } routes the element; { house, t0 } synthesises that film's score; sfx() plays its cue effects
+  // { video } routes your own video through the hall (acoustics, levelling, live analysis); { direct } is a streamed film without CORS:
+  // Web Audio would hear only silence from it, so its own element plays it and only its volume follows where you stand (v8)
+  _directVol() { const f = this.film; if (!f || !f.direct) return; const a = this.listener; f.direct.volume = Math.max(0, Math.min(1, (this.muted ? 0 : this.vol.master) * this.vol.film * (a.filmAud || 0) * (this.ctx && this.ctx.state === 'running' ? 1 : 0))); }
   startFilm(hallKey, src) {
     if (!this.ready) { this._pendingFilm = [hallKey, src]; return; } this.stopFilm(); this.film = { hall: hallKey, gain: 1, nodes: [] };
+    if (src.direct) { this.film.direct = src.direct; this._directVol(); return; }
     if (src.video) { if (!this.videoSrc) { try { this.videoSrc = this.ctx.createMediaElementSource(src.video); } catch (e) { console.warn('film audio routing failed', e); } } if (this.videoSrc) { this.videoSrc.disconnect(); this.agc = this.agc || this.ctx.createGain(); this.videoSrc.connect(this.agc); this.agc.connect(this.filmIn); this.film.video = true; this._agcT = setInterval(() => this._agc(), 400); } }
-    else this._score(src.house);
   }
-  stopFilm(hallKey) { if (!this.film || (hallKey && this.film.hall !== hallKey)) return; for (const n of this.film.nodes) { try { n.stop ? n.stop() : n.disconnect(); } catch (e) {} } clearInterval(this.film.loop); clearInterval(this._agcT); if (this.film.video && this.agc) { try { this.agc.disconnect(); } catch (e) {} } this.film = null; }
+  stopFilm(hallKey) { if (!this.film || (hallKey && this.film.hall !== hallKey)) return; if (this.film.direct) this.film.direct.volume = 0; for (const n of this.film.nodes) { try { n.stop ? n.stop() : n.disconnect(); } catch (e) {} } clearInterval(this.film.loop); clearInterval(this._agcT); if (this.film.video && this.agc) { try { this.agc.disconnect(); } catch (e) {} } this.film = null; }
   filmHall() { return this.film ? this.film.hall : null; }
   _agc() { if (!this.an || !this.film || !this.film.video) return; const rms = this._rms(); if (rms > 0.004) this.agc.gain.setTargetAtTime(clamp(0.12 / rms, 0.4, 2.6), this.ctx.currentTime, 1.2); }
   _rms() { this.an.getFloatTimeDomainData(this._buf); let s = 0; for (const v of this._buf) s += v * v; return Math.sqrt(s / this._buf.length); }
   level() { if (!this.ready || !this.film) return null; const r = this._rms(); return 20 * Math.log10(r + 1e-6); }
-  _osc(type, f, g0, dest) { const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f; g.gain.value = g0; o.connect(g); g.connect(dest); o.start(); this.film && this.film.nodes.push(o); return { o, g }; }
-  _score(id) {
-    const c = this.ctx, bus = c.createGain(); bus.gain.value = 0.9; bus.connect(this.filmIn); this.film.bus = bus; this.film.nodes.push(bus); this.film.genre = id;
-    const pad = (freqs, type, g0, lp) => { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; f.connect(bus); this.film.nodes.push(f); return freqs.map((fr) => this._osc(type, fr, g0, f)); };
-    let step = 0;
-    if (id === 'night') { const v = pad([55, 82.4, 110], 'sawtooth', 0.05, 380); this.film.loop = setInterval(() => { const t = c.currentTime; step++; const pulse = this.film && this.film.tension ? 1 : 0.4; this._kick(bus, 0.25 * pulse); if (step % 2 === 0) this._tone(bus, [110, 98, 123.5, 82.4][step / 2 % 4], 0.25, 0.05 * pulse, 'square', 800); v[2].o.frequency.setTargetAtTime([110, 98, 123.5, 82.4][Math.floor(step / 8) % 4], t, 0.3); }, 520); }
-    if (id === 'velvet') { const CH = [[261.6, 329.6, 392], [220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7]], v = pad(CH[0], 'triangle', 0.05, 1800); this.film.loop = setInterval(() => { const t = c.currentTime, ch = CH[Math.floor(step / 8) % 4]; ch.forEach((f, i) => v[i].o.frequency.setTargetAtTime(f, t, 0.4)); if (step % 2 === 0) this._tone(bus, ch[(step / 2) % 3] * 2, 0.9, 0.035, 'sine', 3000); step++; }, 450); }
-    if (id === 'quiet') { const v = pad([61.7, 65.4, 92.5], 'sawtooth', 0.04, 260); const rain = c.createBufferSource(); rain.buffer = this.white; rain.loop = true; const rf = c.createBiquadFilter(); rf.type = 'highpass'; rf.frequency.value = 2500; const rg = c.createGain(); rg.gain.value = 0.035; rain.connect(rf); rf.connect(rg); rg.connect(bus); rain.start(); this.film.nodes.push(rain);
-      this.film.loop = setInterval(() => { const t = c.currentTime; step++; v[1].o.frequency.setTargetAtTime(65.4 + Math.sin(step * 0.3) * 2, t, 1); if (this.film && this.film.tension && step % 2 === 0) { this._kick(bus, 0.18); setTimeout(() => this.film && this._kick(bus, 0.12), 180); } }, 700); }
-  }
-  // cue effects; scares are loud on purpose (that is what makes a hall jump)
-  sfx(name) {
-    if (!this.ready || !this.film || !this.film.bus) return; const c = this.ctx, bus = this.film.bus, t = c.currentTime;
-    if (name === 'siren') { this.film.tension = true; const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; for (let i = 0; i < 6; i++) { o.frequency.setValueAtTime(620, t + i * 0.6); o.frequency.linearRampToValueAtTime(880, t + i * 0.6 + 0.3); } this._env(g, t, 0.2, 0.06, 3.4); o.connect(g); g.connect(bus); o.start(t); o.stop(t + 3.8); }
-    if (name === 'screech') this._noiseHit(bus, 2600, 6, 0.35, 1.3, 1200);
-    if (name === 'horn') { for (const f of [311, 370]) this._tone(bus, f, 1.1, 0.25, 'square', 2200); }
-    if (name === 'boom') { this.film.tension = false; this._noiseHit(bus, 180, 0.7, 0.9, 2.8); this._tone(bus, 60, 2.2, 0.5, 'sine', 400, 0.3); }
-    if (name === 'squawk') for (let i = 0; i < 3; i++) this._tone(bus, 1400, 0.16, 0.08, 'sawtooth', 3000, 0.6, i * 0.2);
-    if (name === 'splash') this._noiseHit(bus, 1800, 0.8, 0.4, 1.1, 600);
-    if (name === 'fireworks') for (let i = 0; i < 6; i++) { setTimeout(() => this.film && this._noiseHit(bus, 900, 0.9, 0.35, 0.9), i * 520); }
-    if (name === 'creak') { this.film.tension = true; const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(70, t); o.frequency.linearRampToValueAtTime(110, t + 1.8); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 14; this._env(g, t, 0.4, 0.25, 1.6); o.connect(f); f.connect(g); g.connect(bus); o.start(t); o.stop(t + 2.2); }
-    if (name === 'flicker') for (let i = 0; i < 5; i++) this._tone(bus, 120, 0.06, 0.08, 'square', 3000, 1, i * 0.18 + Math.random() * 0.1);
-    if (name === 'stinger') { this.film.tension = false; this._noiseHit(bus, 3000, 0.5, 1.0, 0.9); for (const f of [233, 247, 262, 466]) this._tone(bus, f, 1.4, 0.22, 'sawtooth', 5000, 0.7); this._tone(bus, 55, 1.2, 0.6, 'sine', 300); }
-    if (name === 'thunder') this._noiseHit(bus, 140, 0.5, 0.8, 3.2);
-    if (name === 'meow') { const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(760, t + 0.25); o.frequency.linearRampToValueAtTime(430, t + 0.7); f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 3; this._env(g, t, 0.05, 0.16, 0.7); o.connect(f); f.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.8); }
-  }
   _env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
   _tone(dest, f, dur, vol, type = 'sine', lp = 3000, slide = 1, when = 0) { const c = this.ctx, o = c.createOscillator(), g = c.createGain(), fl = c.createBiquadFilter(), t = c.currentTime + when; o.type = type; o.frequency.setValueAtTime(f, t); if (slide !== 1) o.frequency.exponentialRampToValueAtTime(f * slide, t + dur); fl.type = 'lowpass'; fl.frequency.value = lp; this._env(g, t, 0.01, vol, dur); o.connect(fl); fl.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.1); }
   _noiseHit(dest, f, q, vol, dur, sweepTo = 0) { const c = this.ctx, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain(), t = c.currentTime; s.buffer = this.white; fl.type = q > 2 ? 'bandpass' : 'lowpass'; fl.frequency.setValueAtTime(f, t); if (sweepTo) fl.frequency.exponentialRampToValueAtTime(sweepTo, t + dur); fl.Q.value = q; this._env(g, t, 0.005, vol, dur); s.connect(fl); fl.connect(g); g.connect(dest); s.start(t, Math.random()); s.stop(t + dur + 0.1); }
@@ -125,7 +101,12 @@ export class Sound {
   pop() { if (this.ready && !this.muted) { this._tone(this.master, 660, 0.12, 0.06, 'sine', 4000, 1.6); this._tone(this.master, 990, 0.18, 0.04, 'sine', 4000, 1.3, 0.08); } }
   chime() { if (!this.ready || this.muted) return; this._tone(this.master, 880, 0.8, 0.06); this._tone(this.master, 1318.5, 1.0, 0.05, 'sine', 3000, 1, 0.12); this._tone(this.master, 1760, 1.2, 0.035, 'sine', 3000, 1, 0.26); }
   crunch() { if (!this.ready || this.muted) return; for (let i = 0; i < 12; i++) { const c = this.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), t = c.currentTime + i * 0.045 + Math.random() * 0.03; s.buffer = this.white; f.type = 'bandpass'; f.frequency.value = rnd(1800, 4200); f.Q.value = 1.2; this._env(g, t, 0.003, rnd(0.03, 0.06), 0.04); s.connect(f); f.connect(g); g.connect(this.master); s.start(t, Math.random()); s.stop(t + 0.06); } }
-  sip() { if (!this.ready || this.muted) return; this._noiseHit(this.master, 2200, 2, 0.04, 0.35, 900); }
+  sip(last) { if (!this.ready || this.muted) return; this._noiseHit(this.master, 2200, 2, 0.04, 0.35, 900); if (last) setTimeout(() => this.ready && this._noiseHit(this.master, 3400, 6, 0.05, 0.5, 1800), 380); }   // the last sip rattles the ice
+  // v8 interaction sounds: bin lid, seat bell, tablet, ATM keys / card / cash
+  bin() { if (!this.ready || this.muted) return; this._tone(this.master, 210, 0.14, 0.08, 'triangle', 1200, 0.6); setTimeout(() => this.ready && this._noiseHit(this.master, 900, 1.2, 0.07, 0.25, 400), 120); }
+  bell() { if (!this.ready || this.muted) return; for (const [f, d] of [[1568, 0], [2093, 0.09]]) this._tone(this.master, f, 1.1, 0.05, 'sine', 9000, 1, d); }
+  tablet(on) { if (!this.ready || this.muted) return; this._tone(this.master, on ? 520 : 780, 0.09, 0.03, 'sine', 5000, on ? 1.5 : 0.66); }
+  atm(kind) { if (!this.ready || this.muted) return; if (kind === 'key') this._tone(this.master, 1180, 0.06, 0.035, 'square', 5000); else if (kind === 'card') this._noiseHit(this.master, 1400, 1, 0.05, 0.5, 700); else { for (let i = 0; i < 6; i++) setTimeout(() => this.ready && this._noiseHit(this.master, 2600, 3, 0.04, 0.09), i * 70); } }
   thud() { if (this.ready && !this.muted) this._tone(this.master, 120, 0.25, 0.1, 'sine', 600, 0.5); }
   door(open, gain = 1) { if (!this.ready || this.muted || gain < 0.03) return; this._noiseHit(this.master, open ? 700 : 500, 0.8, 0.05 * gain, 0.7, open ? 1800 : 300); this._tone(this.master, 80, 0.25, 0.05 * gain, 'sine', 300, 0.7, open ? 0 : 0.55); }
   blip(seed = 0, gain = 1) { if (!this.ready || this.muted || gain < 0.05) return; const base = 150 + (seed % 7) * 20; for (let i = 0; i < 2 + (seed % 2); i++) this._voice(['a', 'e', 'o'][(seed + i) % 3], base * (1 + 0.1 * Math.sin(seed + i * 2)), 0.09, 0.03 * gain, 0, 1.05, i * 0.11); }

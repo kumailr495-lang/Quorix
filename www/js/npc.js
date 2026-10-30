@@ -84,9 +84,28 @@ export class Crowd {
   init() {
     const P = this.world.posts, mk = (id, look, name, role, post) => { const p = P[post]; const a = this.spawn({ id, rec: STAFF_LOOK[look], name, role, x: p.x, z: p.z, yaw: p.yaw, home: p, state: 'post' }); a.talkable = true; a.post = post; this.staff[id] = a; return a; };
     mk('eloise', 'receptionist', 'Éloïse', 'reception', 'receptionist'); mk('marcel', 'usher', 'Marcel', 'usher', 'usher'); mk('gaston', 'vendor2', 'Gaston', 'vendor', 'vendor1'); mk('priya', 'vendor', 'Priya', 'vendor', 'vendor2'); mk('odette', 'bartender', 'Odette', 'bar', 'bartender');
-    this.target = { low: 6, medium: 10, high: 14 }[this.engine.settings.graphics] || 10;
+    this.setDensity(this.engine.settings.npcs);
     for (let i = 0; i < this.target; i++) this.spawnGuest(true);
   }
+  // v8 Settings > NPCs (off / few / normal / many) scales lobby guests and audiences; the staff always stay (they run the night).
+  // Lowering it sends the extra guests home on foot instead of deleting them in view.
+  setDensity(level) {
+    this.density = { off: 0, few: 0.4, normal: 0.75, many: 1 }[level] ?? 0.75; this.target = Math.round(({ low: 6, medium: 10, high: 14 }[this.engine.settings.graphics] || 10) * this.density * 1.3);
+    let extra = this.agents.filter((a) => a.role === 'guest').length - this.target; for (const a of this.agents) if (extra > 0 && a.role === 'guest' && a.plan && a.plan[0] !== 'leave') { a.plan = ['leave']; a.t = 0; extra--; }
+  }
+  // bodies the player bumps into (v8: you can no longer walk through people)
+  bodiesNear(x, z, r) { const out = this._bodies || (this._bodies = []); out.length = 0; for (const a of this.agents) { if (!a.alive || !a.group.visible) continue; const d = Math.hypot(a.x - x, a.z - z); if (d < r) out.push({ x: a.x, z: a.z, r: a.state === 'seated' ? 0.22 : 0.26 }); } return out; }
+  // the guide reads your ticket: looks down at it, then names screen, row and seat
+  readTicket(a, tk) { a.path = null; a.gesture('read', 1.6, 'focus'); setTimeout(() => a.say(t('ush.read', { screen: tk.hallName, row: tk.row, seat: tk.col }), 2.8), 700); }
+  // the seat bell: a server comes from the hall's entrance to the end of your row, talks, hands the tablet, leaves when you hand it back
+  callServer(player, onArrive) {
+    if (this.server && this.server.alive) return false; const hk = roomAt(player.x, player.z), hall = this.world.halls.find((h) => h.key === hk); if (!hall || !player.seated) return false;
+    const seat = hall.seats.find((s) => s.npc === 'player') || hall.seats.reduce((b, s) => (Math.hypot(s.x - player.x, s.z - player.z) < Math.hypot(b.x - player.x, b.z - player.z) ? s : b)), door = this._hallDoor(hall, 'entrance'), ap = this.aislePoint(hall, seat), lane = this.laneStand({ seat, hall });
+    const a = this.spawn({ id: 'server', rec: STAFF_LOOK.usher, name: 'Rémy', role: 'server', x: door.x, z: door.z, yaw: 0, state: 'post', speed: 1.7 }); a.talkable = false; a.home = { x: door.x, z: door.z, yaw: 0 }; this.server = a;
+    a.mission = { kind: 'serve', hall, seat, phase: 'go' }; a.goTo(ap.x, ap.z, () => a.goTo(lane.x, lane.z, () => { a.mission.phase = 'at'; a.turnTo(player.x, player.z, 10, 1); a.gesture('wave', 1.2, 'smile'); a.say(t('srv.hello'), 2.6); onArrive && onArrive(a); }));
+    return true;
+  }
+  serverLeave() { const a = this.server; if (!a || !a.alive) return; a.say(t('srv.bye'), 2.2); a.mission = { kind: 'serve', phase: 'leave' }; setTimeout(() => { if (!a.alive) return; if (!a.goTo(a.home.x, a.home.z, () => { a.dispose(); this.server = null; })) { a.dispose(); this.server = null; } }, 900); }
   spawnGuest(placed) {
     const seed = Math.random() * 1e6, rec = randomRecipe(seed), name = NAMES[Math.floor(Math.random() * NAMES.length)];
     let x, z; if (placed) { const p = this.pois[Math.floor(Math.random() * this.pois.length)]; x = p[0] + rnd(-1.5, 1.5); z = p[1] + rnd(0.5, 2); const n = this.world.nav.nearest(x, z) || [0, 15]; x = n[0]; z = n[1]; } else { const s = STREET_SPAWN[Math.floor(Math.random() * STREET_SPAWN.length)]; x = s[0] + rnd(-1, 1); z = s[1] - 1.5; }
@@ -120,6 +139,7 @@ export class Crowd {
   aislePoint(hall, seat) { const H = hall.cfg, au = aisleU(H, seat), left = au < seat.u, ax = H.cx + au, r = seat.row, laneD = (H.pf[r] === -Infinity ? H.dHip[r] - H.seat.fr - 0.5 : (H.pf[r] + H.dHip[r] - H.seat.fr) / 2); return { x: ax, z: H.zs + laneD - H.rowSag(ax - H.cx), laneD, left }; }
   // ---------------------------------------------------------- audiences
   planAudience(hallId, n, seatedShare, spreadMs, avoid = new Set()) {
+    n = Math.round(n * (this.density ?? 0.75) / 0.75); if (n <= 0) return;
     const hall = this.world.hallById(hallId), H = hall.cfg, list = this.viewers[hallId], taken = new Set(list.filter((v) => v.state !== 'gone').map((v) => v.seat.id));
     const pool = hall.seats.filter((s) => !taken.has(s.id) && !avoid.has(s.id) && !s.player);
     // people like the middle: weight seats by closeness to the centre and to the middle rows
@@ -155,7 +175,7 @@ export class Crowd {
   update(dt, now, player, vis, ctx) {
     this.now = now; const room = roomAt(player.x, player.z);
     // lobby population: replace guests who left; staff brains; guest brains
-    const guests = this.agents.filter((a) => a.role === 'guest'); if (guests.length < this.target && Math.random() < dt * 0.15) this.spawnGuest(!vis.has('lobby'));
+    const guests = this.agents.filter((a) => a.role === 'guest'); if (guests.length < this.target && Math.random() < dt * 0.06) this.spawnGuest(false);   // v8: newcomers always walk in from the street (no popping in), one at a time
     for (const a of this.agents) { if (!a.alive) continue; const rk = roomAt(a.x, a.z), visible = vis.has(rk) && Math.hypot(a.x - player.x, a.z - player.z) < 45; a.group.visible = visible;
       if (a.role === 'guest') this.guestBrain(a, dt, now, player, visible); else if (a.role === 'viewer') this.viewerBrain(a, dt, now, player, visible); else this.staffBrain(a, dt, now, player, ctx);
       if (visible) a.ch.setLOD(Math.hypot(a.x - player.x, a.z - player.z) < 7 ? 0 : Math.hypot(a.x - player.x, a.z - player.z) < 16 ? 1 : 2);
@@ -190,7 +210,9 @@ export class Crowd {
   }
   _missionTick(a, dt, now, player) {
     const m = a.mission, dp = Math.hypot(player.x - a.x, player.z - a.z);
+    if (m.kind === 'serve') { if (m.phase === 'at') a.turnTo(player.x, player.z, 4, dt); return; }
     if (m.kind !== 'guide') return;
+    a.speedMax = dp < 2.2 ? 2.0 : dp < 3.6 ? 1.6 : 1.15;   // v8: "the guide is so slow, I can outrun him": he keeps your pace
     if (m.phase === 'point') { m.t -= dt; a.turnTo(m.seat.x, m.seat.z, 4, dt); if (m.t <= 0) { a.mission = null; a.ch.gestT = null; a.state = 'return'; a.goTo(a.home.x, a.home.z, (n) => { n.state = 'post'; }); } return; }
     if (dp > 5.5 && a.path && !a.pausedPath) { a.pausedPath = a.path; a.pausedPi = a.pi; a.path = null; }
     if (a.pausedPath) { if (dp < 3.2) { a.path = a.pausedPath; a.pi = a.pausedPi; a.pausedPath = null; a.ch.gestT = null; } else { a.turnTo(player.x, player.z, 4, dt); a.ch.gestT = 'wave'; if (now - m.said > 7000) { m.said = now; a.say(pickLine('ush.wait'), 2.4); } return; } }
