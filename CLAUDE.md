@@ -94,12 +94,13 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - After changing a room's geometry or lights, re-bake it (`sh tools/bake/bake-all.sh <room>`); the console warns about stale bakes.
 - Blender lathes: put axis points on a centre vertex (lbl.py does), or parts sharing the axis overlap coplanar faces.
 
-## Current state (2026-10-30, v7 in progress)
+## Current state (2026-10-30, v7.00 built)
 - v7 on branch `ccr-7bb5aa6a-upup1u` (docs/V7-DESIGN.md; feedback status at the top of docs/PHONE-FEEDBACK.md): lobby and plaza rebuilt after
   Allu Cinemas, Dolby-style corridor, IMAX gateway hall with a panorama wall, IMAX trench removed (side vomitories, 6 + 20 + 6 aisles), Screen 1
   centre aisle, restrooms dressed, no automatic shows (audiences only for your booking), you start outside at the kerb, outdoor distance fog.
   New Kiln props in `tools/kiln/` (chandelier_cascade, sofa_curve, table_lounge, pendant_ring, back_bar_onyx, bar_counter, poster_totem,
-  number_totem, planter_hedge, bollard_light, restroom_set), 3D letters from `tools/blender/letters.py`. Not yet seen on the phone.
+  number_totem, planter_hedge, bollard_light, restroom_set), 3D letters from `tools/blender/letters.py`. APK v7.00 (versionCode 700) built and
+  sent (docs/V7-RELEASE-NOTES.md); not yet seen on the phone.
 
 ## Earlier state (2026-10-30, later)
 - v5.20 in progress on branch `ccr-7bb5aa6a-upup1u`: Cycles light maps for every room, new per-hall seating and hall identities, real
