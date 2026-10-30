@@ -176,6 +176,25 @@ void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) 
   vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb; c = uRaw > 0.5 ? s2l(c) : c;
   gl_FragColor = vec4(l2s(clamp(c * uGain * inside, 0.0, 1.0)), 1.0);
 }`;
+// ---------------- LED video wall (the Dolby-style tunnel): moving light ribbons in the film's colours, a fine LED pixel grid that fades out
+// with distance (no moire), or the film itself when your own video plays in the IMAX (uVid). Shown as graded: no tone curve.
+const LED_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const LED_FRAG = `uniform float uTime; uniform vec3 uA; uniform vec3 uB; uniform float uGain; uniform sampler2D uVid; uniform float uVidOn; uniform float uRaw; uniform vec2 uLen; varying vec2 vUv;
+vec3 s2l(vec3 c) { return mix(c * 0.0773993808, pow(c * 0.9478672986 + 0.0521327014, vec3(2.4)), step(0.04045, c)); }
+vec3 l2s(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(0.41666)) - 0.055, step(0.0031308, c)); }
+void main() {
+  vec2 p = vec2(vUv.x * uLen.x, vUv.y * uLen.y); float t = uTime;
+  float r1 = sin(p.x * 0.9 - t * 0.9 + sin(p.y * 1.7 + t * 0.4) * 1.6);
+  float r2 = sin(p.x * 0.43 + p.y * 2.3 - t * 0.55);
+  float r3 = sin(p.x * 2.1 - p.y * 0.8 + t * 1.3);
+  float band = smoothstep(0.55, 1.0, r1) + 0.55 * smoothstep(0.7, 1.0, r2) + 0.25 * smoothstep(0.85, 1.0, r3);
+  vec3 col = mix(uA, uB, 0.5 + 0.5 * sin(p.x * 0.35 - t * 0.3)) * (0.06 + 1.25 * band);
+  float sp = fract(sin(dot(floor(p * vec2(9.0, 7.0)), vec2(12.9898, 78.233))) * 43758.5453); col += uB * step(0.985, sp) * (0.5 + 0.5 * sin(t * 3.0 + sp * 40.0)) * 0.6;
+  if (uVidOn > 0.5) { vec3 v = texture2D(uVid, vec2(fract(vUv.x * 2.0), vUv.y)).rgb; v = uRaw > 0.5 ? s2l(v) : v; col = mix(col * 0.3, v, 0.85); }
+  vec2 g = abs(fract(p * vec2(40.0, 40.0)) - 0.5); float fw = fwidth(p.x * 40.0); float grid = smoothstep(0.5, 0.36, max(g.x, g.y));
+  col *= mix(1.0, 0.55 + 0.45 * grid, smoothstep(0.6, 0.15, fw));
+  gl_FragColor = vec4(l2s(clamp(col * uGain, 0.0, 1.0)), 1.0);
+}`;
 // ---------------- people (skinned, probe lit, painted expressive face) ----------------
 const PEOPLE_VERT = `
 #include <common>
@@ -286,6 +305,7 @@ export class Materials {
   glassMat(tint = 0x8fa3b8, alpha = 0.08) { if (!this._glass) this._glass = this._t(mk(GLASS_VERT, GLASS_FRAG, { ...G, uTint: { value: new THREE.Color(tint) }, uAlpha: { value: alpha } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide })); return this._glass; }
   peopleMat(face) { return this._t(mk(PEOPLE_VERT, PEOPLE_FRAG, { ...G, uFace: { value: face }, uEyes: { value: new THREE.Vector2(0, 3) }, uMouth: { value: new THREE.Vector2(0, 1) }, uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.6, 0.55, 0.5) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) }, uPal: { value: Array.from({ length: 8 }, () => new THREE.Color(0.5, 0.5, 0.5)) } })); }
   propMat(PU) { return this._t(mk(PROP_VERT, PROP_FRAG, { ...G, uAmb: PU.uAmb, uKey: PU.uKey, uKeyDir: PU.uKeyDir, uScreenL: PU.uScreenL })); }
+  ledWallMat() { if (!this._led) this._led = this._t(mk(LED_VERT, LED_FRAG, { uTime: G.uTime, uA: { value: new THREE.Color('#0b3cff') }, uB: { value: new THREE.Color('#7fd2ff') }, uGain: { value: 1.0 }, uVid: { value: null }, uVidOn: { value: 0 }, uRaw: { value: 0 }, uLen: { value: new THREE.Vector2(9, 3) } })); return this._led; }
   crowdMat(U) { return this._t(mk(CROWD_VERT, CROWD_FRAG, { ...G, uHouse: U.uHouse, uScreen: U.uScreen })); }
   _t(m) { this.all.push(m); return m; }
 }

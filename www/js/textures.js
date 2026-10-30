@@ -76,3 +76,61 @@ export function slateTexture(name = '', w = 640, h = 340) {
   g.font = `500 ${Math.round(h * 0.045)}px ${SANS}`; g.fillStyle = '#ff4d5a'; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(h * 0.015)}px`; g.fillText(name, w / 2, h * 0.62);
   return tex(c);
 }
+// ---- v5.20 wayfinding: back-lit screen headers, restroom pictograms, exit signs, the hanging guide sign, gallery art prints ----
+const ACCENT = { curved: '#e8a25a', imax: '#4c9dff', standard: '#4fd1c5' };
+export function screenSignTexture(num, title, sub, kind) {
+  const w = 1024, h = 256, c = makeCanvas(w, h), g = c.getContext('2d'), acc = ACCENT[kind] || '#e8a25a';
+  const bg = g.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#17151a'); bg.addColorStop(1, '#0c0b0e'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(201,160,97,.85)'; g.lineWidth = 6; g.strokeRect(10, 10, w - 20, h - 20);
+  g.fillStyle = acc; g.font = `600 ${Math.round(h * 0.78)}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = acc; g.shadowBlur = 18; g.fillText(String(num), 150, h * 0.56); g.shadowBlur = 0;
+  g.fillStyle = 'rgba(201,160,97,.6)'; g.fillRect(290, 58, 3, h - 116);
+  g.textAlign = 'left'; g.fillStyle = '#f5ede3'; g.font = `600 ${Math.round(h * 0.25)}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(h * 0.03)}px`; g.fillText(title, 340, h * 0.4);
+  g.fillStyle = acc; g.font = `500 ${Math.round(h * 0.13)}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(h * 0.035)}px`; g.fillText(sub, 342, h * 0.7);
+  return tex(c);
+}
+function figure(g, x, y, s, dress) { g.beginPath(); g.arc(x, y - s * 0.62, s * 0.13, 0, 7); g.fill(); g.beginPath();
+  if (dress) { g.moveTo(x - s * 0.12, y - s * 0.44); g.lineTo(x + s * 0.12, y - s * 0.44); g.lineTo(x + s * 0.24, y + s * 0.08); g.lineTo(x - s * 0.24, y + s * 0.08); } else { g.roundRect ? g.roundRect(x - s * 0.17, y - s * 0.45, s * 0.34, s * 0.48, s * 0.06) : g.rect(x - s * 0.17, y - s * 0.45, s * 0.34, s * 0.48); }
+  g.fill(); g.fillRect(x - s * 0.13, y + (dress ? s * 0.08 : s * 0.03), s * 0.1, s * 0.4); g.fillRect(x + s * 0.03, y + (dress ? s * 0.08 : s * 0.03), s * 0.1, s * 0.4); }
+export function restroomSignTexture(kind) {
+  const w = 512, h = 160, c = makeCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#121114'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(201,160,97,.9)'; g.lineWidth = 4; g.strokeRect(6, 6, w - 12, h - 12);
+  g.fillStyle = '#e9d2a8'; figure(g, 86, 92, 110, kind === 'f'); g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = `600 44px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = '7px'; g.fillText(kind === 'f' ? 'LADIES' : 'GENTLEMEN', 160, 74);
+  g.font = `400 24px ${SANS}`; g.fillStyle = 'rgba(233,210,168,.75)'; if ('letterSpacing' in g) g.letterSpacing = '3px'; g.fillText('RESTROOM  ·  ACCESSIBLE', 162, 118);
+  return tex(c);
+}
+export function exitSignTexture(text = 'EXIT') {
+  const w = 512, h = 192, c = makeCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#0e8f45'; g.fillRect(0, 0, w, h); g.fillStyle = '#eafff1';
+  const x = 110, y = 100, s = 1.25; g.save(); g.translate(x, y); g.scale(s, s); g.beginPath(); g.arc(14, -52, 12, 0, 7); g.fill(); g.lineWidth = 13; g.lineCap = 'round'; g.strokeStyle = '#eafff1';
+  g.beginPath(); g.moveTo(4, -34); g.lineTo(-8, 4); g.lineTo(-30, 24); g.moveTo(-8, 4); g.lineTo(14, 18); g.lineTo(10, 46); g.moveTo(2, -26); g.lineTo(-22, -16); g.lineTo(-34, -30); g.moveTo(2, -26); g.lineTo(22, -6); g.lineTo(38, -12); g.stroke(); g.restore();
+  g.font = `800 92px ${SANS}`; g.textAlign = 'left'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = '10px'; g.fillText(text, 210, h / 2 + 4);
+  return tex(c);
+}
+export function guideSignTexture() {
+  const w = 2048, h = 256, c = makeCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#121114'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(201,160,97,.9)'; g.fillRect(0, h - 8, w, 8);
+  const cell = (x, n, label, arrow, kind) => { g.fillStyle = ACCENT[kind]; g.font = `600 150px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(n, x + 90, h * 0.52);
+    g.textAlign = 'left'; g.fillStyle = '#f5ede3'; g.font = `600 54px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = '6px'; g.fillText(label, x + 190, h * 0.42); g.fillStyle = 'rgba(245,237,227,.7)'; g.font = `400 40px ${SANS}`; g.fillText(arrow, x + 190, h * 0.72); };
+  cell(40, '1', 'CURVED PREMIUM', '←  left', 'curved'); cell(720, '2', 'IMAX', '↑  straight ahead', 'imax'); cell(1370, '3', 'STANDARD', 'right  →', 'standard');
+  g.fillStyle = 'rgba(201,160,97,.35)'; g.fillRect(690, 40, 3, h - 80); g.fillRect(1340, 40, 3, h - 80);
+  return tex(c);
+}
+// gallery art prints: the history of the cinema told in deco graphics (no invented film titles)
+export const PRINTS = [
+  { a: '#14110f', b: '#c9a061', t: 'LUMIÈRE', s: 'Since 1895 · The first picture show', shape: 'beam' },
+  { a: '#0c1420', b: '#4c9dff', t: 'IMAX', s: 'Screen 2 · 22 metres of picture', shape: 'frame' },
+  { a: '#1a0d10', b: '#e8a25a', t: 'CURVED', s: 'Screen 1 · Premium recliners', shape: 'arc' },
+  { a: '#0b1716', b: '#4fd1c5', t: 'STANDARD', s: 'Screen 3 · Classic stadium hall', shape: 'reel' },
+  { a: '#120f16', b: '#d97a8a', t: 'ENCORE', s: 'Stay for the credits', shape: 'curtain' },
+  { a: '#101010', b: '#e9d2a8', t: 'SILENCE', s: 'The show is about to begin', shape: 'star' },
+];
+export function printTexture(p) {
+  const w = 256, h = 384, c = makeCanvas(w, h), g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, shade(p.a, 0.06)); gr.addColorStop(1, p.a); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.strokeStyle = p.b; g.fillStyle = p.b; g.lineWidth = 3; g.save(); g.translate(w / 2, h * 0.4);
+  if (p.shape === 'beam') { g.globalAlpha = 0.85; g.beginPath(); g.moveTo(-8, -70); g.lineTo(8, -70); g.lineTo(90, 90); g.lineTo(-90, 90); g.closePath(); const bm = g.createLinearGradient(0, -70, 0, 90); bm.addColorStop(0, p.b); bm.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = bm; g.fill(); g.globalAlpha = 1; g.fillStyle = p.b; g.fillRect(-22, -96, 44, 26); }
+  else if (p.shape === 'frame') { for (let i = 0; i < 4; i++) g.strokeRect(-90 + i * 12, -70 + i * 9, 180 - i * 24, 130 - i * 18); }
+  else if (p.shape === 'arc') { for (let i = 0; i < 5; i++) { g.beginPath(); g.ellipse(0, 40 + i * 12, 100 - i * 6, 70, 0, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); } }
+  else if (p.shape === 'reel') { g.beginPath(); g.arc(0, 0, 80, 0, 7); g.stroke(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; g.beginPath(); g.arc(Math.cos(a) * 46, Math.sin(a) * 46, 18, 0, 7); g.stroke(); } g.beginPath(); g.arc(0, 0, 10, 0, 7); g.fill(); }
+  else if (p.shape === 'curtain') { for (let i = -5; i <= 5; i++) { g.beginPath(); g.moveTo(i * 18, -90); g.quadraticCurveTo(i * 18 + (i < 0 ? -20 : 20), 10, i * 22, 90); g.stroke(); } }
+  else { for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * 95, Math.sin(a) * 95); g.stroke(); } g.beginPath(); g.arc(0, 0, 22, 0, 7); g.fill(); }
+  g.restore(); g.textAlign = 'center'; g.fillStyle = '#f5ede3'; g.font = `600 ${Math.round(w * 0.15)}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${Math.round(w * 0.02)}px`; g.fillText(p.t, w / 2, h * 0.78);
+  g.font = `400 ${Math.round(w * 0.045)}px ${SANS}`; g.fillStyle = 'rgba(245,237,227,.7)'; if ('letterSpacing' in g) g.letterSpacing = '1px'; g.fillText(p.s, w / 2, h * 0.86);
+  g.strokeStyle = 'rgba(201,160,97,.6)'; g.lineWidth = 2; g.strokeRect(10, 10, w - 20, h - 20); return tex(c);
+}

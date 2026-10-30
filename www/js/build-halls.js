@@ -7,13 +7,13 @@ import { Room } from './room.js';
 import { Acc, toGeometry, M, MAT, col } from './geom.js';
 import { railKit, speakerKit } from './props.js';
 import { assetGeometry } from './assets.js';
-import { HALLS, DOOR_W, DOOR_H, PASSAGES } from './layout.js';
+import { HALLS, HALL_DOORS } from './layout.js';
 import { hallFloorY, hallSeats, BEHIND, TREAD } from './hallmath.js';
 import { slateTexture } from './textures.js';
-export const THEME = {   // docs/V5-ART-DIRECTION.md: I = Everyman teal and red velvet, II = walnut and burgundy romance, III = Dolby-style black with blue light lines
-  I: { seat: '#1d5a56', wall: '#18403f', wall2: '#0d1416', led: '#ffb066', carpet: '#4a1a22', riser: '#121215', curtain: '#6f1520', ceil: '#0e0e10', accent: '#ff8a3d' },
-  II: { seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#3a1418', riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true },
-  III: { seat: '#1e2c4a', wall: '#141418', wall2: '#0c0c0f', led: '#4c9dff', carpet: '#1a1d26', riser: '#0e0e11', curtain: null, ceil: '#0b0b0e', accent: '#4c9dff', cove: true },
+export const THEME = {   // I = curved premium: walnut slats, burgundy, star ceiling; II = IMAX: black with blue light lines (Dolby/IMAX style); III = standard: Everyman teal
+  I: { seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#3a1418', riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true },
+  II: { seat: '#1e2c4a', wall: '#141418', wall2: '#0c0c0f', led: '#4c9dff', carpet: '#1a1d26', riser: '#0e0e11', curtain: null, ceil: '#0b0b0e', accent: '#4c9dff', cove: true, fascia: '#101014' },
+  III: { seat: '#1d5a56', wall: '#18403f', wall2: '#0d1416', led: '#ffb066', carpet: '#4a1a22', riser: '#121215', curtain: '#6f1520', ceil: '#0e0e10', accent: '#ff8a3d' },
 };
 // quads -> geometry (pos, normal); each quad [a, b, c, d] counter-clockwise seen from the front
 function quadGeo(quads) {
@@ -23,8 +23,9 @@ function quadGeo(quads) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); g.setIndex(idx); return g;
 }
 // floor profile of one row strip along d (distance from the screen wall): [[d0, d1, y], ...]
-function rowProfile(h, r, aisle) {
+function rowProfile(h, r, aisle, trench) {
   const d0 = r === 0 ? 0 : h.pf[r], d1 = r === h.rows - 1 ? h.depth : h.pf[r + 1], y = h.rowY[r];
+  if (trench && r >= h.cross.row) return [[d0, d1, h.rowY[h.cross.row]]];   // the vomitory trench stays level with the crossing aisle
   if (!aisle || r === h.rows - 1) return [[d0, d1, y]];
   const k = h.steps[r + 1], R = h.rowY[r + 1] - y, out = [[d0, d1 - (k - 1) * TREAD, y]];
   for (let j = 1; j < k; j++) out.push([d1 - (k - j) * TREAD, d1 - (k - j - 1) * TREAD, y + j * R / k]);
@@ -36,11 +37,13 @@ function buildHall(ctx, h) {
   const zs = h.zs, Z = (d, u) => zs + d - h.rowSag(u), cx = h.cx, hb = h.B / 2, L = room.lights, top = h.ceil, yF = h.frontY;
   // ---------- stadium floor ----------
   const cols = []; const addCols = (a, b, step) => { const n = Math.max(1, Math.ceil((b - a) / step)); for (let i = 0; i < n; i++) cols.push([a + (b - a) * i / n, a + (b - a) * (i + 1) / n, false]); };
-  addCols(h.x0, cx - hb, 0.8); cols.forEach((c) => (c[2] = true)); const nA = cols.length; addCols(cx - hb, cx + hb, h.rowR ? 0.6 : 1.2); const nB = cols.length; addCols(cx + hb, h.x1, 0.8); for (let i = nB; i < cols.length; i++) cols[i][2] = true;
+  addCols(h.x0, cx - hb, 0.8); cols.forEach((c) => (c[2] = true)); const vu = h.vom ? h.vom.u : 0;
+  if (h.vom) { addCols(cx - hb, cx - vu, 1.2); const nT = cols.length; addCols(cx - vu, cx + vu, 1.3); cols[nT].push(true); addCols(cx + vu, cx + hb, 1.2); } else addCols(cx - hb, cx + hb, h.rowR ? 0.6 : 1.2);
+  const nB = cols.length; addCols(cx + hb, h.x1, 0.8); for (let i = nB; i < cols.length; i++) cols[i][2] = true;
   const tops = [], risers = [], nosing = [], sides = [];
-  for (const [xa, xb, aisle] of cols) {
+  for (const [xa, xb, aisle, trench] of cols) {
     const ua = xa - cx, ub = xb - cx; let prevY = null;
-    for (let r = 0; r < h.rows; r++) for (const [d0, d1, y] of rowProfile(h, r, aisle)) {
+    for (let r = 0; r < h.rows; r++) for (const [d0, d1, y] of rowProfile(h, r, aisle, trench)) {
       const dd = d1 - d0, n = Math.max(1, Math.ceil(dd / 0.6));
       for (let i = 0; i < n; i++) { const a = d0 + dd * i / n, b = d0 + dd * (i + 1) / n; tops.push([[xa, y, Z(a, ua)], [xa, y, Z(b, ua)], [xb, y, Z(b, ub)], [xb, y, Z(a, ub)]]); }
       if (prevY !== null && y > prevY + 1e-4) { risers.push([[xa, prevY, Z(d0, ua)], [xb, prevY, Z(d0, ub)], [xb, y, Z(d0, ub)], [xa, y, Z(d0, ua)]]); if (aisle) nosing.push([xa, xb, y, d0]); }
@@ -50,24 +53,37 @@ function buildHall(ctx, h) {
   // side faces where an aisle tread stands above the row platform next to it
   for (const side of [-1, 1]) { const x = cx + side * hb, u = side * hb; for (let r = 0; r < h.rows - 1; r++) for (const [d0, d1, y] of rowProfile(h, r, true).slice(1)) { const yb = h.rowY[r]; if (y <= yb + 1e-4) continue;
     sides.push(side < 0 ? [[x, yb, Z(d0, u)], [x, yb, Z(d1, u)], [x, y, Z(d1, u)], [x, y, Z(d0, u)]] : [[x, yb, Z(d1, u)], [x, yb, Z(d0, u)], [x, y, Z(d0, u)], [x, y, Z(d1, u)]]); } }
+  // vomitory trench walls: from the trench floor up to each row platform beside it; colliders keep walkers out of the trench
+  if (h.vom) { const yT = h.rowY[h.cross.row];
+    for (let r = h.cross.row + 1; r < h.rows; r++) { const d0 = h.pf[r], d1 = r === h.rows - 1 ? h.depth : h.pf[r + 1], y = h.rowY[r];
+      sides.push([[cx - vu, yT, Z(d0, 0)], [cx - vu, yT, Z(d1, 0)], [cx - vu, y, Z(d1, 0)], [cx - vu, y, Z(d0, 0)]], [[cx + vu, yT, Z(d1, 0)], [cx + vu, yT, Z(d0, 0)], [cx + vu, y, Z(d0, 0)], [cx + vu, y, Z(d1, 0)]]);
+      for (const s2 of [-1, 1]) { room.col(cx + s2 * vu - 0.06, Z(d0, 0), cx + s2 * vu + 0.06, Z(d1, 0)); room.box(Math.min(cx + s2 * vu, cx + s2 * (vu + 0.05)), y, Z(d0, 0), Math.max(cx + s2 * vu, cx + s2 * (vu + 0.05)), y + 0.04, Z(d1, 0) - 0.001, '#c9a061', { mat: MAT.brass, faces: 'py px nx pz nz' }); } }
+    // guard rail on top of the trench walls (glass with a slim brass top rail)
+    for (const s2 of [-1, 1]) { const dA = h.pf[h.cross.row + 1], len = h.depth - dA - 0.05; room.kit(railKit(len, 0.9), cx + s2 * (vu + 0.04), 0, Z(dA + len / 2, 0), Math.PI / 2); } }
+  // balcony front: a fascia on the high riser with a brass rule and a light line, read from the stalls as the balcony's edge
+  if (h.balcony) { const r = h.balcony, d = h.pf[r], y0 = h.rowY[r - 1], y1 = h.rowY[r];
+    for (const [a, b] of h.vom ? [[h.x0 + 0.02, cx - vu], [cx + vu, h.x1 - 0.02]] : [[h.x0 + 0.02, h.x1 - 0.02]]) {
+      room.box(a, y0 + 0.02, Z(d, 0) - 0.03, b, y1 + 0.32, Z(d, 0), T.fascia || '#141214', { mat: MAT.lacquer, faces: 'nz py' });
+      room.box(a, y1 + 0.32, Z(d, 0) - 0.04, b, y1 + 0.36, Z(d, 0) + 0.06, '#c9a061', { mat: MAT.brass, faces: 'nz py ny' });
+      room.glowBox(a + 0.05, y0 + 0.08, Z(d, 0) - 0.04, b - 0.05, y0 + 0.1, Z(d, 0) - 0.03, T.led, 1.4, 1, 'nz ny'); L.line(a + 0.2, y0 + 0.3, Z(d, 0) - 0.3, b - 0.2, y0 + 0.3, Z(d, 0) - 0.3, T.led, 0.35, 3, 'h'); room.col(a, Z(d, 0) - 0.04, b, Z(d, 0) + 0.02); } }
   room.acc.add(quadGeo(tops), null, T.carpet, { mat: MAT.hallCarpet }); room.acc.add(quadGeo(risers), null, T.riser, { mat: MAT.paint }); if (sides.length) room.acc.add(quadGeo(sides), null, T.riser, { mat: MAT.paint });
   for (const [xa, xb, y, d] of nosing) { const za = Z(d, xa - cx) - 0.012, zb = Z(d, xb - cx) - 0.012; room.glowBox(xa + 0.05, y - 0.035, Math.min(za, zb) - 0.004, xb - 0.05, y - 0.02, Math.max(za, zb), '#ffcf96', 1.8, 0, 'nz ny');
     L.point((xa + xb) / 2, y - 0.05, (za + zb) / 2 - 0.1, '#ffc88a', 0.05, 0.9, 'f'); }
   // ---------- walls (inward faces), colliders behind them ----------
-  const doorSides = h.doorSide === 0 ? [-1, 1] : [h.doorSide];
-  const gapFor = (side) => doorSides.includes(side) ? [[h.doorZ(side) - DOOR_W / 2, h.doorZ(side) + DOOR_W / 2, DOOR_H]] : [];
+  const doors = HALL_DOORS.filter((d) => d.hall === h.id), sideDoors = (side) => doors.filter((d) => d.axis === 'x' && d.side === side);
   const blackD = h.pf[1] - 0.6;   // from the screen to row A the walls are black (stray light)
-  for (const side of [-1, 1]) { const x = side < 0 ? h.x0 : h.x1, dir = -side, gaps = gapFor(side);
-    room.wall('z', x, zs, zs + blackD, yF, top, dir, T.wall2, [], { mat: MAT.acoustic, thick: 0.3 });
-    room.wall('z', x, zs + blackD, h.zBack, yF, top, dir, T.slats ? T.wall : T.wall, gaps, { mat: T.slats ? MAT.slats : MAT.acoustic, thick: 0.3 });
+  for (const side of [-1, 1]) { const x = side < 0 ? h.x0 : h.x1, dir = -side, ds = sideDoors(side), gapsIn = (a, b) => ds.filter((d) => d.z > a && d.z < b).map((d) => [d.z - d.w / 2, d.z + d.w / 2, d.h]);
+    // a door's opening starts at the floor level of the hall at that point (the crossing aisle and the exit are at entrance level, 0)
+    room.wall('z', x, zs, zs + blackD, yF, top, dir, T.wall2, gapsIn(zs, zs + blackD), { mat: MAT.acoustic, thick: 0.3 });
+    room.wall('z', x, zs + blackD, h.zBack, yF, top, dir, T.wall, gapsIn(zs + blackD, h.zBack), { mat: T.slats ? MAT.slats : MAT.acoustic, thick: 0.3 });
     // dimmable LED slots and surround speakers along the audience zone
-    for (let d = blackD + 1.2; d < h.depth - 1.0; d += T.slats ? 2.4 : 3.0) { const z = zs + d; if (gaps.length && Math.abs(z - h.doorZ(side)) < DOOR_W / 2 + 0.5) continue; const fy = hallFloorY(h, side < 0 ? h.x0 + 0.3 : h.x1 - 0.3, z);
+    for (let d = blackD + 1.2; d < h.depth - 1.0; d += T.slats ? 2.4 : 3.0) { const z = zs + d; if (ds.some((q) => Math.abs(z - q.z) < q.w / 2 + 0.5)) continue; const fy = hallFloorY(h, side < 0 ? h.x0 + 0.3 : h.x1 - 0.3, z);
       room.glowBox(side < 0 ? x : x - 0.03, fy + 1.1, z - 0.025, side < 0 ? x + 0.03 : x, top - 0.7, z + 0.025, T.led, 1.6, 1, side < 0 ? 'px' : 'nx');
       L.line(x - side * 0.15, fy + 1.3, z, x - side * 0.15, top - 0.9, z, T.led, 0.35, 5, 'h');
       if (Math.round(d / 3) % 2 === 0) room.kit(speakerKit(), x - side * 0.17, Math.max(fy + 2.9, 2.6), z + 1.5, side < 0 ? Math.PI / 2 : -Math.PI / 2); }
   }
   room.wall('x', zs, h.x0, h.x1, yF, top, 1, '#08080a', [], { mat: MAT.acoustic, thick: 0.3 });
-  room.wall('x', h.zBack, h.x0, h.x1, yF, top, -1, T.wall2, [], { mat: MAT.acoustic, thick: 0.3 });
+  room.wall('x', h.zBack, h.x0, h.x1, yF, top, -1, T.wall2, h.vom ? [[cx - vu, cx + vu, h.rowY[h.cross.row] + 2.8]] : [], { mat: MAT.acoustic, thick: 0.3 });
   if (T.cove) for (const [x, d] of [[h.x0, 1], [h.x1, -1]]) { room.glowBox(d > 0 ? x : x - 0.05, top - 0.42, zs + 0.5, d > 0 ? x + 0.05 : x, top - 0.38, h.zBack - 0.3, T.led, 2.2, 1, d > 0 ? 'px ny' : 'nx ny'); L.line(x + d * 0.3, top - 0.5, zs + 1, x + d * 0.3, top - 0.5, h.zBack - 1, T.led, 0.5, 6, 'h', [d * 0.3, -0.9, 0]); }   // Dolby-style light line along the walls
   // projector porthole (the only trace of the projector: no fake beam)
   room.box(cx - 0.6, top - 1.9, h.zBack - 0.06, cx + 0.6, top - 1.35, h.zBack - 0.001, '#050608', { mat: MAT.glass, faces: 'nz' }); room.glowBox(cx - 0.18, top - 1.72, h.zBack - 0.07, cx + 0.18, top - 1.55, h.zBack - 0.06, '#dfe8ff', 2.2, 0, 'nz');
@@ -112,28 +128,37 @@ function buildHall(ctx, h) {
   if (!h.rowR) { room.kit(railKit(h.B), cx, h.rowY[cr], Z(railD, 0), 0); room.col(cx - hb, Z(railD, 0) - 0.05, cx + hb, Z(railD, 0) + 0.05); pane(cx - hb, Z(railD, 0), cx + hb, Z(railD, 0)); }
   else for (let i = 0; i < 6; i++) { const u0 = -hb + h.B * i / 6, u1 = -hb + h.B * (i + 1) / 6, um = (u0 + u1) / 2, len = Math.hypot(u1 - u0, h.rowSag(u1) - h.rowSag(u0)), yaw = -Math.atan2(h.rowSag(u1) - h.rowSag(u0), u1 - u0);
     room.kit(railKit(len - 0.006, 0.8, i === 5), cx + um, h.rowY[cr], Z(railD, um), yaw); room.col(cx + u0, Math.min(Z(railD, u0), Z(railD, u1)) - 0.05, cx + u1, Math.max(Z(railD, u0), Z(railD, u1)) + 0.05); pane(cx + u0, Z(railD, u0), cx + u1, Z(railD, u1)); }
-  // ---------- doors: exit sign above each, light from the passage spills in ----------
-  for (const side of doorSides) { const x = side < 0 ? h.x0 : h.x1, z = h.doorZ(side), inX = x - side * 0.02;
-    room.glowBox(side < 0 ? x : x - 0.04, DOOR_H + 0.25, z - 0.28, side < 0 ? x + 0.04 : x, DOOR_H + 0.47, z + 0.28, '#27e36b', 1.8, 0, side < 0 ? 'px' : 'nx');
-    L.point(inX - side * 0.3, DOOR_H + 0.3, z, '#3dff86', 0.35, 3.5, 'f'); L.point(inX - side * 0.6, 1.5, z, '#ffd2a0', 0.5, 4, 'h');
-    // door reveal inside the wall thickness (black) so the opening reads as a portal
-    for (const s2 of [-1, 1]) room.box(side < 0 ? x - 0.3 : x, 0, z + s2 * DOOR_W / 2 - (s2 > 0 ? 0 : 0.001), side < 0 ? x : x + 0.3, DOOR_H, z + s2 * DOOR_W / 2 + (s2 > 0 ? 0.001 : 0), '#0b0b0d', { faces: s2 > 0 ? 'nz' : 'pz', mat: MAT.paint });
-    room.box(side < 0 ? x - 0.3 : x, DOOR_H, z - DOOR_W / 2, side < 0 ? x : x + 0.3, DOOR_H + 0.001, z + DOOR_W / 2, '#0b0b0d', { faces: 'ny', mat: MAT.paint }); }
+  // ---------- exit landing and steps down into the front pit (handrail on the open sides) ----------
+  if (h.exitStair) { const E = h.exitStair, xw = E.side > 0 ? h.x1 : h.x0, xa = xw - E.side * E.land, xl = Math.min(xw, xa), xr = Math.max(xw, xa), za = E.z - E.half, zb = E.z + E.half, open = E.side > 0 ? 'nx' : 'px';
+    room.box(xl, yF, za, xr, 0, zb, T.riser, { mat: MAT.paint, faces: `py nz ${open}` }); room.flat(xl + 0.001, za + 0.001, xr - 0.001, zb - 0.001, 0.003, true, T.carpet, { mat: MAT.hallCarpet });
+    for (let k = 0; k < E.n - 1; k++) { const z0 = zb + k * TREAD, z1 = z0 + TREAD, y = h.frontY + (E.n - 1 - k) * E.rise; room.box(xl, yF, z0, xr, y, z1, T.riser, { mat: MAT.paint, faces: `py pz ${open}` });
+      room.glowBox(xl + 0.03, y - 0.03, z1, xr - 0.03, y - 0.015, z1 + 0.01, '#ffcf96', 1.6, 0, 'pz'); }
+    const len = E.half * 2 + (E.n - 1) * TREAD; room.kit(railKit(len, 0.9), xa + E.side * 0.04, 0, za + len / 2, Math.PI / 2); room.col(xa - 0.05, za, xa + 0.05, za + len - 0.3);
+    L.point(xw - E.side * 0.6, 2.4, E.z, '#ffd2a0', 0.6, 4, 'h'); }
+  // ---------- doors: exit sign above each (shielded from the screen), warm light from the gallery spills in; reveals in the wall thickness ----------
+  for (const d of doors) { if (d.axis === 'z') { const y0 = h.rowY[h.cross.row]; room.glowBox(cx - 0.28, y0 + 3.05, h.zBack - 0.04, cx + 0.28, y0 + 3.27, h.zBack, '#27e36b', 1.8, 0, 'nz'); L.point(cx, y0 + 3.0, h.zBack - 0.4, '#3dff86', 0.3, 3, 'f');
+      for (const s2 of [-1, 1]) room.box(cx + s2 * vu - (s2 > 0 ? 0 : 0.001), y0, h.zBack, cx + s2 * vu + (s2 > 0 ? 0.001 : 0), y0 + 2.8, h.zBack + 0.3, '#0b0b0d', { faces: s2 > 0 ? 'nx' : 'px', mat: MAT.paint });
+      room.box(cx - vu, y0 + 2.8, h.zBack, cx + vu, y0 + 2.801, h.zBack + 0.3, '#0b0b0d', { faces: 'ny', mat: MAT.paint }); continue; }
+    const side = d.side, x = side < 0 ? h.x0 : h.x1, z = d.z, inX = x - side * 0.02, y0 = hallFloorY(h, x - side * 0.5, z);
+    room.glowBox(side < 0 ? x : x - 0.04, y0 + d.h + 0.25, z - 0.28, side < 0 ? x + 0.04 : x, y0 + d.h + 0.47, z + 0.28, '#27e36b', 1.8, 0, side < 0 ? 'px' : 'nx');
+    L.point(inX - side * 0.3, y0 + d.h + 0.3, z, '#3dff86', 0.35, 3.5, 'f'); L.point(inX - side * 0.6, y0 + 1.5, z, '#ffd2a0', 0.5, 4, 'h');
+    for (const s2 of [-1, 1]) room.box(side < 0 ? x - 0.3 : x, y0, z + s2 * d.w / 2 - (s2 > 0 ? 0 : 0.001), side < 0 ? x : x + 0.3, y0 + d.h, z + s2 * d.w / 2 + (s2 > 0 ? 0.001 : 0), '#0b0b0d', { faces: s2 > 0 ? 'nz' : 'pz', mat: MAT.paint });
+    room.box(side < 0 ? x - 0.3 : x, y0 + d.h, z - d.w / 2, side < 0 ? x : x + 0.3, y0 + d.h + 0.001, z + d.w / 2, '#0b0b0d', { faces: 'ny', mat: MAT.paint }); }
   // ---------- seats and arms: Kiln assets (tools/kiln), two instanced LODs each, light baked per instance ----------
-  const seats = hallSeats(h), curvedK = h.kind === 'curved', seatName = { standard: 'seat_standard', curved: 'recliner', giant: 'seat_giant' }[h.kind], armName = curvedK ? 'console_recliner' : 'arm_standard';
+  const seats = hallSeats(h), curvedK = h.kind === 'curved', seatName = { standard: 'seat_standard', curved: 'recliner', imax: 'seat_giant' }[h.kind], armName = curvedK ? 'console_recliner' : 'arm_standard';
   const flip = new THREE.Matrix4().makeRotationY(Math.PI);   // assets face +z; a seat with yaw 0 faces the screen (-z)
-  const armOver = h.kind === 'standard' ? { Mesh_Panel: { id: MAT.velvet, tint: col('#1d5a56') } } : h.kind === 'giant' ? { Mesh_Cap: { id: MAT.leather, tint: col('#1c1a1a') } } : null;
+  const armOver = h.kind === 'standard' ? { Mesh_Panel: { id: MAT.velvet, tint: col('#1d5a56') } } : h.kind === 'imax' ? { Mesh_Cap: { id: MAT.leather, tint: col('#1c1a1a') } } : null;
   const seatGeo = [0, 1].map((l) => assetGeometry(seatName, l, flip, toGeometry, Acc)), armGeo = [0, 1].map((l) => assetGeometry(armName, l, flip, toGeometry, Acc, armOver));
   // arm positions: every seat boundary of every row (n + 1 per row), following curved rows like the seats do
   const arms = [];
-  for (let r = 0; r < h.rows; r++) for (let c = 0; c <= h.perRow; c++) { const u = -h.B / 2 + c * h.seatW; arms.push({ x: h.cx + u, y: h.rowY[r], z: zs + h.dHip[r] - h.rowSag(u), yaw: h.rowR ? -Math.asin(u / h.rowR) : 0 }); }
+  for (let r = 0; r < h.rows; r++) for (let c = 0; c <= h.perRow; c++) { const u = -h.B / 2 + c * h.seatW; if (h.vom && r >= h.cross.row && Math.abs(u) < h.vom.u - h.seatW * 0.3) continue; arms.push({ x: h.cx + u, y: h.rowY[r], z: zs + h.dHip[r] - h.rowSag(u), yaw: h.rowR ? -Math.asin(u / h.rowR) : 0 }); }
   const H3 = [0, 0, 0], F3 = [0, 0, 0], litOf = (list) => { const a = new Float32Array(list.length * 7); list.forEach((s, i) => { L.at(s.x, s.y + 0.9, s.z + 0.2, 0, 0.6, 0.8, H3, F3); a.set([H3[0], H3[1], H3[2], F3[0], F3[1], F3[2], L.screenAt(s.x, s.y + 0.8, s.z - 0.3, 0, 0.29, -0.96)], i * 7); }); return a; };
   const lit = litOf(seats), armLit = litOf(arms), seatU = room.U;
   const instanced = (geos, n) => geos.map((g) => { const m = new THREE.InstancedMesh(g, mats.litFor(seatU, g, true), n); m.count = 0; m.frustumCulled = false;
     m.geometry.setAttribute('iLh', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLf', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLs', new THREE.InstancedBufferAttribute(new Float32Array(n), 1)); room.add(m); return m; });
   const meshes = instanced(seatGeo, seats.length), armMeshes = instanced(armGeo, arms.length);
   // colliders: one per row (straight) or per seat (curved)
-  if (!h.rowR) for (let r = 0; r < h.rows; r++) { const d = h.dHip[r]; room.col(cx - hb - 0.05, zs + d - h.seat.fr, cx + hb + 0.05, zs + d + h.seat.bk); }
+  if (!h.rowR) for (let r = 0; r < h.rows; r++) { const d = h.dHip[r]; for (const [a, b] of h.vom && r >= h.cross.row ? [[cx - hb - 0.05, cx - vu - 0.02], [cx + vu + 0.02, cx + hb + 0.05]] : [[cx - hb - 0.05, cx + hb + 0.05]]) room.col(a, zs + d - h.seat.fr, b, zs + d + h.seat.bk); }
   else for (const s of seats) room.col(s.x - h.seatW / 2, s.z - h.seat.fr, s.x + h.seatW / 2, s.z + h.seat.bk);
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9, 9];
   seats.forEach((s, i) => { s.i = i; });

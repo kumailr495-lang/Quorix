@@ -1,13 +1,13 @@
 // LUMIERE v5 - pure-Node checks (no browser, no GPU; runs in Termux): sh tools/run-dev.sh tools/dev/test-logic.mjs
 //   halls    : seat counts, seats inside the hall, aisle steps <= 0.21 m, every row sees the bottom of the screen over the head in front
-//   layout   : every passage door sits on its hall's side wall, rooms do not overlap, roomAt agrees on both sides of every door
+//   layout   : every hall door sits in its hall's wall at the right floor level, rooms do not overlap, roomAt agrees on both sides of every opening
 //   director : house cues fire once and on time; live sound analysis stays quiet on steady sound, fires one scare on a real jump, respects cool-downs
 //   i18n     : es / hi / ur cover every English key with the same list shapes and {placeholders}
 // run through tools/run-dev.sh (it makes `three` resolvable); LUM_WWW points at the copied www/
 import { pathToFileURL } from 'node:url';
 const WWW = process.env.LUM_WWW ? pathToFileURL(process.env.LUM_WWW + '/').href : new URL('../../www/', import.meta.url).href, imp = (f) => import(WWW + f);
 const { SPECS, calc, makeHall, hallFloorY, hallSeats } = await imp('js/hallmath.js');
-const { HALLS, PASSAGES, PORTALS, RECTS, roomAt, DOOR_W, CONC, LOBBY } = await imp('js/layout.js');
+const { HALLS, HALL_DOORS, PORTALS, RECTS, roomAt, GAL, LOBBY, TUN } = await imp('js/layout.js');
 const { Director } = await imp('js/react.js'), { HOUSE } = await imp('js/films.js');
 const { EN } = await imp('js/lang/en.js'), { ES } = await imp('js/lang/es.js'), { HI } = await imp('js/lang/hi.js'), { UR } = await imp('js/lang/ur.js');
 let fails = 0; const ok = (cond, msg) => { if (!cond) { fails++; console.log('  FAIL', msg); } return cond; };
@@ -16,7 +16,9 @@ const section = (s) => console.log('== ' + s);
 section('halls');
 for (const s of SPECS) {
   const h = makeHall(s), k = calc(s), seats = hallSeats(h);
-  ok(seats.length === s.rows * s.perRow, `${s.id} seat count ${seats.length}`);
+  let trench = 0; if (h.vom) for (let c = 1; c <= s.perRow; c++) if (Math.abs(-h.B / 2 + (c - 0.5) * s.seatW) < h.vom.u + s.seatW * 0.3) trench += s.rows - h.cross.row;
+  ok(seats.length === s.rows * s.perRow - trench, `${s.id} seat count ${seats.length}`);
+  if (h.vom) ok(!seats.some((q) => q.row >= h.cross.row && Math.abs(q.u) < h.vom.u), `${s.id} a seat stands in the vomitory`);
   for (const q of seats) if (!(q.x > h.x0 + 0.5 && q.x < h.x1 - 0.5 && q.z > h.zs && q.z < h.zBack)) { ok(false, `${s.id} seat ${q.id} outside the hall`); break; }
   // side aisles: walk them front to back in 1 cm steps, the floor may only change by stair risers
   let maxStep = 0;
@@ -34,18 +36,18 @@ section('layout');
 const over = (a, b) => a[0] < b[2] - 1e-6 && a[2] > b[0] + 1e-6 && a[1] < b[3] - 1e-6 && a[3] > b[1] + 1e-6;
 const keys = Object.keys(RECTS).filter((k) => k !== 'street');
 for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) ok(!over(RECTS[keys[i]], RECTS[keys[j]]), `rooms ${keys[i]} and ${keys[j]} overlap`);
-for (const p of PASSAGES) for (const d of p.doors) {
-  const h = HALLS.find((q) => q.id === d.hall), wallX = d.side < 0 ? h.x1 : h.x0;
-  ok(Math.abs(d.x - wallX) < 0.2, `${p.key} door to ${d.hall} at x ${d.x} is not on the hall wall (${wallX})`);
-  ok(d.z - DOOR_W / 2 > h.zs && d.z + DOOR_W / 2 < h.zBack, `${p.key} door to ${d.hall} outside the hall depth`);
-  ok(d.z - DOOR_W / 2 > p.z0 && d.z + DOOR_W / 2 < p.z1, `${p.key} door to ${d.hall} outside the passage`);
-  const inner = roomAt(d.x + (d.side < 0 ? -0.6 : 0.6), d.z), outer = roomAt(d.x + (d.side < 0 ? 0.6 : -0.6), d.z);
-  ok(inner === h.key && outer === p.key, `${p.key} door to ${d.hall}: roomAt gives ${outer} | ${inner}`);
+for (const d of HALL_DOORS) {
+  const h = HALLS.find((q) => q.id === d.hall), y = h.cross ? h.rowY[h.cross.row] : 0;
+  if (d.axis === 'x') { const wallX = d.side > 0 ? h.x1 : h.x0; ok(Math.abs(d.x - wallX) < 0.2, `${d.hall} ${d.kind} at x ${d.x} is not on the hall wall (${wallX})`);
+    ok(d.z - d.w / 2 > h.zs && d.z + d.w / 2 < h.zBack, `${d.hall} ${d.kind} outside the hall depth`); ok(d.z - d.w / 2 > GAL.z0 && d.z + d.w / 2 < GAL.z1, `${d.hall} ${d.kind} outside the gallery`);
+    const inner = roomAt(d.x - d.side * 0.6, d.z), outer = roomAt(d.x + d.side * 0.6, d.z); ok(inner === h.key && outer === d.room, `${d.hall} ${d.kind}: roomAt gives ${outer} | ${inner}`); }
+  else { ok(Math.abs(d.z - h.zBack) < 0.05 && d.x - d.w / 2 >= TUN.x0 && d.x + d.w / 2 <= TUN.x1, `${d.hall} rear door not in the tunnel's end`); }
+  if (d.kind === 'entrance') { const fy = h.door === 'vom' ? hallFloorY(h, d.x, d.z - 0.4) : hallFloorY(h, d.x - d.side * 0.6, d.z); ok(Math.abs(fy) < 1e-6, `${d.hall} entrance floor at ${fy} m, not level with the gallery`); }
 }
-ok(CONC.z1 === LOBBY.z0, 'concourse meets the lobby');
+ok(GAL.z1 === LOBBY.z0, 'gallery meets the lobby'); ok(TUN.z1 === GAL.z0, 'tunnel meets the gallery');
 // walking through any opening, the room under you is always one of the two rooms it joins (a third room there hides both: the v5.10 black flash)
 for (const p of PORTALS) for (let t = -1.2; t <= 1.2; t += 0.02) { const x = p.axis === 'x' ? p.x + t : p.x, z = p.axis === 'z' ? p.z + t : p.z, r = roomAt(x, z); if (r !== p.a && r !== p.b) { ok(false, `door ${p.a}|${p.b}: roomAt(${x.toFixed(2)}, ${z.toFixed(2)}) = ${r}`); break; } }
-console.log(`  ${keys.length} rooms, ${PASSAGES.reduce((n, p) => n + p.doors.length, 0)} hall doors`);
+console.log(`  ${keys.length} rooms, ${HALL_DOORS.length} hall doors, ${PORTALS.length} openings`);
 
 section('director');
 { // house films: every cue exactly once, never early, at most one frame late
