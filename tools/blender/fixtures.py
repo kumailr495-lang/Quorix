@@ -143,7 +143,36 @@ def half_fluted(bm, r, z0, z1, flutes):
     bm.faces.new(list(reversed(lo))); bm.faces.new(hi)
 
 
-BUILD = {'torchere_deco': torchere_deco, 'sconce_deco': sconce_deco, 'downlight': downlight, 'speaker_array': speaker_array, 'urinal': urinal, 'basin_vessel': basin_vessel, 'tap_brass': tap_brass, 'mirror_round': mirror_round}
+def bend(r_mid, a_mid):
+    """Deform for a rounded box built straight: local X = radial offset from r_mid, local Y = arc length; wraps it round the ring at a_mid."""
+    def f(c):
+        r = r_mid + c.x; th = a_mid + c.y / r_mid
+        return (r * math.cos(th), r * math.sin(th), c.z)
+    return f
+
+
+def banquette_round():
+    """Round lobby banquette (replaces the eight Kiln segments): eight crowned seat cushions with welts round a continuous channel-tufted
+    back ring, a velvet base on a recessed black plinth with a brass kick band. Sitters face outward; cushion i is centred at
+    (i + 0.5) x 45 degrees, where the engine's sit spots are. Origin = floor centre; the torchere stands inside the back ring."""
+    lod = 0; seg = 128
+    part('Plinth', lod, 'lacquer_black', lambda bm: lathe(bm, [(1.66, 0.0), (2.24, 0.0), (2.24, 0.08), (1.66, 0.08)], seg))
+    part('Base', lod, 'velvet_teal', lambda bm: lathe(bm, [(1.71, 0.075), (2.32, 0.075), (2.335, 0.09), (2.335, 0.3), (2.32, 0.315), (1.71, 0.315)], seg))
+    part('Kick', lod, 'brass', lambda bm: lathe(bm, [(2.33, 0.074), (2.341, 0.074), (2.341, 0.104), (2.33, 0.104)], seg))
+    part('BackBody', lod, 'velvet_teal', lambda bm: lathe(bm, [(1.47, 0.075), (1.705, 0.075), (1.705, 0.9), (1.47, 0.9)], seg))
+    part('BackCap', lod, 'velvet_teal', lambda bm: lathe(bm, [(1.455, 0.885), (1.72, 0.885), (1.745, 0.91), (1.745, 0.945), (1.72, 0.97), (1.455, 0.97), (1.44, 0.945), (1.44, 0.91)], seg))
+    part('CapBand', lod, 'brass', lambda bm: lathe(bm, [(1.741, 0.908), (1.751, 0.908), (1.751, 0.947), (1.741, 0.947)], seg))   # slim trim on the cap's outer face
+    for i in range(24):   # three vertical channels behind each seat
+        a = math.radians(15 * i + 7.5); arc = 1.73 * math.radians(15) - 0.012
+        part(f'Channel{i}', lod, 'velvet_teal', rb((0.06, arc, 0.47), 0.026, (1, 4, 3), 2, (0, 0.012)), T(0.0, 0, 0.6), deform=bend(1.732, a))
+    for i in range(8):
+        a = math.radians(45 * i + 22.5); arc = 2.03 * math.radians(45) - 0.03
+        part(f'Cushion{i}', lod, 'velvet_teal', rb((0.6, arc, 0.14), 0.05, (2, 10, 1), 2, (2, 0.016)), T(0, 0, 0.385), deform=bend(2.03, a))
+        pts = [(2.31 * math.cos(a + t), 2.31 * math.sin(a + t), 0.442) for t in [(-0.5 + k / 40) * (arc - 0.08) / 2.31 for k in range(41)]]
+        part(f'Welt{i}', lod, 'velvet_charcoal', lambda bm, pts=pts: tube(bm, pts, 0.006, 6, closed=False))
+
+
+BUILD = {'banquette_round': banquette_round, 'torchere_deco': torchere_deco, 'sconce_deco': sconce_deco, 'downlight': downlight, 'speaker_array': speaker_array, 'urinal': urinal, 'basin_vessel': basin_vessel, 'tap_brass': tap_brass, 'mirror_round': mirror_round}
 report = []
 for name, fn in BUILD.items():
     if A.only and name not in A.only.split(','): continue

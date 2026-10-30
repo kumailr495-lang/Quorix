@@ -15,7 +15,7 @@ export const THEME = {   // I = curved premium: walnut slats, burgundy, star cei
   // panels = IMAX acoustic panels on a 1.2 m module; arrays = overhead speaker arrays; dado + sconces = Screen 3's picture-palace walls
   I: { lodK: 1, seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#b8a796', floorMat: MAT.deco, riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true, nose: '#ffcf96', trim: null },
   II: { lodK: 0.62, seat: '#1e2c4a', wall: '#141418', wall2: '#0c0c0f', led: '#4c9dff', carpet: '#1a1d26', riser: '#0e0e11', curtain: null, ceil: '#0b0b0e', accent: '#4c9dff', cove: true, fascia: '#101014', nose: '#4c9dff', trim: '#111114', panels: '#2a2b31', arrays: true },
-  III: { lodK: 0.75, seat: '#1d5a56', wall: '#18403f', wall2: '#0d1416', led: '#ffb066', carpet: '#4a1a22', riser: '#121215', curtain: '#6f1520', ceil: '#0e0e10', accent: '#ff8a3d', nose: '#ffc66e', trim: '#111114', dado: '#3e2618', sconces: true },
+  III: { lodK: 0.75, plates: true, seat: '#1d5a56', wall: '#18403f', wall2: '#0d1416', led: '#ffb066', carpet: '#4a1a22', riser: '#121215', curtain: '#6f1520', ceil: '#0e0e10', accent: '#ff8a3d', nose: '#ffc66e', trim: '#111114', dado: '#3e2618', sconces: true },
 };
 // quads -> geometry (pos, normal); each quad [a, b, c, d] counter-clockwise seen from the front
 function quadGeo(quads) {
@@ -192,6 +192,7 @@ function buildHall(ctx, h) {
   const instanced = (geos, n) => geos.map((g) => { const m = new THREE.InstancedMesh(g, mats.litFor(seatU, g, true), n); m.count = 0; m.frustumCulled = false;
     m.geometry.setAttribute('iLh', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLf', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLs', new THREE.InstancedBufferAttribute(new Float32Array(n), 1)); room.add(m); return m; });
   const meshes = instanced(seatGeo, seats.length), armMeshes = instanced(armGeo, arms.length);
+  if (T.plates) room.add(numberPlates(seats));
   // colliders: one per row (straight) or per seat (curved)
   if (!h.rowR) for (let r = 0; r < h.rows; r++) { const d = h.dHip[r]; for (const [a, b] of h.vom && r >= h.cross.row ? [[cx - hb - 0.05, cx - vu - PARAPET - 0.04], [cx + vu + PARAPET + 0.04, cx + hb + 0.05]] : [[cx - hb - 0.05, cx + hb + 0.05]]) room.col(a, zs + d - h.seat.fr, b, zs + d + h.seat.bk); }
   else for (const s of seats) room.col(s.x - h.seatW / 2, s.z - h.seat.fr, s.x + h.seatW / 2, s.z + h.seat.bk);
@@ -227,5 +228,25 @@ function buildHall(ctx, h) {
   hall.pic = pic; hall.picMat = picMat; hall.slate = slate; picMat.uniforms.uGain.value = 0.3;
   hall.zScreen = zs + sd; hall.screenY = cy; hall.curved = curved;
   return hall;
+}
+// seat-number brass plates (an approved idea): each Screen 3 seat's walnut shell carries a brass plate (tools/blender/seats.py); this draws the
+// engraved row-and-seat label on it, one instanced quad per seat reading a label atlas. The plate's face, in the seat's frame: 0.955 m up,
+// 0.424 m behind the hip, facing back and 12 degrees down (the back reclines). Labels fade out beyond 6 m (tiny text would shimmer).
+const PLATE_VERT = `attribute vec2 iCell; uniform vec2 uCell; varying vec2 vUv; varying float vDist;
+void main() { vUv = iCell + uv * uCell; vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
+const PLATE_FRAG = `uniform sampler2D map; varying vec2 vUv; varying float vDist;
+void main() { float a = texture2D(map, vUv).a * (1.0 - smoothstep(4.0, 6.0, vDist)); if (a < 0.5) discard; gl_FragColor = vec4(0.045, 0.03, 0.016, 1.0); }`;
+function numberPlates(seats) {
+  const C = 16, cw = 128, ch = 48, R = Math.ceil(seats.length / C), c = document.createElement('canvas'); c.width = C * cw; c.height = R * ch;
+  const g = c.getContext('2d'); g.font = `700 ${Math.round(ch * 0.62)}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000';
+  seats.forEach((s, i) => g.fillText(s.id, (i % C) * cw + cw / 2, Math.floor(i / C) * ch + ch / 2 + 1));
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;
+  const geo = new THREE.PlaneGeometry(0.06, 0.0225); geo.rotateX(12 * Math.PI / 180); geo.translate(0, 0.9551, 0.4252);
+  const cell = new Float32Array(seats.length * 2); seats.forEach((s, i) => { cell[i * 2] = (i % C) / C; cell[i * 2 + 1] = 1 - (Math.floor(i / C) + 1) / R; });
+  geo.setAttribute('iCell', new THREE.InstancedBufferAttribute(cell, 2));
+  const mat = new THREE.ShaderMaterial({ vertexShader: PLATE_VERT, fragmentShader: PLATE_FRAG, uniforms: { map: { value: tex }, uCell: { value: new THREE.Vector2(1 / C, 1 / R) } } });
+  const m = new THREE.InstancedMesh(geo, mat, seats.length), o = new THREE.Object3D(); m.frustumCulled = false; m.name = 'seat-plates';
+  seats.forEach((s, i) => { o.position.set(s.x, s.y, s.z); o.rotation.set(0, s.yaw, 0); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
+  return m;
 }
 export { quadGeo };

@@ -22,11 +22,14 @@ Env: `SAMPLES` (default 96), `DENSITY` (light-map texels per metre, default 22).
 2. `bake_room.py` (Blender, headless) rebuilds the room and its lights, unwraps a light-map uv set, bakes DIFFUSE light
    (direct + indirect, no albedo; bounce uses each material's real albedo from `www/tex`), filters it, and writes:
    - `www/bake/<room>.glb`: the same triangles with the light-map uvs (TEXCOORD_1), tints and material ids
-   - `<room>_h.png`: house light; in a hall also `<room>_f.png` (fixed: steps, signs, LED lines) and `<room>_s.png`
+   - `<room>_h.png` (JPEG after step 3): house light; in a hall also `<room>_f.png` (fixed: steps, signs, LED lines) and `<room>_s.png`
      (the screen's light, grey, half resolution). Other rooms put house + fixed in `_h.png` (they never dim).
      PNGs hold `light / scale` with the sRGB curve; the scales are in the index.
+   - `<room>_pv.bin`: per-vertex light of the room's placed props (7 bytes a vertex); `<room>_probes.json`: seat and arm probes (halls)
    - `www/bake/index.json`: one entry per room (files, scales, average level, fingerprint).
-3. In the game, `lightmap.js` loads the index, GLBs and maps at boot (Medium and High; Low keeps per-vertex light).
+3. `compress.py` (system Python + Pillow, also in Termux) re-encodes the light maps as JPEG (quality 94, 4:4:4 colour): visually the same
+   on smooth light, about a quarter of the size. `bake-all.sh` runs it last.
+4. In the game, `lightmap.js` loads the index, GLBs and maps at boot (Medium and High; Low keeps per-vertex light).
    `Room.finalize` compares the fingerprint of the room it just built with the bake's. Match: the baked mesh replaces the solid
    mesh and the `USE_LIGHTMAP` shader reads light = h * scale.x * house (+ f * scale.y * fixed + s * scale.z * screen colour).
    No match (the room's code changed and it was not re-baked): the room keeps its per-vertex light and the console says so.

@@ -53,8 +53,8 @@ export function buildLobby(ctx) {
   for (let x = -12; x <= 12; x += 4) L.spot(x, 0.3, 19.2, '#ffb87a', 2.2, 6, 'h', [0, 1, 0.1], 25, 60);   // floor uplights along the glass front
   for (const z of [2.5, 18.5]) L.spot(13.1, H - 0.4, z, '#ffc68a', 5, 8, 'h', [0.4, -1, 0], 18, 50);
   L.ambient('#ffd7ad', '#5a4236', 0.13, 'h');
-  // ---------- centre island: eight banquette segments round a deco torchere (v5.20: replaces the low-poly tree) on a deco rug ----------
-  for (let i = 0; i < 8; i++) placeAsset(room, 'banquette_seg', 0, 0, 10, (i + 0.5) / 8 * PI * 2);
+  // ---------- centre island: a round banquette (v5.20, Blender) round a deco torchere (replaces the low-poly tree) on a deco rug ----------
+  placeAsset(room, 'banquette_round', 0, 0, 10, 0);   // v5.20 Blender ring: continuous channel-tufted back, crowned cushions with welts, brass kick band
   placeAsset(room, 'torchere_deco', 0, 0, 10, 0, { glowK: 1.0 });   // opal bowl glows; it washes the ceiling under the chandelier ring
   L.spot(0, 3.3, 10, '#ffd6a2', 9, 9, 'h', [0, 1, 0], 45, 80); L.point(0, 3.05, 10, '#ffd9a8', 1.6, 6, 'h'); room.col(-2.3, 7.7, 2.3, 12.3); L.occluder(-2.3, 7.7, 2.3, 12.3, 0, 0.9, 0.35);
   for (let i = 0; i < 8; i++) { const a = (i + 0.5) / 8 * PI * 2, sx = Math.sin(a), sz = Math.cos(a); sitSpot(world, 'lobby', 'sofa', sx * 1.98, 10 + sz * 1.98, a, 0.44, { x: sx * 2.95, z: 10 + sz * 2.95 }, 'sit.sofa'); }

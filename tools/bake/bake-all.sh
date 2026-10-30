@@ -12,4 +12,5 @@ for r in $ROOMS; do
   "$B" --background --factory-startup --python tools/bake/bake_room.py -- --room "tools/bake/.work/$r.json" --out www/bake \
     --samples "${SAMPLES:-96}" --density "${DENSITY:-22}" 2>&1 | grep -E '^\[bake|BAKE_DONE|Error|Traceback' || true
 done
+python3 tools/bake/compress.py www/bake   # PNG light maps -> JPEG q94 4:4:4 (about a quarter of the size)
 ls -la www/bake
