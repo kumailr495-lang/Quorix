@@ -459,7 +459,56 @@ def brick(n=N):
     return save('brick', srgb(out), mort * 0.8 + sand * 0.1, 2.4)
 
 
-ALL = [velvet, leather, walnut, slats, chevron, geotile, terrazzo, marble, brushed, powder, flat, plaster, concrete, woven,
+
+# ---------------------------------------------------------------- v7 (docs/V7-DESIGN.md)
+def stone_light(n=N):
+    """Dolby-corridor wall stone (relative, 1.2 m tile): fine-grained honed limestone, 0.5-2 mm grains, soft clouding, rare fossil flecks."""
+    f1, f2, idn = worley(n, 170, 701)
+    rr = np.random.default_rng(702); t = rr.uniform(0, 1, 170 * 170)[idn]
+    grain = np.where(t < 0.12, -0.10, np.where(t < 0.55, -0.02, np.where(t < 0.92, 0.03, 0.09))) * smooth(0.0, 0.12, f2 - f1)
+    cloud = spectral(n, 2.4, 1, 10, 703); fine = spectral(n, 0.4, 120, 256, 704)
+    f1b, f2b, idb = worley(n, 26, 705); fleck = (f1b < 0.05) * (np.random.default_rng(706).uniform(0, 1, 26 * 26)[idb] < 0.25) * -0.12
+    g = 0.5 + grain + (cloud - 0.5) * 0.12 + (fine - 0.5) * 0.06 + fleck
+    return save('stone_light', rel(g, 1.0), 0.5 + grain * 0.6 + (fine - 0.5) * 0.2, 0.5)
+
+
+def carpet_dolby(n=N):
+    """Corridor carpet after the Dolby picture (2.4 m tile): blue-grey watercolour drifts, darker slate pools, fine light streaks, cut pile."""
+    x, y = grid(n)
+    wx = spectral(n, 2.2, 1, 5, 711); wy = spectral(n, 2.2, 1, 5, 712)
+    X = x + (wx - 0.5) * 0.35 * n; Y = y + (wy - 0.5) * 0.12 * n
+    drift = sample(spectral(n, 1.6, 1, 12, 713, aniso=(1.0, 0.4)), X, Y)       # soft patches stretched along the corridor (v)
+    pools = sample(spectral(n, 1.8, 2, 18, 714, aniso=(1.0, 0.5)), X, Y)
+    streak = sample(ridges(n, 715, 3, 16, 0.12, 12.0), X, Y)
+    slate, mid, pale, ink = lin('#2b3440'), lin('#5a6676'), lin('#a3aab3'), lin('#1c222b')
+    t = smooth(0.3, 0.72, drift)
+    out = mix(slate, mid, t)
+    out = mix(out, pale, smooth(0.62, 0.86, drift) * 0.75)
+    out = mix(out, ink, smooth(0.62, 0.8, pools) * 0.55)
+    out = mix(out, pale * 1.1, streak * 0.12)
+    pile = spectral(n, 0.3, 120, 256, 716)
+    out = out * (0.84 + 0.32 * pile[..., None])
+    return save('carpet_dolby', srgb(out), pile * 0.55 + drift * 0.1, 0.8)
+
+
+def perforated(n=N):
+    """Perforated aluminium facade panels (absolute, 1.0 m tile): dark anodised sheet, round holes on a 25 mm grid whose size drifts in waves
+    (bigger holes let more light through: the backlit facade reads as a soft pattern). The engine makes it glow: emission = albedo."""
+    x, y = grid(n); k = 40
+    X, Y = x / n * k, y / n * k
+    cx, cy = (X % 1) - 0.5, (Y % 1) - 0.5
+    ix, iy = np.floor(X), np.floor(Y)
+    wave = 0.5 + 0.5 * np.sin((ix / k) * 2 * np.pi * 2 + np.sin((iy / k) * 2 * np.pi) * 1.6) * np.cos((iy / k) * 2 * np.pi)
+    jit = np.random.default_rng(721).uniform(0, 1, (k, k))[(iy % k).astype(int), (ix % k).astype(int)]
+    rad = 0.06 + 0.3 * np.clip(wave * 0.85 + jit * 0.25 - 0.1, 0, 1)
+    d = np.sqrt(cx * cx + cy * cy)
+    hole = smooth(rad + 0.03, rad - 0.03, d)
+    sheet, glow = lin('#2d2f33'), lin('#ffd49a')
+    out = mix(sheet * (0.9 + 0.2 * spectral(n, 2.0, 1, 6, 722)[..., None]), glow, hole)
+    return save('perforated', srgb(out), 1 - hole, 1.2)
+
+
+ALL = [stone_light, carpet_dolby, perforated, velvet, leather, walnut, slats, chevron, geotile, terrazzo, marble, brushed, powder, flat, plaster, concrete, woven,
        carpet_deco, carpet_hall, asphalt, paving, squaretile, granite, fluted, brick, porcelain, walltile, calacatta]
 
 if __name__ == '__main__':

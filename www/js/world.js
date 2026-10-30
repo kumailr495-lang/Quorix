@@ -55,7 +55,7 @@ export class SwingDoor {
     for (const L of this.leaves) L.m.rotation.y = (L.s < 0 ? 1 : -1) * this.into * ang;   // leaf at the low-z jamb swings with +into, the other mirrored
   }
 }
-const PROBE_AT = { lobby: [0, 2.2, 9], gal: [0, 2.0, -12], street: [0, 2.0, 30], tunnel: [0, 1.6, -36], wcM: [-8, 1.6, -4], wcF: [8, 1.6, -4] };
+const PROBE_AT = { lobby: [0, 2.2, 9], gal: [0, 2.0, -12], street: [0, 2.0, 25], tunnel: [0, 1.6, -36], wcM: [-8, 1.6, -4], wcF: [8, 1.6, -4] };
 export function captureReflections(world, engine) {
   if (!('USE_ENV' in world.mats.defines)) return;   // the define's value is '' (falsy): v5.10 to v5.20 tested the value and never captured, so metals and mirrors were black
   const r = engine.renderer, scene = engine.scene, prevVis = new Set(world.vis);
@@ -85,10 +85,10 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
 
   // hall doors (padded double doors at the crossing aisles, steel exit doors near the screens), street door
   for (const d of HALL_DOORS) { if (d.open) continue; const h = hallById(d.hall), sd = new SwingDoor(world, world.rooms.gal, d.x, d.z, d.w, d.h, { key: d.hall + ':' + d.kind, rooms: ['gal', h.key], parent: engine.scene, into: -d.side, style: d.kind === 'exit' ? 'exit' : 'padded', onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); sd.hall = d.hall; sd.kind = d.kind; world.doors.push(sd); }
-  world.streetDoor = new SlideDoor(world, world.rooms.lobby, 0, 19.93, 'z', 3.3, 2.95, { npcOnly: true, key: 'street', reach: 2.6, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(world.streetDoor);
+  world.streetDoor = new SlideDoor(world, world.rooms.lobby, 0, 19.93, 'z', 3.3, 2.95, { key: 'street', reach: 2.6, onToggle: (o, dd) => world.onDoor && world.onDoor(o, dd) }); world.doors.push(world.streetDoor);
   // navigation
-  const rects = ROOM_KEYS.filter((k) => k !== 'street').map((k) => RECTS[k]).concat(NAV_PASSAGES, [[-16, 20.0, 16, 25.4], [-1.5, 19.5, 1.5, 20.5]]);   // guests also walk the pavement and through the street door
-  world.nav = new Nav(rects, world.colliders, 0.32, 0.4, [-40, -76, 40, 26]);
+  const rects = ROOM_KEYS.filter((k) => k !== 'street').map((k) => RECTS[k]).concat(NAV_PASSAGES, [[-40, 20.0, 40, 31.0], [-1.5, 19.5, 1.5, 20.5]]);   // v7: the whole forecourt and pavement, and the street door
+  world.nav = new Nav(rects, world.colliders, 0.32, 0.4, [-40, -76, 40, 32]);
   // collision lookup grid (2 m buckets)
   const B = new Map(), key = (i, j) => i * 1000 + j; for (const c of world.colliders) for (let i = Math.floor(c.x0 / 2); i <= Math.floor(c.x1 / 2); i++) for (let j = Math.floor(c.z0 / 2); j <= Math.floor(c.z1 / 2); j++) { const k = key(i, j); if (!B.has(k)) B.set(k, []); B.get(k).push(c); }
   world.collidersNear = (x, z, out) => { out.length = 0; const seen = new Set(); for (let i = Math.floor((x - 1) / 2); i <= Math.floor((x + 1) / 2); i++) for (let j = Math.floor((z - 1) / 2); j <= Math.floor((z + 1) / 2); j++) { const l = B.get(key(i, j)); if (l) for (const c of l) if (!seen.has(c)) { seen.add(c); out.push(c); } } return out; };

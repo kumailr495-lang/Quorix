@@ -12,7 +12,7 @@ export const ES = {
   'set.restart': 'Algunos cambios se aplican al volver a abrir la app.', 'set.done': 'Hecho', 'on': 'Sí', 'off': 'No',
   'hud.talk': 'Hablar con {name}', 'hud.sit': 'Sentarse', 'hud.sitSeat': 'Sentarse · {seat}', 'hud.yourSeat': 'Sentarse · {seat} (tuya)', 'hud.stand': 'Levantarse', 'hud.eat': 'Comer', 'hud.sip': 'Beber', 'hud.findSeat': 'Mi butaca', 'hud.hide': 'Ocultar controles', 'hud.show': 'Mostrar controles', 'hud.menu': 'Menú', 'hud.sprint': 'Correr',
   'room.lobby': 'Vestíbulo', 'room.gal': 'Galería · Salas 1 2 3', 'room.tunnel': 'Túnel a la Sala 2 · IMAX', 'room.wcM': 'Aseo · Caballeros', 'room.wcF': 'Aseo · Señoras', 'room.street': 'Calle',
-  'show.idle': 'entre funciones', 'show.pending': 'empieza en {time}', 'show.preshow': 'empieza enseguida', 'show.playing': 'en pantalla', 'show.ended': 'fin',
+  'show.none': 'sin función reservada · entradas en taquilla', 'show.idle': 'entre funciones', 'show.pending': 'empieza en {time}', 'show.preshow': 'empieza enseguida', 'show.playing': 'en pantalla', 'show.ended': 'fin',
   'ticket.chip': '{screen} · Fila {row} · Butaca {seat}', 'rotate': 'Gira el móvil en horizontal', 'pre.silence': 'Por favor, silencia tu móvil', 'pre.soon': 'Empieza enseguida',
   'toast.welcome': 'Bienvenido a LUMIÈRE', 'toast.noTicket': 'Primero compra una entrada en Taquilla.', 'toast.follow': 'Sigue el camino luminoso', 'toast.followUsher': 'Sigue a {name}', 'toast.lightsDown': 'Se apagan las luces…',
   'toast.starting': 'Empieza {screen}. Sigue el camino hasta tu butaca.', 'toast.end': 'Fin. ¡Gracias por venir!', 'toast.videoError': 'No se pudo reproducir ese vídeo. Prueba otro archivo o un enlace .mp4 directo.',

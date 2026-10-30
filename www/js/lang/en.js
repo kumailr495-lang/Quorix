@@ -15,7 +15,7 @@ export const EN = {
   // ---- HUD ----
   'hud.talk': 'Talk to {name}', 'hud.sit': 'Sit down', 'hud.sitSeat': 'Sit · {seat}', 'hud.yourSeat': 'Sit · {seat} (yours)', 'hud.stand': 'Stand up', 'hud.eat': 'Eat', 'hud.sip': 'Sip', 'hud.findSeat': 'Find my seat', 'hud.hide': 'Hide controls', 'hud.show': 'Show controls', 'hud.menu': 'Menu', 'hud.sprint': 'Sprint',
   'room.lobby': 'Lobby', 'room.gal': 'Gallery · Screens 1 2 3', 'room.tunnel': 'Tunnel to Screen 2 · IMAX', 'room.wcM': 'Restroom · Gentlemen', 'room.wcF': 'Restroom · Ladies', 'room.street': 'Street',
-  'show.idle': 'between shows', 'show.pending': 'starts in {time}', 'show.preshow': 'starting soon', 'show.playing': 'now showing', 'show.ended': 'the end',
+  'show.none': 'no show booked · tickets at the box office', 'show.idle': 'between shows', 'show.pending': 'starts in {time}', 'show.preshow': 'starting soon', 'show.playing': 'now showing', 'show.ended': 'the end',
   'ticket.chip': '{screen} · Row {row} · Seat {seat}', 'rotate': 'Turn your phone sideways', 'pre.silence': 'Please silence your phone', 'pre.soon': 'Starting soon',
   // ---- toasts ----
   'toast.welcome': 'Welcome to LUMIÈRE', 'toast.noTicket': 'Book a ticket at Tickets first.', 'toast.follow': 'Follow the glowing path', 'toast.followUsher': 'Follow {name}', 'toast.lightsDown': 'The lights are going down…',

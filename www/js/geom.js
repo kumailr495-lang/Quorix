@@ -85,3 +85,33 @@ export function toGeometry(acc, withLight = true) {
   }
   g.setIndex(n > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1)); g.computeBoundingSphere(); g.userData.occ = Float32Array.from(acc.o); return g;
 }
+// ---- v7 plan-drawing helpers (floor inlays, ceiling light lines, curved guide lines): shapes and bands in the XZ plane ----
+// a flat band of width w along a polyline in the XZ plane at height y, facing up (floor inlays) or down (ceiling light lines)
+export function stripGeo(pts, w, y, up = true, closed = false) {
+  const n = pts.length, pos = [], nrm = [], idx = [], ny = up ? 1 : -1;
+  for (let i = 0; i < n; i++) {
+    const a = pts[closed ? (i - 1 + n) % n : Math.max(0, i - 1)], b = pts[closed ? (i + 1) % n : Math.min(n - 1, i + 1)];
+    let dx = b[0] - a[0], dz = b[1] - a[1]; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+    pos.push(pts[i][0] - dz * w / 2, y, pts[i][1] + dx * w / 2, pts[i][0] + dz * w / 2, y, pts[i][1] - dx * w / 2); nrm.push(0, ny, 0, 0, ny, 0);
+  }
+  const segs = closed ? n : n - 1;
+  for (let i = 0; i < segs; i++) { const j = (i + 1) % n, A = 2 * i, B = 2 * i + 1, C = 2 * j, D = 2 * j + 1;
+    for (const [p, q, r] of [[A, B, C], [B, D, C]]) {   // wind each triangle so its normal points the way the band faces
+      const ux = pos[3 * q] - pos[3 * p], uz = pos[3 * q + 2] - pos[3 * p + 2], vx = pos[3 * r] - pos[3 * p], vz = pos[3 * r + 2] - pos[3 * p + 2];
+      if ((uz * vx - ux * vz) * ny > 0) idx.push(p, q, r); else idx.push(p, r, q); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); g.setIndex(idx); return g;
+}
+export const ellipse = (cx, cz, rx, rz, n = 96) => Array.from({ length: n }, (_, k) => [cx + rx * Math.cos(k / n * Math.PI * 2), cz + rz * Math.sin(k / n * Math.PI * 2)]);
+export function rrectPts(cx, cz, w, d, r, steps = 6) {
+  const out = [], c = [[cx + w / 2 - r, cz + d / 2 - r, 0], [cx - w / 2 + r, cz + d / 2 - r, 90], [cx - w / 2 + r, cz - d / 2 + r, 180], [cx + w / 2 - r, cz - d / 2 + r, 270]];
+  for (const [x, z, a0] of c) for (let i = 0; i <= steps; i++) { const a = (a0 + 90 * i / steps) * Math.PI / 180; out.push([x + r * Math.cos(a), z + r * Math.sin(a)]); }
+  return out;
+}
+// smooth open polyline through control points (Catmull-Rom in XZ)
+export function spline(ctrl, n = 60) { const c = new THREE.CatmullRomCurve3(ctrl.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal'); return c.getPoints(n).map((v) => [v.x, v.z]); }
+// horizontal shape (floor inlay, ceiling with a hole) from 2D points [x, z]: up = normal +y
+export function flatShape(outer, holes = [], y = 0, up = true) {
+  const s = new THREE.Shape(outer.map(([x, z]) => new THREE.Vector2(x, z))); for (const h of holes) s.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, z))));
+  const g = new THREE.ShapeGeometry(s, 24); g.rotateX(Math.PI / 2); if (up) { g.scale(1, -1, 1); const I = g.index.array; for (let k = 0; k < I.length; k += 3) { const t = I[k + 1]; I[k + 1] = I[k + 2]; I[k + 2] = t; } g.computeVertexNormals(); }
+  g.translate(0, y, 0); g.deleteAttribute('uv'); return g;
+}

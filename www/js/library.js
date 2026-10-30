@@ -6,7 +6,8 @@
 //   mode 'abs': the map has its own colours (parquet, geometric tile, carpet, marble); the tint multiplies it (white = as painted).
 import * as THREE from 'three';
 export const MAT = { paint: 0, fabric: 1, wood: 2, terrazzo: 3, metal: 4, carpet: 5, plaster: 6, tile: 7, leather: 8, acoustic: 9, glass: 10, granite: 11, marble: 12, rubber: 13, chrome: 14, lacquer: 15, hallCarpet: 16, slats: 17, concrete: 18, screen: 19,
-  chevron: 20, geotile: 21, deco: 22, fluted: 23, brass: 24, powder: 25, asphalt: 26, paving: 27, brick: 28, porcelain: 29, walltile: 30, calacatta: 31, emit: 32, velvet: 1 };
+  chevron: 20, geotile: 21, deco: 22, fluted: 23, brass: 24, powder: 25, asphalt: 26, paving: 27, brick: 28, porcelain: 29, walltile: 30, calacatta: 31, emit: 32,
+  nero: 33, rosso: 34, onyx: 35, stone: 36, dolby: 37, tblack: 38, plaza: 39, perf: 40, velvet: 1 };
 // id -> texture set and surface response. mpt = metres per texture tile; rough/metal scalars; nstr = normal strength; sheen = velvet rim light;
 // spec = how strongly the room reflection shows (glossy floors, glass); relief = how much the normal map shades the baked light
 export const LIB = {
@@ -44,15 +45,25 @@ export const LIB = {
   31: { tex: 'calacatta', mode: 'abs', mpt: 1.6, rough: 0.1, metal: 0, nstr: 0.2, spec: 1.3 },
   // light emitters inside instanced props (seat under-glow, cup-holder rings): the tint is the light colour, drawn at full strength
   32: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 1, metal: 0, nstr: 0, spec: 0, emit: 1 },
+  // v7 (docs/V7-DESIGN.md): polished Nero Marquina and Rosso Levanto (lobby), backlit honey onyx (bar), honed limestone and the blue-grey
+  // carpet (Dolby-style corridor), polished black terrazzo (IMAX gateway), granite pavers (plaza), backlit perforated facade panels
+  33: { tex: 'nero', mode: 'abs', mpt: 1.6, rough: 0.07, metal: 0, nstr: 0.15, spec: 1.5 },
+  34: { tex: 'rosso', mode: 'abs', mpt: 1.6, rough: 0.09, metal: 0, nstr: 0.15, spec: 1.3 },
+  35: { tex: 'onyx', mode: 'abs', mpt: 1.0, rough: 0.12, metal: 0, nstr: 0.1, spec: 0.8, emit: 0.9 },
+  36: { tex: 'stone_light', mode: 'rel', mpt: 1.2, rough: 0.55, metal: 0, nstr: 0.5, spec: 0.5 },
+  37: { tex: 'carpet_dolby', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6 },
+  38: { tex: 'terrazzo_black', mode: 'abs', mpt: 1.2, rough: 0.1, metal: 0, nstr: 0.2, spec: 1.4 },
+  39: { tex: 'plaza', mode: 'abs', mpt: 1.8, rough: 0.55, metal: 0, nstr: 0.7, spec: 0.9 },
+  40: { tex: 'perforated', mode: 'abs', mpt: 1.0, rough: 0.4, metal: 0.4, nstr: 0.6, spec: 0.4, emit: 1.2 },
 };
-export const NUM_IDS = 40;   // uP holds NUM_IDS x 3 vec4 (materials.js)
+export const NUM_IDS = 48;   // uP holds NUM_IDS x 3 vec4 (materials.js uP[144])
 // Kiln assets name their materials; the name picks a library entry and the tint (sRGB hex)
 export const NAMED = {
-  velvet_teal: [1, '#1d5a56'], velvet_burgundy: [1, '#6e1424'], velvet_navy: [1, '#1e2c4a'], velvet_charcoal: [1, '#2d2f36'], velvet_mustard: [1, '#a77a25'], velvet_rose: [1, '#9a4f5a'],
+  velvet_teal: [1, '#1d5a56'], velvet_ivory: [1, '#d9cfbf'], hedge: [1, '#2a4122'], fluted_black: [23, '#1c1b1d'], velvet_burgundy: [1, '#6e1424'], velvet_navy: [1, '#1e2c4a'], velvet_charcoal: [1, '#2d2f36'], velvet_mustard: [1, '#a77a25'], velvet_rose: [1, '#9a4f5a'],
   leather_caramel: [8, '#8a5430'], leather_cognac: [8, '#6a3a1e'], leather_chocolate: [8, '#3b2216'], leather_black: [8, '#1c1a1a'], leather_oxblood: [8, '#4e1418'],
   walnut: [2, '#6b4630'], walnut_dark: [2, '#3e2618'], oak: [2, '#b08458'], slats_walnut: [17, '#6b4630'], fluted_walnut: [23, '#6b4630'], fluted_plaster: [23, '#d8cbb8'],
   brass: [24, '#c9a061'], bronze: [24, '#8a6440'], chrome: [14, '#e8e8e8'], blackmetal: [25, '#1c1c1f'], charcoal: [25, '#26262b'], steel: [4, '#9a9ca2'],
-  marble_nero: [12, '#ffffff'], marble_calacatta: [31, '#ffffff'], porcelain: [29, '#ffffff'], wall_tile: [30, '#e8e4dc'], terrazzo: [3, '#ffffff'], granite: [11, '#3a3a3c'], lacquer_black: [15, '#141416'], lacquer_red: [15, '#8a1522'], lacquer_cream: [15, '#e9e1d2'],
+  marble_nero: [33, '#ffffff'], marble_rosso: [34, '#ffffff'], onyx_lit: [35, '#ffffff'], stone_light: [36, '#d9d3ca'], terrazzo_black: [38, '#ffffff'], perforated: [40, '#ffffff'], marble_calacatta: [31, '#ffffff'], porcelain: [29, '#ffffff'], wall_tile: [30, '#e8e4dc'], terrazzo: [3, '#ffffff'], granite: [11, '#3a3a3c'], lacquer_black: [15, '#141416'], lacquer_red: [15, '#8a1522'], lacquer_cream: [15, '#e9e1d2'],
   glass: [10, '#2a3036'], glass_amber: [10, '#6a4a22'], bottle_green: [10, '#1f4a2a'], bottle_clear: [10, '#9aa8ae'], rubber: [13, '#1a1a1a'], plastic_black: [15, '#18181a'], paint_black: [0, '#121214'], paint_cream: [0, '#e7dfd0'], paint_red: [0, '#9e1c26'],
   fabric_black: [9, '#141416'], brick: [28, '#ffffff'], stone: [18, '#8a7d6c'], stone_dark: [18, '#4a4038'], awning_red: [1, '#7a1622'], awning_green: [1, '#1d4a3a'], tyre: [13, '#141414'], car_red: [15, '#7a1c24'], car_blue: [15, '#22324a'], car_silver: [4, '#b8bcc2'], mirror: [14, '#d8dce0'],
   candy_pink: [15, '#e0558a'], candy_yellow: [15, '#f2c230'], candy_green: [15, '#4caf50'], candy_blue: [15, '#3a7bd5'], candy_orange: [15, '#f07a2a'], candy_red: [15, '#c62a36'], screen_black: [15, '#0a0a0c'], acoustic: [9, '#2a2a30'], carpet_deco: [22, '#ffffff'], plant: [0, '#2f5a2a'], soil: [18, '#2b2119'], ceramic: [15, '#e6e0d6'], popcorn: [6, '#f2dca0'], paper_red: [0, '#c4202c'],

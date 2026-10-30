@@ -12,7 +12,7 @@ export const HI = {
   'set.restart': 'कुछ बदलाव ऐप दोबारा खोलने पर लागू होंगे।', 'set.done': 'हो गया', 'on': 'चालू', 'off': 'बंद',
   'hud.talk': '{name} से बात करें', 'hud.sit': 'बैठें', 'hud.sitSeat': 'बैठें · {seat}', 'hud.yourSeat': 'बैठें · {seat} (आपकी)', 'hud.stand': 'खड़े हों', 'hud.eat': 'खाएँ', 'hud.sip': 'चुस्की', 'hud.findSeat': 'मेरी सीट', 'hud.hide': 'कंट्रोल छिपाएँ', 'hud.show': 'कंट्रोल दिखाएँ', 'hud.menu': 'मेन्यू', 'hud.sprint': 'दौड़ें',
   'room.lobby': 'लॉबी', 'room.gal': 'गैलरी · स्क्रीन 1 2 3', 'room.tunnel': 'स्क्रीन 2 की सुरंग · IMAX', 'room.wcM': 'रेस्टरूम · पुरुष', 'room.wcF': 'रेस्टरूम · महिलाएँ', 'room.street': 'सड़क',
-  'show.idle': 'अगले शो का इंतज़ार', 'show.pending': '{time} में शुरू', 'show.preshow': 'बस शुरू होने वाला', 'show.playing': 'अभी चल रहा है', 'show.ended': 'समाप्त',
+  'show.none': 'कोई शो बुक नहीं · टिकट बॉक्स ऑफ़िस पर', 'show.idle': 'अगले शो का इंतज़ार', 'show.pending': '{time} में शुरू', 'show.preshow': 'बस शुरू होने वाला', 'show.playing': 'अभी चल रहा है', 'show.ended': 'समाप्त',
   'ticket.chip': '{screen} · लाइन {row} · सीट {seat}', 'rotate': 'फ़ोन को आड़ा करें', 'pre.silence': 'कृपया अपना फ़ोन साइलेंट करें', 'pre.soon': 'जल्द शुरू',
   'toast.welcome': 'LUMIÈRE में आपका स्वागत है', 'toast.noTicket': 'पहले टिकट काउंटर से टिकट लें।', 'toast.follow': 'चमकते रास्ते पर चलें', 'toast.followUsher': '{name} के पीछे चलें', 'toast.lightsDown': 'बत्तियाँ धीमी हो रही हैं…',
   'toast.starting': '{screen} शुरू हो रही है। रास्ते पर चलकर अपनी सीट तक जाएँ।', 'toast.end': 'समाप्त। आने के लिए शुक्रिया!', 'toast.videoError': 'यह वीडियो नहीं चल पाया। कोई और फ़ाइल या सीधा .mp4 लिंक आज़माएँ।',

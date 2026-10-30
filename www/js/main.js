@@ -18,7 +18,7 @@ import { treeFor } from './dialogue.js';
 import { propGeo } from './characters.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { setLang, t, fmtTime } from './i18n.js';
-import { HALLS, hallById, hallByKey, HALL_DOORS, roomAt, GAL } from './layout.js';
+import { HALLS, hallById, hallByKey, HALL_DOORS, roomAt, GAL, PLAYER_START } from './layout.js';
 import { HOUSE } from './films.js';
 import { makeLedWall } from './ledwall.js';
 const $ = (s) => document.querySelector(s), clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
@@ -38,7 +38,7 @@ async function boot() {
   const rain = makeRain(world.rooms.street, { count: lowG ? 1800 : 4000 }); world.rooms.street.U.uWet.value = 1;   // night rain and wet paving outside
   const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
   let ticket = null, room = 'lobby', talk = null, ui = null, shows = null, crowd = null, mode = 'menu', modal = false, held = null, markerPulse = 0, paused = false, played = false;
-  const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(0, 18.2, 0);
+  const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw);   // v7: you arrive outside, at the kerb
   player.onStep = (s) => sound.step(s, /hall|pass/.test(room));
   const dist = (n) => Math.hypot(n.x - player.x, n.z - player.z), hallOf = (tk) => world.hallById(tk.hall), seatOf = (tk) => hallOf(tk).seats.find((s) => s.id === tk.seat);
   // ---------- hall audibility: continuous, from where you stand (in the hall, at its padded doors in the gallery, in the tunnel to the IMAX) ----------
@@ -129,7 +129,7 @@ async function boot() {
   addEventListener('pointerdown', () => sound.unlock(), { capture: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } });
   // ---------- flow: menu (live flythrough) <-> play; Android back button opens the pause menu ----------
-  function enterPlay() { if (mode === 'play') return; ui.fade(1, 0.35); setTimeout(() => { mode = 'play'; ui.showMenu(false); player.locked = false; if (!played) { played = true; player.place(0, 18.2, 0); ui.toast(t('toast.welcome'), 2600); } ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) {} }, 380); }
+  function enterPlay() { if (mode === 'play') return; ui.fade(1, 0.35); setTimeout(() => { mode = 'play'; ui.showMenu(false); player.locked = false; if (!played) { played = true; player.place(PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw); ui.toast(t('toast.welcome'), 2600); } ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) {} }, 380); }
   function toMenu() { mode = 'menu'; player.locked = true; ui.showMenu(true, played); talk.close(); }
   addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (!$('#book').hidden) ui.closeBook(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) {} } });
   // ---------- frame loop ----------
@@ -176,7 +176,7 @@ async function boot() {
     if (marker.visible) { markerPulse = Math.max(0, markerPulse - dt); const s = ticket && seatOf(ticket); if (s) { const near = Math.hypot(s.x - player.x, s.z - player.z) < 0.6 && player.seated; marker.material.opacity = near ? 0 : 0.55 + 0.45 * Math.sin(now * 0.006) * (markerPulse > 0 ? 1 : 0.4); marker.position.y = s.y + 1.45 + Math.sin(now * 0.004) * 0.06; } }
     slowT -= dt; if (slowT <= 0) { slowT = 0.5;
       const S = (id) => shows.get(id), status = (id) => { const s = S(id); return s.state === 'pending' ? t('show.pending', { time: fmtTime(shows.countdown(id)) }) : s.state === 'preshow' ? t('show.preshow') : (s.state === 'playing' || s.state === 'dimming') ? t('show.playing') : s.state === 'ending' || s.state === 'ended' ? t('show.ended') : t('show.idle'); };
-      if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.cfg.name, `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room.' + r), '');
+      if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.cfg.name, S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); }   // v7: an empty hall names no film else ui.setWhere(t('room.' + r), '');
       if (ticket) { const s = S(ticket.hall); ui.setTicketChip(t('ticket.chip', { screen: ticket.hallName, row: ticket.row, seat: ticket.col }) + (s.state === 'pending' ? ' · ' + fmtTime(shows.countdown(ticket.hall)) : '')); } else ui.setTicketChip(null);
       ui.setFps(`${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`); }
   }

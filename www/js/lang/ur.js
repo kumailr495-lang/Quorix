@@ -12,7 +12,7 @@ export const UR = {
   'set.restart': 'کچھ تبدیلیاں ایپ دوبارہ کھولنے پر لاگو ہوں گی۔', 'set.done': 'ہو گیا', 'on': 'آن', 'off': 'آف',
   'hud.talk': '{name} سے بات کریں', 'hud.sit': 'بیٹھیں', 'hud.sitSeat': 'بیٹھیں · {seat}', 'hud.yourSeat': 'بیٹھیں · {seat} (آپ کی)', 'hud.stand': 'کھڑے ہوں', 'hud.eat': 'کھائیں', 'hud.sip': 'گھونٹ', 'hud.findSeat': 'میری سیٹ', 'hud.hide': 'کنٹرول چھپائیں', 'hud.show': 'کنٹرول دکھائیں', 'hud.menu': 'مینیو', 'hud.sprint': 'دوڑیں',
   'room.lobby': 'لابی', 'room.gal': 'گیلری · اسکرین 1 2 3', 'room.tunnel': 'اسکرین 2 کی سرنگ · IMAX', 'room.wcM': 'ریسٹ روم · مرد', 'room.wcF': 'ریسٹ روم · خواتین', 'room.street': 'سڑک',
-  'show.idle': 'اگلے شو کا انتظار', 'show.pending': '{time} میں شروع', 'show.preshow': 'بس شروع ہونے والا', 'show.playing': 'ابھی چل رہا ہے', 'show.ended': 'ختم',
+  'show.none': 'کوئی شو بک نہیں · ٹکٹ باکس آفس پر', 'show.idle': 'اگلے شو کا انتظار', 'show.pending': '{time} میں شروع', 'show.preshow': 'بس شروع ہونے والا', 'show.playing': 'ابھی چل رہا ہے', 'show.ended': 'ختم',
   'ticket.chip': '{screen} · قطار {row} · سیٹ {seat}', 'rotate': 'فون کو آڑا کریں', 'pre.silence': 'براہ کرم اپنا فون خاموش کر دیں', 'pre.soon': 'جلد شروع',
   'toast.welcome': 'LUMIÈRE میں خوش آمدید', 'toast.noTicket': 'پہلے ٹکٹ کاؤنٹر سے ٹکٹ لیں۔', 'toast.follow': 'چمکتے راستے پر چلیں', 'toast.followUsher': '{name} کے پیچھے چلیں', 'toast.lightsDown': 'بتیاں مدھم ہو رہی ہیں…',
   'toast.starting': '{screen} شروع ہو رہی ہے۔ راستے پر چل کر اپنی سیٹ تک جائیں۔', 'toast.end': 'ختم۔ آنے کا شکریہ!', 'toast.videoError': 'یہ ویڈیو نہیں چل سکی۔ کوئی اور فائل یا سیدھا .mp4 لنک آزمائیں۔',

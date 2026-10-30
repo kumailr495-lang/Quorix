@@ -45,6 +45,11 @@ SLOTS = {
     'woven':       dict(src='ph', id='rough_linen', mode='rel', spread=1.0, mpt=0.27),
     'carpet_hall': dict(src='acg', id='Carpet012', mode='rel', spread=1.0, mpt=0.5),
     'brushed':     dict(src='acg', id='Metal009', mode='rel', spread=1.0, mpt=0.5),
+    # v7 (docs/V7-DESIGN.md): Allu-style black marble, backlit onyx for the bar, black terrazzo for the IMAX gateway, granite pavers outside
+    'nero':        dict(src='acg', id='Marble016', mode='abs', gain=0.85, mpt=1.6),
+    'onyx':        dict(src='acg', id='Onyx007', mode='abs', gain=1.0, mpt=1.0),
+    'terrazzo_black': dict(src='acg', id='Terrazzo003', mode='abs', gain=0.9, mpt=1.2),
+    'plaza':       dict(src='ph', id='granite_tile_03', mode='rebalance', color='#86837f', mpt=1.8),
 }
 # composites: a designed layout over a scanned surface
 COMPOSITES = {
@@ -52,6 +57,7 @@ COMPOSITES = {
     'fluted':      dict(src='ph', id='black_walnut_veneer_02', mpt=0.4),
     'carpet_deco': dict(src='acg', id='Carpet012', mpt=2.4),
     'geotile':     dict(src='ph', id='marble_01', mpt=1.2),
+    'rosso':       dict(src='acg', id='Marble016', mpt=1.6),   # v7: the black marble's veins on a deep red ground (Rosso Levanto look) for the lobby columns
 }
 
 
@@ -145,6 +151,11 @@ def composite(slot, s):
     if slot == 'geotile':       # the designed geometric tile (gen.py) with a honed-stone surface inside each tile
         gen.geotile(); base = to_lin(np.asarray(Image.open(os.path.join(OUT, 'geotile_a.jpg'))).astype(np.float64) / 255)
         save_pair(slot, to_s(base * (0.88 + 0.12 * np.clip(Lr, 0.5, 1.5))[..., None]), np.asarray(Image.open(os.path.join(OUT, 'geotile_n.jpg'))).astype(np.float64) / 255); return url
+    if slot == 'rosso':
+        L = lum(A); med = np.median(L); vein = np.clip((L - med * 1.6) / (np.percentile(L, 99.5) - med * 1.6 + 1e-6), 0, 1) ** 0.8
+        x, y = gen.grid(N); cloud = gen.spectral(N, 2.2, 1, 8, 731)[..., None]
+        ground = gen.mix(gen.lin('#3a0b10'), gen.lin('#6e1a1c'), np.clip(L / (med * 1.6), 0, 1)) * (0.85 + 0.3 * cloud)
+        save_pair(slot, to_s(gen.mix(ground, gen.lin('#e6d6cc'), vein * 0.9)), Nm); return url
     raise ValueError(slot)
 
 

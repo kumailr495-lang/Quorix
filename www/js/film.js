@@ -1,7 +1,8 @@
 // LUMIERE v5 - what each screen is doing. A show goes:
 //   idle (house lights up, slate) -> pending (audience arrives, countdown slide) -> preshow (lights at half, "silence your phone")
 //   -> dimming (lights down, curtains open) -> playing (picture; reactions follow the film's events) -> ending (credits, lights at half) -> ended (lights up, people leave) -> idle
-// One <video> carries your own film (gallery file or link); the other screens run house films (films.js). Halls are empty unless a show is on.
+// One <video> carries your own film (gallery file or link); house films (films.js) play only when you book one. v7: no automatic shows,
+// so a hall is empty and its screen shows the slate unless you booked it (phone feedback: films played by themselves, audiences sat in empty halls).
 import * as THREE from 'three';
 import { makeHouseFilm, makePreshow, PROGRAMME, HOUSE } from './films.js';
 import { makeCanvas } from './textures.js';
@@ -15,7 +16,7 @@ export class Shows {
     v.addEventListener('ended', () => { if (this.userHall) this._finish(this.userHall, true); });
     v.addEventListener('error', () => { if (this.userHall && this.s[this.userHall].mode === 'user' && this.s[this.userHall].state !== 'idle') { this.hooks.onError && this.hooks.onError(); this._abort(this.userHall); } });
     this.s = {}; let k = 0;
-    for (const h of world.halls) { const id = h.id; this.s[id] = { id, hall: h, state: 'idle', mode: null, filmId: PROGRAMME[id], house: null, startAt: 0, phaseAt: 0, auto: true, nextAuto: rnd(25, 70) * 1000 + k * 20000, booked: false, light: 1, pre: makePreshow(h.cfg.aspect) }; k++; }
+    for (const h of world.halls) { const id = h.id; this.s[id] = { id, hall: h, state: 'idle', mode: null, filmId: PROGRAMME[id], house: null, startAt: 0, phaseAt: 0, auto: false, nextAuto: rnd(25, 70) * 1000 + k * 20000, booked: false, light: 1, pre: makePreshow(h.cfg.aspect) }; k++; }
     this.spillC = makeCanvas(8, 4); this.spillG = this.spillC.getContext('2d', { willReadFrequently: true }); this.spillOk = true; this._spillT = 0; this.spill = { r: 0, g: 0, b: 0, lum: 0 }; this.userSpill = { r: 0.3, g: 0.3, b: 0.3, lum: 0.3 };
   }
   loadFile(file) { if (this.objUrl) URL.revokeObjectURL(this.objUrl); this.objUrl = URL.createObjectURL(file); this.video.src = this.objUrl; this.video.load(); }
@@ -62,7 +63,7 @@ export class Shows {
       else if (s.state === 'dimming' && s.mode === 'house' && now - s.phaseAt > 3200) { s.house.start(now); s.house.draw(now); const p = h.picMat.uniforms; p.map.value = s.house.tex; p.uRaw.value = 0; p.uGain.value = 1; p.uBox.value.set(0, 0, 1, 1); s.state = 'playing'; s.phaseAt = now; this.director.startHouse(id, s.house, now); this.sound.startFilm(h.key, { house: s.filmId, t0: now }); this.hooks.onPicture && this.hooks.onPicture(id); }
       else if (s.state === 'playing' && s.mode === 'house') { if (visible && now - (s._hd || 0) > 66) { s._hd = now; s.house.draw(now); } if (now - s.phaseAt > s.house.length * 1000) this._finish(id, true); }
       else if (s.state === 'ending' && now - s.phaseAt > 9000) { s.state = 'ended'; s.phaseAt = now; }
-      else if (s.state === 'ended' && now - s.phaseAt > 25000) { s.state = 'idle'; s.booked = false; s.auto = true; s.nextAuto = now + rnd(50, 110) * 1000; this._idle(s); }
+      else if (s.state === 'ended' && now - s.phaseAt > 25000) { s.state = 'idle'; s.booked = false; this._idle(s); }
       // house light level eases toward the phase target
       const want = LIGHT[s.state] ?? 1, rate = s.state === 'dimming' ? 0.6 : s.state === 'ending' || s.state === 'ended' ? 0.35 : 1.2; s.light += (want - s.light) * (1 - Math.exp(-dt * rate * 1.6));
       h.room.U.uHouse.value = s.light;

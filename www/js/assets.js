@@ -8,10 +8,14 @@ import { named, MAT } from './library.js';
 export const ASSETS = {};
 // every GLB the world uses (tools/kiln/<name>.kiln.js or tools/blender/{seats,fixtures}.py -> www/models/<name>.glb)
 // (v5.20: the hall seats are the Blender families below; the v5.1 Kiln seats seat_standard, arm_standard, recliner, console_recliner and
-// seat_giant stay in tools/kiln and www/models but are no longer loaded)
-export const ASSET_LIST = ['column_fluted', 'column_fluted_5', 'counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
-  'seat_club', 'arm_club', 'seat_rocker', 'arm_rocker', 'seat_classic', 'arm_classic', 'banquette_round', 'torchere_deco', 'sconce_deco', 'downlight', 'speaker_array', 'urinal', 'basin_vessel', 'tap_brass', 'mirror_round', 'pendant_dish', 'stanchion', 'rope_velvet', 'poster_case', 'planter_tall',
-  'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'back_bar', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'chandelier_ring', 'door_padded'];
+// seat_giant stay in tools/kiln and www/models but are no longer loaded; v7 retired the v5 lobby set: column_fluted(_5), chandelier_ring,
+// banquette_round, torchere_deco, back_bar, pendant_dish, which also stay in the repo)
+export const ASSET_LIST = ['counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
+  'seat_club', 'arm_club', 'seat_rocker', 'arm_rocker', 'seat_classic', 'arm_classic', 'sconce_deco', 'downlight', 'speaker_array', 'urinal', 'basin_vessel', 'tap_brass', 'mirror_round', 'stanchion', 'rope_velvet', 'poster_case', 'planter_tall',
+  'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'door_padded',
+  // v7 (docs/V7-DESIGN.md): Kiln hero props and Blender signage letters
+  'chandelier_cascade', 'sofa_curve', 'table_lounge', 'pendant_ring', 'back_bar_onyx', 'bar_counter', 'poster_totem', 'number_totem', 'planter_hedge', 'bollard_light',
+  'letters_lumiere_lit', 'letters_lumiere', 'letters_cinemas', 'letters_imax', 'restroom_set'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
@@ -46,13 +50,15 @@ function prepare(scene, name) {
   return { name, parts, box, lods: Math.max(...parts.map((p) => p.lod)) + 1 };
 }
 // stamp an asset into a room's accumulators. o: { lod, scale, grp (glow light group: 1 dims with the house lights), glowK, glowMul { meshName: k },
-// glowColor (linear rgb), swap { materialName: [id, rgb] }, tints { meshName: rgb }, collide: true|pad }
+// glowColor (linear rgb), swap { materialName: [id, rgb] }, tints { meshName: rgb }, collide: true|pad,
+// only: a mesh-name prefix (one fitting out of a set GLB, e.g. 'Mesh_Dryer'), shift: [x, y, z] moved in the asset's own frame first }
 export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
   const A = ASSETS[name]; if (!A) { console.warn('missing asset ' + name); return null; }
   const s = o.scale ?? 1, mtx = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)), typeof s === 'number' ? new THREE.Vector3(s, s, s) : new THREE.Vector3(...s));
+  if (o.shift) mtx.multiply(new THREE.Matrix4().makeTranslation(...o.shift));
   const lod = o.lod ?? 0;
   for (const p of A.parts) {
-    if (p.lod !== lod) continue;
+    if (p.lod !== lod || (o.only && !p.name.startsWith(o.only))) continue;
     if (p.glow) { const k = (o.glowK ?? 1) * (o.glowMul && o.glowMul[p.name] != null ? o.glowMul[p.name] : 1); if (k <= 0) continue; room.gacc.add(p.geo, mtx, (o.glowColor || p.glowColor).map((v) => v * k), { grp: o.grp ?? 0 }); continue; }
     const sw = o.swap && o.swap[p.matName];   // swap a named material for this placement: { velvet_teal: [libraryId, linearRgb] }
     (room.pacc || room.acc).add(p.geo, mtx, sw ? sw[1] : o.tints && o.tints[p.name] ? o.tints[p.name] : p.tint, { mat: sw ? sw[0] : p.id, uv: 'mesh', occ: o.occ ?? 1 });

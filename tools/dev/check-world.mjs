@@ -60,10 +60,11 @@ const res = await p.evaluate(() => {
   for (const h of W.halls) { const c = h.cfg; for (const side of [-1, 1]) check(`${h.key} aisle ${side}`, c.cx + side * (c.B / 2 + 0.6), c.zs + c.dHip[c.rows - 1]); check(`${h.key} cross aisle`, c.cx, c.zs + c.cross.dDoor);
     check(`${h.key} front row`, c.cx, c.zs + c.dHip[0] - c.seat.fr - 0.5);
     if (c.exitStair) { const E = c.exitStair; check(`${h.key} exit landing`, (E.side > 0 ? c.x1 : c.x0) - E.side * 0.5, E.z); }
-    if (c.vom) check(`${h.key} vomitory end`, c.cx, c.zBack - 0.5);
+    for (const v of c.voms || []) check(`${h.key} vomitory end`, c.cx + (v.u0 + v.u1) / 2, c.zBack - 0.5);
+    for (const [a, b] of c.innerAisles || []) check(`${h.key} inner aisle top`, c.cx + (a + b) / 2, c.zs + c.dHip[c.rows - 1]);
     if (c.balcony) check(`${h.key} balcony walkway`, c.cx + c.B / 2 - 1, c.zs + c.pf[c.balcony] - 0.4); }
   for (const [k, p] of Object.entries(W.posts)) if (p && p.x != null) check('post ' + k, p.x, p.z);
-  check('tunnel', 0, -36); for (const pp of W.pois || []) check('poi', pp[0], pp[1]);
+  check('IMAX gateway', 0, -36); for (const pp of W.pois || []) check('poi', pp[0], pp[1]);
   return out;
 });
 await b.close(); srv.close();

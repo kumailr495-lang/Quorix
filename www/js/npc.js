@@ -6,11 +6,13 @@
 import * as THREE from 'three';
 import { People, randomRecipe, STAFF_LOOK, crowdGeometry, propGeo, rng } from './characters.js';
 import { roomAt, floorY, HALLS, hallById, hallDoor, STREET_SPAWN } from './layout.js';
+import { aisleU } from './hallmath.js';
 import { pickLine, lines, t } from './i18n.js';
 const TAU = Math.PI * 2, rnd = (a, b) => a + Math.random() * (b - a), adiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
 const NAMES = ['Ava', 'Noah', 'Mia', 'Leo', 'Zara', 'Omar', 'Sofia', 'Arjun', 'Lena', 'Kai', 'Amara', 'Ravi', 'Nina', 'Hugo', 'Iris', 'Sami', 'Aisha', 'Diego', 'Meera', 'Tomás', 'Yara', 'Ali', 'Elena', 'Kenji', 'Fatima', 'Lucas', 'Ines', 'Bilal', 'Chloe', 'Dev'];
-const LOBBY_POIS = [   // things guests walk up to and look at: [x, z, lookYaw (0 = +z), pitch]; the gallery adds its art prints (world.pois)
-  [0, 3.4, Math.PI, -0.45], [-2.4, 4.0, Math.PI, -0.45], [9.4, 7.1, Math.PI / 2, -0.35], [9.4, 12.9, Math.PI / 2, -0.35], [-9.4, 18.8, -Math.PI / 2, 0], [5.5, 18.6, 0, 0], [-5.5, 18.6, 0, 0], [12.2, 16.4, Math.PI / 2, -0.1]];
+const LOBBY_POIS = [   // things guests walk up to and look at: [x, z, lookYaw (0 = +z), pitch (negative = up)]. The gallery adds its art prints (world.pois)
+  [0, 3.4, Math.PI, -0.45], [-2.6, 13.6, Math.PI * 0.85, -0.75], [2.8, 6.8, -Math.PI * 0.2, -0.7], [9.4, 6.2, Math.PI / 2, -0.35], [9.4, 13.9, Math.PI / 2, -0.35],
+  [-9.6, 18.4, -Math.PI / 2, -0.3], [5.5, 13.6, Math.PI / 2, -0.1], [-5.5, 13.6, -Math.PI / 2, -0.1], [5.5, 18.6, 0, 0], [-5.5, 18.6, 0, 0], [12.2, 16.6, Math.PI / 2, -0.1]];
 const REACT = { scare: 'scream', gasp: 'gasp', laugh: 'laugh', aww: 'aww', climax: 'cheer', cheer: 'clap', end: 'clap', tension: 'lean' };
 const EXPR_OF = { scream: 'scream', gasp: 'gasp', laugh: 'laugh', aww: 'aww', cheer: 'cheer', clap: 'happy', lean: 'focus', eat: 'smile' };
 const CROWD_ACT = { clap: 1, cheer: 2, scream: 3, gasp: 4, laugh: 5, eat: 6, lean: 4, aww: 0 };
@@ -115,7 +117,7 @@ export class Crowd {
     const H = hall.cfg, aisle = this.aislePoint(hall, seat); if (!usher.goTo(aisle.x, aisle.z)) return false;
     usher.mission = { kind: 'guide', hall, seat, aisle, said: 0 }; usher.state = 'guide'; usher.say(pickLine('ush.follow'), 2.6); return true;
   }
-  aislePoint(hall, seat) { const H = hall.cfg, left = seat.u < 0, ax = H.cx + (left ? -1 : 1) * (H.B / 2 + 0.55), r = seat.row, laneD = (H.pf[r] === -Infinity ? H.dHip[r] - H.seat.fr - 0.5 : (H.pf[r] + H.dHip[r] - H.seat.fr) / 2); return { x: ax, z: H.zs + laneD - H.rowSag(ax - H.cx), laneD, left }; }
+  aislePoint(hall, seat) { const H = hall.cfg, au = aisleU(H, seat), left = au < seat.u, ax = H.cx + au, r = seat.row, laneD = (H.pf[r] === -Infinity ? H.dHip[r] - H.seat.fr - 0.5 : (H.pf[r] + H.dHip[r] - H.seat.fr) / 2); return { x: ax, z: H.zs + laneD - H.rowSag(ax - H.cx), laneD, left }; }
   // ---------------------------------------------------------- audiences
   planAudience(hallId, n, seatedShare, spreadMs, avoid = new Set()) {
     const hall = this.world.hallById(hallId), H = hall.cfg, list = this.viewers[hallId], taken = new Set(list.filter((v) => v.state !== 'gone').map((v) => v.seat.id));

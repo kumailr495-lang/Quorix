@@ -84,7 +84,7 @@ attribute vec2 lmuv; varying vec2 vLm;
 #else
 attribute vec3 lh; attribute vec3 lf; attribute float ls;
 #endif
-uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[120];
+uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[144];
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
 void main() {
   int k = int(matid + 0.5) * 3; vPA = uP[k]; vPB = uP[k + 1]; vLay = uP[k + 2].x; vEm = uP[k + 2].y;

@@ -99,7 +99,10 @@ props = None
 if D.get('props'):   # placed props: shadow casters and bounce surfaces for every bake, then baked per vertex (bake_props)
     PP = D['props']; PPm = arr(PP['mat'], np.float32); PPc = arr(PP['col'], np.float32, 3)
     pfac = np.stack([ALB.get(int(round(m)), np.ones(3)) for m in PPm])
-    props = make_mesh('props', arr(PP['pos'], np.float32, 3), arr(PP['idx'], np.uint32), col=PPc, nrm=arr(PP['nrm'], np.float32, 3), bake_col=np.clip(PPc * pfac, 0, 0.95), validate=False)
+    # triangles that repeat a vertex (lathe axes, sphere poles) are invalid polygons in Blender and crash it when the mesh is not validated:
+    # drop them (zero area, never visible); the vertices stay, so the per-vertex output keeps the engine's vertex order
+    PI_ = arr(PP['idx'], np.uint32).reshape(-1, 3); PI_ = PI_[(PI_[:, 0] != PI_[:, 1]) & (PI_[:, 1] != PI_[:, 2]) & (PI_[:, 0] != PI_[:, 2])].ravel()
+    props = make_mesh('props', arr(PP['pos'], np.float32, 3), PI_, col=PPc, nrm=arr(PP['nrm'], np.float32, 3), bake_col=np.clip(PPc * pfac, 0, 0.95), validate=False)
     assert len(props.data.vertices) == PP['count'], 'props vertex count changed in Blender'
     props.data.materials.append(diffuse_mat('props', 'BakeCol')); log('props', len(props.data.vertices), 'verts', len(props.data.polygons), 'tris')
 if D.get('occ'):

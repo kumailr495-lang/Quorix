@@ -16,13 +16,15 @@ const section = (s) => console.log('== ' + s);
 section('halls');
 for (const s of SPECS) {
   const h = makeHall(s), k = calc(s), seats = hallSeats(h);
-  let trench = 0; for (let r = 0; r < s.rows; r++) for (let c = 1; c <= s.perRow; c++) if (inTrench(h, r, -h.B / 2 + (c - 0.5) * s.seatW, s.seatW / 2)) trench++;
+  let trench = 0; for (let r = 0; r < s.rows; r++) for (let c = 1; c <= s.perRow; c++) if (inTrench(h, r, h.seatU(c), s.seatW / 2)) trench++;
   ok(seats.length === s.rows * s.perRow - trench, `${s.id} seat count ${seats.length}`);
-  if (h.vom) ok(!seats.some((q) => q.row >= h.cross.row && Math.abs(q.u) - s.seatW / 2 < h.vom.u + 0.12), `${s.id} a seat touches the vomitory parapet`);
+  for (const v of h.voms) ok(!seats.some((q) => q.row >= h.cross.row && q.u + s.seatW / 2 > v.u0 - 0.12 && q.u - s.seatW / 2 < v.u1 + 0.12), `${s.id} a seat touches a vomitory parapet`);
+  if (s.door === 'svom') ok(trench === 0, `${s.id} side vomitories took ${trench} seats (v7: every row keeps its middle seats)`);
+  for (const [a, b] of h.innerAisles) ok(!seats.some((q) => q.u + s.seatW / 2 > a + 0.01 && q.u - s.seatW / 2 < b - 0.01), `${s.id} a seat stands in the aisle ${a.toFixed(2)}..${b.toFixed(2)}`);
   for (const q of seats) if (!(q.x > h.x0 + 0.5 && q.x < h.x1 - 0.5 && q.z > h.zs && q.z < h.zBack)) { ok(false, `${s.id} seat ${q.id} outside the hall`); break; }
   // side aisles: walk them front to back in 1 cm steps, the floor may only change by stair risers
   let maxStep = 0;
-  for (const side of [-1, 1]) { const x = h.cx + side * (h.B / 2 + 0.6); let prev = hallFloorY(h, x, h.zs + 0.3); for (let z = h.zs + 0.31; z < h.zBack - 0.1; z += 0.01) { const y = hallFloorY(h, x, z); maxStep = Math.max(maxStep, Math.abs(y - prev)); prev = y; } }
+  for (const ux of [-(h.B / 2 + 0.6), h.B / 2 + 0.6, ...h.innerAisles.map(([a, b]) => (a + b) / 2)]) { const x = h.cx + ux; let prev = hallFloorY(h, x, h.zs + 0.3); for (let z = h.zs + 0.31; z < h.zBack - 0.1; z += 0.01) { const y = hallFloorY(h, x, z); maxStep = Math.max(maxStep, Math.abs(y - prev)); prev = y; } }
   ok(maxStep <= 0.21, `${s.id} aisle step ${maxStep.toFixed(3)} m > 0.21`);
   // sightlines (every-row vision): eye of row n to the screen bottom must clear the eye of row n-1 by >= 0.12 m (a head)
   let minC = Infinity; for (let n = 1; n < s.rows; n++) { const e0 = k.rowY[n - 1] + s.eye, e1 = k.rowY[n] + s.eye, X0 = k.X[n - 1], X1 = k.X[n];
@@ -42,7 +44,7 @@ for (const d of HALL_DOORS) {
     ok(d.z - d.w / 2 > h.zs && d.z + d.w / 2 < h.zBack, `${d.hall} ${d.kind} outside the hall depth`); ok(d.z - d.w / 2 > GAL.z0 && d.z + d.w / 2 < GAL.z1, `${d.hall} ${d.kind} outside the gallery`);
     const inner = roomAt(d.x - d.side * 0.6, d.z), outer = roomAt(d.x + d.side * 0.6, d.z); ok(inner === h.key && outer === d.room, `${d.hall} ${d.kind}: roomAt gives ${outer} | ${inner}`); }
   else { ok(Math.abs(d.z - h.zBack) < 0.05 && d.x - d.w / 2 >= TUN.x0 && d.x + d.w / 2 <= TUN.x1, `${d.hall} rear door not in the tunnel's end`); }
-  if (d.kind === 'entrance') { const fy = h.door === 'vom' ? hallFloorY(h, d.x, d.z - 0.4) : hallFloorY(h, d.x - d.side * 0.6, d.z); ok(Math.abs(fy) < 1e-6, `${d.hall} entrance floor at ${fy} m, not level with the gallery`); }
+  if (d.kind === 'entrance') { const fy = h.door === 'vom' || h.door === 'svom' ? hallFloorY(h, d.x, d.z - 0.4) : hallFloorY(h, d.x - d.side * 0.6, d.z); ok(Math.abs(fy) < 1e-6, `${d.hall} entrance floor at ${fy} m, not level with the gallery`); }
 }
 ok(GAL.z1 === LOBBY.z0, 'gallery meets the lobby'); ok(TUN.z1 === GAL.z0, 'tunnel meets the gallery');
 // walking through any opening, the room under you is always one of the two rooms it joins (a third room there hides both: the v5.10 black flash)
