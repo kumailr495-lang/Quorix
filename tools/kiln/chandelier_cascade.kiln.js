@@ -31,17 +31,17 @@ async function build() {
   const ell = (rx, rz, y, n = 128) => Array.from({ length: n }, (_, k) => [rx * Math.cos((k / n) * TAU), y, rz * Math.sin((k / n) * TAU)]);
   createPart('Halo', uv(sweepProfile([[-0.03, -0.05], [0.03, -0.05], [0.03, 0.05], [-0.03, 0.05]], ell(P.rx, P.rz, P.haloY), { closed: true, up: [0, 1, 0], creaseAngle: 50 })), brass, { parent: root });
   createPart('HaloLine', uv(sweepProfile(band(0.012, 0.024), ell(P.rx, P.rz, P.haloY - 0.058), { closed: true, up: [0, 1, 0] })), light, { parent: root });
-  // ribbons: 6.5 cm light bands whose broad face looks out and down (the band's width runs round the axis, up = the tangential direction),
+  // ribbons: 11 cm light bands whose broad face looks out and down (the band's width runs round the axis, up = the tangential direction),
   // so from the lobby floor they read as glowing ribbons, not as wires
   for (let i = 0; i < P.ribbons; i++) {
     const pts = ribbonPath(i), phi0 = (i / P.ribbons) * TAU, eph = [-Math.sin(phi0), 0, Math.cos(phi0)];
-    createPart('Ribbon' + i, uv(sweepProfile(band(0.065, 0.008), pts, { up: eph, cap: true, creaseAngle: 50 })), light, { parent: root });
+    createPart('Ribbon' + i, uv(sweepProfile(band(0.11, 0.008), pts, { up: eph, cap: true, creaseAngle: 50 })), light, { parent: root });
   }
   // core: stacked wavy rings, widest in the middle like a flame
   for (let k = 0; k < P.rings; k++) {
     const u = (k + 0.5) / P.rings, y0 = P.coreTop + (P.coreBot - P.coreTop) * u, r0 = 0.22 + P.coreR * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.8)), 0.9);
     const pts = Array.from({ length: 90 }, (_, j) => { const a = (j / 90) * TAU, r = r0 * (1 + 0.16 * Math.sin(4 * a + k * 0.9)); return [r * Math.cos(a), y0 + 0.07 * Math.sin(3 * a + k * 1.3), r * 0.82 * Math.sin(a)]; });
-    createPart('CoreRing' + k, uv(sweepProfile(band(0.05, 0.008), pts, { closed: true, up: [0, 1, 0], creaseAngle: 50 })), core, { parent: root });
+    createPart('CoreRing' + k, uv(sweepProfile(band(0.075, 0.008), pts, { closed: true, up: [0, 1, 0], creaseAngle: 50 })), core, { parent: root });
   }
   // suspension: six fine cables from the halo and a centre cable to the core, each into a small brass ceiling cup
   for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU + Math.PI / 6, x = P.rx * Math.cos(a), z = P.rz * Math.sin(a), len = -P.haloY - 0.07;

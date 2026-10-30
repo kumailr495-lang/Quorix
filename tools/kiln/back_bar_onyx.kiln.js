@@ -22,7 +22,7 @@ async function build() {
   createPart('KickLine', uv(boxGeo(0.008, 0.02, P.L - 0.06)), brass, { position: [-0.075, 0.07, 0], parent: root });
   for (let i = 1; i < 6; i++) createPart('DoorGap' + i, uv(boxGeo(0.004, P.baseH - 0.16, 0.006)), brass, { position: [-0.009, 0.08 + (P.baseH - 0.08) / 2, -P.L / 2 + i * P.L / 6], parent: root });
   createPart('Top', uv(await roundedBoxGeo(P.D + 0.03, 0.04, P.L + 0.04, 0.008, { segments: 2 })), marble, { position: [-P.D / 2 + 0.005, P.baseH + 0.02, 0], parent: root });
-  createPart('Back', uv(boxGeo(0.05, P.top - P.baseH - 0.04, P.L)), black, { position: [-P.D + 0.025, P.baseH + 0.04 + (P.top - P.baseH - 0.04) / 2, 0], parent: root });
+  createPart('Back', uv(boxGeo(0.05, P.top - P.baseH - 0.05, P.L)), black, { position: [-P.D + 0.025, P.baseH + 0.04 + (P.top - P.baseH - 0.05) / 2, 0], parent: root });   // 1 cm under the header's top
   const pw = (P.L - 0.06 * (P.panels + 1)) / P.panels, y0 = P.baseH + 0.16, y1 = P.top - 0.3;
   for (let k = 0; k < P.panels; k++) {
     const zc = -P.L / 2 + 0.06 + pw / 2 + k * (pw + 0.06);

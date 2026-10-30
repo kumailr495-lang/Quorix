@@ -17,7 +17,7 @@ async function build() {
   const root = createRoot('SofaCurve'), velvet = mat('velvet_ivory', 0xd9cfbf, 0.9), black = mat('lacquer_black', 0x141416, 0.2), brass = mat('brass', 0xc9a061, 0.26, 1);
   const depth = P.seatD + P.backT, rMid = P.R + depth / 2;
   createPart('Plinth', uv(sweepProfile(rrect(depth - 0.04, 0.1, 0.012), arc(rMid, 0), { up: [0, 1, 0], creaseAngle: 40 })), black, { parent: root });
-  createPart('BrassLine', uv(sweepProfile(rrect(0.012, 0.012, 0.004), arc(P.R + 0.025, 0.094), { up: [0, 1, 0] })), brass, { parent: root });
+  createPart('BrassLine', uv(sweepProfile(rrect(0.012, 0.012, 0.004), arc(P.R + 0.025, 0.094, -P.span / 2 + 0.6, P.span / 2 - 0.6), { up: [0, 1, 0] })), brass, { parent: root });   // its ends stop inside the end panels
   createPart('SeatBase', uv(sweepProfile(rrect(P.seatD + 0.02, 0.2, 0.05, 0.1), arc(P.R + P.seatD / 2 + 0.01, 0), { up: [0, 1, 0], creaseAngle: 70 })), velvet, { parent: root });
   createPart('SeatCushion', uv(sweepProfile(rrect(P.seatD - 0.02, 0.15, 0.065, 0.29), arc(P.R + P.seatD / 2 + 0.005, 0, -P.span / 2 + 1.2, P.span / 2 - 1.2), { up: [0, 1, 0], creaseAngle: 80 })), velvet, { parent: root });
   // back: vertical channels, each a soft rounded box turned to face the arc centre; they overlap 8 mm so the seams read as tufting

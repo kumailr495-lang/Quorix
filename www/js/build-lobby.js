@@ -90,7 +90,7 @@ export function buildLobby(ctx) {
   for (let k = 0; k < 12; k++) { const t = k / 12 * PI * 2; L.point(COF.x + (COF.rx - 0.6) * Math.cos(t), H + 0.25, COF.z + (COF.rz - 0.5) * Math.sin(t), '#ffbe80', 1.2, 6, 'h'); }
   L.area(0, H - 0.05, 3.1, [0.8, 0, 0], [0, 0, 2.0], [0, -1, 0], '#fff0dc', 3.0, 9, 'h', 2, 3);
   // the chandelier: the hero (tools/kiln/chandelier_cascade.kiln.js); its light as points round the ribbons and the core
-  placeAsset(room, 'chandelier_cascade', COF.x, COF.top, COF.z, 0, { glowK: 1.0 });
+  placeAsset(room, 'chandelier_cascade', COF.x, COF.top, COF.z, 0, { glowK: 1.25 });
   for (let k = 0; k < 8; k++) { const t = k / 8 * PI * 2; L.point(COF.x + 2.3 * Math.cos(t), H - 0.5, COF.z + 1.6 * Math.sin(t), '#ffd6a0', 3.2, 12, 'h'); }
   L.point(COF.x, COF.top - 2.9, COF.z, '#ffd9a8', 9, 14, 'h'); L.point(COF.x, COF.top - 3.6, COF.z, '#ffd9a8', 6, 12, 'h');
   // downlights (recessed, glowing discs) over the counters, the lounge, the doors and the portal
