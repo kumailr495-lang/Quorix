@@ -6,7 +6,7 @@ export { ROW_LETTERS, hallSeats };
 export const HALLS = SPECS.map(makeHall);
 export const hallById = (id) => HALLS.find((h) => h.id === id), hallByKey = (k) => HALLS.find((h) => h.key === k);
 const H = Object.fromEntries(HALLS.map((h) => [h.id, h]));
-export const LOBBY = { x0: -16, x1: 16, z0: 0.15, z1: 20, h: 8 };   // z0 = inner face of the wall to the gallery
+export const LOBBY = { x0: -14, x1: 14, z0: 0.15, z1: 20, h: 7 };   // z0 = inner face of the wall to the gallery
 export const GAL = { x0: -3.5, x1: 3.5, z0: -32, z1: 0.15, h: 4.6 };  // the gallery: one wide spine to every screen
 export const OPEN = { x0: GAL.x0, x1: GAL.x1, h: 4.2 };                // lobby -> gallery opening (ticket check)
 export const TUN = { x0: -3.0, x1: 3.0, z0: -40.0, z1: -32.0, h: 3.4 }; // the video tunnel to the IMAX

@@ -1,4 +1,4 @@
-// LUMIERE v5 - lobby (double height, glass street front), concourse to the screens, and the night street outside.
+// LUMIERE v5 - lobby (double height, glass street front) and the night street outside. The gallery to the screens: build-gallery.js.
 // Art direction (docs/V5-ART-DIRECTION.md): warm modern-deco cinema, after Everyman / Dolby Cinema references: chevron oak, geometric tile, fluted walnut,
 // dark plum plaster, brass, velvet, neon. Zones: box office (west), bar-cafe (north-west), concession (east), banquette island under a cove ring (centre),
 // LED video wall over the opening to the concourse, usher's guide stand at that opening.
@@ -7,8 +7,8 @@ import { Room } from './room.js';
 import { MAT, M, Kit, col } from './geom.js';
 import * as P from './props.js';
 import { C } from './props.js';
-import { LOBBY, CONC, OPEN, PASSAGES } from './layout.js';
-import { signTexture, posterTexture, FILMS, menuTexture, facadeTexture, shopTexture, makeCanvas, neonTexture } from './textures.js';
+import { LOBBY, OPEN } from './layout.js';
+import { menuTexture, shopTexture, makeCanvas, neonTexture } from './textures.js';
 import { placeAsset } from './assets.js';
 const PI = Math.PI;
 // seat helper: registers a sit spot (player + NPCs). face = direction the sitter looks (radians, 0 = +z); stand = where you stand up to
@@ -124,41 +124,6 @@ function guideTexture() {
   ['Ask the usher', 'to walk you', 'to your seat'].forEach((t, i) => g.fillText(t, w / 2, 262 + i * 28));
   g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 6; g.beginPath(); g.moveTo(w / 2, 400); g.lineTo(w / 2, 500); g.moveTo(w / 2 - 30, 430); g.lineTo(w / 2, 400); g.lineTo(w / 2 + 30, 430); g.stroke();
   g.font = '600 22px Inter, sans-serif'; g.fillStyle = '#fff'; g.fillText('SCREENS 1 · 2 · 3', w / 2, 545);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-}
-export function buildConcourse(ctx) {
-  const { world } = ctx, room = new Room('conc', { ceil: CONC.h, rect: [CONC.x0, CONC.z0, CONC.x1, -0.15], soft: 0.3 }), L = room.lights, H = CONC.h, zN = CONC.z0, zS = -0.15, wallC = '#2c2226', skirt = { h: 0.1, color: '#121214', mat: MAT.lacquer };
-  // the walk to the screens: deco cinema carpet, dark plum walls with the lobby's fluted walnut wainscot, lit brass poster cases
-  room.flat(CONC.x0, zN, CONC.x1, zS, 0, true, '#ffffff', { mat: MAT.deco }); room.flat(OPEN.x0, zS, OPEN.x1, 0.15, 0, true, '#ffffff', { mat: MAT.chevron });
-  room.flat(CONC.x0, zN, CONC.x1, zS, H, false, '#1a181b', { mat: MAT.paint });
-  const pg = PASSAGES.map((p) => [p.x0, p.x1, 2.6]);
-  room.wall('x', zN, CONC.x0, CONC.x1, 0, H, 1, wallC, pg, { mat: MAT.plaster, thick: 0.3, skirt });
-  room.wall('x', zS, CONC.x0, CONC.x1, 0, H, -1, wallC, [[OPEN.x0, OPEN.x1, OPEN.h]], { mat: MAT.plaster, thick: 0.3, skirt });
-  for (const [x, d] of [[CONC.x0, 1], [CONC.x1, -1]]) room.wall('z', x, zN, zS, 0, H, d, wallC, [], { mat: MAT.plaster, thick: 0.3, skirt });
-  const wx = (a0, a1, c, dir) => { if (a1 - a0 < 0.3) return; room.box(a0, 0.1, dir > 0 ? c : c - 0.04, a1, 1.2, dir > 0 ? c + 0.04 : c, '#6b4630', { mat: MAT.fluted, faces: dir > 0 ? 'pz py px nx' : 'nz py px nx' }); room.box(a0, 1.2, dir > 0 ? c : c - 0.05, a1, 1.23, dir > 0 ? c + 0.05 : c, '#c9a061', { mat: MAT.brass, faces: dir > 0 ? 'pz py ny px nx' : 'nz py ny px nx' }); };
-  for (const [a0, a1] of [[-15, OPEN.x0], [OPEN.x1, 15]]) wx(a0, a1, zS, -1);
-  for (const [a, b] of [[CONC.x0, PASSAGES[0].x0], [PASSAGES[0].x1, -10.0], [10.0, PASSAGES[1].x0], [PASSAGES[1].x1, CONC.x1]]) wx(a, b, zN, 1);
-  for (const x of [OPEN.x0, OPEN.x1]) room.box(x - 0.001, 0, zS, x + 0.001, OPEN.h, 0.15, '#c9a061', { faces: x < 0 ? 'nx' : 'px', mat: MAT.brass });
-  // passage openings: brass reveals + lit header signs
-  for (const p of PASSAGES) { for (const x of [p.x0, p.x1]) room.box(x - 0.001, 0, zN - 0.3, x + 0.001, 2.6, zN, '#c9a061', { faces: x === p.x0 ? 'px' : 'nx', mat: MAT.brass }); room.box(p.x0, 2.599, zN - 0.3, p.x1, 2.601, zN, '#1a1a1d', { faces: 'ny', mat: MAT.paint });
-    const [a, b] = p.key === 'passW' ? ['1', '3'] : ['3', '2']; room.tex(screensSign(a, b), (p.x0 + p.x1) / 2, 3.3, zN + 0.012, 0, 2.6, 0.62, { emit: 1.5, transparent: true });
-    L.point((p.x0 + p.x1) / 2, 3.0, zN + 0.8, '#ffe2c0', 1.4, 5, 'f'); }
-  // poster cases along the north wall, each with its own grazing light
-  FILMS.forEach((f, i) => { const x = -8.75 + i * 3.5; placeAsset(room, 'poster_case', x, 0.95, zN); room.tex(posterTexture(f), x, 1.85, zN + 0.05, 0, 1.2, 1.8, { emit: 1.25 }); L.area(x, 1.85, zN + 0.3, [0.6, 0, 0], [0, 0.9, 0], [0, 0, 1], '#fff0e0', 1.0, 5, 'f', 2, 2); L.spot(x, H - 0.3, zN + 1.2, '#ffd6a8', 4, 7, 'h', [0, -1, -0.5], 18, 45); });
-  // recessed downlights in two rows + brass picture rail
-  for (const z of [-1.6, -4.4]) for (let x = -13; x <= 13; x += 2.6) { room.box(x - 0.08, H - 0.012, z - 0.08, x + 0.08, H - 0.002, z + 0.08, '#fff1dc', { glow: true, grp: 1, faces: 'ny' }); L.spot(x, H - 0.1, z, '#ffcf9a', 7, 8, 'h', [0, -1, 0], 22, 55); }
-  for (const [a0, a1, c, d] of [[CONC.x0, CONC.x1, zN, 1], [-15, OPEN.x0, zS, -1], [OPEN.x1, 15, zS, -1]]) room.box(a0, 3.9, d > 0 ? c : c - 0.02, a1, 3.93, d > 0 ? c + 0.02 : c, '#c9a061', { mat: MAT.brass, faces: d > 0 ? 'pz py ny' : 'nz py ny' });
-  L.ambient('#ffd7ad', '#5a4236', 0.1, 'h');
-  for (const x of [-4.5, 4.5]) { placeAsset(room, 'bench_velvet', x, 0, -1.2, PI, { scale: [1, 1, 0.9], swap: { velvet_teal: [MAT.velvet, col('#6e1424')] } }); room.col(x - 0.9, -1.45, x + 0.9, -0.95); for (const dx of [-0.5, 0.5]) sitSpot(world, 'conc', 'bench', x + dx, -1.2, PI, 0.47, { x: x + dx, z: -2.1 }, 'sit.bench'); }
-  for (const x of [-10.0, 10.0]) { placeAsset(room, 'planter_tall', x, 0, -5.4); room.col(x - 0.3, -5.7, x + 0.3, -5.1); }
-  // restrooms at the ends (doors only)
-  for (const [x, s, label] of [[CONC.x0, 1, 'RESTROOMS'], [CONC.x1, -1, 'RESTROOMS']]) { placeAsset(room, 'door_padded', x + s * 0.002, 0, -3.1, s > 0 ? PI / 2 : -PI / 2); room.tex(signTexture(label, 512, 96, { weight: 600, size: 0.42, spacing: 0.2, color: '#e9d2a8' }), x + s * 0.04, 2.6, -3.1, s > 0 ? PI / 2 : -PI / 2, 1.4, 0.26, { emit: 1.2, transparent: true }); }
-  return room;
-}
-function screensSign(a, b) {
-  const w = 1024, h = 244, c = makeCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#16161a'; g.fillRect(0, 0, w, h); g.fillStyle = '#ff4d5a'; g.fillRect(0, h - 10, w, 10);
-  g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.font = '700 70px Inter, sans-serif'; g.textAlign = 'left'; g.fillText('← ' + a, 50, h / 2); g.textAlign = 'right'; g.fillText(b + ' →', w - 50, h / 2);
-  g.textAlign = 'center'; g.font = '500 38px Inter, sans-serif'; g.fillStyle = 'rgba(255,255,255,.75)'; g.fillText('SCREENS', w / 2, h / 2);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 export function buildStreet(ctx) {

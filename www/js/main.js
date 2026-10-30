@@ -16,11 +16,11 @@ import { treeFor } from './dialogue.js';
 import { propGeo } from './characters.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { setLang, t, fmtTime } from './i18n.js';
-import { HALLS, hallById, hallByKey, PASSAGES, roomAt } from './layout.js';
+import { HALLS, hallById, hallByKey, HALL_DOORS, roomAt, GAL } from './layout.js';
 import { HOUSE } from './films.js';
 import { makeLedWall } from './ledwall.js';
 const $ = (s) => document.querySelector(s), clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
-const STEP = { lobby: 'load.lobby', concourse: 'load.concourse', street: 'load.street', passages: 'load.passages', halls: 'load.halls' };
+const STEP = { lobby: 'load.lobby', gallery: 'load.gallery', street: 'load.street', tunnel: 'load.tunnel', restrooms: 'load.restrooms', halls: 'load.halls' };
 async function boot() {
   const settings = loadSettings(), Q = new URLSearchParams(location.search), nav = (navigator.language || 'en').slice(0, 2);
   setLang(settings.lang || (['hi', 'ur', 'es'].includes(nav) ? nav : 'en'));
@@ -36,15 +36,17 @@ async function boot() {
   const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(0, 18.2, 0);
   player.onStep = (s) => sound.step(s, /hall|pass/.test(room));
   const dist = (n) => Math.hypot(n.x - player.x, n.z - player.z), hallOf = (tk) => world.hallById(tk.hall), seatOf = (tk) => hallOf(tk).seats.find((s) => s.id === tk.seat);
-  // ---------- hall audibility: continuous, from where you stand (in the hall, in its light-lock passage, in the concourse behind an automatic door) ----------
-  const passFor = (hallId) => PASSAGES.filter((p) => p.doors.some((d) => d.hall === hallId));
+  // ---------- hall audibility: continuous, from where you stand (in the hall, at its padded doors in the gallery, in the tunnel to the IMAX) ----------
   const doorOf = (key) => world.doors.find((d) => d.key === key);
   function audibility(hallKey) {
     if (!hallKey) return { g: 0, lp: 400 }; const H = hallByKey(hallKey); if (room === hallKey) return { g: player.seated ? 1 : 0.92, lp: 18000 };
-    for (const p of passFor(H.id)) { const d = p.doors.find((q) => q.hall === H.id), dd = Math.hypot(player.x - d.x, player.z - d.z);
-      if (room === p.key) { const k = smooth(8, 0.6, dd); return { g: 0.1 + 0.55 * k, lp: 1100 + 9000 * k * k }; }
-      if (room === 'conc') { const door = doorOf(p.key), de = Math.hypot(player.x - (p.x0 + p.x1) / 2, player.z - p.z1), open = door ? door.open : 0; return { g: (0.012 + 0.07 * open) * smooth(16, 1.5, de), lp: 500 + 1200 * open }; } }
-    return { g: room === 'lobby' ? 0.004 : 0, lp: 400 };
+    let best = { g: room === 'lobby' ? 0.004 : 0, lp: 400 };
+    for (const d of HALL_DOORS) { if (d.hall !== H.id) continue; const dd = Math.hypot(player.x - d.x, player.z - d.z); let g = 0, lp = 400;
+      if (room === d.room && d.open) { const k = smooth(9, 0.6, dd); g = 0.06 + 0.55 * k; lp = 1200 + 9000 * k * k; }   // the tunnel opens straight into the IMAX trench
+      else if (room === d.room) { const door = doorOf(d.hall + ':' + d.kind), open = door ? door.open : 0; g = (0.01 + 0.22 * open) * smooth(14, 1, dd) + 0.003; lp = 500 + 3500 * open; }
+      else if (room === 'gal' && d.room === 'tunnel') { g = 0.035 * smooth(22, 2, Math.hypot(player.x, player.z - GAL.z0)); lp = 700; }
+      if (g > best.g) best = { g, lp }; }
+    return best;
   }
   // ---------- people ----------
   crowd = new Crowd(world, mats, engine, {
@@ -150,7 +152,7 @@ async function boot() {
     audT -= dt; if (audT <= 0) { audT = 0.3; let want = null; for (const h of world.halls) { if (!shows.isOn(h.id)) continue; const a = audibility(h.key); if (a.g > 0.01 && (!want || a.g > want.g)) want = { g: a.g, h }; }
       const key = want ? want.h.key : null; if (key !== curFilmHall) { curFilmHall = key; if (!key) sound.stopFilm(); else { const s = shows.get(want.h.id); sound.startFilm(key, s.mode === 'user' ? { video: shows.video } : { house: s.filmId }); } } }
     const fa = audibility(curFilmHall), hk = r.startsWith('hall') ? r : null, darkHall = hk && world.hallByKey(hk).room.U.uHouse.value < 0.5, pc = world.spots.snackCounter;
-    sound.setListener({ room: r, x: player.x, z: player.z, yaw: player.yaw, filmAud: fa.g, filmLP: fa.lp, crowdLP: hk ? 18000 : r.startsWith('pass') ? 2500 : 900, verb: hk ? 0.5 : r.startsWith('pass') ? 0.2 : 0.08, dark: darkHall, people: Math.min(1, crowd.agents.filter((a) => a.group.visible && dist(a) < 12).length / 10), popcornDist: Math.hypot(player.x - 13.4, player.z - 10), seated: !!player.seated });
+    sound.setListener({ room: r, x: player.x, z: player.z, yaw: player.yaw, filmAud: fa.g, filmLP: fa.lp, crowdLP: hk ? 18000 : r === 'gal' || r === 'tunnel' ? 2500 : 900, verb: hk ? 0.5 : r === 'tunnel' ? 0.3 : r === 'gal' || r.startsWith('wc') ? 0.2 : 0.08, dark: darkHall, people: Math.min(1, crowd.agents.filter((a) => a.group.visible && dist(a) < 12).length / 10), popcornDist: Math.hypot(player.x - 13.4, player.z - 10), seated: !!player.seated });
     // held item: light it like the room, bob when eating, slide in when received
     if (itemMesh) { lightT -= dt; if (lightT <= 0) { lightT = 0.3; crowd.lightAt(player.x, player.y + 1.3, player.z, itemLight); } itemIn = Math.min(1, itemIn + dt * 3); itemAnim = Math.max(0, itemAnim - dt * 1.6); const e = Math.sin(itemAnim * Math.PI);
       itemMesh.position.set(0.3, -0.3 - (1 - itemIn) * 0.3 + e * 0.12, -0.55 + e * 0.12); itemMesh.rotation.set(0.25 + e * 0.6, -0.4, 0); }

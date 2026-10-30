@@ -5,12 +5,12 @@
 //  Anyone you can't see is simulated cheaply; seated viewers far from you are one instanced mesh per hall (vertex-shader animated).
 import * as THREE from 'three';
 import { People, randomRecipe, STAFF_LOOK, crowdGeometry, propGeo, rng } from './characters.js';
-import { roomAt, floorY, HALLS, hallById, PASSAGES, STREET_SPAWN } from './layout.js';
+import { roomAt, floorY, HALLS, hallById, hallDoor, STREET_SPAWN } from './layout.js';
 import { pickLine, lines, t } from './i18n.js';
 const TAU = Math.PI * 2, rnd = (a, b) => a + Math.random() * (b - a), adiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
 const NAMES = ['Ava', 'Noah', 'Mia', 'Leo', 'Zara', 'Omar', 'Sofia', 'Arjun', 'Lena', 'Kai', 'Amara', 'Ravi', 'Nina', 'Hugo', 'Iris', 'Sami', 'Aisha', 'Diego', 'Meera', 'Tomás', 'Yara', 'Ali', 'Elena', 'Kenji', 'Fatima', 'Lucas', 'Ines', 'Bilal', 'Chloe', 'Dev'];
-const POIS = [   // things guests walk up to and look at: [x, z, lookYaw (0 = +z), pitch]
-  ...[-8.75, -5.25, -1.75, 1.75, 5.25, 8.75].map((x) => [x, -4.4, Math.PI, -0.15]), [0, 3.4, Math.PI, -0.45], [-2.4, 4.0, Math.PI, -0.45], [9.4, 7.1, Math.PI / 2, -0.35], [9.4, 12.9, Math.PI / 2, -0.35], [-9.4, 18.8, -Math.PI / 2, 0], [5.5, 18.6, 0, 0], [-5.5, 18.6, 0, 0], [12.2, 16.4, Math.PI / 2, -0.1]];
+const LOBBY_POIS = [   // things guests walk up to and look at: [x, z, lookYaw (0 = +z), pitch]; the gallery adds its art prints (world.pois)
+  [0, 3.4, Math.PI, -0.45], [-2.4, 4.0, Math.PI, -0.45], [9.4, 7.1, Math.PI / 2, -0.35], [9.4, 12.9, Math.PI / 2, -0.35], [-9.4, 18.8, -Math.PI / 2, 0], [5.5, 18.6, 0, 0], [-5.5, 18.6, 0, 0], [12.2, 16.4, Math.PI / 2, -0.1]];
 const REACT = { scare: 'scream', gasp: 'gasp', laugh: 'laugh', aww: 'aww', climax: 'cheer', cheer: 'clap', end: 'clap', tension: 'lean' };
 const EXPR_OF = { scream: 'scream', gasp: 'gasp', laugh: 'laugh', aww: 'aww', cheer: 'cheer', clap: 'happy', lean: 'focus', eat: 'smile' };
 const CROWD_ACT = { clap: 1, cheer: 2, scream: 3, gasp: 4, laugh: 5, eat: 6, lean: 4, aww: 0 };
@@ -68,7 +68,7 @@ class Agent {
 export class Crowd {
   constructor(world, mats, engine, hooks = {}) {
     this.world = world; this.mats = mats; this.engine = engine; this.hooks = hooks; this.people = new People(mats); this.root = new THREE.Group(); this.root.name = 'people'; engine.scene.add(this.root);
-    this.agents = []; this.staff = {}; this.viewers = {}; this.now = 0; this.nid = 0; this.inst = {}; this.queue = []; this.propMat = new Map();
+    this.agents = []; this.staff = {}; this.viewers = {}; this.now = 0; this.nid = 0; this.inst = {}; this.queue = []; this.propMat = new Map(); this.pois = LOBBY_POIS.concat(world.pois || []);
     for (const h of world.halls) this.viewers[h.id] = [];
   }
   get preset() { return this.engine.preset; }
@@ -87,7 +87,7 @@ export class Crowd {
   }
   spawnGuest(placed) {
     const seed = Math.random() * 1e6, rec = randomRecipe(seed), name = NAMES[Math.floor(Math.random() * NAMES.length)];
-    let x, z; if (placed) { const p = POIS[Math.floor(Math.random() * POIS.length)]; x = p[0] + rnd(-1.5, 1.5); z = p[1] + rnd(0.5, 2); const n = this.world.nav.nearest(x, z) || [0, 15]; x = n[0]; z = n[1]; } else { const s = STREET_SPAWN[Math.floor(Math.random() * STREET_SPAWN.length)]; x = s[0] + rnd(-1, 1); z = s[1] - 1.5; }
+    let x, z; if (placed) { const p = this.pois[Math.floor(Math.random() * this.pois.length)]; x = p[0] + rnd(-1.5, 1.5); z = p[1] + rnd(0.5, 2); const n = this.world.nav.nearest(x, z) || [0, 15]; x = n[0]; z = n[1]; } else { const s = STREET_SPAWN[Math.floor(Math.random() * STREET_SPAWN.length)]; x = s[0] + rnd(-1, 1); z = s[1] - 1.5; }
     const a = this.spawn({ rec, name, role: 'guest', x, z, yaw: Math.PI, state: 'idle' }); a.talkable = true; a.plan = this.makePlan(); if (Math.random() < 0.3) this.giveItem(a, Math.random() < 0.7 ? 'popcorn' : 'drink');
     if (!placed) a.goTo(0, 17.5, (n) => { n.t = 0.5; });
     return a;
@@ -203,7 +203,7 @@ export class Crowd {
     if (a.lookT != null) { a.lookT -= dt; if (a.yawWant != null) a.turnYaw(a.yawWant, 3, dt); if (a.lookT > 0) return; a.lookT = null; a.yawWant = null; a.forceLook = null; a.lookPitch = 0; }
     a.t -= dt; if (a.t > 0) return;
     const next = a.plan.shift() || 'leave';
-    if (next === 'wander') { const p = POIS[Math.floor(Math.random() * POIS.length)]; if (!a.goTo(p[0] + rnd(-0.6, 0.6), p[1] + rnd(-0.3, 0.3), (n) => { n.lookYaw = p[2]; n.lookT = rnd(3, 7); n.yawWant = p[2]; n.lookPitch = p[3]; n.t = 0.3; })) a.t = 1; else a.lookPitch = 0; return; }
+    if (next === 'wander') { const p = this.pois[Math.floor(Math.random() * this.pois.length)]; if (!a.goTo(p[0] + rnd(-0.6, 0.6), p[1] + rnd(-0.3, 0.3), (n) => { n.lookYaw = p[2]; n.lookT = rnd(3, 7); n.yawWant = p[2]; n.lookPitch = p[3]; n.t = 0.3; })) a.t = 1; else a.lookPitch = 0; return; }
     if (next === 'sit') { const sp = this.freeSpot(a); if (!sp) { a.t = 1; return; } sp.taken = a.id; a.spot = sp; a.goTo(sp.stand.x, sp.stand.z, (n) => { n.sitDown({ x: sp.x, z: sp.z, y: 0, face: sp.face, h: sp.y, recline: sp.kind === 'stool' ? 0 : 0.12 }, (m) => { m.t = rnd(25, 70); }); }); return; }
     if (next === 'chat') { const b = this.agents.find((o) => o !== a && o.role === 'guest' && o.alive && !o.partner && !o.path && o.state === 'idle' && !o.talkingToPlayer && Math.hypot(o.x - a.x, o.z - a.z) < 12); if (!b) { a.t = 1; return; } a.partner = b; b.partner = a; const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, ang = Math.atan2(b.x - a.x, b.z - a.z), n0 = this.world.nav.nearest(mx - Math.sin(ang) * 0.55, mz - Math.cos(ang) * 0.55), n1 = this.world.nav.nearest(mx + Math.sin(ang) * 0.55, mz + Math.cos(ang) * 0.55);
       if (!n0 || !n1) { a.partner = b.partner = null; a.t = 1; return; } const both = () => { if (a.path || b.path || a.partner !== b) return; a.state = b.state = 'chat'; const script = lines('chat'); a.chat = b.chat = { lines: script[Math.floor(Math.random() * script.length)], i: 0, next: 0.6, lead: a }; };
@@ -251,11 +251,12 @@ export class Crowd {
     const go = () => { if (!a.goTo(ap.x, ap.z, toSeat)) { this._release(v); v.state = 'seated'; } };
     if (fromDoor) go(); else if (!a.goTo(door.x, door.z, go)) { this._release(v); v.seatedAt = this.now + 8000; }
   }
-  _hallDoor(h) { for (const p of PASSAGES) for (const d of p.doors) if (d.hall === h.id) { const side = d.side; return { x: d.x + side * 0.9, z: d.z }; } return { x: h.cfg.cx, z: h.cfg.zBack - 1 }; }
+  // a point just outside a hall door (the gallery side, or the tunnel side of the IMAX trench); kind 'exit' for leaving after the film
+  _hallDoor(h, kind = 'entrance') { const d = hallDoor(h.id, kind) || hallDoor(h.id); if (!d) return { x: h.cfg.cx, z: h.cfg.zBack - 1 }; return d.axis === 'z' ? { x: d.x, z: d.z + 0.9 } : { x: d.x + d.side * 0.9, z: d.z }; }
   _toAgent(v, player) { const sp = this.seatPose(v); const a = this.spawn({ rec: v.rec, name: v.name, role: 'viewer', x: sp.x, z: sp.z, yaw: sp.face, state: 'seated' }); a.viewer = v; v.agent = a; a.sitTo = sp; a.y = sp.y; a.ch.s.sit = 1; a.ch.s.drop = a.ch.seatDrop(sp.h); a.ch.s.recline = sp.recline; a.ch.snap = true; if (v.pers.popcorn) this.giveItem(a, 'popcorn'); a.holdGesture = v.pers.popcorn ? 'hold' : null; if (v.act) a.react(v.act, Math.max(0.5, (v.until - this.now) / 1000)); a.talkable = false; }
   _release(v) { const a = v.agent; if (!a) return; a.dispose(); const i = this.agents.indexOf(a); if (i >= 0) this.agents.splice(i, 1); v.agent = null; }
   _leave(v) {
-    const a = v.agent, h = v.hall, door = this._hallDoor(h), ap = this.aislePoint(h, v.seat), st = this.laneStand(v);
+    const a = v.agent, h = v.hall, door = this._hallDoor(h, 'exit'), ap = this.aislePoint(h, v.seat), st = this.laneStand(v);
     a.standUp(st, (n) => { if (v.seat.npc === v) { v.seat.npc = null; v.seat.taken = false; } n.sideTo = { x: ap.x, z: st.z, faceWhile: v.seat.yaw + Math.PI, then: (m) => { if (!m.goTo(door.x, door.z, (q) => { const s = STREET_SPAWN[Math.floor(Math.random() * STREET_SPAWN.length)]; if (!q.goTo(s[0], s[1], () => { this._release(v); v.state = 'gone'; })) { this._release(v); v.state = 'gone'; } })) { this._release(v); v.state = 'gone'; } } }; });
   }
   viewerBrain(a, dt, now, player, visible) {

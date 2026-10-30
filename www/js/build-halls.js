@@ -8,7 +8,7 @@ import { Acc, toGeometry, M, MAT, col } from './geom.js';
 import { railKit, speakerKit } from './props.js';
 import { assetGeometry } from './assets.js';
 import { HALLS, HALL_DOORS } from './layout.js';
-import { hallFloorY, hallSeats, BEHIND, TREAD } from './hallmath.js';
+import { hallFloorY, hallSeats, inTrench, PARAPET, BEHIND, TREAD } from './hallmath.js';
 import { slateTexture } from './textures.js';
 export const THEME = {   // I = curved premium: walnut slats, burgundy, star ceiling; II = IMAX: black with blue light lines (Dolby/IMAX style); III = standard: Everyman teal
   I: { seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#3a1418', riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true },
@@ -53,16 +53,19 @@ function buildHall(ctx, h) {
   // side faces where an aisle tread stands above the row platform next to it
   for (const side of [-1, 1]) { const x = cx + side * hb, u = side * hb; for (let r = 0; r < h.rows - 1; r++) for (const [d0, d1, y] of rowProfile(h, r, true).slice(1)) { const yb = h.rowY[r]; if (y <= yb + 1e-4) continue;
     sides.push(side < 0 ? [[x, yb, Z(d0, u)], [x, yb, Z(d1, u)], [x, y, Z(d1, u)], [x, y, Z(d0, u)]] : [[x, yb, Z(d1, u)], [x, yb, Z(d0, u)], [x, y, Z(d0, u)], [x, y, Z(d1, u)]]); } }
-  // vomitory trench walls: from the trench floor up to each row platform beside it; colliders keep walkers out of the trench
+  // vomitory trench: stepped parapet walls (0.9 m above each row platform, brass handrail on top) line the trench from the crossing aisle
+  // to the rear wall; their faces are the trench walls, their colliders keep the rows and the trench apart
   if (h.vom) { const yT = h.rowY[h.cross.row];
-    for (let r = h.cross.row + 1; r < h.rows; r++) { const d0 = h.pf[r], d1 = r === h.rows - 1 ? h.depth : h.pf[r + 1], y = h.rowY[r];
-      sides.push([[cx - vu, yT, Z(d0, 0)], [cx - vu, yT, Z(d1, 0)], [cx - vu, y, Z(d1, 0)], [cx - vu, y, Z(d0, 0)]], [[cx + vu, yT, Z(d1, 0)], [cx + vu, yT, Z(d0, 0)], [cx + vu, y, Z(d0, 0)], [cx + vu, y, Z(d1, 0)]]);
-      for (const s2 of [-1, 1]) { room.col(cx + s2 * vu - 0.06, Z(d0, 0), cx + s2 * vu + 0.06, Z(d1, 0)); room.box(Math.min(cx + s2 * vu, cx + s2 * (vu + 0.05)), y, Z(d0, 0), Math.max(cx + s2 * vu, cx + s2 * (vu + 0.05)), y + 0.04, Z(d1, 0) - 0.001, '#c9a061', { mat: MAT.brass, faces: 'py px nx pz nz' }); } }
-    // guard rail on top of the trench walls (glass with a slim brass top rail)
-    for (const s2 of [-1, 1]) { const dA = h.pf[h.cross.row + 1], len = h.depth - dA - 0.05; room.kit(railKit(len, 0.9), cx + s2 * (vu + 0.04), 0, Z(dA + len / 2, 0), Math.PI / 2); } }
+    for (let r = h.cross.row + 1; r < h.rows; r++) { const d0 = h.pf[r], d1 = r === h.rows - 1 ? h.depth : h.pf[r + 1], y = h.rowY[r], za = Z(d0, 0), zb = Z(d1, 0) - (r === h.rows - 1 ? 0.001 : 0);
+      for (const s2 of [-1, 1]) { const xi = cx + s2 * vu, xo = cx + s2 * (vu + PARAPET), x0 = Math.min(xi, xo), x1 = Math.max(xi, xo);
+        room.box(x0, yT, za, x1, y + 0.9, zb, T.riser, { mat: MAT.paint, faces: `${s2 < 0 ? 'px nx' : 'nx px'} nz py`, edge: 0.8 });
+        room.box(x0 - 0.01, y + 0.9, za, x1 + 0.01, y + 0.95, zb, '#c9a061', { mat: MAT.brass, faces: 'py px nx nz', edge: 0 });
+        room.col(x0 - 0.02, za, x1 + 0.02, zb); }
+      room.glowBox(cx - vu + 0.02, yT + 0.25, za, cx - vu + 0.03, yT + 0.27, zb, T.led, 1.2, 1, 'px'); room.glowBox(cx + vu - 0.03, yT + 0.25, za, cx + vu - 0.02, yT + 0.27, zb, T.led, 1.2, 1, 'nx'); }
+    L.line(cx, yT + 0.4, Z(h.pf[h.cross.row + 1], 0), cx, yT + 0.4, h.zBack - 0.3, T.led, 0.5, 4, 'h'); }
   // balcony front: a fascia on the high riser with a brass rule and a light line, read from the stalls as the balcony's edge
   if (h.balcony) { const r = h.balcony, d = h.pf[r], y0 = h.rowY[r - 1], y1 = h.rowY[r];
-    for (const [a, b] of h.vom ? [[h.x0 + 0.02, cx - vu], [cx + vu, h.x1 - 0.02]] : [[h.x0 + 0.02, h.x1 - 0.02]]) {
+    for (const [a, b] of h.vom ? [[cx - hb, cx - vu], [cx + vu, cx + hb]] : [[cx - hb, cx + hb]]) {   // across the seat blocks; the side aisles climb past it
       room.box(a, y0 + 0.02, Z(d, 0) - 0.03, b, y1 + 0.32, Z(d, 0), T.fascia || '#141214', { mat: MAT.lacquer, faces: 'nz py' });
       room.box(a, y1 + 0.32, Z(d, 0) - 0.04, b, y1 + 0.36, Z(d, 0) + 0.06, '#c9a061', { mat: MAT.brass, faces: 'nz py ny' });
       room.glowBox(a + 0.05, y0 + 0.08, Z(d, 0) - 0.04, b - 0.05, y0 + 0.1, Z(d, 0) - 0.03, T.led, 1.4, 1, 'nz ny'); L.line(a + 0.2, y0 + 0.3, Z(d, 0) - 0.3, b - 0.2, y0 + 0.3, Z(d, 0) - 0.3, T.led, 0.35, 3, 'h'); room.col(a, Z(d, 0) - 0.04, b, Z(d, 0) + 0.02); } }
@@ -151,14 +154,14 @@ function buildHall(ctx, h) {
   const seatGeo = [0, 1].map((l) => assetGeometry(seatName, l, flip, toGeometry, Acc)), armGeo = [0, 1].map((l) => assetGeometry(armName, l, flip, toGeometry, Acc, armOver));
   // arm positions: every seat boundary of every row (n + 1 per row), following curved rows like the seats do
   const arms = [];
-  for (let r = 0; r < h.rows; r++) for (let c = 0; c <= h.perRow; c++) { const u = -h.B / 2 + c * h.seatW; if (h.vom && r >= h.cross.row && Math.abs(u) < h.vom.u - h.seatW * 0.3) continue; arms.push({ x: h.cx + u, y: h.rowY[r], z: zs + h.dHip[r] - h.rowSag(u), yaw: h.rowR ? -Math.asin(u / h.rowR) : 0 }); }
+  for (let r = 0; r < h.rows; r++) for (let c = 0; c <= h.perRow; c++) { const u = -h.B / 2 + c * h.seatW; if (inTrench(h, r, u, 0.04)) continue; arms.push({ x: h.cx + u, y: h.rowY[r], z: zs + h.dHip[r] - h.rowSag(u), yaw: h.rowR ? -Math.asin(u / h.rowR) : 0 }); }
   const H3 = [0, 0, 0], F3 = [0, 0, 0], litOf = (list) => { const a = new Float32Array(list.length * 7); list.forEach((s, i) => { L.at(s.x, s.y + 0.9, s.z + 0.2, 0, 0.6, 0.8, H3, F3); a.set([H3[0], H3[1], H3[2], F3[0], F3[1], F3[2], L.screenAt(s.x, s.y + 0.8, s.z - 0.3, 0, 0.29, -0.96)], i * 7); }); return a; };
   const lit = litOf(seats), armLit = litOf(arms), seatU = room.U;
   const instanced = (geos, n) => geos.map((g) => { const m = new THREE.InstancedMesh(g, mats.litFor(seatU, g, true), n); m.count = 0; m.frustumCulled = false;
     m.geometry.setAttribute('iLh', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLf', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)); m.geometry.setAttribute('iLs', new THREE.InstancedBufferAttribute(new Float32Array(n), 1)); room.add(m); return m; });
   const meshes = instanced(seatGeo, seats.length), armMeshes = instanced(armGeo, arms.length);
   // colliders: one per row (straight) or per seat (curved)
-  if (!h.rowR) for (let r = 0; r < h.rows; r++) { const d = h.dHip[r]; for (const [a, b] of h.vom && r >= h.cross.row ? [[cx - hb - 0.05, cx - vu - 0.02], [cx + vu + 0.02, cx + hb + 0.05]] : [[cx - hb - 0.05, cx + hb + 0.05]]) room.col(a, zs + d - h.seat.fr, b, zs + d + h.seat.bk); }
+  if (!h.rowR) for (let r = 0; r < h.rows; r++) { const d = h.dHip[r]; for (const [a, b] of h.vom && r >= h.cross.row ? [[cx - hb - 0.05, cx - vu - PARAPET - 0.04], [cx + vu + PARAPET + 0.04, cx + hb + 0.05]] : [[cx - hb - 0.05, cx + hb + 0.05]]) room.col(a, zs + d - h.seat.fr, b, zs + d + h.seat.bk); }
   else for (const s of seats) room.col(s.x - h.seatW / 2, s.z - h.seat.fr, s.x + h.seatW / 2, s.z + h.seat.bk);
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9, 9];
   seats.forEach((s, i) => { s.i = i; });

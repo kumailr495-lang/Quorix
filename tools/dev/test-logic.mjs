@@ -6,7 +6,7 @@
 // run through tools/run-dev.sh (it makes `three` resolvable); LUM_WWW points at the copied www/
 import { pathToFileURL } from 'node:url';
 const WWW = process.env.LUM_WWW ? pathToFileURL(process.env.LUM_WWW + '/').href : new URL('../../www/', import.meta.url).href, imp = (f) => import(WWW + f);
-const { SPECS, calc, makeHall, hallFloorY, hallSeats } = await imp('js/hallmath.js');
+const { SPECS, calc, makeHall, hallFloorY, hallSeats, inTrench } = await imp('js/hallmath.js');
 const { HALLS, HALL_DOORS, PORTALS, RECTS, roomAt, GAL, LOBBY, TUN } = await imp('js/layout.js');
 const { Director } = await imp('js/react.js'), { HOUSE } = await imp('js/films.js');
 const { EN } = await imp('js/lang/en.js'), { ES } = await imp('js/lang/es.js'), { HI } = await imp('js/lang/hi.js'), { UR } = await imp('js/lang/ur.js');
@@ -16,9 +16,9 @@ const section = (s) => console.log('== ' + s);
 section('halls');
 for (const s of SPECS) {
   const h = makeHall(s), k = calc(s), seats = hallSeats(h);
-  let trench = 0; if (h.vom) for (let c = 1; c <= s.perRow; c++) if (Math.abs(-h.B / 2 + (c - 0.5) * s.seatW) < h.vom.u + s.seatW * 0.3) trench += s.rows - h.cross.row;
+  let trench = 0; for (let r = 0; r < s.rows; r++) for (let c = 1; c <= s.perRow; c++) if (inTrench(h, r, -h.B / 2 + (c - 0.5) * s.seatW, s.seatW / 2)) trench++;
   ok(seats.length === s.rows * s.perRow - trench, `${s.id} seat count ${seats.length}`);
-  if (h.vom) ok(!seats.some((q) => q.row >= h.cross.row && Math.abs(q.u) < h.vom.u), `${s.id} a seat stands in the vomitory`);
+  if (h.vom) ok(!seats.some((q) => q.row >= h.cross.row && Math.abs(q.u) - s.seatW / 2 < h.vom.u + 0.12), `${s.id} a seat touches the vomitory parapet`);
   for (const q of seats) if (!(q.x > h.x0 + 0.5 && q.x < h.x1 - 0.5 && q.z > h.zs && q.z < h.zBack)) { ok(false, `${s.id} seat ${q.id} outside the hall`); break; }
   // side aisles: walk them front to back in 1 cm steps, the floor may only change by stair risers
   let maxStep = 0;

@@ -57,7 +57,13 @@ const res = await p.evaluate(() => {
   const N = W.nav, from = W.spots.entrance, check = (label, x, z) => { out.nav.checked++; const pth = N.path(from.x, from.z, x, z); if (!pth) out.nav.failed.push(label); };
   for (const [k, s] of Object.entries(W.spots)) if (s.x != null) check('spot ' + k, s.x, s.z);
   for (const s of W.sitSpots) check('sit ' + s.id + ' ' + s.kind, s.stand.x, s.stand.z);
-  for (const h of W.halls) { const c = h.cfg; for (const side of [-1, 1]) check(`${h.key} aisle ${side}`, c.cx + side * (c.B / 2 + 0.6), c.zs + c.dHip[c.rows - 1]); check(`${h.key} cross aisle`, c.cx, c.zs + c.cross.dDoor); }
+  for (const h of W.halls) { const c = h.cfg; for (const side of [-1, 1]) check(`${h.key} aisle ${side}`, c.cx + side * (c.B / 2 + 0.6), c.zs + c.dHip[c.rows - 1]); check(`${h.key} cross aisle`, c.cx, c.zs + c.cross.dDoor);
+    check(`${h.key} front row`, c.cx, c.zs + c.dHip[0] - c.seat.fr - 0.5);
+    if (c.exitStair) { const E = c.exitStair; check(`${h.key} exit landing`, (E.side > 0 ? c.x1 : c.x0) - E.side * 0.5, E.z); }
+    if (c.vom) check(`${h.key} vomitory end`, c.cx, c.zBack - 0.5);
+    if (c.balcony) check(`${h.key} balcony walkway`, c.cx + c.B / 2 - 1, c.zs + c.pf[c.balcony] - 0.4); }
+  for (const [k, p] of Object.entries(W.posts)) if (p && p.x != null) check('post ' + k, p.x, p.z);
+  check('tunnel', 0, -36); for (const pp of W.pois || []) check('poi', pp[0], pp[1]);
   return out;
 });
 await b.close(); srv.close();

@@ -48,7 +48,7 @@ export function buildGallery(ctx) {
       L.spot(px(0.3), 2.65, zp, '#ffcf96', 1.6, 4, 'h', [0, 1, 0], 25, 70); L.spot(px(0.3), 2.18, zp, '#ffcf96', 1.2, 3.5, 'h', [0, -1, 0], 25, 70); }
     // framed openings: architraves, reveals, signs
     for (const [a, b, top, kind, data] of ops) {
-      const zc = (a + b) / 2, rx0 = Math.min(x, x - side * 0.3), rx1 = Math.max(x, x - side * 0.3);
+      const zc = (a + b) / 2, rx0 = Math.min(x, x + side * 0.3), rx1 = Math.max(x, x + side * 0.3);   // reveals: inside the wall thickness, away from the gallery
       for (const zz of [a, b]) room.box(rx0, 0, zz - (zz === a ? 0.001 : 0), rx1, top, zz + (zz === b ? 0.001 : 0), kind === 'exit' ? '#26272b' : LACQ, { faces: zz === a ? 'pz' : 'nz', mat: kind === 'exit' ? MAT.powder : MAT.lacquer });
       room.box(rx0, top, a, rx1, top + 0.001, b, '#101012', { faces: 'ny', mat: MAT.paint });
       room.flat(rx0, a, rx1, b, 0.004, true, '#ffffff', { mat: MAT.marble, edge: 2 });   // threshold
@@ -68,7 +68,7 @@ export function buildGallery(ctx) {
     let pi = side < 0 ? 0 : 3;
     for (let i = 0; i < BAYS.length; i++) { const za = BAYS[i] - 5, zb = BAYS[i], zc = (za + zb) / 2; if (zc < z0 + 1.5) continue; if (ops.some((o) => o[1] + 0.3 > za + 0.4 && o[0] - 0.3 < zb - 0.4)) continue;
       const ry = side < 0 ? PI / 2 : -PI / 2, p = PRINTS[pi++ % PRINTS.length];
-      placeAsset(room, 'poster_case', px(0.002), 1.25, zc, ry, { scale: 0.8 }); room.tex(printTexture(p), px(0.075), 1.97, zc, ry, 0.96, 1.44, { emit: 0.85 });
+      placeAsset(room, 'poster_case', px(0.002), 1.25, zc, ry, { scale: 0.8 }); room.tex(printTexture(p), px(0.075), 1.97, zc, ry, 0.96, 1.44, { emit: 0.85 }); (world.pois = world.pois || []).push([px(1.2), zc, side < 0 ? -PI / 2 : PI / 2, -0.05]);
       L.area(px(0.35), 1.97, zc, [0, 0, 0.5], [0, 0.7, 0], [dir, 0, 0], '#fff0e0', 0.8, 4, 'f', 2, 2); L.spot(px(0.9), H - 0.1, zc, '#ffd8a8', 3.2, 6, 'h', [-dir * 0.5, -1, 0], 20, 50);
       if (i % 2 === (side < 0 ? 1 : 0)) { placeAsset(room, 'bench_velvet', px(0.55), 0, zc, side < 0 ? PI / 2 : -PI / 2, { swap: { velvet_teal: [MAT.velvet, [0.2, 0.03, 0.05]] } }); room.col(Math.min(px(0.3), px(0.8)), zc - 1.0, Math.max(px(0.3), px(0.8)), zc + 1.0);
         for (const dz of [-0.55, 0.55]) world.sitSpots.push({ id: 'sp' + world.sitSpots.length, kind: 'bench', room: 'gal', x: px(0.55), z: zc + dz, y: 0.47, face: side < 0 ? PI / 2 : -PI / 2, stand: { x: px(1.35), z: zc + dz }, label: 'sit.bench', taken: null }); } }
@@ -84,10 +84,10 @@ export function buildGallery(ctx) {
   for (let i = 0; i < BAYS.length; i++) { const za = Math.max(z0, BAYS[i] - 5) + 0.3, zb = BAYS[i] - (BAYS[i] >= 0 ? 0.15 : 0.3), zc = (za + zb) / 2; if (zb - za < 1) continue;   // two recessed downlights per coffer
     for (const xx of [-1.2, 1.2]) { room.box(xx - 0.07, HC - 0.012, zc - 0.07, xx + 0.07, HC - 0.002, zc + 0.07, '#fff1dc', { glow: true, grp: 1, faces: 'ny' }); L.spot(xx, HC - 0.1, zc, '#ffd2a0', 5.5, 7, 'h', [0, -1, 0], 20, 55); } }
   // ---------- north end: the tunnel mouth, framed in brass, IMAX header ----------
-  for (const [a, b] of [[GAL.x0, TUN.x0], [TUN.x1, GAL.x1]]) room.box(a, 0, z0 - 0.001, b, HC, z0, LACQ, { mat: MAT.lacquer, faces: 'pz' });
+  for (const [a, b] of [[GAL.x0, TUN.x0], [TUN.x1, GAL.x1]]) room.box(a, 0, z0 - 0.001, b, TUN.h, z0, LACQ, { mat: MAT.lacquer, faces: 'pz' });
   room.box(GAL.x0, TUN.h, z0 - 0.001, GAL.x1, HC, z0, '#0c0c10', { mat: MAT.lacquer, faces: 'pz' });
   room.tex(screenSignTexture(2, 'SCREEN 2', 'IMAX  ·  THROUGH THE TUNNEL', 'imax'), 0, TUN.h + 0.55, z0 + 0.01, 0, 3.2, 0.8, { emit: 1.35 });
-  for (const x of [TUN.x0, TUN.x1]) room.box(x - 0.06, 0, z0, x + 0.06, TUN.h + 0.06, z0 + 0.06, BRASS, { mat: MAT.brass, faces: 'pz px nx' });
+  for (const x of [TUN.x0, TUN.x1]) room.box(x - 0.06, 0, z0, x + 0.06, TUN.h, z0 + 0.06, BRASS, { mat: MAT.brass, faces: 'pz px nx' });
   room.box(TUN.x0 - 0.06, TUN.h, z0, TUN.x1 + 0.06, TUN.h + 0.06, z0 + 0.06, BRASS, { mat: MAT.brass, faces: 'pz ny py' });
   L.area(0, TUN.h + 0.55, z0 + 0.4, [1.4, 0, 0], [0, 0.35, 0], [0, 0, 1], '#9cc8ff', 1.2, 6, 'f', 3, 1);
   // hanging wayfinding sign over the first bay (seen from the ticket check)
@@ -139,10 +139,10 @@ export function buildRestrooms(ctx) {
     tile('x', r.z0, r.x0 + 0.012, r.x1 - 0.012, 1); tile('x', r.z1, r.x0 + 0.012, r.x1 - 0.012, -1); tile('z', s < 0 ? r.x0 : r.x1, r.z0, r.z1, s < 0 ? 1 : -1);
     tile('z', xi, r.z0, door.z - door.w / 2, s < 0 ? -1 : 1); tile('z', xi, door.z + door.w / 2, r.z1, s < 0 ? -1 : 1);
     // privacy screen in front of the entrance: walnut slats on a black frame
-    const px = xi - s * -1 * 1.6, pz = door.z;
-    room.box(Math.min(xi + s * -1.55, xi + s * -1.65), 0, pz - 1.3, Math.max(xi + s * -1.55, xi + s * -1.65), 2.4, pz + 1.3, WALNUT, { mat: MAT.slats }); room.col(Math.min(xi + s * -1.55, xi + s * -1.65), pz - 1.3, Math.max(xi + s * -1.55, xi + s * -1.65), pz + 1.3);
+    const pz = door.z, ix = (d) => xi + s * d;   // ix(d): d metres into the restroom from the gallery wall
+    room.box(Math.min(ix(1.55), ix(1.65)), 0, pz - 1.3, Math.max(ix(1.55), ix(1.65)), 2.4, pz + 1.3, WALNUT, { mat: MAT.slats }); room.col(Math.min(ix(1.55), ix(1.65)), pz - 1.3, Math.max(ix(1.55), ix(1.65)), pz + 1.3);
     // vanity along the lobby-side wall: marble top, three basins (see the Kiln fixtures), back-lit mirror
-    const vx0 = Math.min(xi + s * -2.4, xi + s * -6.9), vx1 = Math.max(xi + s * -2.4, xi + s * -6.9), vz = r.z1 - 0.3;
+    const vx0 = Math.min(ix(2.4), ix(6.9)), vx1 = Math.max(ix(2.4), ix(6.9)), vz = r.z1 - 0.3;
     room.box(vx0, 0.84, vz - 0.32, vx1, 0.88, r.z1 - 0.012, '#ffffff', { mat: MAT.marble }); room.box(vx0, 0.15, vz - 0.3, vx1, 0.84, r.z1 - 0.012, WALNUT, { mat: MAT.wood, faces: 'nz px nx' }); room.col(vx0, vz - 0.35, vx1, r.z1);
     room.box(vx0 + 0.1, 1.1, r.z1 - 0.032, vx1 - 0.1, 2.2, r.z1 - 0.02, '#c9d2d8', { mat: MAT.chrome, faces: 'nz' });
     room.glowBox(vx0 + 0.05, 2.22, r.z1 - 0.04, vx1 - 0.05, 2.25, r.z1 - 0.012, '#fff3e0', 1.6, 0, 'ny nz'); L.line(vx0 + 0.2, 2.15, r.z1 - 0.3, vx1 - 0.2, 2.15, r.z1 - 0.3, '#fff0dc', 2.4, 4, 'f', [0, -0.3, -1]);

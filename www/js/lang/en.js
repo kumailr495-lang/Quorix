@@ -1,7 +1,7 @@
 // English (source language). Keys are shared by es.js, hi.js and ur.js.
 export const EN = {
   // ---- loading / menu ----
-  'load.title': 'LUMIÈRE', 'load.sub': 'Cinema', 'load.lobby': 'Building the lobby', 'load.concourse': 'Opening the concourse', 'load.street': 'Switching on the street', 'load.passages': 'Dimming the corridors',
+  'load.title': 'LUMIÈRE', 'load.sub': 'Cinema', 'load.lobby': 'Building the lobby', 'load.gallery': 'Lighting the gallery', 'load.tunnel': 'Starting the video tunnel', 'load.restrooms': 'Polishing the restrooms', 'load.street': 'Switching on the street', 
   'load.halls': 'Setting up the screens', 'load.bake': 'Lighting {room}', 'load.people': 'Seating the guests', 'load.ready': 'Ready',
   'tips': ['Tip: the usher by the screens will walk you to your seat.', 'Tip: popcorn is at the red counter on the right.', 'Tip: tap the eye icon to hide the controls during a film.', 'Tip: you can play your own video on any screen. Ask at Tickets.', 'Tip: Screen 3 is the giant one. Sit in the middle rows.', 'Tip: hold Sprint to move faster in the lobby.'],
   'menu.play': 'Enter the cinema', 'menu.continue': 'Continue', 'menu.settings': 'Settings', 'menu.language': 'Language', 'menu.help': 'How to play', 'menu.credits': 'Credits', 'menu.quit': 'Back to menu', 'menu.resume': 'Resume', 'menu.paused': 'Paused',
@@ -14,7 +14,7 @@ export const EN = {
   'set.restart': 'Some changes apply after you reopen the app.', 'set.done': 'Done', 'on': 'On', 'off': 'Off',
   // ---- HUD ----
   'hud.talk': 'Talk to {name}', 'hud.sit': 'Sit down', 'hud.sitSeat': 'Sit · {seat}', 'hud.yourSeat': 'Sit · {seat} (yours)', 'hud.stand': 'Stand up', 'hud.eat': 'Eat', 'hud.sip': 'Sip', 'hud.findSeat': 'Find my seat', 'hud.hide': 'Hide controls', 'hud.show': 'Show controls', 'hud.menu': 'Menu', 'hud.sprint': 'Sprint',
-  'room.lobby': 'Lobby', 'room.conc': 'Concourse', 'room.passW': 'To Screens 1 & 3', 'room.passE': 'To Screens 3 & 2', 'room.street': 'Street',
+  'room.lobby': 'Lobby', 'room.gal': 'Gallery · Screens 1 2 3', 'room.tunnel': 'Tunnel to Screen 2 · IMAX', 'room.wcM': 'Restroom · Gentlemen', 'room.wcF': 'Restroom · Ladies', 'room.street': 'Street',
   'show.idle': 'between shows', 'show.pending': 'starts in {time}', 'show.preshow': 'starting soon', 'show.playing': 'now showing', 'show.ended': 'the end',
   'ticket.chip': '{screen} · Row {row} · Seat {seat}', 'rotate': 'Turn your phone sideways', 'pre.silence': 'Please silence your phone', 'pre.soon': 'Starting soon',
   // ---- toasts ----
@@ -26,7 +26,7 @@ export const EN = {
   'book.title': 'Book a ticket', 'book.film': 'Film', 'book.when': 'Starts', 'book.now': 'Now', 'book.1m': 'In 1 min', 'book.3m': 'In 3 min', 'book.seat': 'Choose your seat', 'book.screen': 'Screen',
   'book.own': 'Your own video (optional)', 'book.gallery': 'From gallery', 'book.link': 'Paste a video link (.mp4 / .webm)', 'book.useLink': 'Use link', 'book.ownNone': 'None. The house film will play.', 'book.ownSet': 'Ready: {name}',
   'book.selected': 'Row {row} · Seat {seat}', 'book.full': 'This screen is full', 'book.confirm': 'Confirm', 'book.free': 'Free', 'book.taken': 'Taken', 'book.yours': 'Yours', 'book.mins': '{n} min',
-  'kind.standard': 'Standard', 'kind.curved': 'Curved Premium · recliners', 'kind.giant': 'Giant screen · IMAX format',
+  'kind.standard': 'Standard', 'kind.curved': 'Curved Premium · recliners', 'kind.imax': 'IMAX · 22 m screen',
   'genre.thriller': 'Thriller', 'genre.romance': 'Romance', 'genre.horror': 'Horror',
   'tk.admit': 'Admit one', 'tk.screen': 'Screen', 'tk.row': 'Row', 'tk.seat': 'Seat', 'tk.walk': 'Walk there', 'tk.jump': 'Take me to my seat', 'tk.hint': 'The usher can walk you there, or follow the glowing path.',
   // ---- items ----

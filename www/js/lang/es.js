@@ -1,6 +1,6 @@
 // Español
 export const ES = {
-  'load.title': 'LUMIÈRE', 'load.sub': 'Cine', 'load.lobby': 'Construyendo el vestíbulo', 'load.concourse': 'Abriendo el pasillo', 'load.street': 'Encendiendo la calle', 'load.passages': 'Atenuando los accesos',
+  'load.title': 'LUMIÈRE', 'load.sub': 'Cine', 'load.lobby': 'Construyendo el vestíbulo', 'load.gallery': 'Encendiendo la galería', 'load.tunnel': 'Arrancando el túnel de vídeo', 'load.restrooms': 'Puliendo los aseos', 'load.street': 'Encendiendo la calle', 
   'load.halls': 'Preparando las salas', 'load.bake': 'Iluminando {room}', 'load.people': 'Sentando al público', 'load.ready': 'Listo',
   'tips': ['Consejo: el acomodador junto a las salas te lleva a tu butaca.', 'Consejo: las palomitas están en el mostrador rojo de la derecha.', 'Consejo: toca el icono del ojo para ocultar los controles durante la película.', 'Consejo: puedes ver tu propio vídeo en cualquier sala. Pregunta en Taquilla.', 'Consejo: la Sala 3 es la gigante. Siéntate en las filas del medio.', 'Consejo: mantén Correr para moverte más rápido por el vestíbulo.'],
   'menu.play': 'Entrar al cine', 'menu.continue': 'Continuar', 'menu.settings': 'Ajustes', 'menu.language': 'Idioma', 'menu.help': 'Cómo jugar', 'menu.credits': 'Créditos', 'menu.quit': 'Volver al menú', 'menu.resume': 'Seguir', 'menu.paused': 'En pausa',
@@ -11,7 +11,7 @@ export const ES = {
   'set.autores': 'Resolución automática', 'set.bright': 'Brillo', 'set.sound': 'Sonido', 'set.master': 'Volumen general', 'set.film': 'Volumen de la película', 'set.crowd': 'Volumen del público', 'set.lang': 'Idioma', 'set.fps': 'Mostrar FPS', 'set.bubbles': 'Bocadillos de diálogo',
   'set.restart': 'Algunos cambios se aplican al volver a abrir la app.', 'set.done': 'Hecho', 'on': 'Sí', 'off': 'No',
   'hud.talk': 'Hablar con {name}', 'hud.sit': 'Sentarse', 'hud.sitSeat': 'Sentarse · {seat}', 'hud.yourSeat': 'Sentarse · {seat} (tuya)', 'hud.stand': 'Levantarse', 'hud.eat': 'Comer', 'hud.sip': 'Beber', 'hud.findSeat': 'Mi butaca', 'hud.hide': 'Ocultar controles', 'hud.show': 'Mostrar controles', 'hud.menu': 'Menú', 'hud.sprint': 'Correr',
-  'room.lobby': 'Vestíbulo', 'room.conc': 'Pasillo', 'room.passW': 'A las salas 1 y 3', 'room.passE': 'A las salas 3 y 2', 'room.street': 'Calle',
+  'room.lobby': 'Vestíbulo', 'room.gal': 'Galería · Salas 1 2 3', 'room.tunnel': 'Túnel a la Sala 2 · IMAX', 'room.wcM': 'Aseo · Caballeros', 'room.wcF': 'Aseo · Señoras', 'room.street': 'Calle',
   'show.idle': 'entre funciones', 'show.pending': 'empieza en {time}', 'show.preshow': 'empieza enseguida', 'show.playing': 'en pantalla', 'show.ended': 'fin',
   'ticket.chip': '{screen} · Fila {row} · Butaca {seat}', 'rotate': 'Gira el móvil en horizontal', 'pre.silence': 'Por favor, silencia tu móvil', 'pre.soon': 'Empieza enseguida',
   'toast.welcome': 'Bienvenido a LUMIÈRE', 'toast.noTicket': 'Primero compra una entrada en Taquilla.', 'toast.follow': 'Sigue el camino luminoso', 'toast.followUsher': 'Sigue a {name}', 'toast.lightsDown': 'Se apagan las luces…',
@@ -21,7 +21,7 @@ export const ES = {
   'book.title': 'Comprar entrada', 'book.film': 'Película', 'book.when': 'Empieza', 'book.now': 'Ahora', 'book.1m': 'En 1 min', 'book.3m': 'En 3 min', 'book.seat': 'Elige tu butaca', 'book.screen': 'Pantalla',
   'book.own': 'Tu propio vídeo (opcional)', 'book.gallery': 'De la galería', 'book.link': 'Pega un enlace de vídeo (.mp4 / .webm)', 'book.useLink': 'Usar enlace', 'book.ownNone': 'Ninguno. Se proyectará la película de la casa.', 'book.ownSet': 'Listo: {name}',
   'book.selected': 'Fila {row} · Butaca {seat}', 'book.full': 'Esta sala está llena', 'book.confirm': 'Confirmar', 'book.free': 'Libre', 'book.taken': 'Ocupada', 'book.yours': 'Tuya', 'book.mins': '{n} min',
-  'kind.standard': 'Estándar', 'kind.curved': 'Curva Premium · reclinables', 'kind.giant': 'Pantalla gigante · formato IMAX',
+  'kind.standard': 'Estándar', 'kind.curved': 'Curva Premium · reclinables', 'kind.imax': 'IMAX · pantalla de 22 m',
   'genre.thriller': 'Suspense', 'genre.romance': 'Romance', 'genre.horror': 'Terror',
   'tk.admit': 'Entrada', 'tk.screen': 'Sala', 'tk.row': 'Fila', 'tk.seat': 'Butaca', 'tk.walk': 'Ir andando', 'tk.jump': 'Llévame a mi butaca', 'tk.hint': 'El acomodador puede acompañarte, o sigue el camino luminoso.',
   'item.salted': 'palomitas saladas', 'item.caramel': 'palomitas de caramelo', 'item.cola': 'una cola bien fría', 'item.coffee': 'un café', 'item.mocktail': 'un cóctel sin alcohol Giro Final', 'item.combo': 'palomitas y bebida',

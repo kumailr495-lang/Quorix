@@ -11,7 +11,7 @@ export const SPECS = [
   { id: 'I', key: 'hallI', name: 'SCREEN 1', kind: 'curved', aspect: 2.39, W: 14.0, D1: 8.4, pitch: 1.7, rows: 7, crossAfter: 2, crossW: 1.4, eye: 1.1, hB: 1.0, c: 0.18, seatW: 0.86, perRow: 12, sag: 0.08, rowR: 22,
     x0: -21.0, x1: -3.8, zBack: -8.3, door: 'east' },
   { id: 'II', key: 'hallII', name: 'SCREEN 2', kind: 'imax', aspect: 1.90, W: 22.0, D1: 11.5, pitch: 1.25, rows: 13, crossAfter: 4, crossW: 1.6, eye: 1.2, hB: 0.5, c: 0.2, seatW: 0.62, perRow: 32, sag: 0.03, rowR: 0,
-    x0: -14.0, x1: 14.0, zBack: -40.3, door: 'vom', vomW: 2.6, balcony: 10, balconyLift: 0.75, balconyGap: 1.2 },
+    x0: -14.0, x1: 14.0, zBack: -40.3, door: 'vom', vomW: 2.9, balcony: 10, balconyLift: 0.75, balconyGap: 1.2 },
   { id: 'III', key: 'hallIII', name: 'SCREEN 3', kind: 'standard', aspect: 1.85, W: 12.0, D1: 7.4, pitch: 1.2, rows: 11, crossAfter: 4, crossW: 1.5, eye: 1.2, hB: 1.0, c: 0.18, seatW: 0.6, perRow: 18, sag: 0, rowR: 0,
     x0: 3.8, x1: 19.0, zBack: -8.3, door: 'west' },
 ];
@@ -68,12 +68,14 @@ export function hallFloorY(h, x, z) {
   return h.rowY[r] + (k - 1 - Math.floor(t / TREAD)) * R / k;
 }
 export const ROW_LETTERS = 'ABCDEFGHIJKLMNOP';
-// seats; behind the crossing aisle the trench takes the middle of every row (seat numbers keep counting across it)
+// behind the crossing aisle the vomitory trench and its 0.12 m parapets take the middle of every row (seat numbers keep counting across it)
+export const PARAPET = 0.12;
+export const inTrench = (h, r, u, halfWidth) => !!h.vom && r >= h.cross.row && Math.abs(u) - halfWidth < h.vom.u + PARAPET + 0.04;
 export function hallSeats(h) {
   const a = [];
   for (let r = 0; r < h.rows; r++) for (let c = 1; c <= h.perRow; c++) {
     const u = -h.B / 2 + (c - 0.5) * h.seatW, dz = h.dHip[r] - h.rowSag(u), yaw = h.rowR ? -Math.asin(u / h.rowR) : 0;   // yaw 0 = facing the screen (-z)
-    if (h.vom && r >= h.cross.row && Math.abs(u) < h.vom.u + h.seatW * 0.3) continue;
+    if (inTrench(h, r, u, h.seatW / 2)) continue;
     a.push({ id: ROW_LETTERS[r] + c, hall: h.id, row: r, col: c, x: h.cx + u, y: h.rowY[r], z: h.zs + dz, yaw, u, taken: false, npc: null, player: false });
   }
   return a;

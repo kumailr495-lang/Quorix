@@ -1,6 +1,6 @@
 // हिन्दी (everyday spoken Hindi, not textbook Hindi; film words stay as people say them: स्क्रीन, टिकट, पॉपकॉर्न)
 export const HI = {
-  'load.title': 'LUMIÈRE', 'load.sub': 'सिनेमा', 'load.lobby': 'लॉबी बन रही है', 'load.concourse': 'गलियारा खुल रहा है', 'load.street': 'सड़क की बत्तियाँ जल रही हैं', 'load.passages': 'रास्ते धीमे किए जा रहे हैं',
+  'load.title': 'LUMIÈRE', 'load.sub': 'सिनेमा', 'load.lobby': 'लॉबी बन रही है', 'load.gallery': 'गैलरी रोशन हो रही है', 'load.tunnel': 'वीडियो सुरंग चालू हो रही है', 'load.restrooms': 'रेस्टरूम चमकाए जा रहे हैं', 'load.street': 'सड़क की बत्तियाँ जल रही हैं', 
   'load.halls': 'स्क्रीन तैयार हो रही हैं', 'load.bake': '{room} में रोशनी', 'load.people': 'मेहमान बैठाए जा रहे हैं', 'load.ready': 'तैयार',
   'tips': ['टिप: स्क्रीन के पास खड़ा अशर आपको सीट तक ले जाएगा।', 'टिप: पॉपकॉर्न दाईं ओर लाल काउंटर पर मिलता है।', 'टिप: फ़िल्म के दौरान कंट्रोल छिपाने के लिए आँख वाला बटन दबाएँ।', 'टिप: किसी भी स्क्रीन पर अपना वीडियो चला सकते हैं। टिकट काउंटर पर पूछें।', 'टिप: स्क्रीन 3 सबसे बड़ी है। बीच की लाइनों में बैठें।', 'टिप: लॉबी में तेज़ चलने के लिए दौड़ें दबाएँ।'],
   'menu.play': 'सिनेमा में चलें', 'menu.continue': 'जारी रखें', 'menu.settings': 'सेटिंग्स', 'menu.language': 'भाषा', 'menu.help': 'कैसे खेलें', 'menu.credits': 'क्रेडिट्स', 'menu.quit': 'मेन्यू पर लौटें', 'menu.resume': 'वापस चलें', 'menu.paused': 'रुका हुआ',
@@ -11,7 +11,7 @@ export const HI = {
   'set.autores': 'ऑटो रेज़ोल्यूशन', 'set.bright': 'चमक', 'set.sound': 'आवाज़', 'set.master': 'कुल आवाज़', 'set.film': 'फ़िल्म की आवाज़', 'set.crowd': 'भीड़ की आवाज़', 'set.lang': 'भाषा', 'set.fps': 'FPS दिखाएँ', 'set.bubbles': 'बातों के बुलबुले',
   'set.restart': 'कुछ बदलाव ऐप दोबारा खोलने पर लागू होंगे।', 'set.done': 'हो गया', 'on': 'चालू', 'off': 'बंद',
   'hud.talk': '{name} से बात करें', 'hud.sit': 'बैठें', 'hud.sitSeat': 'बैठें · {seat}', 'hud.yourSeat': 'बैठें · {seat} (आपकी)', 'hud.stand': 'खड़े हों', 'hud.eat': 'खाएँ', 'hud.sip': 'चुस्की', 'hud.findSeat': 'मेरी सीट', 'hud.hide': 'कंट्रोल छिपाएँ', 'hud.show': 'कंट्रोल दिखाएँ', 'hud.menu': 'मेन्यू', 'hud.sprint': 'दौड़ें',
-  'room.lobby': 'लॉबी', 'room.conc': 'गलियारा', 'room.passW': 'स्क्रीन 1 और 3 की ओर', 'room.passE': 'स्क्रीन 3 और 2 की ओर', 'room.street': 'सड़क',
+  'room.lobby': 'लॉबी', 'room.gal': 'गैलरी · स्क्रीन 1 2 3', 'room.tunnel': 'स्क्रीन 2 की सुरंग · IMAX', 'room.wcM': 'रेस्टरूम · पुरुष', 'room.wcF': 'रेस्टरूम · महिलाएँ', 'room.street': 'सड़क',
   'show.idle': 'अगले शो का इंतज़ार', 'show.pending': '{time} में शुरू', 'show.preshow': 'बस शुरू होने वाला', 'show.playing': 'अभी चल रहा है', 'show.ended': 'समाप्त',
   'ticket.chip': '{screen} · लाइन {row} · सीट {seat}', 'rotate': 'फ़ोन को आड़ा करें', 'pre.silence': 'कृपया अपना फ़ोन साइलेंट करें', 'pre.soon': 'जल्द शुरू',
   'toast.welcome': 'LUMIÈRE में आपका स्वागत है', 'toast.noTicket': 'पहले टिकट काउंटर से टिकट लें।', 'toast.follow': 'चमकते रास्ते पर चलें', 'toast.followUsher': '{name} के पीछे चलें', 'toast.lightsDown': 'बत्तियाँ धीमी हो रही हैं…',
@@ -21,7 +21,7 @@ export const HI = {
   'book.title': 'टिकट बुक करें', 'book.film': 'फ़िल्म', 'book.when': 'शुरू', 'book.now': 'अभी', 'book.1m': '1 मिनट में', 'book.3m': '3 मिनट में', 'book.seat': 'अपनी सीट चुनें', 'book.screen': 'स्क्रीन',
   'book.own': 'अपना वीडियो (चाहें तो)', 'book.gallery': 'गैलरी से', 'book.link': 'वीडियो लिंक डालें (.mp4 / .webm)', 'book.useLink': 'लिंक लगाएँ', 'book.ownNone': 'कोई नहीं। सिनेमा की फ़िल्म चलेगी।', 'book.ownSet': 'तैयार: {name}',
   'book.selected': 'लाइन {row} · सीट {seat}', 'book.full': 'यह स्क्रीन भरी हुई है', 'book.confirm': 'पक्का करें', 'book.free': 'ख़ाली', 'book.taken': 'भरी', 'book.yours': 'आपकी', 'book.mins': '{n} मिनट',
-  'kind.standard': 'स्टैंडर्ड', 'kind.curved': 'कर्व्ड प्रीमियम · रिक्लाइनर', 'kind.giant': 'विशाल स्क्रीन · IMAX फ़ॉर्मेट',
+  'kind.standard': 'स्टैंडर्ड', 'kind.curved': 'कर्व्ड प्रीमियम · रिक्लाइनर', 'kind.imax': 'IMAX · 22 मीटर स्क्रीन',
   'genre.thriller': 'थ्रिलर', 'genre.romance': 'रोमांस', 'genre.horror': 'हॉरर',
   'tk.admit': 'एक व्यक्ति', 'tk.screen': 'स्क्रीन', 'tk.row': 'लाइन', 'tk.seat': 'सीट', 'tk.walk': 'पैदल जाएँ', 'tk.jump': 'मुझे सीट तक पहुँचाएँ', 'tk.hint': 'अशर आपको ले जा सकता है, या चमकते रास्ते पर चलें।',
   'item.salted': 'नमकीन पॉपकॉर्न', 'item.caramel': 'कैरामेल पॉपकॉर्न', 'item.cola': 'ठंडी कोला', 'item.coffee': 'एक कॉफ़ी', 'item.mocktail': 'एक प्लॉट ट्विस्ट मॉकटेल', 'item.combo': 'पॉपकॉर्न और ड्रिंक',

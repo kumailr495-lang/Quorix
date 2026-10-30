@@ -67,7 +67,7 @@ export class UI {
   seatMap() {
     const h = this.hall(), c = h.cfg, m = $('#seatmap'); m.innerHTML = ''; $('#hallName').textContent = `${c.name} · ${t('kind.' + c.kind).split(' · ')[0]}`;
     const free = h.seats.some((s) => !s.taken && !s.npc); $('#seatEmpty').hidden = free; m.hidden = !free; if (!free) return;
-    const scr = document.createElement('div'); scr.className = 'scr'; scr.innerHTML = '<span></span>'; scr.firstChild.textContent = t('book.screen').toUpperCase(); if (c.kind === 'giant') scr.style.margin = '0 1% 10px'; m.appendChild(scr);
+    const scr = document.createElement('div'); scr.className = 'scr'; scr.innerHTML = '<span></span>'; scr.firstChild.textContent = t('book.screen').toUpperCase(); if (c.kind === 'imax') scr.style.margin = '0 1% 10px'; m.appendChild(scr);
     const cols = c.perRow, curve = c.rowR ? (u) => (c.rowR - Math.sqrt(c.rowR * c.rowR - u * u)) * 9 : () => 0;
     const body = $('#book .sh-body'), avail = body.clientHeight - 64, sh = Math.max(9, Math.min(22, avail / (c.rows + 0.7) - 3)); m.style.setProperty('--sh', sh.toFixed(1) + 'px');   // fit every row without scrolling
     for (let r = 0; r < c.rows; r++) { const row = document.createElement('div'); row.className = 'srow'; row.style.gridTemplateColumns = `12px repeat(${cols}, 1fr) 12px`; if (r === c.cross.row) row.style.marginTop = '8px';

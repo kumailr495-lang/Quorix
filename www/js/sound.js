@@ -47,9 +47,9 @@ export class Sound {
     this.crowdLP.frequency.setTargetAtTime(a.crowdLP, t, k); this.verbIn.gain.setTargetAtTime(a.verb, t, 0.3);
   }
   _ambientTick() {
-    if (!this.ready || this.muted) return; const a = this.listener, t = this.ctx.currentTime, inHall = a.room && a.room.startsWith('hall'), open = a.room === 'lobby' || a.room === 'conc' || a.room === 'street', dark = a.dark;
+    if (!this.ready || this.muted) return; const a = this.listener, t = this.ctx.currentTime, inHall = a.room && a.room.startsWith('hall'), open = a.room === 'lobby' || a.room === 'gal' || a.room === 'street', dark = a.dark;
     const mur = (a.people || 0) * (dark ? 0.15 : 1); this.murA.gain.setTargetAtTime(0.004 + 0.022 * mur, t, 0.8); this.murB.gain.setTargetAtTime(0.0025 + 0.014 * mur, t, 0.8);
-    this.music.gain.setTargetAtTime(open ? 0.05 : a.room && a.room.startsWith('pass') ? 0.012 : 0, t, 1.2); this.street.gain.setTargetAtTime(a.room === 'lobby' ? 0.03 * smooth(14, 4, Math.abs(20 - a.z)) + 0.006 : 0.002, t, 0.8);
+    this.music.gain.setTargetAtTime(open ? (a.room === 'gal' ? 0.03 : 0.05) : a.room && a.room.startsWith('wc') ? 0.02 : 0, t, 1.2); this.street.gain.setTargetAtTime(a.room === 'lobby' ? 0.03 * smooth(14, 4, Math.abs(20 - a.z)) + 0.006 : 0.002, t, 0.8);
     this.hvac.gain.setTargetAtTime(inHall ? (dark ? 0.006 : 0.012) : 0.008, t, 1);
     if (a.popcornDist < 7 && Math.random() < 0.55) this._pops(1 - a.popcornDist / 7);
   }

@@ -1,6 +1,6 @@
 // اردو (right-to-left; everyday spoken Urdu, film words stay as people say them: اسکرین، ٹکٹ، پاپ کارن)
 export const UR = {
-  'load.title': 'LUMIÈRE', 'load.sub': 'سنیما', 'load.lobby': 'لابی بن رہی ہے', 'load.concourse': 'راہداری کھل رہی ہے', 'load.street': 'سڑک کی بتیاں جل رہی ہیں', 'load.passages': 'راستے مدھم کیے جا رہے ہیں',
+  'load.title': 'LUMIÈRE', 'load.sub': 'سنیما', 'load.lobby': 'لابی بن رہی ہے', 'load.gallery': 'گیلری روشن ہو رہی ہے', 'load.tunnel': 'ویڈیو سرنگ چل رہی ہے', 'load.restrooms': 'ریسٹ روم چمکائے جا رہے ہیں', 'load.street': 'سڑک کی بتیاں جل رہی ہیں', 
   'load.halls': 'اسکرینیں تیار ہو رہی ہیں', 'load.bake': '{room} میں روشنی', 'load.people': 'مہمان بٹھائے جا رہے ہیں', 'load.ready': 'تیار',
   'tips': ['مشورہ: اسکرینوں کے پاس کھڑا اشر آپ کو سیٹ تک لے جائے گا۔', 'مشورہ: پاپ کارن دائیں طرف سرخ کاؤنٹر پر ملتا ہے۔', 'مشورہ: فلم کے دوران کنٹرول چھپانے کے لیے آنکھ والا بٹن دبائیں۔', 'مشورہ: کسی بھی اسکرین پر اپنی ویڈیو چلا سکتے ہیں۔ ٹکٹ کاؤنٹر پر پوچھیں۔', 'مشورہ: اسکرین 3 سب سے بڑی ہے۔ درمیان کی قطاروں میں بیٹھیں۔', 'مشورہ: لابی میں تیز چلنے کے لیے دوڑیں دبائیں۔'],
   'menu.play': 'سنیما میں چلیں', 'menu.continue': 'جاری رکھیں', 'menu.settings': 'سیٹنگز', 'menu.language': 'زبان', 'menu.help': 'کیسے کھیلیں', 'menu.credits': 'کریڈٹس', 'menu.quit': 'مینیو پر واپس', 'menu.resume': 'واپس چلیں', 'menu.paused': 'رکا ہوا',
@@ -11,7 +11,7 @@ export const UR = {
   'set.autores': 'آٹو ریزولوشن', 'set.bright': 'چمک', 'set.sound': 'آواز', 'set.master': 'کل آواز', 'set.film': 'فلم کی آواز', 'set.crowd': 'ہجوم کی آواز', 'set.lang': 'زبان', 'set.fps': 'FPS دکھائیں', 'set.bubbles': 'باتوں کے بلبلے',
   'set.restart': 'کچھ تبدیلیاں ایپ دوبارہ کھولنے پر لاگو ہوں گی۔', 'set.done': 'ہو گیا', 'on': 'آن', 'off': 'آف',
   'hud.talk': '{name} سے بات کریں', 'hud.sit': 'بیٹھیں', 'hud.sitSeat': 'بیٹھیں · {seat}', 'hud.yourSeat': 'بیٹھیں · {seat} (آپ کی)', 'hud.stand': 'کھڑے ہوں', 'hud.eat': 'کھائیں', 'hud.sip': 'گھونٹ', 'hud.findSeat': 'میری سیٹ', 'hud.hide': 'کنٹرول چھپائیں', 'hud.show': 'کنٹرول دکھائیں', 'hud.menu': 'مینیو', 'hud.sprint': 'دوڑیں',
-  'room.lobby': 'لابی', 'room.conc': 'راہداری', 'room.passW': 'اسکرین 1 اور 3 کی طرف', 'room.passE': 'اسکرین 3 اور 2 کی طرف', 'room.street': 'سڑک',
+  'room.lobby': 'لابی', 'room.gal': 'گیلری · اسکرین 1 2 3', 'room.tunnel': 'اسکرین 2 کی سرنگ · IMAX', 'room.wcM': 'ریسٹ روم · مرد', 'room.wcF': 'ریسٹ روم · خواتین', 'room.street': 'سڑک',
   'show.idle': 'اگلے شو کا انتظار', 'show.pending': '{time} میں شروع', 'show.preshow': 'بس شروع ہونے والا', 'show.playing': 'ابھی چل رہا ہے', 'show.ended': 'ختم',
   'ticket.chip': '{screen} · قطار {row} · سیٹ {seat}', 'rotate': 'فون کو آڑا کریں', 'pre.silence': 'براہ کرم اپنا فون خاموش کر دیں', 'pre.soon': 'جلد شروع',
   'toast.welcome': 'LUMIÈRE میں خوش آمدید', 'toast.noTicket': 'پہلے ٹکٹ کاؤنٹر سے ٹکٹ لیں۔', 'toast.follow': 'چمکتے راستے پر چلیں', 'toast.followUsher': '{name} کے پیچھے چلیں', 'toast.lightsDown': 'بتیاں مدھم ہو رہی ہیں…',
@@ -21,7 +21,7 @@ export const UR = {
   'book.title': 'ٹکٹ بک کریں', 'book.film': 'فلم', 'book.when': 'شروع', 'book.now': 'ابھی', 'book.1m': '1 منٹ میں', 'book.3m': '3 منٹ میں', 'book.seat': 'اپنی سیٹ چنیں', 'book.screen': 'اسکرین',
   'book.own': 'اپنی ویڈیو (چاہیں تو)', 'book.gallery': 'گیلری سے', 'book.link': 'ویڈیو لنک ڈالیں (.mp4 / .webm)', 'book.useLink': 'لنک لگائیں', 'book.ownNone': 'کوئی نہیں۔ سنیما کی فلم چلے گی۔', 'book.ownSet': 'تیار: {name}',
   'book.selected': 'قطار {row} · سیٹ {seat}', 'book.full': 'یہ اسکرین بھری ہوئی ہے', 'book.confirm': 'پکا کریں', 'book.free': 'خالی', 'book.taken': 'بھری', 'book.yours': 'آپ کی', 'book.mins': '{n} منٹ',
-  'kind.standard': 'اسٹینڈرڈ', 'kind.curved': 'کرووڈ پریمیم · ریکلائنر', 'kind.giant': 'دیو قامت اسکرین · IMAX فارمیٹ',
+  'kind.standard': 'اسٹینڈرڈ', 'kind.curved': 'کرووڈ پریمیم · ریکلائنر', 'kind.imax': 'IMAX · 22 میٹر اسکرین',
   'genre.thriller': 'تھرلر', 'genre.romance': 'رومانس', 'genre.horror': 'ہارر',
   'tk.admit': 'ایک فرد', 'tk.screen': 'اسکرین', 'tk.row': 'قطار', 'tk.seat': 'سیٹ', 'tk.walk': 'پیدل جائیں', 'tk.jump': 'مجھے سیٹ تک پہنچائیں', 'tk.hint': 'اشر آپ کو لے جا سکتا ہے، یا چمکتے راستے پر چلیں۔',
   'item.salted': 'نمکین پاپ کارن', 'item.caramel': 'کیریمل پاپ کارن', 'item.cola': 'ٹھنڈی کولا', 'item.coffee': 'ایک کافی', 'item.mocktail': 'ایک پلاٹ ٹوئسٹ موکٹیل', 'item.combo': 'پاپ کارن اور ڈرنک',
