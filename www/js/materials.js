@@ -16,7 +16,7 @@ export function noiseTexture(size = 128) {   // 4 independent tileable value-noi
 }
 // shared by every custom shader
 export const G = { uEnvOn: { value: 1 }, uReflK: { value: 0.45 }, uNoise: { value: null }, uExposure: { value: 1.0 }, uFogColor: { value: new THREE.Color(0x0b0b0e) }, uFogNear: { value: 45 }, uFogFar: { value: 150 }, uTime: { value: 0 }, uDetail: { value: 1 }, uBright: { value: 1 } };
-const COMMON_FRAG = `
+export const COMMON_FRAG = `
 uniform float uExposure; uniform vec3 uFogColor; uniform float uFogNear; uniform float uFogFar; uniform float uBright;
 vec3 lumTone(vec3 c) { return 1.0 - exp(-c * uExposure * uBright); }
 vec3 lumFog(vec3 c, float dist) { return mix(c, uFogColor, smoothstep(uFogNear, uFogFar, dist)); }

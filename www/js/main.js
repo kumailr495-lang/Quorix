@@ -26,6 +26,7 @@ import { Crowd } from './npc.js';
 import { Talk } from './talk.js';
 import { treeFor } from './dialogue.js';
 import { makeHeld, setHeldMaterial } from './held.js';
+import { loadPeople } from './people.js';
 import { cleanTitle } from './films.js';
 import { loadSettings, saveSettings, presetFor } from './settings.js';
 import { setLang, t, fmtTime } from './i18n.js';
@@ -42,7 +43,7 @@ async function boot() {
   const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low', mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', texSize: lowG ? 256 : 512 }); engine.applySettings(settings);
   // Cycles light maps (lightmap.js, the baked shadows) unless Low or "Shadows: off"; ?nobake=1 builds without them (tools/bake/export.mjs)
   mats.lightMaps = !lowG && settings.shadows !== 'off' && !Q.get('nobake');
-  const t0 = performance.now(); await Promise.all([loadAssets(ASSET_LIST), mats.lightMaps ? loadBakes() : null]); const world = await buildWorld(engine, mats, prog); await texturesReady();
+  const t0 = performance.now(); await Promise.all([loadAssets(ASSET_LIST), mats.lightMaps ? loadBakes() : null, loadPeople().catch((e) => console.warn('[lumiere] people models failed, using the v5 characters', e))]); const world = await buildWorld(engine, mats, prog); await texturesReady();
   prog(0.97); await new Promise((r) => requestAnimationFrame(r));
   const rain = makeRain(world.rooms.street, { count: lowG ? 1800 : 4000 }); world.rooms.street.U.uWet.value = 1;   // night rain and wet paving outside
   const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });

@@ -4,7 +4,11 @@
 //  Audiences exist only for a booked / scheduled show: they walk in or are already seated, react to film events (react.js), applaud and leave.
 //  Anyone you can't see is simulated cheaply; seated viewers far from you are one instanced mesh per hall (vertex-shader animated).
 import * as THREE from 'three';
-import { People, randomRecipe, STAFF_LOOK, crowdGeometry, propGeo, rng } from './characters.js';
+import { People, randomRecipe as oldRecipe, STAFF_LOOK, crowdGeometry, propGeo, rng } from './characters.js';
+// v8: the CC0 people (people.js); the v5 procedural characters stay as the fallback if their models fail to load
+import { Person, DATA as PEOPLE, randomRecipe as newRecipe, staffRecipe, CrowdRenderer, SIT_H } from './people.js';
+import { makeHeld, setHeldMaterial } from './held.js';
+const STAFF_ROLES = new Set(['reception', 'usher', 'vendor', 'bar', 'server']);
 import { roomAt, floorY, HALLS, hallById, hallDoor, STREET_SPAWN } from './layout.js';
 import { aisleU } from './hallmath.js';
 import { pickLine, lines, t } from './i18n.js';
@@ -16,11 +20,12 @@ const LOBBY_POIS = [   // things guests walk up to and look at: [x, z, lookYaw (
 const REACT = { scare: 'scream', gasp: 'gasp', laugh: 'laugh', aww: 'aww', climax: 'cheer', cheer: 'clap', end: 'clap', tension: 'lean' };
 const EXPR_OF = { scream: 'scream', gasp: 'gasp', laugh: 'laugh', aww: 'aww', cheer: 'cheer', clap: 'happy', lean: 'focus', eat: 'smile' };
 const CROWD_ACT = { clap: 1, cheer: 2, scream: 3, gasp: 4, laugh: 5, eat: 6, lean: 4, aww: 0 };
+const REACT_CLIP = { clap: 'clap', cheer: 'cheer', scream: 'scream', gasp: 'gasp', laugh: 'laugh', aww: 'aww', lean: 'lean', eat: 'eat', drink: 'drink', shush: 'shush', look: 'look' };   // v8 baked crowd clips (people.js BAKE)
 const _c = new THREE.Color();
 // ---------------------------------------------------------------- agent: one physical character with movement helpers
 class Agent {
   constructor(crowd, o) {
-    this.crowd = crowd; this.id = o.id; this.name = o.name; this.role = o.role; this.rec = o.rec; this.ch = crowd.people.make(o.rec); this.group = this.ch.group; crowd.root.add(this.group);
+    this.crowd = crowd; this.id = o.id; this.name = o.name; this.role = o.role; this.rec = o.rec; this.ch = crowd.people.make(o.rec, { staff: STAFF_ROLES.has(o.role), idle: o.role === 'guest' ? (Math.random() < 0.2 ? 'Idle_TalkingPhone_Loop' : Math.random() < 0.25 ? 'Idle_FoldArms_Loop' : 'Idle_Loop') : 'Idle_Loop' }); this.group = this.ch.group; crowd.root.add(this.group);
     this.x = o.x; this.z = o.z; this.y = floorY(o.x, o.z); this.yaw = o.yaw || 0; this.v = 0; this.path = null; this.pi = 0; this.onArrive = null; this.state = o.state || 'idle'; this.t = rnd(1, 4); this.alive = true;
     this.light = { amb: new THREE.Color(0.4, 0.4, 0.4), key: new THREE.Color(0.3, 0.3, 0.3), dir: new THREE.Vector3(0.3, 0.8, 0.4).normalize(), screen: new THREE.Color(0, 0, 0) }; this.lightT = Math.random() * 0.3;
     this.speedMax = o.speed || rnd(1.05, 1.35); this.seat = null; this.spot = null; this.reactUntil = 0; this.talkUntil = 0; this.lookT = null; this.home = o.home || null; this.busy = false; this.gUntil = 0; this.invisibleT = 0;
@@ -69,7 +74,9 @@ class Agent {
 // ---------------------------------------------------------------- the crowd
 export class Crowd {
   constructor(world, mats, engine, hooks = {}) {
-    this.world = world; this.mats = mats; this.engine = engine; this.hooks = hooks; this.people = new People(mats); this.root = new THREE.Group(); this.root.name = 'people'; engine.scene.add(this.root);
+    this.world = world; this.mats = mats; this.engine = engine; this.hooks = hooks; this.root = new THREE.Group(); this.root.name = 'people'; engine.scene.add(this.root);
+    this.v8 = PEOPLE.ready; this.people = this.v8 ? { make: (r, o) => new Person(r, o) } : new People(mats);
+    this.recipe = (seed) => (this.v8 ? newRecipe(seed) : oldRecipe(seed)); this.staffRec = (look, seed) => (this.v8 ? staffRecipe(look, seed) : STAFF_LOOK[look] || STAFF_LOOK.usher);
     this.agents = []; this.staff = {}; this.viewers = {}; this.now = 0; this.nid = 0; this.inst = {}; this.queue = []; this.propMat = new Map(); this.pois = LOBBY_POIS.concat(world.pois || []);
     for (const h of world.halls) this.viewers[h.id] = [];
   }
@@ -82,7 +89,7 @@ export class Crowd {
   spawn(o) { const a = new Agent(this, { id: o.id || 'n' + (this.nid++), ...o }); this.agents.push(a); return a; }
   // ---------------------------------------------------------- staff + opening guests
   init() {
-    const P = this.world.posts, mk = (id, look, name, role, post) => { const p = P[post]; const a = this.spawn({ id, rec: STAFF_LOOK[look], name, role, x: p.x, z: p.z, yaw: p.yaw, home: p, state: 'post' }); a.talkable = true; a.post = post; this.staff[id] = a; return a; };
+    const P = this.world.posts, mk = (id, look, name, role, post) => { const p = P[post]; const a = this.spawn({ id, rec: this.staffRec(look, id.length * 131), name, role, x: p.x, z: p.z, yaw: p.yaw, home: p, state: 'post' }); a.talkable = true; a.post = post; this.staff[id] = a; return a; };
     mk('eloise', 'receptionist', 'Éloïse', 'reception', 'receptionist'); mk('marcel', 'usher', 'Marcel', 'usher', 'usher'); mk('gaston', 'vendor2', 'Gaston', 'vendor', 'vendor1'); mk('priya', 'vendor', 'Priya', 'vendor', 'vendor2'); mk('odette', 'bartender', 'Odette', 'bar', 'bartender');
     this.setDensity(this.engine.settings.npcs);
     for (let i = 0; i < this.target; i++) this.spawnGuest(true);
@@ -101,20 +108,22 @@ export class Crowd {
   callServer(player, onArrive) {
     if (this.server && this.server.alive) return false; const hk = roomAt(player.x, player.z), hall = this.world.halls.find((h) => h.key === hk); if (!hall || !player.seated) return false;
     const seat = hall.seats.find((s) => s.npc === 'player') || hall.seats.reduce((b, s) => (Math.hypot(s.x - player.x, s.z - player.z) < Math.hypot(b.x - player.x, b.z - player.z) ? s : b)), door = this._hallDoor(hall, 'entrance'), ap = this.aislePoint(hall, seat), lane = this.laneStand({ seat, hall });
-    const a = this.spawn({ id: 'server', rec: STAFF_LOOK.usher, name: 'Rémy', role: 'server', x: door.x, z: door.z, yaw: 0, state: 'post', speed: 1.7 }); a.talkable = false; a.home = { x: door.x, z: door.z, yaw: 0 }; this.server = a;
+    const a = this.spawn({ id: 'server', rec: this.staffRec('server', 77), name: 'Rémy', role: 'server', x: door.x, z: door.z, yaw: 0, state: 'post', speed: 1.7 }); a.talkable = false; a.home = { x: door.x, z: door.z, yaw: 0 }; this.server = a;
     a.mission = { kind: 'serve', hall, seat, phase: 'go' }; a.goTo(ap.x, ap.z, () => a.goTo(lane.x, lane.z, () => { a.mission.phase = 'at'; a.turnTo(player.x, player.z, 10, 1); a.gesture('wave', 1.2, 'smile'); a.say(t('srv.hello'), 2.6); onArrive && onArrive(a); }));
     return true;
   }
   serverLeave() { const a = this.server; if (!a || !a.alive) return; a.say(t('srv.bye'), 2.2); a.mission = { kind: 'serve', phase: 'leave' }; setTimeout(() => { if (!a.alive) return; if (!a.goTo(a.home.x, a.home.z, () => { a.dispose(); this.server = null; })) { a.dispose(); this.server = null; } }, 900); }
   spawnGuest(placed) {
-    const seed = Math.random() * 1e6, rec = randomRecipe(seed), name = NAMES[Math.floor(Math.random() * NAMES.length)];
+    const seed = Math.random() * 1e6, rec = this.recipe(seed), name = NAMES[Math.floor(Math.random() * NAMES.length)];
     let x, z; if (placed) { const p = this.pois[Math.floor(Math.random() * this.pois.length)]; x = p[0] + rnd(-1.5, 1.5); z = p[1] + rnd(0.5, 2); const n = this.world.nav.nearest(x, z) || [0, 15]; x = n[0]; z = n[1]; } else { const s = STREET_SPAWN[Math.floor(Math.random() * STREET_SPAWN.length)]; x = s[0] + rnd(-1, 1); z = s[1] - 1.5; }
     const a = this.spawn({ rec, name, role: 'guest', x, z, yaw: Math.PI, state: 'idle' }); a.talkable = true; a.plan = this.makePlan(); if (Math.random() < 0.3) this.giveItem(a, Math.random() < 0.7 ? 'popcorn' : 'drink');
     if (!placed) a.goTo(0, 17.5, (n) => { n.t = 0.5; });
     return a;
   }
   makePlan() { const steps = []; const n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) steps.push(['wander', 'sit', 'chat', 'snack', 'wander', 'sit'][Math.floor(Math.random() * 6)]); steps.push('leave'); return steps; }
-  giveItem(a, kind) { if (!this.propMat.has(kind)) this.propMat.set(kind, propGeo(kind)); const mesh = new THREE.Mesh(this.propMat.get(kind), this.itemMat(a)); a.ch.attach('item', mesh, 'handR', kind === 'popcorn' ? [0.005, -0.12, 0.06] : [0.0, -0.11, 0.05]); a.item = kind; a.holdGesture = 'hold'; a.ch.gestT = a.ch.gestT || 'hold'; }
+  giveItem(a, kind) {
+    if (this.v8) { const mesh = makeHeld(kind === 'popcorn' ? 'popcorn' : 'drink'); setHeldMaterial(mesh, this.itemMat(a)); mesh.userData.setLevel && mesh.userData.setLevel(0.5 + Math.random() * 0.5); a.ch.attach('item', mesh, 'handR'); a.item = kind; a.holdGesture = 'hold'; a.ch.gestT = a.ch.gestT || 'hold'; return; }
+    if (!this.propMat.has(kind)) this.propMat.set(kind, propGeo(kind)); const mesh = new THREE.Mesh(this.propMat.get(kind), this.itemMat(a)); a.ch.attach('item', mesh, 'handR', kind === 'popcorn' ? [0.005, -0.12, 0.06] : [0.0, -0.11, 0.05]); a.item = kind; a.holdGesture = 'hold'; a.ch.gestT = a.ch.gestT || 'hold'; }
   itemMat(a) { const m = this.mats.propMat ? this.mats.propMat(a.ch.mat.uniforms) : new THREE.MeshBasicMaterial({ vertexColors: true }); return m; }
   // ---------------------------------------------------------- talking with the player
   talkTarget(px, pz, fx, fz) { let best = null, bd = 2.6; for (const a of this.agents) { if (!a.talkable || !a.group.visible || a.state === 'sitting' || a.state === 'standing' || a.mission) continue; const dx = a.x - px, dz = a.z - pz, d = Math.hypot(dx, dz); if (d < bd && (dx * fx + dz * fz) / (d || 1) > 0.35) { bd = d; best = a; } } return best; }
@@ -145,9 +154,9 @@ export class Crowd {
     // people like the middle: weight seats by closeness to the centre and to the middle rows
     const w = pool.map((s) => { const c = 1 - Math.abs(s.u) / (H.B / 2), rr = 1 - Math.abs(s.row - H.rows * 0.55) / H.rows; return Math.random() * 0.6 + c * 0.9 + rr * 0.7; });
     const idx = pool.map((_, i) => i).sort((a, b) => w[b] - w[a]).slice(0, n);
-    for (const i of idx) { const s = pool[i], seed = Math.random() * 1e6, rec = randomRecipe(seed), R = rng(seed + 3);
+    for (const i of idx) { const s = pool[i], seed = Math.random() * 1e6, rec = this.recipe(seed), R = rng(seed + 3);
       const v = { id: 'v' + (this.nid++), hall, seat: s, rec, arch: Math.floor(R() * 4), name: NAMES[Math.floor(R() * NAMES.length)], state: Math.random() < seatedShare ? 'seated' : 'planned', arriveAt: this.now + Math.random() * spreadMs, agent: null,
-        act: 0, amt: 0, until: 0, phase: R() * 10, pers: { excite: R(), humor: R(), delay: 0.12 + R() * 0.55, popcorn: R() < 0.45 }, inst: -1, leaveAt: 0 };
+        act: 0, amt: 0, until: 0, phase: R() * 10, talky: R() < 0.3, pers: { excite: R(), humor: R(), delay: 0.12 + R() * 0.55, popcorn: R() < 0.45 }, inst: -1, leaveAt: 0 };
       s.taken = true; s.npc = v; list.push(v); }
   }
   clearAudience(hallId) { for (const v of this.viewers[hallId]) this.dropViewer(v); this.viewers[hallId] = []; }
@@ -170,7 +179,7 @@ export class Crowd {
     if ((ev.type === 'scare' || ev.type === 'laugh') && Math.random() < 0.35) { const v = vs[Math.floor(Math.random() * vs.length)]; v.shushAt = now + 2500; }
     if (ev.type === 'end') for (const v of vs) v.leaveAt = now + 7000 + Math.random() * 22000;
   }
-  onShowPhase(hallId, phase) { if (phase === 'dimming') for (const v of this.viewers[hallId]) if (v.state === 'seated' && Math.random() < 0.5) v.pending = { kind: 'clap', at: this.now + 300 + Math.random() * 600, dur: 2 }; }
+  onShowPhase(hallId, phase) { if (phase === 'dimming') for (const v of this.viewers[hallId]) { v.talky = false; if (v.state === 'seated' && Math.random() < 0.35) v.pending = { kind: 'clap', at: this.now + 300 + Math.random() * 900, dur: 2 }; } }
   // ---------------------------------------------------------- per-frame
   update(dt, now, player, vis, ctx) {
     this.now = now; const room = roomAt(player.x, player.z);
@@ -291,6 +300,18 @@ export class Crowd {
   }
   // ---------------------------------------------------------- instanced far audience (one mesh per body archetype)
   _inst(h, list) {
+    if (!this.v8) return this._instV5(h, list);
+    let R = this.inst[h.id]; if (!list) { if (R) R.hide(); return; }
+    if (!R) R = this.inst[h.id] = new CrowdRenderer(h.room.group, h.room.U);
+    R.begin(); const lit = h.seatLit, cam = this.engine.camera.position, t = this.now / 1000, near2 = (9 * (this.engine.lodK || 1)) ** 2;
+    for (const v of list) { if (v.state !== 'seated' || (v.agent && v.agent.state === 'seated')) continue;
+      const sp = this.seatPose(v), s = v.seat, i7 = s.i * 7, d2 = (s.x - cam.x) ** 2 + (s.z - cam.z) ** 2;
+      if (v.act && v.act !== v._act) { v._act = v.act; v._actT = t; } else if (!v.act && v._act && v.amt < 0.02) v._act = null;
+      const react = v._act ? REACT_CLIP[v._act] : null;
+      R.add({ rec: v.rec, x: sp.x, y: sp.y + sp.h - SIT_H, z: sp.z, yaw: sp.face, lit: [lit[i7] * 0.9, lit[i7 + 1] * 0.9, lit[i7 + 2] * 0.9, lit[i7 + 6]], clip: v.talky ? 'Sitting_Talking_Loop' : 'Sitting_Idle_Loop', t0: -v.phase, speed: 1, clipB: react, t0B: v._actT, blend: react ? v.amt : 0 }, d2 < near2 ? 1 : 2); }
+    R.end();
+  }
+  _instV5(h, list) {
     let I = this.inst[h.id];
     if (!list) { if (I) for (const m of I.meshes) m.count = 0; return; }
     if (!I) { const H = h.cfg, seatH = H.kind === 'curved' ? 0.52 : 0.46, rec = H.kind === 'curved' ? 0.3 : 0.2, cap = h.seats.length;
