@@ -18,6 +18,17 @@ whether they would also run inside Termux.
 | `threejs-api-*` (12: animation, asset-pipeline, fundamentals, geometry, interaction, lighting, loaders, materials, performance, postprocessing, shaders, textures) | https://github.com/CloudAI-X/threejs-skills (`0e18186`), renamed from `threejs-*` | MIT | Exact three.js API reference (instancing, LOD, colour spaces, video textures, shader chunks) | Long, concrete references; they complement the short cesartevisual workflows. Renamed so the two sets don't share names | Instructions only |
 | `animation-forge` | https://github.com/Eskapeum/animation-forge (`ee08fc1`) | MIT (stated in its README) | Motion design for the HTML UI: easing, timing, choreography, micro-interactions, transitions, a motion audit | The most complete motion-design guide found; the UI is HTML/CSS, which it targets | Instructions only |
 
+| `blender-web-3d` | https://github.com/czlonkowski/blender-web-3d-skill (`858762f`) | MIT | Headless Blender modelling scripts, Cycles beauty renders and light bakes, GLB export and optimisation, look-dev rules | Battle-tested Blender-to-web pipeline; the user asked for it | No: Blender has no Android build. Runs in the cloud session (Blender 5.2.3 installed by the session hook) |
+| 30 `cc-blender` skills (`text-to-blender`, `blender-modeling`, `blender-materials`, `blender-lighting`, `blender-cameras`, `blender-rendering`, `blender-export`, `blender-uv-texturing`, `blender-pro-workflow`, reference/fit skills...) | https://github.com/RobLe3/cc-blender-skill (`a2634b5`) | MIT | Real-world material values, lighting setups, modelling and export recipes, production order and critique checklists | The user asked for it; the most complete Blender knowledge pack found | Knowledge only here: its tool calls assume a live Blender over MCP (not available in a cloud session). Use the recipes inside headless `blender --background --python` scripts |
+
+## Blender toolchain in the cloud session
+- `blender` = Blender 5.2.3 LTS (`/opt`, checksum verified by `.claude/hooks/session-start.sh`). Headless only: `blender --background --python script.py -- args`.
+- Cycles renders and bakes on the CPU (4 cores). EEVEE renders through Mesa's software OpenGL (slow: ~30 s of shader compile per session).
+- No Blender MCP (a cloud session has no Blender window). The cc-blender skills' `mcp__blender__*` calls are replaced by headless scripts.
+- `gltf-transform` 4.5.1 (on PATH after the hook) inspects and validates GLBs.
+- Textures: `tools/textures/gen.py` (procedural baseline) then `tools/textures/fetch_cc0.py` (Poly Haven / ambientCG CC0 scans; provenance in
+  `tools/textures/SOURCES.md`).
+
 ## Left out, and why
 - `threejs-r3f`, `threejs-react-three-fiber`: the app has no React.
 - `threejs-xr`, `threejs-spatial-data`, `threejs-product-viewer`, `threejs-deployment`: no VR, maps, product viewer or web hosting here.

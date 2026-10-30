@@ -64,7 +64,11 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 ## Skills (use them on every task)
 - Project skills are checked in under `.claude/skills/` (Kiln, img2threejs, three.js workflows `threejs-*`, three.js API references
   `threejs-api-*`, `animation-forge`). Sources, licences, why chosen and which skill for which job: `docs/SKILLS.md`.
-- `.claude/hooks/session-start.sh` installs Kiln 1.6.0 + acorn in cloud sessions and exports `KILN_WS` and `ACORN`.
+- `.claude/hooks/session-start.sh` installs Kiln 1.6.0, acorn and gltf-transform, Blender 5.2.3 (headless, with software EGL for EEVEE), SciPy and
+  OpenCV in cloud sessions, and exports `KILN_WS`, `ACORN`, `BLENDER`.
+- Blender: `blender-web-3d` and the 30 `cc-blender` skills. No Blender MCP here: run their recipes as `blender --background --python` scripts.
+- Textures are real CC0 scans (Poly Haven, ambientCG) converted by `tools/textures/fetch_cc0.py` over the `gen.py` baseline; sources in
+  `tools/textures/SOURCES.md`. Metres-per-tile in `www/js/library.js` must match each scan's physical size.
 - Before a feature: `superpowers:brainstorming`; before a fix: `superpowers:systematic-debugging` plus the matching `threejs-*`
   skill; before saying done: `superpowers:verification-before-completion`.
 
