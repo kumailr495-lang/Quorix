@@ -34,7 +34,8 @@ Two APKs, same package (`com.buddyapps.lumiere`) and signing key as v7, so eithe
   darker way in, like the IMAX); the exits stay beside the screen (a short way out).
 - Steeper rakes: sightline clearance at least 0.197 m in every hall, so heads in front don't block the picture.
 - Corridor: walnut ceiling beams every 4 m and two lit film islands with planters.
-- House lights fade in smooth stages (7 s down to black when the film starts).
+- House lights fade in smooth stages (7 s down to black when the film starts); the picture's left and right light their own side of
+  the hall; curtains open slower, gather into deeper folds and settle with a sway.
 - New cars (lofted bodies, wheel arches, real windows, spoked rims); parked cars have their lamps off.
 
 **Earlier v8 work (same release)**: the film on a native video layer at full quality; held items never clip; popcorn empties in four
@@ -59,10 +60,19 @@ the new people (CC0 bodies, modern outfits, library animation, IK eating and dri
 - Nobody has listened to the voices (no speaker in the cloud; the recogniser check is the evidence). Kokoro's Spanish and Hindi are
   less natural than its English.
 - Laughs, gasps and cheers in the hall are still synthesised; the clips are words.
-- Not built yet: lobby stairs and escalators, new concession machines, the curtain animation, loading-hitch work, richer screen light,
-  the remaining screenshot fixes (zebra decal, tilted sign, speaker that reads as a door).
+- Not built yet: lobby stairs and escalators, new concession machines, loading-hitch work, the remaining screenshot fixes (zebra decal, tilted sign, speaker that reads as a door).
 - APK size about 45 MB (voices 13 MB, light maps 14 MB, models 15 MB).
 
 ## Rollback
 - Phone: install `lumiere-v8.00-safe.apk` if the new one misbehaves. Going back to v7 needs an uninstall first (lower versionCode).
 - Code: every step is its own commit on `ccr-7bb5aa6a-upup1u` (`git log`); `git revert <commit>` undoes one.
+
+## New ideas (not built; say yes to any)
+1. Seat rumble: the phone vibrates on explosions and scares, timed by each film's loudness cues (a cheap 4DX feel).
+2. Bring a friend: a companion who books with you, sits beside you, whispers reactions (voiced) and shares your popcorn.
+3. Projection booth tour: walk behind the IMAX into the booth and meet Gerald, the projector from Odette's gossip, beam and all.
+4. Lobby pianist: a grand piano by the bar; film themes before the shows.
+5. Film trivia with Odette: three questions about the Blender films; win a free Plot Twist.
+6. Ticket-stub album: every film you watch leaves a stub (film, date, hall, seat) in a wallet in the menu.
+7. Real-time sky: dusk, night or rain outside by the phone's clock.
+8. Subtitles for your own videos: pick an .srt with the video; lines appear under the picture.

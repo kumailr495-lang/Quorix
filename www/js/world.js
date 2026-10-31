@@ -101,7 +101,9 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   const canSee = (p) => { if (p.solid) { const d = world.doors.find((q) => q.key === p.door); if (d && d.open < 0.03) return false; } return frustum.intersectsBox(p.box); };
   world.setVisibility = (room, x, z, all = false) => { if (!all) { cam.updateMatrixWorld(); frustum.setFromProjectionMatrix(pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); }
     const v = visibleRooms(room, x, z, all ? undefined : canSee); world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => v.has(k)); };
-  world.update = (dt, actors, now) => { for (const d of world.doors) d.update(dt, actors); for (const h of world.halls) if (h.curtains) { const c = h.curtains; if (c.open !== c.target) { c.open += Math.sign(c.target - c.open) * Math.min(Math.abs(c.target - c.open), dt / 3.2); const e = c.open * c.open * (3 - 2 * c.open); for (const m of c.meshes) m.scale.x = 1 - 0.93 * e; } } };
+  world.update = (dt, actors, now) => { for (const d of world.doors) d.update(dt, actors); for (const h of world.halls) if (h.curtains) { const c = h.curtains; if (c.open !== c.target || c.sway > 0.002) { c.open += Math.sign(c.target - c.open) * Math.min(Math.abs(c.target - c.open), dt / 4.5); const u = c.open, e = u * u * u * (u * (u * 6 - 15) + 10);   // v8: slower, smootherstep
+      c.sway = c.open !== c.target ? 1 : (c.sway || 0) * Math.exp(-dt * 1.4); c.t = (c.t || 0) + dt;   // the fabric settles with a damped sway after it stops
+      for (const m of c.meshes) { m.scale.x = 1 - 0.93 * e; m.scale.z = 1 + 3.2 * e; m.rotation.y = 0.012 * c.sway * Math.sin(c.t * 4.1 + m.position.x); } } } };   // folds deepen as the curtain gathers
   // reflection probes: one small cube capture per room (what the polished floors, brass and glass reflect), mip-filtered by roughness
   onProgress(0.96, 'reflections'); await texturesReady(); await frame(); captureReflections(world, engine);
   world.setVisibility('lobby', 0, 15, true); onProgress(1, 'ready');

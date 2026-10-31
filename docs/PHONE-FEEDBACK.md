@@ -42,9 +42,9 @@ been seen on the phone yet. `[x]` done, `[~]` partly, `[ ]` not yet.
 - [x] Voices: every line is spoken (offline Kokoro voices, en/es/hi; Urdu uses the Hindi clips), with lip movement; can be turned off.
   Laughs and gasps in the hall are still synthesised.
 - [x] Seat bell, server, tablet remote with live scrub preview, play another (costs money), hand back.
-- [x] Loading screen = "LUMIÈRE PRESENTS"; menu redone. [~] Curtain animation not reworked.
+- [x] Loading screen = "LUMIÈRE PRESENTS"; menu redone; curtains open slower, gather into deeper folds and settle with a sway.
 - [~] Lights placement and transition: house lights now fade in smooth stages (7 s to black); fittings not audited.
-- [~] Screen light on the room: unchanged (offline light tracks per film).
+- [x] Screen light on the room: the left and right of the picture now light their own side of the hall (offline light tracks).
 - [x] Settings: shadows, reflections, LOD distance, render distance, NPC count, voices, subtitles; device-based defaults on first launch.
 - [x] Two ways to play: Quick and Story. [x] Skip intros after the first time; tutorial with ask, settings tab, start/start again.
 - [x] Customise controls (layout editor, left-handed, HUD scale).

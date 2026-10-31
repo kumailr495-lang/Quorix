@@ -32,7 +32,7 @@ Research done for this plan (sources in docs/RESEARCH-NOTES.md, "v8"):
 - [x] A7 Two ways to play: **Quick** (spawn in the hall, unlimited money, remote tablet always in hand) and **Story** (taxi
       arrival, greeter, box office, guide, services). Skip button on every cutscene except the first time. Tutorial offered on
       first launch; Settings > Tutorial: "Start tutorial" / "Start again".
-- [~] A8 Main menu redone; loading screen = the "LUMIÈRE presents" animation only; curtain animation (two-panel swag,
+- [x] A8 Main menu redone; loading screen = the "LUMIÈRE presents" animation only; curtain animation (two-panel swag,
       cloth sway, eased timing, motor sound).
 - [x] A9 File names shown cleanly ("Brahmāstra Part One Shiva (2022)" instead of "BrahmÄ_stra.Part.One...").
 
