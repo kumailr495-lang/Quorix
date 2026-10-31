@@ -197,10 +197,15 @@ export function buildRestrooms(ctx) {
     for (let i = 0; i < nC; i++) { const x = cx0 + i * cw; room.box(x + 0.03, 0.12, cz1 - 0.02, x + cw - 0.03, 2.22, cz1 + 0.02, WALNUT, { mat: MAT.wood });
       room.box(x + cw - 0.16, 0.95, cz1 + 0.02, x + cw - 0.13, 1.25, cz1 + 0.05, BRASS, { mat: MAT.brass }); room.glowBox(x + cw - 0.22, 1.3, cz1 + 0.02, x + cw - 0.14, 1.34, cz1 + 0.024, '#3dff86', 1.2, 0, 'pz'); }
     room.col(cx0, r.z0, cx0 + nC * cw, cz1 + 0.05);
+    // v8 (phone feedback: "make the washrooms functioning"): what you can use here; main.js prompts when you stand in front of one
+    const use = world.uses || (world.uses = []);
+    for (let i = 0; i < 3; i++) { const bx = vx0 + (i + 0.5) * (vx1 - vx0) / 3; use.push({ kind: 'basin', room: key, x: bx, z: zw - 0.85, tx: bx, tz: zw, spout: [bx, 1.1, zw - 0.16] }); }
+    use.push({ kind: 'dryer', room: key, x: ix(7.45), z: zw - 0.8, tx: ix(7.45), tz: zw });
+    for (let i = 0; i < nC; i++) use.push({ kind: 'stall', room: key, x: cx0 + (i + 0.5) * cw, z: cz1 + 0.7, tx: cx0 + (i + 0.5) * cw, tz: r.z0 });
     // urinals with dark glass privacy screens (brass capped)
     if (men) { for (let i = 0; i < 4; i++) { const z = r.z0 + 2.6 + i * 0.85; placeAsset(room, 'urinal', r.x0 + 0.012, 0, z, PI / 2);
         if (i < 3) { room.box(r.x0 + 0.012, 0.55, z + 0.405, r.x0 + 0.5, 1.55, z + 0.43, '#1c2226', { mat: MAT.glass }); room.box(r.x0 + 0.012, 1.55, z + 0.4, r.x0 + 0.5, 1.565, z + 0.435, BRASS, { mat: MAT.brass, edge: 0 }); } }
-      room.col(r.x0, r.z0 + 2.3, r.x0 + 0.5, r.z0 + 5.6); }
+      room.col(r.x0, r.z0 + 2.3, r.x0 + 0.5, r.z0 + 5.6); for (let i = 0; i < 4; i++) world.uses.push({ kind: 'urinal', room: key, x: r.x0 + 1.05, z: r.z0 + 2.6 + i * 0.85, tx: r.x0, tz: r.z0 + 2.6 + i * 0.85 }); }
     placeAsset(room, 'bin_brass', vx0 > xi ? vx1 + 0.35 : vx0 - 0.35, 0, zw - 0.3, 0);
     // v7 dressing (docs/V7-DESIGN.md): blade hand dryer and towel dispenser at the vanity's ends with pedal bins, soap pumps between the basins,
     // a fold-down baby-change unit, a framed print, a plant, and a cove of warm light round the ceiling (tools/kiln/restroom_set.kiln.js)

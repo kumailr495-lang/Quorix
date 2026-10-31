@@ -140,7 +140,7 @@ export class Crowd {
   }
   _serveTick(a, dt, player) {
     const s = a.serving, home = a.home; s.t += dt; const back = home.yaw + Math.PI, isDrink = /cola|coffee|mocktail/.test(s.kind);
-    if (s.phase === 'turn') { a.turnYaw(back, 5, dt); if (s.t > 0.6) { s.phase = 'make'; s.t = 0; a.gesture(isDrink ? 'pour' : 'scoop', 1.8, 'focus'); this.giveItem(a, isDrink ? 'drink' : 'popcorn'); a.holdGesture = null; } }
+    if (s.phase === 'turn') { a.turnYaw(back, 5, dt); if (s.t > 0.6) { s.phase = 'make'; s.t = 0; a.gesture(isDrink ? 'pour' : 'scoop', 1.8, 'focus'); this.hooks.serveFx && this.hooks.serveFx(a); this.giveItem(a, isDrink ? 'drink' : 'popcorn'); a.holdGesture = null; } }
     else if (s.phase === 'make') { a.turnYaw(back, 5, dt); if (s.t > 1.8) { s.phase = 'back'; s.t = 0; a.ch.gestT = 'hold'; } }
     else if (s.phase === 'back') { a.turnTo(s.to ? s.to.x : player.x, s.to ? s.to.z : player.z, 5, dt); if (s.t > 0.7) { s.phase = 'give'; s.t = 0; a.gesture('give', 1.0, 'smile'); } }
     else if (s.phase === 'give') { a.turnTo(s.to ? s.to.x : player.x, s.to ? s.to.z : player.z, 5, dt); if (s.t > 0.75) { a.ch.detach('item'); a.item = null; a.ch.gestT = null; a.holdGesture = null; const f = s.onGiven; a.serving = null; a.say(pick(a.role === 'bar' ? 'bar.give' : 'ven.give'), 3); f && f(s.kind); } }

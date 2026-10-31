@@ -73,6 +73,7 @@ async function boot() {
     if (typeof ln === 'object' && ln.key) voice.speak(n, ln).then((ms) => { if (!ms && voice.on && !voice.man) blip(); }); else if (voice.on) blip(); };
   crowd = new Crowd(world, mats, engine, {
     bubble: (n, ln, dur) => { if (settings.bubbles && talk) talk.bubble(n, ln, dur); speak(n, ln); },
+    serveFx: (n) => { if (dist(n) < 8) sound.pour(); },
     crowdSound: (hallId, type, n, k, x, z) => { const a = audibility(hallById(hallId).key); if (a.g > 0.05) sound.crowd(type, n, k * Math.min(1, a.g * 1.3), x, z); },
     guideDone: () => { if (ticket) ui.toast(t('book.selected', { row: ticket.row, seat: ticket.col }), 3200); markerPulse = 6; tut.event('escorted'); },
     nearViewer: (vs) => { let best = null, bd = 4.5; for (const v of vs) { if (!v.agent) continue; const d = Math.hypot(v.seat.x - player.x, v.seat.z - player.z); if (d < bd) { bd = d; best = v; } } return best; },
@@ -99,6 +100,7 @@ async function boot() {
   // Story arrival: the taxi pulls in at the carpet, you step out (intro.js); the first one can't be skipped
   const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived() });
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
+  { const pay = wallet.pay.bind(wallet); wallet.pay = (n, what) => { const ok = pay(n, what); if (ok && n > 0 && game === 'story') sound.pay(); return ok; }; }   // a till ding for every payment
   wallet.onChange = () => ui.setWallet(game === 'story' ? wallet.fmt(wallet.cash) : null);
   function applySettings(gfx) {
     saveSettings(settings); engine.applySettings(settings); mats.setReflections && mats.setReflections(settings.reflections !== 'off' && settings.graphics !== 'low'); crowd.setDensity(settings.npcs);
@@ -146,13 +148,25 @@ async function boot() {
   }
   function binItem() { if (!held) return; sound.bin(); engine.vm.remove(itemMesh); itemMesh = null; held = null; ui.setItem(null); ui.toast(t('toast.binned'), 1800); tut.event('binned'); }
   const nearBin = () => world.bins.find((b) => Math.hypot(b.x - player.x, b.z - player.z) < 1.3);
+  // ---------- restrooms (v8): wash and dry your hands, use a cubicle or a urinal (fade out, a flush, back) ----------
+  let washed = false, water = null;
+  function useFixture(u) {
+    const hold = (ms, done) => { player.locked = true; setTimeout(() => { player.locked = modal || mode !== 'play'; done && done(); }, ms); };
+    if (u.kind === 'basin') { sound.water(2.4); if (!water) { water = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.011, 0.16, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.6, depthWrite: false })); water.renderOrder = 5; }
+      water.position.set(u.spout[0], u.spout[1] - 0.08, u.spout[2]); engine.scene.add(water); hold(2700, () => { engine.scene.remove(water); washed = true; ui.toast(t('toast.washed'), 2200); }); return; }
+    if (u.kind === 'dryer') { sound.dryer(2.2); hold(2500, () => { ui.toast(t(washed ? 'toast.dried' : 'toast.dryFirst'), 2200); washed = false; }); return; }
+    // cubicle or urinal: the screen goes dark (the door locks), a flush, and you're back, facing the room (yaw 0 looks along -z, so
+    // atan2(dx, dz) towards the fixture faces away from it)
+    player.locked = true; ui.fade(1, 0.4); setTimeout(() => { if (u.kind === 'stall') sound.lock(); }, 450); setTimeout(() => sound.flush(), u.kind === 'stall' ? 1500 : 900);
+    setTimeout(() => { if (u.kind === 'stall') sound.lock(); player.place(u.x, u.z, Math.atan2(u.tx - u.x, u.tz - u.z), 0); ui.fade(0, 0.6); player.locked = modal || mode !== 'play'; ui.toast(t('toast.fresh'), 2000); }, u.kind === 'stall' ? 3300 : 2400);
+  }
   // ---------- tickets: bought at the box office, read by the guide, your seat marked in the hall ----------
   const marker = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#ff4d5a'; g.beginPath(); g.moveTo(32, 58); g.lineTo(10, 26); g.lineTo(24, 26); g.lineTo(24, 6); g.lineTo(40, 6); g.lineTo(40, 26); g.lineTo(54, 26); g.closePath(); g.fill(); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, depthTest: false, toneMapped: false })); s.scale.set(0.32, 0.32, 1); s.visible = false; s.renderOrder = 20; engine.scene.add(s); return s; })();
   function bought(tk) {
     if (ticket) { const ps = seatOf(ticket); if (ps) { ps.player = false; ps.taken = false; } }
     ticket = tk; const s = seatOf(tk); s.player = true; s.taken = true; shows.book(tk.hall, tk.own ? 'own' : 'film', tk.film, tk.delay * 1000, tk.seat, tk.title);
-    ui.showTicket(tk, game === 'quick'); tut.event('ticket');
+    ui.showTicket(tk, game === 'quick'); sound.ticket(); tut.event('ticket');
     if (game === 'story') crowd.staff.eloise && setTimeout(() => crowd.staff.eloise.say(pick('rec.booked'), 4.2), 600);
   }
   function endTicket() { if (!ticket) return; const s = seatOf(ticket); if (s) { s.player = false; s.taken = false; } ticket = null; marker.visible = false; }
@@ -238,6 +252,7 @@ async function boot() {
       const npc = crowd.talkTarget(player.x, player.z, fx, fz); if (npc && dist(npc) < 2.4) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); done = true; }
       if (!done && held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); done = true; }
       if (!done && world.atm && game === 'story' && Math.hypot(world.atm.x - player.x, world.atm.z - player.z) < 1.4) { ui.setPrompt(t('hud.atm'), () => atm.open()); done = true; }
+      if (!done && r.startsWith('wc') && world.uses) { const u = world.uses.find((q) => q.room === r && Math.hypot(q.x - player.x, q.z - player.z) < 0.95 && ((q.tx - player.x) * fx + (q.tz - player.z) * fz) / (Math.hypot(q.tx - player.x, q.tz - player.z) || 1) > 0.3); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); done = true; } }
       if (!done && hk && ticket && ticket.hallKey === hk) { const h = world.hallByKey(hk), s = seatOf(ticket); const dx = s.x - player.x, dz = s.z - player.z, d = Math.hypot(dx, dz);
         if (d < 1.5 && Math.abs(s.y - player.y) < 0.5 && (dx * fx + dz * fz) / (d || 1) > 0.2) { ui.setPrompt(t('hud.yourSeat', { seat: s.id }), () => sitSeat(h, s)); done = true; } }
       if (!done) { let bsp = null, bd = 1.4; for (const sp of world.sitSpots) { if (sp.taken) continue; const dx = sp.x - player.x, dz = sp.z - player.z, d = Math.hypot(dx, dz); if (d < bd && (dx * fx + dz * fz) / (d || 1) > 0.2) { bsp = sp; bd = d; } } if (bsp) { ui.setPrompt(t('hud.sit'), () => sitSpot(bsp)); done = true; } }

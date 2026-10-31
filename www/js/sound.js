@@ -107,6 +107,22 @@ export class Sound {
   bell() { if (!this.ready || this.muted) return; for (const [f, d] of [[1568, 0], [2093, 0.09]]) this._tone(this.master, f, 1.1, 0.05, 'sine', 9000, 1, d); }
   tablet(on) { if (!this.ready || this.muted) return; this._tone(this.master, on ? 520 : 780, 0.09, 0.03, 'sine', 5000, on ? 1.5 : 0.66); }
   atm(kind) { if (!this.ready || this.muted) return; if (kind === 'key') this._tone(this.master, 1180, 0.06, 0.035, 'square', 5000); else if (kind === 'card') this._noiseHit(this.master, 1400, 1, 0.05, 0.5, 700); else { for (let i = 0; i < 6; i++) setTimeout(() => this.ready && this._noiseHit(this.master, 2600, 3, 0.04, 0.09), i * 70); } }
+  // v8 interaction sounds: a filtered-noise layer with an envelope (attack, hold, release), optionally swept and fluttered
+  _layer(type, f, q, vol, a, hold, r, o = {}) {
+    if (!this.ready || this.muted) return; const c = this.ctx, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain(), t = c.currentTime + (o.when || 0);
+    s.buffer = this.white; s.loop = true; fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q; if (o.to) fl.frequency.linearRampToValueAtTime(o.to, t + a + hold + r);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + a); g.gain.setValueAtTime(vol, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + r);
+    if (o.flutter) { const lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = o.flutter; lg.gain.value = vol * 0.45; lfo.connect(lg); lg.connect(g.gain); lfo.start(t); lfo.stop(t + a + hold + r + 0.1); }
+    s.connect(fl); fl.connect(g); g.connect(this.master); s.start(t, Math.random()); s.stop(t + a + hold + r + 0.1);
+  }
+  water(sec = 2.6) { this._layer('bandpass', 2400, 0.9, 0.07, 0.15, sec, 0.4, { flutter: 13 }); this._layer('lowpass', 500, 0.7, 0.03, 0.2, sec, 0.4); }   // a running tap into a basin
+  dryer(sec = 2.4) { this._layer('highpass', 1400, 0.7, 0.06, 0.25, sec, 0.5); if (this.ready && !this.muted) this._tone(this.master, 930, sec + 0.4, 0.008, 'sawtooth', 2600); }
+  flush() { this._layer('lowpass', 300, 0.8, 0.12, 0.3, 1.4, 1.4, { to: 1500 }); this._layer('bandpass', 420, 3, 0.05, 0.6, 1.6, 1.2, { flutter: 7, when: 0.4 }); }
+  lock() { if (!this.ready || this.muted) return; this._noiseHit(this.master, 2600, 6, 0.05, 0.05); this._tone(this.master, 820, 0.05, 0.03, 'square', 3000, 0.8, 0.07); }
+  pay() { if (!this.ready || this.muted) return; this._tone(this.master, 1568, 0.5, 0.05, 'triangle', 6000); this._tone(this.master, 2093, 0.7, 0.04, 'triangle', 6000, 1, 0.09); this._noiseHit(this.master, 900, 1, 0.05, 0.18); }   // till ding + drawer
+  ticket() { this._layer('bandpass', 1900, 4, 0.03, 0.03, 0.55, 0.08, { flutter: 24 }); }   // the ticket printer
+  pour() { this._layer('bandpass', 1200, 2.2, 0.05, 0.1, 0.9, 0.3, { flutter: 9, to: 1700 }); }   // a drink poured / popcorn scooped
+  curtain(open) { this._layer('lowpass', 140, 0.7, 0.05, 0.6, 2.8, 0.8); this._layer('bandpass', open ? 700 : 1000, 1.2, 0.025, 0.8, 2.2, 0.8, { to: open ? 1100 : 600 }); }   // motor and fabric
   // v8: a car engine (the taxi in the Story arrival): a low sawtooth and filtered noise, panned to the car; level 0..1
   car(level, x, z) {
     if (!this.ready) return; const c = this.ctx;

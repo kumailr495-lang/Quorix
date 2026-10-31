@@ -62,7 +62,7 @@ export class Shows {
     const A = s.hall.cfg.aspect, b = s.hall.picMat.uniforms.uBox.value; if (aspect > A) { const hh = A / aspect; b.set(0, (1 - hh) / 2, 1, hh); } else { const ww = aspect / A; b.set((1 - ww) / 2, 0, ww, 1); }
   }
   _begin(id) {   // lights down, curtains open, the opening cards ("LUMIÈRE PRESENTS", the title) while the film buffers, then the picture
-    const s = this.s[id], h = s.hall; s.state = 'dimming'; s.phaseAt = this.now; s.opening = this.now; if (h.curtains) h.curtains.target = 1; this.crowd.onShowPhase(id, 'dimming'); this.hooks.onBegin && this.hooks.onBegin(id);
+    const s = this.s[id], h = s.hall; s.state = 'dimming'; s.phaseAt = this.now; s.opening = this.now; if (h.curtains) { h.curtains.target = 1; if (this.sound.listener.room === h.key) this.sound.curtain(true); } this.crowd.onShowPhase(id, 'dimming'); this.hooks.onBegin && this.hooks.onBegin(id);
     const u = h.picMat.uniforms; u.map.value = s.pre.tex; u.uRaw.value = 0; u.uGain.value = 1; u.uHole.value = 0; u.uBox.value.set(0, 0, 1, 1); s.pre.card('LUMIÈRE', 'PRESENTS', 0);
   }
   _roll(id) {
@@ -75,7 +75,7 @@ export class Shows {
   }
   _finish(id, applause) {
     const s = this.s[id]; if (s.state !== 'playing' && s.state !== 'dimming') return; try { this._el(s).pause(); } catch (e) {} if (applause) this.crowd.onFilmEvent(id, { type: 'end', k: 1 });
-    this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'ending'; s.phaseAt = this.now; this._slide(s); s.pre.draw(t('show.ended').toUpperCase(), null, [this.title(id)]); if (s.hall.curtains) s.hall.curtains.target = 0; this.hooks.onEnd && this.hooks.onEnd(id, applause || s.credits);
+    this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'ending'; s.phaseAt = this.now; this._slide(s); s.pre.draw(t('show.ended').toUpperCase(), null, [this.title(id)]); if (s.hall.curtains) { s.hall.curtains.target = 0; if (this.sound.listener.room === s.hall.key) this.sound.curtain(false); } this.hooks.onEnd && this.hooks.onEnd(id, applause || s.credits);
   }
   update(dt, now, room, vis) {
     this.now = now; this.vis = vis;
