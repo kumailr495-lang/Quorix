@@ -15,7 +15,8 @@ been seen on the phone yet. `[x]` done, `[~]` partly, `[ ]` not yet.
 - [x] No greeter: Clara greets you at the door, points to tickets and the ATM.
 - [~] No textures outside the theatres: corridor beams and film islands added; the hall exteriors are not visible anywhere.
 - [~] Unrealistic shadows: re-baked light maps for every changed room; a shadows switch in settings.
-- [~] LODs and chunk loading: LOD distance and render distance settings; no new loading work (E7 open).
+- [~] LODs and chunk loading: LOD and render distance settings; every room's shaders and textures are prepared during loading (no
+  first-entry hitch expected); LOD hysteresis not done.
 - [x] Car models: new lofted cars with arches, windows, spoked rims (tools/blender/cars.py).
 - [x] Velvet etc. still on cards: the films are the Blender open movies everywhere (cards, posters, LED wall).
 - [x] Blender films not there: nine Blender Studio films with posters, light tracks and reaction cues.

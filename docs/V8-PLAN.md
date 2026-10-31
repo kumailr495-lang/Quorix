@@ -72,7 +72,7 @@ Research done for this plan (sources in docs/RESEARCH-NOTES.md, "v8"):
 - [~] E5 Lobby: grand stair and escalators to a mezzanine (Allu reference), better concession machines (popcorn, coffee,
       drinks), better car models, textures outside the halls.
 - [~] E6 Lights: fittings placed on walls/ceilings correctly, house lights dim in stages, screen light on the room much richer.
-- [ ] E7 Loading between areas: everything compiled and uploaded before you enter (no hitch), fade-in instead of popping, LOD hysteresis.
+- [~] E7 Loading between areas: everything compiled and uploaded before you enter (no hitch), fade-in instead of popping, LOD hysteresis.
 
 ## F. Delivery
 - [x] F1 New APK wrapper (MediaStore gallery bridge, video streaming with byte ranges), same package and key.

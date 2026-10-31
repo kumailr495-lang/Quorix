@@ -267,6 +267,11 @@ async function boot() {
       if (ticket && ticket.title) { const s = S(ticket.hall); ui.setTicketChip(t('ticket.chip', { screen: ticket.hallName, row: ticket.row, seat: ticket.col }) + (s.state === 'pending' ? ' · ' + fmtTime(shows.countdown(ticket.hall)) : '')); } else ui.setTicketChip(null);
       ui.setFps(`${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`); }
   }
+  // v8 (phone feedback: "chunk loading transition sucks"): compile every room's shaders and upload their textures while the loader is up,
+  // so walking into a room for the first time doesn't hitch
+  { const shown = Object.values(world.rooms).map((rm) => [rm, rm.group.visible]); for (const [rm] of shown) rm.group.visible = true; const R = engine.renderer, seen = new Set();
+    try { R.compile(engine.scene, engine.camera); engine.scene.traverse((o) => { for (const m of [].concat(o.material || [])) for (const u of Object.values(m.uniforms || {})) { const v = u && u.value; if (v && v.isTexture && !seen.has(v)) { seen.add(v); R.initTexture(v); } } }); } catch (e) { console.warn('warm-up skipped', e); }
+    for (const [rm, v] of shown) rm.group.visible = v; }
   const led = makeLedWall(world.ledWall, shows, t, fmtTime);
   for (const h of world.halls) h.updateLOD(engine.camera, true, engine.preset.seatLod * engine.lodK);
   // first frame: drop the loader (after the "LUMIÈRE PRESENTS" card has been seen), show the menu (or the language picker on the very first launch)

@@ -37,6 +37,8 @@ Two APKs, same package (`com.buddyapps.lumiere`) and signing key as v7, so eithe
 - House lights fade in smooth stages (7 s down to black when the film starts); the picture's left and right light their own side of
   the hall; curtains open slower, gather into deeper folds and settle with a sway.
 - New cars (lofted bodies, wheel arches, real windows, spoked rims); parked cars have their lamps off.
+- Every room's shaders are compiled and its textures uploaded while the loader is up (12 programs, 62 textures), so entering a room
+  for the first time should not hitch.
 
 **Earlier v8 work (same release)**: the film on a native video layer at full quality; held items never clip; popcorn empties in four
 steps and goes in any bin; you can't walk through people or furniture; Quick and Story modes; wallet, ATM limit, box office with start
@@ -60,7 +62,7 @@ the new people (CC0 bodies, modern outfits, library animation, IK eating and dri
 - Nobody has listened to the voices (no speaker in the cloud; the recogniser check is the evidence). Kokoro's Spanish and Hindi are
   less natural than its English.
 - Laughs, gasps and cheers in the hall are still synthesised; the clips are words.
-- Not built yet: lobby stairs and escalators, new concession machines, loading-hitch work, the remaining screenshot fixes (zebra decal, tilted sign, speaker that reads as a door).
+- Not built yet: lobby stairs and escalators, new concession machines, LOD hysteresis, the remaining screenshot fixes (zebra decal, tilted sign, speaker that reads as a door).
 - APK size about 45 MB (voices 13 MB, light maps 14 MB, models 15 MB).
 
 ## Rollback
