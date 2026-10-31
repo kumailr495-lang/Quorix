@@ -1,4 +1,4 @@
-// LUMIERE v5 sound - all synthesised or routed here, no audio files.
+// LUMIERE v5 sound - all synthesised or routed here (v8: the recorded voices are voice.js).
 //  * film channel: the hall you are in / next to is heard through a continuous occlusion model (distance to the door, the light-lock passage,
 //    the automatic door's opening), not a room switch: walking in, the film grows smoothly.
 //  * v8: the open films are streamed and play through their own element (no CORS -> no Web Audio); only their volume follows you.
@@ -107,6 +107,16 @@ export class Sound {
   bell() { if (!this.ready || this.muted) return; for (const [f, d] of [[1568, 0], [2093, 0.09]]) this._tone(this.master, f, 1.1, 0.05, 'sine', 9000, 1, d); }
   tablet(on) { if (!this.ready || this.muted) return; this._tone(this.master, on ? 520 : 780, 0.09, 0.03, 'sine', 5000, on ? 1.5 : 0.66); }
   atm(kind) { if (!this.ready || this.muted) return; if (kind === 'key') this._tone(this.master, 1180, 0.06, 0.035, 'square', 5000); else if (kind === 'card') this._noiseHit(this.master, 1400, 1, 0.05, 0.5, 700); else { for (let i = 0; i < 6; i++) setTimeout(() => this.ready && this._noiseHit(this.master, 2600, 3, 0.04, 0.09), i * 70); } }
+  // v8: a car engine (the taxi in the Story arrival): a low sawtooth and filtered noise, panned to the car; level 0..1
+  car(level, x, z) {
+    if (!this.ready) return; const c = this.ctx;
+    if (!this._car) { const o = c.createOscillator(), n = c.createBufferSource(), f = c.createBiquadFilter(), nf = c.createBiquadFilter(), g = c.createGain(), p = c.createStereoPanner ? c.createStereoPanner() : null;
+      o.type = 'sawtooth'; o.frequency.value = 40; f.type = 'lowpass'; f.frequency.value = 240; n.buffer = this.noise; n.loop = true; nf.type = 'bandpass'; nf.frequency.value = 150; nf.Q.value = 0.7;
+      o.connect(f); f.connect(g); n.connect(nf); nf.connect(g); g.gain.value = 0; if (p) { g.connect(p); p.connect(this.master); } else g.connect(this.master); o.start(); n.start(); this._car = { o, n, f, g, p }; }
+    const C = this._car, t = c.currentTime, L = this.listener, d = Math.hypot(x - L.x, z - L.z), k = this.muted ? 0 : level * clamp(1 - d / 45) * 0.16;
+    C.g.gain.setTargetAtTime(k, t, 0.15); C.o.frequency.setTargetAtTime(36 + level * 34, t, 0.25); C.f.frequency.setTargetAtTime(180 + level * 320, t, 0.25); if (C.p) C.p.pan.setTargetAtTime(this._panFor(x, z), t, 0.1);
+  }
+  carOff() { const C = this._car; if (!C) return; this._car = null; const t = this.ctx.currentTime; C.g.gain.setTargetAtTime(0, t, 0.2); setTimeout(() => { try { C.o.stop(); C.n.stop(); C.g.disconnect(); } catch (e) { /* stopped */ } }, 900); }
   thud() { if (this.ready && !this.muted) this._tone(this.master, 120, 0.25, 0.1, 'sine', 600, 0.5); }
   door(open, gain = 1) { if (!this.ready || this.muted || gain < 0.03) return; this._noiseHit(this.master, open ? 700 : 500, 0.8, 0.05 * gain, 0.7, open ? 1800 : 300); this._tone(this.master, 80, 0.25, 0.05 * gain, 'sine', 300, 0.7, open ? 0 : 0.55); }
   blip(seed = 0, gain = 1) { if (!this.ready || this.muted || gain < 0.05) return; const base = 150 + (seed % 7) * 20; for (let i = 0; i < 2 + (seed % 2); i++) this._voice(['a', 'e', 'o'][(seed + i) % 3], base * (1 + 0.1 * Math.sin(seed + i * 2)), 0.09, 0.03 * gain, 0, 1.05, i * 0.11); }

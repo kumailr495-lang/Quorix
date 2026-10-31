@@ -12,7 +12,7 @@ export const ASSETS = {};
 // banquette_round, torchere_deco, back_bar, pendant_dish, which also stay in the repo)
 export const ASSET_LIST = ['counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
   'seat_club', 'arm_club', 'seat_rocker', 'arm_rocker', 'seat_classic', 'arm_classic', 'sconce_deco', 'downlight', 'speaker_array', 'urinal', 'basin_vessel', 'tap_brass', 'mirror_round', 'stanchion', 'rope_velvet', 'poster_case', 'planter_tall',
-  'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'door_padded',
+  'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'car_taxi', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'door_padded',
   // v7 (docs/V7-DESIGN.md): Kiln hero props and Blender signage letters
   'chandelier_cascade', 'sofa_curve', 'table_lounge', 'pendant_ring', 'back_bar_onyx', 'bar_counter', 'poster_totem', 'number_totem', 'planter_hedge', 'bollard_light',
   'letters_lumiere_lit', 'letters_lumiere', 'letters_cinemas', 'letters_imax', 'restroom_set',

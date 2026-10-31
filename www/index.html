@@ -85,14 +85,13 @@
   <div id="toast" role="status"><svg class="ic"><use id="toastIcon" href="#i-check"/></svg><span id="toastText"></span></div>
 </div>
 <button id="bShow" class="icon faint" hidden data-i18n-aria="hud.show"><svg class="ic"><use href="#i-eye"/></svg></button>
-<!-- conversation: cinematic subtitle bar, choices stacked on the right -->
-<div id="talk" hidden><div class="talk-in">
+<!-- conversation: letterboxed, the line centred under the speaker (a wave while the voice plays), choices on the right -->
+<div id="talk" hidden><button class="icon x" id="talkX" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button><div class="talk-in">
   <div class="talk-line">
-    <div class="who"><b id="talkName"></b><span id="talkRole" class="badge"></span></div>
+    <div class="who"><b id="talkName"></b><i class="wv"><b></b><b></b><b></b></i><span id="talkRole" class="badge"></span></div>
     <p id="talkText"></p>
   </div>
   <div id="talkOpts"></div>
-  <button class="icon x" id="talkX" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
 </div></div>
 <!-- booking (v8): right-hand sheet, four steps: film, screen + time, seat, pay -->
 <div id="book" class="scrim" hidden><section class="sheet side wide">

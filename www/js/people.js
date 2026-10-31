@@ -250,10 +250,11 @@ export class Person {
     this.root.updateMatrixWorld(true);
     // gesture layer: fades in and out
     const g = GEST[this.gestT] ? this.gestT : null; if (g && g !== this._g) { this._g = g; this._gt = 0; } this._gw += ((g ? 1 : 0) - this._gw) * Math.min(1, dt * 7); if (this._g) this._gt += dt; if (this._gw < 0.01 && !g) this._g = null;
-    // face: look at the player with the head, saccades with the eyes, the jaw while talking (a syllable rhythm), wide for screams
+    // face: look at the player with the head, saccades with the eyes, the jaw while talking (the voice clip's envelope when one plays,
+    // voice.js sets this.mouth; a syllable rhythm otherwise), wide for screams
     const f = this.face; f.lookYaw = s.lookYaw; f.lookPitch = s.lookPitch; f.lookAmt = s.lookAmt;
     this._sacc -= dt; if (this._sacc <= 0) { this._sacc = 0.4 + Math.random() * 2.2; f.eyeYaw = (Math.random() - 0.5) * 0.35 + clamp(s.lookYaw * s.lookAmt * 0.3, -0.3, 0.3); f.eyePitch = (Math.random() - 0.5) * 0.15; }
-    const tj = this.talking ? 0.05 + 0.07 * Math.max(0, Math.sin(s.t * 13.1) * Math.sin(s.t * 4.7 + 1.3)) : this.expr === 'scream' ? 0.3 : this.expr === 'laugh' ? 0.12 : 0; f.jaw += (tj - f.jaw) * Math.min(1, dt * 18);
+    const tj = this.mouth != null ? 0.012 + 0.16 * this.mouth : this.talking ? 0.05 + 0.07 * Math.max(0, Math.sin(s.t * 13.1) * Math.sin(s.t * 4.7 + 1.3)) : this.expr === 'scream' ? 0.3 : this.expr === 'laugh' ? 0.12 : 0; f.jaw += (tj - f.jaw) * Math.min(1, dt * 18);
     poseLayers(this.rig, this.group.matrixWorld, this._g, this._gt, this._gw, f); this._items();
   }
   dispose() { this.mixer.stopAllAction(); this.mat.dispose(); }

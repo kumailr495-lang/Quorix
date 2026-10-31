@@ -236,12 +236,14 @@ export function buildStreet(ctx) {
   for (const x of [-18.0, -11.2, -4.2, 4.2, 11.2, 18.0]) { placeAsset(room, 'bollard_light', x, 0, 30.2, 0); room.col(x - 0.1, 30.1, x + 0.1, 30.3); L.point(x, 0.8, 30.2, '#ffd49a', 0.35, 3, 'f'); }
   for (const x of [-3.0, 3.0]) { placeAsset(room, 'bin_brass', x, 0, 20.6, 0, { collide: false }); room.col(x - 0.22, 20.38, x + 0.22, 20.82); }
   // v8: the ATM under the canopy, against the glass (cash for tickets and snacks; a limited allowance per visit, wallet.js)
+  // v8: the host greets you on the carpet, just outside the doors (npc.js)
+  ctx.world.posts.greeter = { x: 1.25, z: 21.25, yaw: 0, room: 'street' };
   placeAsset(room, 'atm', -7.4, 0, 20.42, 0); room.tex(signTexture('ATM', '#7fd0ff'), -7.41, 1.64, 20.68, 0, 0.5, 0.09, { emit: 1.6 }); ctx.world.atm = { x: -7.4, z: 21.15 };
-  // ---------- the street: lamps, a car at the kerb (it brought you), parked cars, the buildings opposite and either side ----------
+  // ---------- the street: lamps, parked cars (v8: tools/blender/cars.py, lamps off; the taxi that brings you is intro.js), the buildings ----------
   for (const x of [-30, -20, 20, 30]) { placeAsset(room, 'lamp_post', x, 0, K - 0.35, 0); L.point(x, 5.6, K + 0.55, '#ffd7a0', 8, 15, 'f'); }
   for (const x of [-26, -10, 10, 26]) { placeAsset(room, 'lamp_post', x, 0, PLAZA.road1 + 0.6, PI); L.point(x, 5.6, PLAZA.road1 - 0.3, '#ffd7a0', 8, 15, 'f'); }
-  placeAsset(room, 'car_sedan', -5.6, -0.15, K + 1.35, PI / 2, { swap: { car_red: [MAT.lacquer, col('#0c0c0f')] } });
-  for (const [x, c] of [[-24, '#7a1c24'], [9, '#22324a'], [27, '#c9c4b8']]) placeAsset(room, 'car_sedan', x, -0.15, PLAZA.road1 - 1.4, -PI / 2, { swap: { car_red: [MAT.lacquer, col(c)] } });
+  placeAsset(room, 'car_sedan', -6.4, -0.15, K + 1.25, PI / 2, { swap: { car_red: [MAT.lacquer, col('#0c0c0f')] }, glowK: 0.12 });
+  for (const [x, c] of [[-24, '#7a1c24'], [9, '#22324a'], [27, '#c9c4b8']]) placeAsset(room, 'car_sedan', x, -0.15, PLAZA.road1 - 1.4, -PI / 2, { swap: { car_red: [MAT.lacquer, col(c)] }, glowK: 0.12, lod: 1 });
   const B = [[-40, -19, 4, 1], [-19, -3, 3, 2], [-3, 15, 4, 3], [15, 40, 3, 4]], shops = [['CAFÉ LUNA', '#1f2b3a', '#ffb547'], ['BOOKS & CO', '#2a1b1b', '#ff6b6b'], ['NOODLE BAR', '#1b2a22', '#7bd389'], ['PHARMACY', '#14262f', '#4cc3ff']];
   let rs = 77; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647, zf = PLAZA.far + 0.4;
   const row = (x0, x1, storeys, i, z, yaw) => { const n = Math.max(1, Math.round((x1 - x0) / 6)), bw = (x1 - x0) / n, sx = bw / 6, dz = yaw === PI ? -1 : 1;

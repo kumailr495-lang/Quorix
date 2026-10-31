@@ -8,12 +8,15 @@ import { People, randomRecipe as oldRecipe, STAFF_LOOK, crowdGeometry, propGeo, 
 // v8: the CC0 people (people.js); the v5 procedural characters stay as the fallback if their models fail to load
 import { Person, DATA as PEOPLE, randomRecipe as newRecipe, staffRecipe, CrowdRenderer, SIT_H } from './people.js';
 import { makeHeld, setHeldMaterial } from './held.js';
-const STAFF_ROLES = new Set(['reception', 'usher', 'vendor', 'bar', 'server']);
+const STAFF_ROLES = new Set(['reception', 'usher', 'vendor', 'bar', 'server', 'greeter']);
 import { roomAt, floorY, HALLS, hallById, hallDoor, STREET_SPAWN } from './layout.js';
 import { aisleU } from './hallmath.js';
-import { pickLine, lines, t } from './i18n.js';
+import { pick, lines } from './i18n.js';
 const TAU = Math.PI * 2, rnd = (a, b) => a + Math.random() * (b - a), adiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
-const NAMES = ['Ava', 'Noah', 'Mia', 'Leo', 'Zara', 'Omar', 'Sofia', 'Arjun', 'Lena', 'Kai', 'Amara', 'Ravi', 'Nina', 'Hugo', 'Iris', 'Sami', 'Aisha', 'Diego', 'Meera', 'Tomás', 'Yara', 'Ali', 'Elena', 'Kenji', 'Fatima', 'Lucas', 'Ines', 'Bilal', 'Chloe', 'Dev'];
+// v8: names from everywhere, matched to the person (phone feedback: most guests had Hindi or Urdu names)
+const NAMES_M = ['Liam', 'Noah', 'Oliver', 'Lucas', 'Mateo', 'Hugo', 'Leo', 'Felix', 'Marco', 'Daniel', 'Ethan', 'Jonas', 'Kenji', 'Diego', 'Samuel', 'Theo', 'Adrian', 'Julien', 'Oscar', 'Rafael', 'Kwame', 'Ivan', 'Tomás', 'Max', 'Arjun'];
+const NAMES_F = ['Ava', 'Emma', 'Mia', 'Chloe', 'Sofia', 'Lena', 'Clara', 'Iris', 'Nina', 'Zoe', 'Julia', 'Elena', 'Amelie', 'Grace', 'Hannah', 'Lucia', 'Maya', 'Yuki', 'Ines', 'Freya', 'Amara', 'Isabel', 'Stella', 'Aria', 'Zara'];
+const nameFor = (rec, r = Math.random()) => { const L = rec && (rec.kind === 'f' || rec.female) ? NAMES_F : NAMES_M; return L[Math.floor(r * L.length)]; };
 const LOBBY_POIS = [   // things guests walk up to and look at: [x, z, lookYaw (0 = +z), pitch (negative = up)]. The gallery adds its art prints (world.pois)
   [0, 3.4, Math.PI, -0.45], [-2.6, 13.6, Math.PI * 0.85, -0.75], [2.8, 6.8, -Math.PI * 0.2, -0.7], [9.4, 6.2, Math.PI / 2, -0.35], [9.4, 13.9, Math.PI / 2, -0.35],
   [-9.6, 18.4, -Math.PI / 2, -0.3], [5.5, 13.6, Math.PI / 2, -0.1], [-5.5, 13.6, -Math.PI / 2, -0.1], [5.5, 18.6, 0, 0], [-5.5, 18.6, 0, 0], [12.2, 16.6, Math.PI / 2, -0.1]];
@@ -45,7 +48,7 @@ class Agent {
   // sit: back into a spot (x, z = hip point, y = floor, face = facing yaw, h = cushion height, recline)
   sitDown(sp, then) { this.sitFrom = { x: this.x, z: this.z, yaw: this.yaw }; this.sitTo = sp; this.sitU = 0; this.state = 'sitting'; this.path = null; this.afterSit = then; this.ch.s.drop = this.ch.seatDrop(sp.h); this.ch.s.recline = sp.recline ?? 0.1; }
   standUp(to, then) { this.state = 'standing'; this.sitU = 1; this.standTo = to; this.standFrom = { x: this.x, z: this.z }; this.afterStand = then; }
-  say(text, dur = 3.2) { if (!text) return; this.talkUntil = this.crowd.now + Math.min(2600, dur * 700); this.crowd.hooks.bubble && this.crowd.hooks.bubble(this, text, dur); }
+  say(line, dur = 3.2) { if (!line) return; this.talkUntil = this.crowd.now + Math.min(2600, dur * 700); this.crowd.hooks.bubble && this.crowd.hooks.bubble(this, line, dur); }   // line: an i18n pick (voiced) or text
   gesture(g, secs, expr) { this.ch.gestT = g; this.gUntil = this.crowd.now + secs * 1000; if (expr) this.ch.setExpr(expr); }
   react(kind, secs) { this.gesture(kind, secs, EXPR_OF[kind] || 'neutral'); this.reactUntil = this.crowd.now + secs * 1000; }
   // physical update: locomotion, sitting transitions, pose, face, light
@@ -90,7 +93,7 @@ export class Crowd {
   // ---------------------------------------------------------- staff + opening guests
   init() {
     const P = this.world.posts, mk = (id, look, name, role, post) => { const p = P[post]; const a = this.spawn({ id, rec: this.staffRec(look, id.length * 131), name, role, x: p.x, z: p.z, yaw: p.yaw, home: p, state: 'post' }); a.talkable = true; a.post = post; this.staff[id] = a; return a; };
-    mk('eloise', 'receptionist', 'Éloïse', 'reception', 'receptionist'); mk('marcel', 'usher', 'Marcel', 'usher', 'usher'); mk('gaston', 'vendor2', 'Gaston', 'vendor', 'vendor1'); mk('priya', 'vendor', 'Priya', 'vendor', 'vendor2'); mk('odette', 'bartender', 'Odette', 'bar', 'bartender');
+    mk('eloise', 'receptionist', 'Éloïse', 'reception', 'receptionist'); mk('marcel', 'usher', 'Marcel', 'usher', 'usher'); mk('gaston', 'vendor2', 'Gaston', 'vendor', 'vendor1'); mk('mia', 'vendor', 'Mia', 'vendor', 'vendor2'); mk('odette', 'bartender', 'Odette', 'bar', 'bartender'); if (P.greeter) mk('clara', 'greeter', 'Clara', 'greeter', 'greeter');
     this.setDensity(this.engine.settings.npcs);
     for (let i = 0; i < this.target; i++) this.spawnGuest(true);
   }
@@ -101,20 +104,22 @@ export class Crowd {
     let extra = this.agents.filter((a) => a.role === 'guest').length - this.target; for (const a of this.agents) if (extra > 0 && a.role === 'guest' && a.plan && a.plan[0] !== 'leave') { a.plan = ['leave']; a.t = 0; extra--; }
   }
   // bodies the player bumps into (v8: you can no longer walk through people)
-  bodiesNear(x, z, r) { const out = this._bodies || (this._bodies = []); out.length = 0; for (const a of this.agents) { if (!a.alive || !a.group.visible) continue; const d = Math.hypot(a.x - x, a.z - z); if (d < r) out.push({ x: a.x, z: a.z, r: a.state === 'seated' ? 0.22 : 0.26 }); } return out; }
+  bodiesNear(x, z, r) { const out = this._bodies || (this._bodies = []); out.length = 0; for (const a of this.agents) { if (!a.alive || !a.group.visible) continue; const d = Math.hypot(a.x - x, a.z - z); if (d < r) out.push({ x: a.x, z: a.z, r: a.state === 'seated' ? 0.22 : 0.26, a }); } return out; }
+  // you walked into someone: they say so (once in a while, not every frame you touch)
+  bumped(a) { if (!a.alive || a.mission || a.talkingToPlayer || a.state === 'sitting' || a.state === 'standing' || this.now - (a._bump || -1e9) < 9000 || this.now - (this._bumpAny || -1e9) < 2500) return; a._bump = this._bumpAny = this.now; a.say(pick('guest.bump'), 2); a.gesture(a.role === 'guest' || a.role === 'viewer' ? 'gasp' : 'talk', 0.9, 'surprise'); }
   // the guide reads your ticket: looks down at it, then names screen, row and seat
-  readTicket(a, tk) { a.path = null; a.gesture('read', 1.6, 'focus'); setTimeout(() => a.say(t('ush.read', { screen: tk.hallName, row: tk.row, seat: tk.col }), 2.8), 700); }
+  readTicket(a, tk) { a.path = null; a.gesture('read', 1.6, 'focus'); setTimeout(() => a.say(pick('ush.read'), 2.8), 700); }
   // the seat bell: a server comes from the hall's entrance to the end of your row, talks, hands the tablet, leaves when you hand it back
   callServer(player, onArrive) {
     if (this.server && this.server.alive) return false; const hk = roomAt(player.x, player.z), hall = this.world.halls.find((h) => h.key === hk); if (!hall || !player.seated) return false;
     const seat = hall.seats.find((s) => s.npc === 'player') || hall.seats.reduce((b, s) => (Math.hypot(s.x - player.x, s.z - player.z) < Math.hypot(b.x - player.x, b.z - player.z) ? s : b)), door = this._hallDoor(hall, 'entrance'), ap = this.aislePoint(hall, seat), lane = this.laneStand({ seat, hall });
     const a = this.spawn({ id: 'server', rec: this.staffRec('server', 77), name: 'Rémy', role: 'server', x: door.x, z: door.z, yaw: 0, state: 'post', speed: 1.7 }); a.talkable = false; a.home = { x: door.x, z: door.z, yaw: 0 }; this.server = a;
-    a.mission = { kind: 'serve', hall, seat, phase: 'go' }; a.goTo(ap.x, ap.z, () => a.goTo(lane.x, lane.z, () => { a.mission.phase = 'at'; a.turnTo(player.x, player.z, 10, 1); a.gesture('wave', 1.2, 'smile'); a.say(t('srv.hello'), 2.6); onArrive && onArrive(a); }));
+    a.mission = { kind: 'serve', hall, seat, phase: 'go' }; a.goTo(ap.x, ap.z, () => a.goTo(lane.x, lane.z, () => { a.mission.phase = 'at'; a.turnTo(player.x, player.z, 10, 1); a.gesture('wave', 1.2, 'smile'); a.say(pick('srv.hello'), 2.6); onArrive && onArrive(a); }));
     return true;
   }
-  serverLeave() { const a = this.server; if (!a || !a.alive) return; a.say(t('srv.bye'), 2.2); a.mission = { kind: 'serve', phase: 'leave' }; setTimeout(() => { if (!a.alive) return; if (!a.goTo(a.home.x, a.home.z, () => { a.dispose(); this.server = null; })) { a.dispose(); this.server = null; } }, 900); }
+  serverLeave(key = 'srv.bye') { const a = this.server; if (!a || !a.alive) return; a.say(pick(key), 2.4); a.mission = { kind: 'serve', phase: 'leave' }; setTimeout(() => { if (!a.alive) return; if (!a.goTo(a.home.x, a.home.z, () => { a.dispose(); this.server = null; })) { a.dispose(); this.server = null; } }, 900); }
   spawnGuest(placed) {
-    const seed = Math.random() * 1e6, rec = this.recipe(seed), name = NAMES[Math.floor(Math.random() * NAMES.length)];
+    const seed = Math.random() * 1e6, rec = this.recipe(seed), name = nameFor(rec);
     let x, z; if (placed) { const p = this.pois[Math.floor(Math.random() * this.pois.length)]; x = p[0] + rnd(-1.5, 1.5); z = p[1] + rnd(0.5, 2); const n = this.world.nav.nearest(x, z) || [0, 15]; x = n[0]; z = n[1]; } else { const s = STREET_SPAWN[Math.floor(Math.random() * STREET_SPAWN.length)]; x = s[0] + rnd(-1, 1); z = s[1] - 1.5; }
     const a = this.spawn({ rec, name, role: 'guest', x, z, yaw: Math.PI, state: 'idle' }); a.talkable = true; a.plan = this.makePlan(); if (Math.random() < 0.3) this.giveItem(a, Math.random() < 0.7 ? 'popcorn' : 'drink');
     if (!placed) a.goTo(0, 17.5, (n) => { n.t = 0.5; });
@@ -131,19 +136,19 @@ export class Crowd {
   endTalk(a) { a.talkingToPlayer = false; a.forceLook = null; a.t = rnd(1.5, 3); }
   // ---------------------------------------------------------- serving: vendor / bartender make it, hand it over
   serve(staff, kind, onGiven) {
-    if (staff.serving) return false; staff.serving = { kind, onGiven, t: 0, phase: 'turn' }; staff.say(t('ven.serve', { item: t('item.' + (kind === 'cola' || kind === 'coffee' || kind === 'mocktail' ? kind : kind === 'combo' ? 'combo' : kind)) }), 2.2); return true;
+    if (staff.serving) return false; staff.serving = { kind, onGiven, t: 0, phase: 'turn' }; staff.say(pick(staff.role === 'bar' ? 'bar.serve' : 'ven.serve'), 2.2); return true;
   }
   _serveTick(a, dt, player) {
     const s = a.serving, home = a.home; s.t += dt; const back = home.yaw + Math.PI, isDrink = /cola|coffee|mocktail/.test(s.kind);
     if (s.phase === 'turn') { a.turnYaw(back, 5, dt); if (s.t > 0.6) { s.phase = 'make'; s.t = 0; a.gesture(isDrink ? 'pour' : 'scoop', 1.8, 'focus'); this.giveItem(a, isDrink ? 'drink' : 'popcorn'); a.holdGesture = null; } }
     else if (s.phase === 'make') { a.turnYaw(back, 5, dt); if (s.t > 1.8) { s.phase = 'back'; s.t = 0; a.ch.gestT = 'hold'; } }
     else if (s.phase === 'back') { a.turnTo(s.to ? s.to.x : player.x, s.to ? s.to.z : player.z, 5, dt); if (s.t > 0.7) { s.phase = 'give'; s.t = 0; a.gesture('give', 1.0, 'smile'); } }
-    else if (s.phase === 'give') { a.turnTo(s.to ? s.to.x : player.x, s.to ? s.to.z : player.z, 5, dt); if (s.t > 0.75) { a.ch.detach('item'); a.item = null; a.ch.gestT = null; a.holdGesture = null; const f = s.onGiven; a.serving = null; a.say(pickLine('ven.give'), 3); f && f(s.kind); } }
+    else if (s.phase === 'give') { a.turnTo(s.to ? s.to.x : player.x, s.to ? s.to.z : player.z, 5, dt); if (s.t > 0.75) { a.ch.detach('item'); a.item = null; a.ch.gestT = null; a.holdGesture = null; const f = s.onGiven; a.serving = null; a.say(pick(a.role === 'bar' ? 'bar.give' : 'ven.give'), 3); f && f(s.kind); } }
   }
   // ---------------------------------------------------------- the usher walks you to your row, then walks back
   guide(usher, hall, seat) {
     const H = hall.cfg, aisle = this.aislePoint(hall, seat); if (!usher.goTo(aisle.x, aisle.z)) return false;
-    usher.mission = { kind: 'guide', hall, seat, aisle, said: 0 }; usher.state = 'guide'; usher.say(pickLine('ush.follow'), 2.6); return true;
+    usher.mission = { kind: 'guide', hall, seat, aisle, said: 0 }; usher.state = 'guide'; usher.say(pick('ush.follow'), 2.6); return true;
   }
   aislePoint(hall, seat) { const H = hall.cfg, au = aisleU(H, seat), left = au < seat.u, ax = H.cx + au, r = seat.row, laneD = (H.pf[r] === -Infinity ? H.dHip[r] - H.seat.fr - 0.5 : (H.pf[r] + H.dHip[r] - H.seat.fr) / 2); return { x: ax, z: H.zs + laneD - H.rowSag(ax - H.cx), laneD, left }; }
   // ---------------------------------------------------------- audiences
@@ -155,7 +160,7 @@ export class Crowd {
     const w = pool.map((s) => { const c = 1 - Math.abs(s.u) / (H.B / 2), rr = 1 - Math.abs(s.row - H.rows * 0.55) / H.rows; return Math.random() * 0.6 + c * 0.9 + rr * 0.7; });
     const idx = pool.map((_, i) => i).sort((a, b) => w[b] - w[a]).slice(0, n);
     for (const i of idx) { const s = pool[i], seed = Math.random() * 1e6, rec = this.recipe(seed), R = rng(seed + 3);
-      const v = { id: 'v' + (this.nid++), hall, seat: s, rec, arch: Math.floor(R() * 4), name: NAMES[Math.floor(R() * NAMES.length)], state: Math.random() < seatedShare ? 'seated' : 'planned', arriveAt: this.now + Math.random() * spreadMs, agent: null,
+      const v = { id: 'v' + (this.nid++), hall, seat: s, rec, arch: Math.floor(R() * 4), name: nameFor(rec, R()), state: Math.random() < seatedShare ? 'seated' : 'planned', arriveAt: this.now + Math.random() * spreadMs, agent: null,
         act: 0, amt: 0, until: 0, phase: R() * 10, talky: R() < 0.3, pers: { excite: R(), humor: R(), delay: 0.12 + R() * 0.55, popcorn: R() < 0.45 }, inst: -1, leaveAt: 0 };
       s.taken = true; s.npc = v; list.push(v); }
   }
@@ -175,7 +180,7 @@ export class Crowd {
       v.pending = { kind: k2, at: now + p.delay * 1000 * (ev.type === 'end' ? 2 : 1) + Math.random() * 250, dur }; n++; sx += v.seat.x; sz += v.seat.z; }
     if (n && this.hooks.crowdSound) this.hooks.crowdSound(hallId, ev.type, n, ev.k, sx / n, sz / n);
     // a seated viewer near you sometimes says something (only some events, rate-limited)
-    if (this.hooks.nearViewer && (ev.type === 'scare' || ev.type === 'laugh' || ev.type === 'tension' || ev.type === 'aww' || ev.type === 'end') && now - (this._quip || 0) > 25000) { const v = this.hooks.nearViewer(vs); if (v && v.agent) { this._quip = now; setTimeout(() => v.agent && v.agent.say(pickLine({ scare: 'aud.scare', laugh: 'aud.laugh', tension: 'aud.tension', aww: 'aud.aww', end: 'aud.end' }[ev.type]), 2.6), 900); } }
+    if (this.hooks.nearViewer && (ev.type === 'scare' || ev.type === 'laugh' || ev.type === 'tension' || ev.type === 'aww' || ev.type === 'climax' || ev.type === 'end') && now - (this._quip || 0) > 25000) { const v = this.hooks.nearViewer(vs); if (v && v.agent) { this._quip = now; setTimeout(() => v.agent && v.agent.say(pick({ scare: 'aud.scare', laugh: 'aud.laugh', tension: 'aud.tension', aww: 'aud.aww', climax: 'aud.climax', end: 'aud.end' }[ev.type]), 2.6), 900); } }
     if ((ev.type === 'scare' || ev.type === 'laugh') && Math.random() < 0.35) { const v = vs[Math.floor(Math.random() * vs.length)]; v.shushAt = now + 2500; }
     if (ev.type === 'end') for (const v of vs) v.leaveAt = now + 7000 + Math.random() * 22000;
   }
@@ -206,13 +211,14 @@ export class Crowd {
     // at the post: face the customer side, turn to you when you come close, greet once per approach
     if (Math.hypot(a.x - home.x, a.z - home.z) > 0.4 && !a.path) { a.state = 'return'; return; }
     if (dp < 3.8) a.turnTo(player.x, player.z, 3, dt); else a.turnYaw(home.yaw, 2.5, dt);
-    if (dp < 3.4 && !a.greeted) { a.greeted = true; a.say(pickLine('greet'), 2.4); if (a.role === 'usher' || a.role === 'reception') a.gesture('wave', 1.6, 'smile'); } if (dp > 6) a.greeted = false;
+    if (dp < (a.role === 'greeter' ? 5 : 3.4) && !a.greeted) { a.greeted = true; a.say(pick(a.role === 'greeter' && !a.welcomed ? 'gre.hello' : 'greet'), 3.4); a.welcomed = true; if (a.role === 'usher' || a.role === 'reception' || a.role === 'greeter') a.gesture('wave', 1.6, 'smile'); } if (dp > 7) a.greeted = false;
     a.t -= dt; if (a.t <= 0) { a.t = rnd(4, 9); const r = Math.random();
       if (a.role === 'reception') a.gesture(r < 0.6 ? 'type' : 'talk', rnd(2.5, 4), r < 0.6 ? 'focus' : 'smile');
-      else if (a.role === 'usher') { a.holdGesture = r < 0.5 ? 'hips' : 'arms'; a.ch.gestT = a.holdGesture; if (r > 0.75) { a.gesture('point', 2, 'smile'); if (dp < 9) a.say(pickLine('bark.usher'), 2.6); } }
-      else if (a.role === 'vendor') { if (r < 0.35) a.gesture('scoop', 2.2, 'focus'); else if (r > 0.85 && dp < 9) a.say(pickLine('bark.vendor'), 2.8); }
-      else if (a.role === 'bar') { if (r < 0.4) a.gesture('pour', 2.0, 'focus'); else if (r > 0.85 && dp < 8) a.say(pickLine('bark.bar'), 2.6); }
-      if (a.role === 'reception' && r > 0.9 && dp < 9) a.say(pickLine('bark.reception'), 3); }
+      else if (a.role === 'usher') { a.holdGesture = r < 0.5 ? 'hips' : 'arms'; a.ch.gestT = a.holdGesture; if (r > 0.75) { a.gesture('point', 2, 'smile'); if (dp < 9) a.say(pick('bark.usher'), 2.6); } }
+      else if (a.role === 'vendor') { if (r < 0.35) a.gesture('scoop', 2.2, 'focus'); else if (r > 0.85 && dp < 9) a.say(pick('bark.vendor'), 2.8); }
+      else if (a.role === 'bar') { if (r < 0.4) a.gesture('pour', 2.0, 'focus'); else if (r > 0.85 && dp < 8) a.say(pick('bark.bar'), 2.6); }
+      else if (a.role === 'greeter') { a.holdGesture = r < 0.5 ? 'hips' : null; a.ch.gestT = a.holdGesture; if (r > 0.8 && dp < 10) { a.gesture('wave', 1.6, 'smile'); a.say(pick('gre.bark'), 2.6); } }
+      if (a.role === 'reception' && r > 0.9 && dp < 9) a.say(pick('bark.reception'), 3); }
     // serve a guest waiting at the counter
     if ((a.role === 'vendor' || a.role === 'bar') && !a.serving) { const q = this.queue.find((g) => g.alive && g.waitFor === (a.role === 'bar' ? 'bar' : 'snacks') && !g.servedBy && Math.hypot(g.x - a.x, g.z - a.z) < 3.2 && !g.path);
       if (q) { q.servedBy = a; a.serving = { kind: a.role === 'bar' ? 'drink' : 'salted', t: 0, phase: 'turn', to: q, onGiven: () => { this.giveItem(q, a.role === 'bar' ? 'drink' : 'popcorn'); q.waitFor = null; q.servedBy = null; this.queue.splice(this.queue.indexOf(q), 1); q.t = 0.5; q.ch.setExpr('happy'); } }; } }
@@ -224,11 +230,13 @@ export class Crowd {
     a.speedMax = dp < 2.2 ? 2.0 : dp < 3.6 ? 1.6 : 1.15;   // v8: "the guide is so slow, I can outrun him": he keeps your pace
     if (m.phase === 'point') { m.t -= dt; a.turnTo(m.seat.x, m.seat.z, 4, dt); if (m.t <= 0) { a.mission = null; a.ch.gestT = null; a.state = 'return'; a.goTo(a.home.x, a.home.z, (n) => { n.state = 'post'; }); } return; }
     if (dp > 5.5 && a.path && !a.pausedPath) { a.pausedPath = a.path; a.pausedPi = a.pi; a.path = null; }
-    if (a.pausedPath) { if (dp < 3.2) { a.path = a.pausedPath; a.pi = a.pausedPi; a.pausedPath = null; a.ch.gestT = null; } else { a.turnTo(player.x, player.z, 4, dt); a.ch.gestT = 'wave'; if (now - m.said > 7000) { m.said = now; a.say(pickLine('ush.wait'), 2.4); } return; } }
-    if (!a.path) { m.phase = 'point'; m.t = 3.4; a.gesture('point', 3.2, 'happy'); a.say(t('ush.arrive', { row: String.fromCharCode(65 + m.seat.row), seat: m.seat.col }), 4); this.hooks.guideDone && this.hooks.guideDone(a); }
+    if (a.pausedPath) { if (dp < 3.2) { a.path = a.pausedPath; a.pi = a.pausedPi; a.pausedPath = null; a.ch.gestT = null; } else { a.turnTo(player.x, player.z, 4, dt); a.ch.gestT = 'wave'; if (now - m.said > 7000) { m.said = now; a.say(pick('ush.wait'), 2.4); } return; } }
+    if (!a.path) { m.phase = 'point'; m.t = 3.4; a.gesture('point', 3.2, 'happy'); a.say(pick('ush.arrive'), 4); this.hooks.guideDone && this.hooks.guideDone(a); }
   }
   guestBrain(a, dt, now, player, visible) {
     if (a.talkingToPlayer || a.state === 'sitting' || a.state === 'standing') { if (a.talkingToPlayer) a.turnTo(player.x, player.z, 4, dt); return; }
+    // you stand right in front of someone for a while: they notice
+    if (visible && !a.path && a.state === 'idle' && Math.hypot(player.x - a.x, player.z - a.z) < 1.3) { a._stareT = (a._stareT || 0) + dt; if (a._stareT > 2.6 && now - (a._stare || -1e9) > 30000) { a._stare = now; a._stareT = 0; a.turnTo(player.x, player.z, 10, 1); a.say(pick('guest.stare'), 2.4); } } else a._stareT = 0;
     if (a.state === 'seated') { a.t -= dt; if (a.item && Math.random() < dt * 0.15) a.gesture(a.item === 'popcorn' ? 'eat' : 'drink', 2.5); if (!a.item && Math.random() < dt * 0.05) a.gesture('phone', 5, 'focus'); if (a.t <= 0) { const sp = a.spot; a.standUp(sp ? sp.stand : null, (n) => { if (sp) sp.taken = null; n.spot = null; n.t = 0.5; n.state = 'idle'; }); } return; }
     if (a.state === 'chat') { this._chatTick(a, dt, now, player); return; }
     if (a.waitFor) { a.t -= dt; const spot = this.world.spots[a.waitFor]; if (spot) a.turnTo(spot.x + (a.waitFor === 'bar' ? -1 : 1), spot.z, 3, dt); if (a.t < -40) { a.waitFor = null; a.servedBy = null; const i = this.queue.indexOf(a); if (i >= 0) this.queue.splice(i, 1); } return; }
@@ -239,7 +247,7 @@ export class Crowd {
     if (next === 'wander') { const p = this.pois[Math.floor(Math.random() * this.pois.length)]; if (!a.goTo(p[0] + rnd(-0.6, 0.6), p[1] + rnd(-0.3, 0.3), (n) => { n.lookYaw = p[2]; n.lookT = rnd(3, 7); n.yawWant = p[2]; n.lookPitch = p[3]; n.t = 0.3; })) a.t = 1; else a.lookPitch = 0; return; }
     if (next === 'sit') { const sp = this.freeSpot(a); if (!sp) { a.t = 1; return; } sp.taken = a.id; a.spot = sp; a.goTo(sp.stand.x, sp.stand.z, (n) => { n.sitDown({ x: sp.x, z: sp.z, y: 0, face: sp.face, h: sp.y, recline: sp.kind === 'stool' ? 0 : 0.12 }, (m) => { m.t = rnd(25, 70); }); }); return; }
     if (next === 'chat') { const b = this.agents.find((o) => o !== a && o.role === 'guest' && o.alive && !o.partner && !o.path && o.state === 'idle' && !o.talkingToPlayer && Math.hypot(o.x - a.x, o.z - a.z) < 12); if (!b) { a.t = 1; return; } a.partner = b; b.partner = a; const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, ang = Math.atan2(b.x - a.x, b.z - a.z), n0 = this.world.nav.nearest(mx - Math.sin(ang) * 0.55, mz - Math.cos(ang) * 0.55), n1 = this.world.nav.nearest(mx + Math.sin(ang) * 0.55, mz + Math.cos(ang) * 0.55);
-      if (!n0 || !n1) { a.partner = b.partner = null; a.t = 1; return; } const both = () => { if (a.path || b.path || a.partner !== b) return; a.state = b.state = 'chat'; const script = lines('chat'); a.chat = b.chat = { lines: script[Math.floor(Math.random() * script.length)], i: 0, next: 0.6, lead: a }; };
+      if (!n0 || !n1) { a.partner = b.partner = null; a.t = 1; return; } const both = () => { if (a.path || b.path || a.partner !== b) return; a.state = b.state = 'chat'; const script = lines('chat'), ci = Math.floor(Math.random() * script.length); a.chat = b.chat = { lines: script[ci], ci, i: 0, next: 0.6, lead: a }; };
       a.goTo(n0[0], n0[1], both); b.goTo(n1[0], n1[1], both); return; }
     if (next === 'snack') { const where = Math.random() < 0.75 ? 'snacks' : 'bar', s = this.world.spots[where], k = this.queue.filter((g) => g.waitFor === where).length; const qx = where === 'snacks' ? s.x - 0.1 - k * 0.0 : s.x + 0.1, qz = where === 'snacks' ? s.z + (k ? (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 1.6 : 0) : s.z + (k ? (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 1.05 : 0);
       if (a.goTo(qx, qz, (n) => { n.waitFor = where; n.t = 0; this.queue.push(n); })) return; a.t = 1; return; }
@@ -249,7 +257,7 @@ export class Crowd {
     const b = a.partner; if (!b || !b.alive || b.state !== 'chat') { a.state = 'idle'; a.partner = null; a.chat = null; a.t = rnd(1, 3); return; }
     a.turnTo(b.x, b.z, 4, dt); const ch = a.chat; if (ch.lead !== a) return; ch.next -= dt;
     if (ch.next <= 0) { if (ch.i >= ch.lines.length) { a.state = b.state = 'idle'; a.partner = b.partner = null; a.chat = b.chat = null; a.t = rnd(2, 5); b.t = rnd(3, 6); if (Math.random() < 0.5) { a.gesture('laugh', 1.6, 'laugh'); b.gesture('laugh', 1.6, 'laugh'); } return; }
-      const sp = ch.i % 2 === 0 ? a : b, line = ch.lines[ch.i++]; ch.next = 2.2 + line.length * 0.045; if (Math.hypot(player.x - a.x, player.z - a.z) < 9) sp.say(line, ch.next - 0.3); sp.gesture('talk', ch.next - 0.4, ch.i === ch.lines.length ? 'smirk' : 'talk'); }
+      const sp = ch.i % 2 === 0 ? a : b, j = ch.i++, line = ch.lines[j]; ch.next = 2.2 + line.length * 0.045; if (Math.hypot(player.x - a.x, player.z - a.z) < 9) sp.say({ text: line, key: 'chat', i: ch.ci, j }, ch.next - 0.3); sp.gesture('talk', ch.next - 0.4, ch.i === ch.lines.length ? 'smirk' : 'talk'); }
   }
   freeSpot(a) { const f = this.world.sitSpots.filter((s) => !s.taken); if (!f.length) return null; f.sort((p, q) => Math.hypot(p.x - a.x, p.z - a.z) + Math.random() * 8 - (Math.hypot(q.x - a.x, q.z - a.z) + Math.random() * 8)); return f[0]; }
   // ---------------------------------------------------------- audience per hall
@@ -264,10 +272,12 @@ export class Crowd {
       if (v.pending && now >= v.pending.at) { const p = v.pending; v.pending = null; v.act = p.kind; v.until = now + p.dur * 1000; if (v.agent && v.state === 'seated') v.agent.react(p.kind, p.dur); }
       if (v.act && now > v.until) v.act = 0; v.amt += ((v.act ? 1 : 0) - v.amt) * Math.min(1, dt * 6);
       if (!v.act && v.state === 'seated' && v.pers.popcorn && Math.random() < dt * 0.04) { v.act = 'eat'; v.until = now + 2500; if (v.agent) v.agent.react('eat', 2.5); }
-      if (v.shushAt && now > v.shushAt) { v.shushAt = 0; if (v.agent) { v.agent.gesture('shush', 1.8, 'shush'); v.agent.say(pickLine('aud.shush'), 1.8); } }
+      if (v.shushAt && now > v.shushAt) { v.shushAt = 0; if (v.agent) { v.agent.gesture('shush', 1.8, 'shush'); v.agent.say(pick('aud.shush'), 1.8); } }
       if (v.leaveAt && now > v.leaveAt && v.state === 'seated') { v.leaveAt = 0; if (!inHall) { this.dropViewer(v); continue; } if (!v.agent && this.agents.filter((x) => x.role === 'viewer').length < budget + 6) this._toAgent(v, player); if (v.agent) { v.state = 'leaving'; this._leave(v); } else v.leaveAt = now + 1500; }
     }
     for (let i = list.length - 1; i >= 0; i--) if (list[i].state === 'gone') list.splice(i, 1);
+    // before the lights go down, people near you chat about the film
+    if (inHall && now > (h._preT || 0)) { h._preT = now + 12000 + Math.random() * 14000; const v = this.hooks.nearViewer && this.hooks.nearViewer(list.filter((q) => q.talky && q.agent && q.state === 'seated')); if (v) v.agent.say(pick('aud.pre'), 2.4); }
     // who is drawn as a full character: the nearest seated viewers while you are in the hall
     if (near && (!h._repT || now > h._repT)) { h._repT = now + 400; const seated = list.filter((v) => v.state === 'seated'); const far = (this.preset.peopleFar || 12) ** 2;
       seated.sort((p, q) => ((p.seat.x - player.x) ** 2 + (p.seat.z - player.z) ** 2) - ((q.seat.x - player.x) ** 2 + (q.seat.z - player.z) ** 2));
@@ -294,7 +304,7 @@ export class Crowd {
   }
   viewerBrain(a, dt, now, player, visible) {
     const v = a.viewer; if (!v) return;
-    if (a.sideTo && player.seated && Math.hypot(a.x - player.x, a.z - player.z) < 0.9 && now - (a._ex || 0) > 6000) { a._ex = now; a.say(pickLine('aud.excuse'), 1.8); }
+    if (a.sideTo && player.seated && Math.hypot(a.x - player.x, a.z - player.z) < 0.9 && now - (a._ex || 0) > 6000) { a._ex = now; a.say(pick('aud.excuse'), 1.8); }
     if (v.state === 'leaving' && !visible && roomAt(a.x, a.z) !== v.hall.key) { a.invisibleT += dt; if (a.invisibleT > 1.5) { this._release(v); v.state = 'gone'; } }
     if (a.state === 'seated') { if (!a.gUntil && a.holdGesture && a.ch.gestT !== a.holdGesture) a.ch.gestT = a.holdGesture; }
   }

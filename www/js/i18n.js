@@ -20,6 +20,15 @@ export function t(key, vars) {
   if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m)); return s;
 }
 export function lines(key) { const s = TABLE[cur][key] ?? EN[key]; return Array.isArray(s) ? s : s ? [s] : []; }
-export const pickLine = (key, vars) => { const a = lines(key); if (!a.length) return ''; let s = a[Math.floor(Math.random() * a.length)]; if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m)); return s; };
+// v8: a spoken line with where it came from ({ text, key, i }), so its recorded voice can play (voice.js). Picks skip the last few lines
+// said from the same key, so people don't repeat themselves.
+const recent = {};
+export function pick(key, vars) {
+  const a = lines(key); if (!a.length) return null; const r = recent[key] || (recent[key] = []); let i = Math.floor(Math.random() * a.length);
+  for (let n = 0; n < 8 && a.length > 1 && r.includes(i); n++) i = Math.floor(Math.random() * a.length);
+  r.push(i); if (r.length > Math.min(3, a.length - 1)) r.shift();
+  let s = a[i]; if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m)); return { text: s, key, i };
+}
+export const pickLine = (key, vars) => { const p = pick(key, vars); return p ? p.text : ''; };
 // numbers and clock text stay Western digits everywhere (they read fine in all four languages)
 export const fmtTime = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
