@@ -6,6 +6,7 @@ import { MAT, M, col, stripGeo, spline, rrectPts } from './geom.js';
 import { GAL, TUN, GATE, WC, HALL_DOORS, hallById, DOOR_H } from './layout.js';
 import { screenSignTexture, restroomSignTexture, exitSignTexture, printTexture, PRINTS, signTexture, makeCanvas, SANS } from './textures.js';
 import { placeAsset } from './assets.js';
+import { posterTexture } from './build-lobby.js';
 const PI = Math.PI;
 const WALNUT = '#6b4630', BRASS = '#c9a061', FABRIC = '#3a2430', PLASTER = '#1c1719', LACQ = '#141215';
 const KIND_SUB = { curved: 'CURVED PREMIUM  ·  RECLINERS', imax: 'IMAX  ·  22 M SCREEN', standard: 'STANDARD  ·  STADIUM' };
@@ -71,6 +72,14 @@ export function buildGallery(ctx) {
   room.gacc.add(new THREE.PlaneGeometry(0.05, z1 - z0).rotateX(PI / 2), M(0, HC + 0.19, (z0 + z1) / 2), col(SLOT).map((v) => v * 1.4), { grp: 0 });
   L.line(0, HC + 0.05, z1 - 0.3, 0, HC + 0.05, z0 + 0.3, '#ffeedd', 1.4, 5, 'h', [0, -1, 0]);
   for (let z = z1 - 1.6; z > z0 + 0.8; z -= 2.4) { room.box(-0.05, HC + 0.17, z - 0.05, 0.05, HC + 0.185, z + 0.05, '#fff6ea', { glow: true, faces: 'ny' }); L.spot(0, HC + 0.1, z, '#ffe6c8', 3.2, 6, 'h', [0, -1, 0], 18, 48); }
+  // ---------- v8 (phone feedback: "the corridor is wide open in the middle and has no architecture"): a structure and a rhythm ----------
+  // walnut beams across the ceiling every 4 m (the light trough runs through them); two islands down the middle between the screen doors:
+  // a double-sided film light-box totem between two tall planters, lit from the front, leaving 2.4 m of corridor either side
+  for (let z = z1 - 3.2; z > z0 + 2; z -= 4.0) for (const [a, b] of [[GAL.x0 + 0.03, -0.17], [0.17, GAL.x1 - 0.03]]) room.box(a, HC - 0.32, z - 0.14, b, HC - 0.002, z + 0.14, '#2a1a12', { mat: MAT.wood, faces: 'ny pz nz px nx', edge: 1 });
+  [[-15.6, 'sintel', 'cosmos'], [-21.2, 'hero', 'coffeerun']].forEach(([z, f0, f1]) => {
+    placeAsset(room, 'poster_totem', 0, 0, z, 0); room.col(-0.5, z - 0.17, 0.5, z + 0.17);
+    room.tex(posterTexture(f0), 0, 1.24, z + 0.0835, 0, 0.8, 1.2, { emit: 1.2 }); room.tex(posterTexture(f1), 0, 1.24, z - 0.0835, PI, 0.8, 1.2, { emit: 1.2 });
+    for (const s of [-1, 1]) { L.area(0, 1.24, z + s * 0.45, [0.4, 0, 0], [0, 0.6, 0], [0, 0, s], '#fff0dc', 0.8, 4, 'h', 2, 2); placeAsset(room, 'planter_tall', s * 0.95, 0, z); room.col(s * 0.95 - 0.3, z - 0.3, s * 0.95 + 0.3, z + 0.3); } });
   // ---------- north end: the IMAX portal (black frame, blue light blades, IMAX letters) into the gateway hall ----------
   const gx = GATE.w / 2, gh = GATE.h;
   for (const [a, b] of [[GAL.x0, -gx - 0.5], [gx + 0.5, GAL.x1]]) room.box(a, 0, z0 - 0.001, b, HC, z0, '#0b0b0d', { mat: MAT.lacquer, faces: 'pz' });

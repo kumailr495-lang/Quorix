@@ -13,7 +13,7 @@ import { menuTexture, shopTexture, makeCanvas, neonTexture, SERIF } from './text
 import { posterURL } from './films.js';
 // v8: the lobby advertises the real open films (their posters, tools/films/posters.py); one texture per film, shared by every frame it hangs in
 const POSTERS = {};
-function posterTexture(id) { if (!POSTERS[id]) { const tx = new THREE.TextureLoader().load(posterURL(id)); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; POSTERS[id] = tx; } return POSTERS[id]; }
+export function posterTexture(id) { if (!POSTERS[id]) { const tx = new THREE.TextureLoader().load(posterURL(id)); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; POSTERS[id] = tx; } return POSTERS[id]; }
 function signTexture(text, color) { const c = makeCanvas(256, 48), g = c.getContext('2d'); g.fillStyle = '#05080c'; g.fillRect(0, 0, 256, 48); g.fillStyle = color; g.font = `600 30px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = '10px'; g.fillText(text, 133, 26); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx; }
 import { placeAsset } from './assets.js';
 const PI = Math.PI;

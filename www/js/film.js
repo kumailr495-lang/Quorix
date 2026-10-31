@@ -88,7 +88,11 @@ export class Shows {
       else if (s.state === 'ending' && now - s.phaseAt > 9000) { s.state = 'ended'; s.phaseAt = now; }
       else if (s.state === 'ended' && now - s.phaseAt > 25000) { s.state = 'idle'; s.booked = false; this._idle(s); }
       // house light level eases toward the phase target (the credits bring them up to a third)
-      const want = s.credits && s.state === 'playing' ? LIGHT.credits : LIGHT[s.state] ?? 1, rate = s.state === 'dimming' ? 0.6 : s.state === 'ending' || s.state === 'ended' || s.credits ? 0.35 : 1.2; s.light += (want - s.light) * (1 - Math.exp(-dt * rate * 1.6));
+      // v8 (phone feedback: "the lights going off should be a better transition"): each change is a timed smootherstep fade, slow to start
+      // and to settle (7 s down to black for the film, 4 s to the pre-show half light, 5 s back up)
+      const want = s.credits && s.state === 'playing' ? LIGHT.credits : LIGHT[s.state] ?? 1;
+      if (want !== s.lightWant) { s.lightWant = want; s.lightFrom = s.light; s.lightAt = now; }
+      { const u = Math.min(1, (now - s.lightAt) / (s.state === 'dimming' ? 7000 : s.state === 'preshow' ? 4000 : 5000)), e = u * u * u * (u * (u * 6 - 15) + 10); s.light = s.lightFrom + (want - s.lightFrom) * e; }
       h.room.U.uHouse.value = s.light;
       // screen light: what the picture throws into the room (the film's offline light track, or your video's sampled colour)
       let sc = [0.1, 0.1, 0.12], g = 0.8;
