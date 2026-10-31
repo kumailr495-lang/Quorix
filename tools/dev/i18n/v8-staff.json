@@ -1,0 +1,263 @@
+{
+  "role.greeter": { "en": "Host", "es": "Anfitriona", "hi": "होस्ट", "ur": "ہوسٹ" },
+  "opt.tickets": { "en": "Where do I get tickets?", "es": "¿Dónde compro las entradas?", "hi": "टिकट कहाँ मिलेंगे?", "ur": "ٹکٹ کہاں ملیں گے؟" },
+  "opt.tonight": { "en": "What’s good tonight?", "es": "¿Qué recomiendas esta noche?", "hi": "आज क्या अच्छा है?", "ur": "آج کیا اچھا ہے؟" },
+  "gre.hello": {
+    "en": ["Welcome to Lumière! Mind the step, the red carpet trips more people than the films do.", "Good evening! Tickets are inside on the left, popcorn on the right, and happiness everywhere.", "Hello, hello! First time here? You’ll love it. The seats are softer than my bed.", "Welcome! Phone on silent, feet off the seats, and expectations very, very high.", "Ah, a film lover! Come in, come in. The night only gets better from here."],
+    "es": ["¡Bienvenidos a Lumière! Cuidado con el escalón: la alfombra roja hace tropezar a más gente que las películas.", "¡Buenas noches! Las entradas, dentro a la izquierda; las palomitas, a la derecha; y la felicidad, por todas partes.", "¡Hola, hola! ¿Primera vez aquí? Te va a encantar. Las butacas son más blandas que mi cama.", "¡Bienvenido! Móvil en silencio, los pies fuera de las butacas y las expectativas muy, muy altas.", "¡Ah, un amante del cine! Pasa, pasa. La noche solo puede mejorar."],
+    "hi": ["लूमियर में ख़ुश आमदीद! सीढ़ी का ध्यान रखिए, यह रेड कार्पेट फ़िल्मों से ज़्यादा लोगों को गिराता है।", "आइए, आइए! टिकट अंदर बाईं तरफ़ हैं, पॉपकॉर्न दाईं तरफ़, और ख़ुशी हर तरफ़।", "हैलो, हैलो! पहली बार आए हैं? आपको बहुत मज़ा आएगा। यहाँ की सीटें मेरे बिस्तर से भी नरम हैं।", "ख़ुश आमदीद! फ़ोन साइलेंट पर, पैर सीटों से नीचे, और उम्मीदें बहुत, बहुत ऊँची।", "अरे, फ़िल्मों के शौक़ीन! अंदर आइए, अंदर आइए। आज की शाम अब और भी अच्छी होगी।"],
+    "ur": ["لومیئر میں خوش آمدید! سیڑھی کا دھیان رکھیے، یہ ریڈ کارپٹ فلموں سے زیادہ لوگوں کو گراتا ہے۔", "آئیے، آئیے! ٹکٹ اندر بائیں طرف ہیں، پاپ کارن دائیں طرف، اور خوشی ہر طرف۔", "ہیلو، ہیلو! پہلی بار آئے ہیں؟ آپ کو بہت مزہ آئے گا۔ یہاں کی سیٹیں میرے بستر سے بھی نرم ہیں۔", "خوش آمدید! فون سائلنٹ پر، پاؤں سیٹوں سے نیچے، اور امیدیں بہت، بہت اونچی۔", "ارے، فلموں کے شوقین! اندر آئیے، اندر آئیے۔ آج کی شام اب اور بھی اچھی ہوگی۔"]
+  },
+  "gre.bark": {
+    "en": ["Welcome to Lumière!", "Tickets inside, on your left!", "Enjoy your evening!", "Mind the step, it loves ankles."],
+    "es": ["¡Bienvenidos a Lumière!", "¡Entradas dentro, a la izquierda!", "¡Disfruten la noche!", "Cuidado con el escalón, le encantan los tobillos."],
+    "hi": ["लूमियर में ख़ुश आमदीद!", "टिकट अंदर, बाईं तरफ़!", "शाम का मज़ा लीजिए!", "सीढ़ी का ध्यान रखिए, इसे टख़ने बहुत पसंद हैं।"],
+    "ur": ["لومیئر میں خوش آمدید!", "ٹکٹ اندر، بائیں طرف!", "شام کا مزہ لیجیے!", "سیڑھی کا دھیان رکھیے، اسے ٹخنے بہت پسند ہیں۔"]
+  },
+  "gre.greet": {
+    "en": ["Hi! I’m Clara. Anything I can help with before the magic starts?", "Hello again! Lost already? Happens to the best of us.", "Directions, a recommendation, or just a friendly face? I do all three."],
+    "es": ["¡Hola! Soy Clara. ¿Te ayudo con algo antes de que empiece la magia?", "¡Hola otra vez! ¿Ya te has perdido? Nos pasa a los mejores.", "¿Indicaciones, una recomendación o solo una cara amable? Hago las tres cosas."],
+    "hi": ["हाय! मैं क्लारा हूँ। जादू शुरू होने से पहले कोई मदद चाहिए?", "फिर से हैलो! खो गए? अच्छे-अच्छों के साथ होता है।", "रास्ता, कोई सलाह, या बस एक मुस्कुराता चेहरा? मैं तीनों देती हूँ।"],
+    "ur": ["ہائے! میں کلارا ہوں۔ جادو شروع ہونے سے پہلے کوئی مدد چاہیے؟", "پھر سے ہیلو! کھو گئے؟ اچھے اچھوں کے ساتھ ہوتا ہے۔", "راستہ، کوئی مشورہ، یا بس ایک مسکراتا چہرہ؟ میں تینوں دیتی ہوں۔"]
+  },
+  "gre.tickets": {
+    "en": ["The box office is straight in and to the left. Ask for Éloïse, she’s the one who never blinks.", "Inside, on your left, under the glowing sign. If you reach the popcorn, you went right. Delicious mistake.", "Tickets are with Éloïse at the box office. Short on cash? The ATM is right out here, by the doors."],
+    "es": ["La taquilla está entrando, a la izquierda. Pregunta por Éloïse: es la que nunca parpadea.", "Dentro, a la izquierda, bajo el letrero luminoso. Si llegas a las palomitas, fuiste a la derecha. Error delicioso.", "Las entradas las vende Éloïse en la taquilla. ¿Poco efectivo? El cajero está aquí fuera, junto a las puertas."],
+    "hi": ["टिकट काउंटर सीधे अंदर, बाईं तरफ़ है। एलोईज़ से मिलिए, वह कभी पलक नहीं झपकाती।", "अंदर, बाईं तरफ़, चमकते बोर्ड के नीचे। अगर पॉपकॉर्न तक पहुँच गए, तो आप दाईं तरफ़ मुड़ गए। मज़ेदार ग़लती।", "टिकट एलोईज़ के पास हैं, टिकट काउंटर पर। पैसे कम हैं? एटीएम यहीं बाहर, दरवाज़ों के पास है।"],
+    "ur": ["ٹکٹ کاؤنٹر سیدھے اندر، بائیں طرف ہے۔ ایلوئیز سے ملیے، وہ کبھی پلک نہیں جھپکاتی۔", "اندر، بائیں طرف، چمکتے بورڈ کے نیچے۔ اگر پاپ کارن تک پہنچ گئے، تو آپ دائیں طرف مڑ گئے۔ مزےدار غلطی۔", "ٹکٹ ایلوئیز کے پاس ہیں، ٹکٹ کاؤنٹر پر۔ پیسے کم ہیں؟ اے ٹی ایم یہیں باہر، دروازوں کے پاس ہے۔"]
+  },
+  "gre.tonight": {
+    "en": ["Sintel is on tonight. A girl, a baby dragon, and more tears than our tissue budget allows.", "Want to laugh? Big Buck Bunny. Want to think? Cosmos Laundromat. Want both? Buy two tickets.", "Agent 327 is all fists and hairspray. My favourite. Don’t tell the manager."],
+    "es": ["Esta noche ponen Sintel. Una chica, un dragón bebé y más lágrimas de las que permite nuestro presupuesto de pañuelos.", "¿Quieres reír? Big Buck Bunny. ¿Quieres pensar? Cosmos Laundromat. ¿Las dos cosas? Compra dos entradas.", "Agent 327 es puro puñetazo y laca. Mi favorita. No se lo digas al gerente."],
+    "hi": ["आज सिंटेल लगी है। एक लड़की, एक छोटा सा ड्रैगन, और इतने आँसू कि हमारे टिशू कम पड़ जाएँ।", "हँसना है? बिग बक बनी। सोचना है? कॉसमॉस लॉन्ड्रोमैट। दोनों? दो टिकट ले लीजिए।", "एजेंट थ्री-टू-सेवन में बस घूँसे और हेयरस्प्रे हैं। मेरी पसंदीदा। मैनेजर को मत बताइएगा।"],
+    "ur": ["آج سنٹیل لگی ہے۔ ایک لڑکی، ایک چھوٹا سا ڈریگن، اور اتنے آنسو کہ ہمارے ٹشو کم پڑ جائیں۔", "ہنسنا ہے؟ بگ بک بنی۔ سوچنا ہے؟ کاسموس لانڈرومیٹ۔ دونوں؟ دو ٹکٹ لے لیجیے۔", "ایجنٹ تھری ٹو سیون میں بس گھونسے اور ہیئر اسپرے ہیں۔ میری پسندیدہ۔ مینیجر کو مت بتائیے گا۔"]
+  },
+  "gre.where": {
+    "en": ["Restrooms are at the end of the corridor, past the screens. The ATM is right here outside.", "Snacks? Just follow your nose. The popcorn smell has its own postcode."],
+    "es": ["Los aseos están al final del pasillo, pasando las salas. El cajero está aquí fuera.", "¿Snacks? Sigue tu nariz. El olor a palomitas tiene su propio código postal."],
+    "hi": ["वॉशरूम कॉरिडोर के आख़िर में हैं, स्क्रीनों के आगे। एटीएम यहीं बाहर है।", "स्नैक्स? बस अपनी नाक के पीछे चलिए। पॉपकॉर्न की ख़ुशबू का अपना ही पता है।"],
+    "ur": ["واش روم کوریڈور کے آخر میں ہیں، اسکرینوں کے آگے۔ اے ٹی ایم یہیں باہر ہے۔", "اسنیکس؟ بس اپنی ناک کے پیچھے چلیے۔ پاپ کارن کی خوشبو کا اپنا ہی پتہ ہے۔"]
+  },
+  "rec.greet": {
+    "en": ["Good evening, welcome to Lumière. One ticket, or are you here to admire the carpet?", "Hi there! Nine films tonight, three screens, and only one of me. What can I do for you?", "Welcome! I sell tickets, I give directions, and I judge popcorn choices. Silently.", "Evening! Pick a film, pick a seat, and I’ll make it official.", "Hello! Before you ask: yes, the big screen really is that big."],
+    "es": ["Buenas noches, bienvenido a Lumière. ¿Una entrada, o has venido a admirar la alfombra?", "¡Hola! Nueve películas esta noche, tres salas y solo una yo. ¿Qué puedo hacer por ti?", "¡Bienvenido! Vendo entradas, doy indicaciones y juzgo las elecciones de palomitas. En silencio.", "¡Buenas! Elige una película, elige una butaca y yo lo hago oficial.", "¡Hola! Antes de que preguntes: sí, la pantalla grande es así de grande."],
+    "hi": ["लूमियर में ख़ुश आमदीद। एक टिकट, या आप सिर्फ़ कार्पेट देखने आए हैं?", "हैलो! आज नौ फ़िल्में, तीन स्क्रीन, और मैं अकेली। बताइए, क्या करूँ आपके लिए?", "ख़ुश आमदीद! मैं टिकट बेचती हूँ, रास्ता बताती हूँ, और पॉपकॉर्न की पसंद पर चुपचाप राय बनाती हूँ।", "हैलो! फ़िल्म चुनिए, सीट चुनिए, बाक़ी मैं संभाल लूँगी।", "हैलो! पूछने से पहले बता दूँ: जी हाँ, बड़ी स्क्रीन सच में इतनी बड़ी है।"],
+    "ur": ["لومیئر میں خوش آمدید۔ ایک ٹکٹ، یا آپ صرف کارپٹ دیکھنے آئے ہیں؟", "ہیلو! آج نو فلمیں، تین اسکرینیں، اور میں اکیلی۔ بتائیے، کیا کروں آپ کے لیے؟", "خوش آمدید! میں ٹکٹ بیچتی ہوں، راستہ بتاتی ہوں، اور پاپ کارن کی پسند پر چپ چاپ رائے بناتی ہوں۔", "ہیلو! فلم چنیے، سیٹ چنیے، باقی میں سنبھال لوں گی۔", "ہیلو! پوچھنے سے پہلے بتا دوں: جی ہاں، بڑی اسکرین سچ میں اتنی بڑی ہے۔"]
+  },
+  "rec.again": {
+    "en": ["You already have a ticket. Show it to Marcel at the screens and he’ll walk you to your seat.", "Back again? Your ticket’s still good. Marcel is waiting by the screens.", "The ticket’s in your pocket. The film won’t wait forever, and neither will Marcel.", "Need something else? Your seat is booked. Marcel will take it from here."],
+    "es": ["Ya tienes entrada. Enséñasela a Marcel, junto a las salas, y te acompañará a tu butaca.", "¿Otra vez por aquí? Tu entrada sigue valiendo. Marcel te espera junto a las salas.", "La entrada está en tu bolsillo. La película no esperará para siempre, y Marcel tampoco.", "¿Necesitas algo más? Tu butaca está reservada. Marcel se encarga del resto."],
+    "hi": ["आपके पास टिकट तो है। स्क्रीन के पास मार्सेल को दिखाइए, वह आपको सीट तक ले जाएगा।", "फिर आ गए? आपका टिकट अब भी चलेगा। मार्सेल स्क्रीनों के पास इंतज़ार कर रहा है।", "टिकट आपकी जेब में है। फ़िल्म हमेशा इंतज़ार नहीं करेगी, और मार्सेल भी नहीं।", "कुछ और चाहिए? आपकी सीट बुक है। आगे मार्सेल संभाल लेगा।"],
+    "ur": ["آپ کے پاس ٹکٹ تو ہے۔ اسکرین کے پاس مارسیل کو دکھائیے، وہ آپ کو سیٹ تک لے جائے گا۔", "پھر آ گئے؟ آپ کا ٹکٹ اب بھی چلے گا۔ مارسیل اسکرینوں کے پاس انتظار کر رہا ہے۔", "ٹکٹ آپ کی جیب میں ہے۔ فلم ہمیشہ انتظار نہیں کرے گی، اور مارسیل بھی نہیں۔", "کچھ اور چاہیے؟ آپ کی سیٹ بک ہے۔ آگے مارسیل سنبھال لے گا۔"]
+  },
+  "rec.films": {
+    "en": ["Nine films tonight, all from the Blender Studio. Sintel is about a girl searching for her baby dragon. Bring tissues.", "Big Buck Bunny: a very large rabbit takes revenge on three tiny bullies. It’s exactly as cute as it sounds.", "Cosmos Laundromat: a sheep, a lonely island, and a strange salesman with a tape measure. Very deep. Very woolly.", "Agent 327 for action, Caminandes for a llama who won’t share his berries, and Glass Half if you enjoy arguing about art."],
+    "es": ["Nueve películas esta noche, todas del Blender Studio. Sintel trata de una chica que busca a su dragón bebé. Trae pañuelos.", "Big Buck Bunny: un conejo enorme se venga de tres pequeños abusones. Es tan adorable como suena.", "Cosmos Laundromat: una oveja, una isla solitaria y un vendedor extraño con una cinta métrica. Muy profunda. Muy lanuda.", "Agent 327 para acción, Caminandes para una llama que no comparte sus bayas, y Glass Half si te gusta discutir sobre arte."],
+    "hi": ["आज नौ फ़िल्में हैं, सब ब्लेंडर स्टूडियो की। सिंटेल एक लड़की की कहानी है जो अपने छोटे ड्रैगन को ढूँढ रही है। टिशू साथ रखिए।", "बिग बक बनी: एक बहुत बड़ा ख़रगोश तीन छोटे बदमाशों से बदला लेता है। जितनी प्यारी सुनने में लगती है, उतनी ही है।", "कॉसमॉस लॉन्ड्रोमैट: एक भेड़, एक सुनसान टापू, और फ़ीता लिए एक अजीब सेल्समैन। बहुत गहरी। बहुत ऊनी।", "एक्शन के लिए एजेंट थ्री-टू-सेवन, अपने बेर न बाँटने वाले लामा के लिए कैमिनांडेस, और आर्ट पर बहस का शौक़ हो तो ग्लास हाफ़।"],
+    "ur": ["آج نو فلمیں ہیں، سب بلینڈر اسٹوڈیو کی۔ سنٹیل ایک لڑکی کی کہانی ہے جو اپنے چھوٹے ڈریگن کو ڈھونڈ رہی ہے۔ ٹشو ساتھ رکھیے۔", "بگ بک بنی: ایک بہت بڑا خرگوش تین چھوٹے بدمعاشوں سے بدلہ لیتا ہے۔ جتنی پیاری سننے میں لگتی ہے، اتنی ہی ہے۔", "کاسموس لانڈرومیٹ: ایک بھیڑ، ایک سنسان ٹاپو، اور فیتہ لیے ایک عجیب سیلزمین۔ بہت گہری۔ بہت اونی۔", "ایکشن کے لیے ایجنٹ تھری ٹو سیون، اپنے بیر نہ بانٹنے والے لاما کے لیے کیمینانڈیس، اور آرٹ پر بحث کا شوق ہو تو گلاس ہاف۔"]
+  },
+  "rec.own": {
+    "en": ["Got your own video? I’ll lend you a tablet. Pick anything from your phone and we’ll put it on the big screen.", "Your own film? Of course. Holidays, birthdays, the one where your uncle falls in the pool. All welcome.", "Bring your own video and we’ll play it in a real cinema. Your cat has never looked so dramatic."],
+    "es": ["¿Tienes un vídeo tuyo? Te presto una tablet. Elige lo que quieras de tu móvil y lo ponemos en la pantalla grande.", "¿Tu propia película? Claro. Vacaciones, cumpleaños, ese en el que tu tío se cae a la piscina. Todo vale.", "Trae tu vídeo y lo ponemos en un cine de verdad. Tu gato nunca ha parecido tan dramático."],
+    "hi": ["अपना वीडियो है? मैं आपको टैबलेट देती हूँ। फ़ोन से कुछ भी चुनिए, हम उसे बड़ी स्क्रीन पर चला देंगे।", "अपनी फ़िल्म? बिल्कुल। छुट्टियाँ, बर्थडे, वो वाला जिसमें आपके चाचा पूल में गिर जाते हैं। सब चलेगा।", "अपना वीडियो लाइए, हम उसे असली सिनेमा में चलाएँगे। आपकी बिल्ली कभी इतनी ड्रामेटिक नहीं लगी होगी।"],
+    "ur": ["اپنا ویڈیو ہے؟ میں آپ کو ٹیبلٹ دیتی ہوں۔ فون سے کچھ بھی چنیے، ہم اسے بڑی اسکرین پر چلا دیں گے۔", "اپنی فلم؟ بالکل۔ چھٹیاں، برتھ ڈے، وہ والا جس میں آپ کے چچا پول میں گر جاتے ہیں۔ سب چلے گا۔", "اپنا ویڈیو لائیے، ہم اسے اصلی سنیما میں چلائیں گے۔ آپ کی بلی کبھی اتنی ڈرامیٹک نہیں لگی ہوگی۔"]
+  },
+  "rec.tablet": {
+    "en": ["Here’s the tablet. All your videos are in there. Pick one, then hand it back.", "The tablet’s yours for a minute. Choose your video, I’ll handle the rest.", "Go on, scroll. Everyone takes ages to choose. I’ll pretend I’m not watching."],
+    "es": ["Aquí tienes la tablet. Todos tus vídeos están ahí. Elige uno y me la devuelves.", "La tablet es tuya un minuto. Elige tu vídeo, yo me encargo del resto.", "Venga, desliza. Todo el mundo tarda siglos en elegir. Haré como que no miro."],
+    "hi": ["यह लीजिए टैबलेट। आपके सारे वीडियो इसमें हैं। एक चुनिए, फिर वापस दे दीजिए।", "टैबलेट एक मिनट के लिए आपका। वीडियो चुनिए, बाक़ी मैं देख लूँगी।", "चलिए, स्क्रॉल कीजिए। चुनने में सब बहुत वक़्त लेते हैं। मैं ऐसे दिखाऊँगी जैसे देख नहीं रही।"],
+    "ur": ["یہ لیجیے ٹیبلٹ۔ آپ کے سارے ویڈیو اس میں ہیں۔ ایک چنیے، پھر واپس دے دیجیے۔", "ٹیبلٹ ایک منٹ کے لیے آپ کا۔ ویڈیو چنیے، باقی میں دیکھ لوں گی۔", "چلیے، اسکرول کیجیے۔ چننے میں سب بہت وقت لیتے ہیں۔ میں ایسے دکھاؤں گی جیسے دیکھ نہیں رہی۔"]
+  },
+  "rec.where": {
+    "en": ["Snacks on the right, the bar beside them, and the screens straight ahead past Marcel. Restrooms at the end of the corridor.", "Need cash? The ATM is outside, by the entrance. Need the restrooms? End of the corridor, follow the signs.", "Everything you need is in this building. Except parking. Nobody knows where parking is."],
+    "es": ["Los snacks a la derecha, el bar al lado y las salas al fondo, pasando a Marcel. Los aseos, al final del pasillo.", "¿Necesitas efectivo? El cajero está fuera, junto a la entrada. ¿Los aseos? Al final del pasillo, sigue los carteles.", "Todo lo que necesitas está en este edificio. Menos el aparcamiento. Nadie sabe dónde está el aparcamiento."],
+    "hi": ["स्नैक्स दाईं तरफ़, उनके पास बार, और मार्सेल के आगे सीधे स्क्रीनें। वॉशरूम कॉरिडोर के आख़िर में।", "पैसे चाहिए? एटीएम बाहर, एंट्रेंस के पास है। वॉशरूम? कॉरिडोर के आख़िर में, बोर्ड देखते जाइए।", "आपकी ज़रूरत की हर चीज़ इसी बिल्डिंग में है। सिवाय पार्किंग के। पार्किंग कहाँ है, किसी को नहीं पता।"],
+    "ur": ["اسنیکس دائیں طرف، ان کے پاس بار، اور مارسیل کے آگے سیدھے اسکرینیں۔ واش روم کوریڈور کے آخر میں۔", "پیسے چاہییں؟ اے ٹی ایم باہر، انٹرنس کے پاس ہے۔ واش روم؟ کوریڈور کے آخر میں، بورڈ دیکھتے جائیے۔", "آپ کی ضرورت کی ہر چیز اسی بلڈنگ میں ہے۔ سوائے پارکنگ کے۔ پارکنگ کہاں ہے، کسی کو نہیں پتہ۔"]
+  },
+  "rec.booked": {
+    "en": ["Done! Your film starts soon. Show your ticket to Marcel, our usher, and he’ll take you to your seat.", "All booked. Marcel, by the screens, will walk you in. He knows every seat by name.", "Here’s your ticket. Don’t lose it. Marcel takes tickets very seriously. Too seriously, honestly.", "Perfect. Find Marcel at the screens, show him the ticket, and enjoy the film."],
+    "es": ["¡Listo! Tu película empieza pronto. Enséñale la entrada a Marcel, nuestro acomodador, y te llevará a tu butaca.", "Todo reservado. Marcel, junto a las salas, te acompañará. Conoce cada butaca por su nombre.", "Aquí tienes tu entrada. No la pierdas. Marcel se toma las entradas muy en serio. Demasiado, la verdad.", "Perfecto. Busca a Marcel en las salas, enséñale la entrada y disfruta de la película."],
+    "hi": ["हो गया! आपकी फ़िल्म जल्दी शुरू होगी। हमारे अशर मार्सेल को टिकट दिखाइए, वह आपको सीट तक ले जाएगा।", "सब बुक हो गया। स्क्रीनों के पास मार्सेल आपको अंदर ले जाएगा। वह हर सीट को नाम से जानता है।", "यह रहा आपका टिकट। खोइएगा मत। मार्सेल टिकट को बहुत सीरियसली लेता है। सच कहूँ तो कुछ ज़्यादा ही।", "बढ़िया। स्क्रीनों के पास मार्सेल को ढूँढिए, उसे टिकट दिखाइए, और फ़िल्म का मज़ा लीजिए।"],
+    "ur": ["ہو گیا! آپ کی فلم جلدی شروع ہوگی۔ ہمارے اشر مارسیل کو ٹکٹ دکھائیے، وہ آپ کو سیٹ تک لے جائے گا۔", "سب بک ہو گیا۔ اسکرینوں کے پاس مارسیل آپ کو اندر لے جائے گا۔ وہ ہر سیٹ کو نام سے جانتا ہے۔", "یہ رہا آپ کا ٹکٹ۔ کھوئیے گا مت۔ مارسیل ٹکٹ کو بہت سیریسلی لیتا ہے۔ سچ کہوں تو کچھ زیادہ ہی۔", "بڑھیا۔ اسکرینوں کے پاس مارسیل کو ڈھونڈیے، اسے ٹکٹ دکھائیے، اور فلم کا مزہ لیجیے۔"]
+  },
+  "bark.reception": {
+    "en": ["Next, please!", "Tickets for tonight, right here.", "No, the front row is not the best seat. Trust me.", "Phones on silent in there, please. I’m begging.", "Three screens, nine films, one very tired receptionist.", "Who’s next? Don’t be shy."],
+    "es": ["¡El siguiente, por favor!", "Entradas para esta noche, aquí mismo.", "No, la primera fila no es la mejor. Hazme caso.", "Móviles en silencio en la sala, por favor. Se lo ruego.", "Tres salas, nueve películas y una recepcionista muy cansada.", "¿Quién sigue? Sin vergüenza."],
+    "hi": ["अगले, प्लीज़!", "आज रात के टिकट, यहीं मिलेंगे।", "नहीं, सबसे आगे वाली लाइन सबसे अच्छी नहीं है। यक़ीन कीजिए।", "अंदर फ़ोन साइलेंट पर रखिए, प्लीज़। हाथ जोड़ती हूँ।", "तीन स्क्रीन, नौ फ़िल्में, और एक बहुत थकी हुई रिसेप्शनिस्ट।", "अगला कौन है? शरमाइए मत।"],
+    "ur": ["اگلے، پلیز!", "آج رات کے ٹکٹ، یہیں ملیں گے۔", "نہیں، سب سے آگے والی لائن سب سے اچھی نہیں ہے۔ یقین کیجیے۔", "اندر فون سائلنٹ پر رکھیے، پلیز۔ ہاتھ جوڑتی ہوں۔", "تین اسکرینیں، نو فلمیں، اور ایک بہت تھکی ہوئی ریسپشنسٹ۔", "اگلا کون ہے؟ شرمائیے مت۔"]
+  },
+  "ush.greet": {
+    "en": ["Ticket? Splendid. Shall I walk you to your seat? I know these aisles better than my own home.", "Good evening. Show me your ticket and I’ll take you straight to your seat.", "Ah, a ticket holder. My favourite kind of person. Let’s have a look.", "Evening! Ready for the film? Let me see that ticket."],
+    "es": ["¿Entrada? Espléndido. ¿Te acompaño a tu butaca? Conozco estos pasillos mejor que mi casa.", "Buenas noches. Enséñame tu entrada y te llevo directo a tu butaca.", "Ah, alguien con entrada. Mi tipo de persona favorito. A ver.", "¡Buenas! ¿Preparado para la película? Déjame ver esa entrada."],
+    "hi": ["टिकट? शानदार। आपको सीट तक ले चलूँ? ये रास्ते मैं अपने घर से बेहतर जानता हूँ।", "आइए। अपना टिकट दिखाइए, मैं आपको सीधे आपकी सीट तक ले चलूँगा।", "अरे वाह, टिकट वाले। मेरे पसंदीदा लोग। ज़रा देखूँ।", "हैलो! फ़िल्म के लिए तैयार? ज़रा वो टिकट दिखाइए।"],
+    "ur": ["ٹکٹ؟ شاندار۔ آپ کو سیٹ تک لے چلوں؟ یہ راستے میں اپنے گھر سے بہتر جانتا ہوں۔", "آئیے۔ اپنا ٹکٹ دکھائیے، میں آپ کو سیدھے آپ کی سیٹ تک لے چلوں گا۔", "ارے واہ، ٹکٹ والے۔ میرے پسندیدہ لوگ۔ ذرا دیکھوں۔", "ہیلو! فلم کے لیے تیار؟ ذرا وہ ٹکٹ دکھائیے۔"]
+  },
+  "ush.noTicket": {
+    "en": ["No ticket, no magic, I’m afraid. The box office is back there, with Éloïse.", "I’d love to let you in, but the film insists on a ticket. Éloïse at the box office will sort you out.", "Without a ticket I can only offer you my company. And I’m working.", "Ticket first, then the fun part. The box office is back towards the entrance."],
+    "es": ["Sin entrada no hay magia, me temo. La taquilla está allí atrás, con Éloïse.", "Me encantaría dejarte pasar, pero la película insiste en ver una entrada. Éloïse, en la taquilla, te lo soluciona.", "Sin entrada solo puedo ofrecerte mi compañía. Y estoy trabajando.", "Primero la entrada, luego lo divertido. La taquilla está hacia la entrada."],
+    "hi": ["माफ़ कीजिए, टिकट के बग़ैर कोई जादू नहीं। टिकट काउंटर पीछे है, एलोईज़ के पास।", "मैं आपको अंदर ले जाना चाहता हूँ, पर फ़िल्म को टिकट चाहिए। टिकट काउंटर पर एलोईज़ सब संभाल लेगी।", "टिकट के बग़ैर मैं आपको बस अपनी कंपनी दे सकता हूँ। और मैं ड्यूटी पर हूँ।", "पहले टिकट, फिर मज़ा। टिकट काउंटर एंट्रेंस की तरफ़ है।"],
+    "ur": ["معاف کیجیے، ٹکٹ کے بغیر کوئی جادو نہیں۔ ٹکٹ کاؤنٹر پیچھے ہے، ایلوئیز کے پاس۔", "میں آپ کو اندر لے جانا چاہتا ہوں، پر فلم کو ٹکٹ چاہیے۔ ٹکٹ کاؤنٹر پر ایلوئیز سب سنبھال لے گی۔", "ٹکٹ کے بغیر میں آپ کو بس اپنی کمپنی دے سکتا ہوں۔ اور میں ڈیوٹی پر ہوں۔", "پہلے ٹکٹ، پھر مزہ۔ ٹکٹ کاؤنٹر انٹرنس کی طرف ہے۔"]
+  },
+  "ush.tips": {
+    "en": ["Phone on silent, no kicking the seat in front, and if you talk during the film, I will appear behind you. Silently.", "Need anything during the film? Press the bell by your seat. Rémy will come running. Well, walking. Briskly.", "Finished your drink? Bin it on the way out. The cleaners will love you forever."],
+    "es": ["Móvil en silencio, nada de patear la butaca de delante, y si hablas durante la película, apareceré detrás de ti. En silencio.", "¿Necesitas algo durante la película? Pulsa el timbre junto a tu butaca. Rémy vendrá corriendo. Bueno, andando. Deprisa.", "¿Te has terminado la bebida? Tírala a la papelera al salir. El personal de limpieza te querrá para siempre."],
+    "hi": ["फ़ोन साइलेंट पर, आगे की सीट पर लात नहीं, और फ़िल्म के दौरान बात की तो मैं चुपचाप आपके पीछे आ जाऊँगा।", "फ़िल्म के दौरान कुछ चाहिए? सीट के पास वाली घंटी दबाइए। रेमी दौड़ा चला आएगा। मतलब, तेज़ चलता हुआ।", "ड्रिंक ख़त्म? बाहर जाते हुए डस्टबिन में डाल दीजिए। सफ़ाई वाले हमेशा दुआ देंगे।"],
+    "ur": ["فون سائلنٹ پر، آگے کی سیٹ پر لات نہیں، اور فلم کے دوران بات کی تو میں چپ چاپ آپ کے پیچھے آ جاؤں گا۔", "فلم کے دوران کچھ چاہیے؟ سیٹ کے پاس والی گھنٹی دبائیے۔ ریمی دوڑا چلا آئے گا۔ مطلب، تیز چلتا ہوا۔", "ڈرنک ختم؟ باہر جاتے ہوئے ڈسٹ بن میں ڈال دیجیے۔ صفائی والے ہمیشہ دعا دیں گے۔"]
+  },
+  "ush.best": {
+    "en": ["The IMAX hall for a giant picture. The curved screen if you want the film to hug you.", "In any hall, the middle seats about two thirds of the way back are the best. Trust the usher.", "Every screen is the best screen. I’m paid to say that. But the IMAX is the best screen."],
+    "es": ["La sala IMAX para una imagen gigante. La pantalla curva si quieres que la película te abrace.", "En cualquier sala, las mejores butacas son las del centro, a dos tercios del fondo. Hazle caso al acomodador.", "Todas las salas son la mejor sala. Me pagan por decirlo. Pero la IMAX es la mejor."],
+    "hi": ["बड़ी तस्वीर के लिए आईमैक्स हॉल। और अगर चाहते हैं कि फ़िल्म आपको गले लगा ले, तो कर्व्ड स्क्रीन।", "किसी भी हॉल में, बीच की सीटें, लगभग दो-तिहाई पीछे, सबसे अच्छी होती हैं। अशर पर भरोसा कीजिए।", "हर स्क्रीन सबसे अच्छी है। यह कहने के मुझे पैसे मिलते हैं। पर आईमैक्स सबसे अच्छी है।"],
+    "ur": ["بڑی تصویر کے لیے آئی میکس ہال۔ اور اگر چاہتے ہیں کہ فلم آپ کو گلے لگا لے، تو کرووڈ اسکرین۔", "کسی بھی ہال میں، بیچ کی سیٹیں، تقریباً دو تہائی پیچھے، سب سے اچھی ہوتی ہیں۔ اشر پر بھروسہ کیجیے۔", "ہر اسکرین سب سے اچھی ہے۔ یہ کہنے کے مجھے پیسے ملتے ہیں۔ پر آئی میکس سب سے اچھی ہے۔"]
+  },
+  "ush.read": {
+    "en": ["Let’s see... Lovely. Right this way.", "Ah, good choice. Excellent seat. Follow me.", "Mm-hm. I know exactly where that is. Stay close.", "Perfect. One of my favourite seats. Come along."],
+    "es": ["A ver... Estupendo. Por aquí.", "Ah, buena elección. Una butaca excelente. Sígueme.", "Ajá. Sé exactamente dónde está. No te separes.", "Perfecto. Una de mis butacas favoritas. Vamos."],
+    "hi": ["ज़रा देखूँ... बढ़िया। इधर आइए।", "अरे, अच्छी पसंद। बढ़िया सीट। मेरे पीछे आइए।", "हम्म। मुझे ठीक पता है कहाँ है। पास-पास रहिए।", "परफ़ेक्ट। मेरी पसंदीदा सीटों में से एक। चलिए।"],
+    "ur": ["ذرا دیکھوں... بڑھیا۔ ادھر آئیے۔", "ارے، اچھی پسند۔ بڑھیا سیٹ۔ میرے پیچھے آئیے۔", "ہمم۔ مجھے ٹھیک پتہ ہے کہاں ہے۔ پاس پاس رہیے۔", "پرفیکٹ۔ میری پسندیدہ سیٹوں میں سے ایک۔ چلیے۔"]
+  },
+  "ush.follow": {
+    "en": ["Follow me, please.", "This way. Mind the steps.", "Right behind me. Don’t get distracted by the popcorn.", "Not far now.", "Watch your step, the lights are low."],
+    "es": ["Sígueme, por favor.", "Por aquí. Cuidado con los escalones.", "Justo detrás de mí. Que no te distraigan las palomitas.", "Ya casi estamos.", "Mira dónde pisas, hay poca luz."],
+    "hi": ["मेरे पीछे आइए, प्लीज़।", "इधर से। सीढ़ियों का ध्यान रखिए।", "बिल्कुल मेरे पीछे। पॉपकॉर्न देखकर भटकिएगा मत।", "बस थोड़ा और।", "पैर संभालकर, रोशनी कम है।"],
+    "ur": ["میرے پیچھے آئیے، پلیز۔", "ادھر سے۔ سیڑھیوں کا دھیان رکھیے۔", "بالکل میرے پیچھے۔ پاپ کارن دیکھ کر بھٹکیے گا مت۔", "بس تھوڑا اور۔", "پاؤں سنبھال کر، روشنی کم ہے۔"]
+  },
+  "ush.wait": {
+    "en": ["Still with me?", "Over here!", "Take your time. The film won’t, but you take your time.", "This way, please. The seat won’t come to you.", "Hello? Your seat misses you."],
+    "es": ["¿Sigues conmigo?", "¡Por aquí!", "Tómate tu tiempo. La película no lo hará, pero tú tómatelo.", "Por aquí, por favor. La butaca no va a venir sola.", "¿Hola? Tu butaca te echa de menos."],
+    "hi": ["साथ हैं न?", "इधर!", "आराम से आइए। फ़िल्म रुकेगी नहीं, पर आप आराम से आइए।", "इधर, प्लीज़। सीट ख़ुद चलकर नहीं आएगी।", "हैलो? आपकी सीट आपको याद कर रही है।"],
+    "ur": ["ساتھ ہیں نا؟", "ادھر!", "آرام سے آئیے۔ فلم رکے گی نہیں، پر آپ آرام سے آئیے۔", "ادھر، پلیز۔ سیٹ خود چل کر نہیں آئے گی۔", "ہیلو؟ آپ کی سیٹ آپ کو یاد کر رہی ہے۔"]
+  },
+  "ush.arrive": {
+    "en": ["Here we are, your seat. Enjoy the film!", "This one’s yours. The bell is by the armrest if you need anything.", "Your seat, as promised. Sit back and enjoy.", "Here you go. Best seat in the row, if you ask me. Enjoy!"],
+    "es": ["Aquí está tu butaca. ¡Disfruta de la película!", "Esta es la tuya. El timbre está junto al reposabrazos si necesitas algo.", "Tu butaca, como te prometí. Relájate y disfruta.", "Aquí la tienes. La mejor de la fila, si me preguntas. ¡Disfruta!"],
+    "hi": ["लीजिए, आपकी सीट। फ़िल्म का मज़ा लीजिए!", "यह आपकी है। कुछ चाहिए तो हत्थे के पास घंटी है।", "वादे के मुताबिक़, आपकी सीट। आराम से बैठिए और मज़ा लीजिए।", "यह रही। मेरी मानें तो लाइन की सबसे अच्छी सीट। मज़े कीजिए!"],
+    "ur": ["لیجیے، آپ کی سیٹ۔ فلم کا مزہ لیجیے!", "یہ آپ کی ہے۔ کچھ چاہیے تو ہتھے کے پاس گھنٹی ہے۔", "وعدے کے مطابق، آپ کی سیٹ۔ آرام سے بیٹھیے اور مزہ لیجیے۔", "یہ رہی۔ میری مانیں تو لائن کی سب سے اچھی سیٹ۔ مزے کیجیے!"]
+  },
+  "ush.blocked": {
+    "en": ["Hm, someone’s in the way. One moment.", "Bit of a crowd. Let me find another way."],
+    "es": ["Mmm, hay alguien en medio. Un momento.", "Hay mucha gente. Buscaré otro camino."],
+    "hi": ["हम्म, कोई रास्ते में है। एक मिनट।", "थोड़ी भीड़ है। मैं दूसरा रास्ता देखता हूँ।"],
+    "ur": ["ہمم، کوئی راستے میں ہے۔ ایک منٹ۔", "تھوڑی بھیڑ ہے۔ میں دوسرا راستہ دیکھتا ہوں۔"]
+  },
+  "bark.usher": {
+    "en": ["Screens this way!", "Tickets ready, please.", "Mind the step.", "Yes, the IMAX really is that big.", "Doors open soon, folks.", "Enjoy the show!"],
+    "es": ["¡Las salas, por aquí!", "Entradas preparadas, por favor.", "Cuidado con el escalón.", "Sí, la IMAX es así de grande.", "Las puertas abren pronto, amigos.", "¡Disfruten la función!"],
+    "hi": ["स्क्रीनें इस तरफ़!", "टिकट तैयार रखिए, प्लीज़।", "सीढ़ी का ध्यान रखिए।", "जी हाँ, आईमैक्स सच में इतनी बड़ी है।", "दरवाज़े जल्दी खुलेंगे, दोस्तो।", "शो का मज़ा लीजिए!"],
+    "ur": ["اسکرینیں اس طرف!", "ٹکٹ تیار رکھیے، پلیز۔", "سیڑھی کا دھیان رکھیے۔", "جی ہاں، آئی میکس سچ میں اتنی بڑی ہے۔", "دروازے جلدی کھلیں گے، دوستو۔", "شو کا مزہ لیجیے!"]
+  },
+  "ven.greet": {
+    "en": ["Hey! What’ll it be? Popcorn, a cold drink, or a combo you’ll regret halfway through?", "Welcome to the tastiest corner of the building. What can I get you?", "Fresh popcorn, still warm. Salted or caramel? There’s no wrong answer. Except no popcorn.", "Snacks for the film? Films are better with snacks. Scientifically proven. Probably.", "What are we having tonight? Don’t say nothing. Nobody watches a film with nothing."],
+    "es": ["¡Hola! ¿Qué va a ser? ¿Palomitas, una bebida fría o un combo del que te arrepentirás a mitad de película?", "Bienvenido al rincón más rico del edificio. ¿Qué te pongo?", "Palomitas recién hechas, todavía calientes. ¿Saladas o de caramelo? No hay respuesta incorrecta. Salvo ninguna.", "¿Algo para picar en la película? Las películas son mejores con snacks. Está demostrado. Más o menos.", "¿Qué tomamos esta noche? No digas que nada. Nadie ve una película con nada."],
+    "hi": ["हैलो! क्या लेंगे? पॉपकॉर्न, ठंडी ड्रिंक, या ऐसा कॉम्बो जिस पर आधी फ़िल्म में पछताएँगे?", "बिल्डिंग के सबसे मज़ेदार कोने में ख़ुश आमदीद। आपके लिए क्या लाऊँ?", "ताज़ा पॉपकॉर्न, अभी गरम। नमकीन या कैरेमल? कोई ग़लत जवाब नहीं है। सिवाय 'नहीं चाहिए' के।", "फ़िल्म के लिए स्नैक्स? स्नैक्स के साथ फ़िल्म बेहतर लगती है। साइंस से साबित। शायद।", "आज क्या ले रहे हैं? 'कुछ नहीं' मत कहिए। ख़ाली हाथ कोई फ़िल्म नहीं देखता।"],
+    "ur": ["ہیلو! کیا لیں گے؟ پاپ کارن، ٹھنڈی ڈرنک، یا ایسا کومبو جس پر آدھی فلم میں پچھتائیں گے؟", "بلڈنگ کے سب سے مزےدار کونے میں خوش آمدید۔ آپ کے لیے کیا لاؤں؟", "تازہ پاپ کارن، ابھی گرم۔ نمکین یا کیریمل؟ کوئی غلط جواب نہیں ہے۔ سوائے 'نہیں چاہیے' کے۔", "فلم کے لیے اسنیکس؟ اسنیکس کے ساتھ فلم بہتر لگتی ہے۔ سائنس سے ثابت۔ شاید۔", "آج کیا لے رہے ہیں؟ 'کچھ نہیں' مت کہیے۔ خالی ہاتھ کوئی فلم نہیں دیکھتا۔"]
+  },
+  "ven.serve": {
+    "en": ["Coming right up!", "One moment, fresh batch.", "Good choice. Very good choice.", "Let’s make this a nice one."],
+    "es": ["¡Marchando!", "Un momento, que sale una tanda nueva.", "Buena elección. Muy buena elección.", "Vamos a ponerte uno bien bueno."],
+    "hi": ["बस एक पल!", "एक मिनट, ताज़ा बन रहा है।", "अच्छी पसंद। बहुत अच्छी पसंद।", "चलिए, आपके लिए बढ़िया वाला बनाते हैं।"],
+    "ur": ["بس ایک پل!", "ایک منٹ، تازہ بن رہا ہے۔", "اچھی پسند۔ بہت اچھی پسند۔", "چلیے، آپ کے لیے بڑھیا والا بناتے ہیں۔"]
+  },
+  "ven.give": {
+    "en": ["There you go. Careful, it’s hot.", "Enjoy! Crumbs go on the floor, apparently. Everyone else does it.", "Here. Don’t let anyone steal it. They will try.", "All yours. Try to save some for the actual film.", "Here you are. When it’s empty, the bin is right by the counter."],
+    "es": ["Aquí tienes. Cuidado, que quema.", "¡Que aproveche! Las migas van al suelo, por lo visto. Todo el mundo lo hace.", "Toma. Que nadie te lo robe. Lo intentarán.", "Todo tuyo. Intenta guardar algo para la película.", "Aquí tienes. Cuando se acabe, la papelera está junto al mostrador."],
+    "hi": ["यह लीजिए। ध्यान से, गरम है।", "मज़े कीजिए! चूरा फ़र्श पर गिरता है, शायद। सब यही करते हैं।", "लीजिए। किसी को चुराने मत दीजिएगा। लोग कोशिश ज़रूर करेंगे।", "सब आपका। थोड़ा फ़िल्म के लिए भी बचाकर रखिए।", "यह लीजिए। ख़त्म हो जाए तो डस्टबिन काउंटर के पास ही है।"],
+    "ur": ["یہ لیجیے۔ دھیان سے، گرم ہے۔", "مزے کیجیے! چورا فرش پر گرتا ہے، شاید۔ سب یہی کرتے ہیں۔", "لیجیے۔ کسی کو چرانے مت دیجیے گا۔ لوگ کوشش ضرور کریں گے۔", "سب آپ کا۔ تھوڑا فلم کے لیے بھی بچا کر رکھیے۔", "یہ لیجیے۔ ختم ہو جائے تو ڈسٹ بن کاؤنٹر کے پاس ہی ہے۔"]
+  },
+  "ven.full": {
+    "en": ["You’re already holding one. I admire the ambition, but finish that first.", "Two hands, one snack. Finish that one and come back.", "Let’s not get greedy. Finish what you’ve got, then we’ll talk."],
+    "es": ["Ya tienes uno en la mano. Admiro la ambición, pero termínate ese primero.", "Dos manos, un snack. Acábate ese y vuelve.", "No nos pongamos glotones. Acábate lo que tienes y luego hablamos."],
+    "hi": ["आपके हाथ में पहले से एक है। हिम्मत की दाद देनी होगी, पर पहले वो ख़त्म कीजिए।", "दो हाथ, एक स्नैक। वो ख़त्म कीजिए और फिर आइए।", "लालच नहीं। जो है वो ख़त्म कीजिए, फिर बात करते हैं।"],
+    "ur": ["آپ کے ہاتھ میں پہلے سے ایک ہے۔ ہمت کی داد دینی ہوگی، پر پہلے وہ ختم کیجیے۔", "دو ہاتھ، ایک اسنیک۔ وہ ختم کیجیے اور پھر آئیے۔", "لالچ نہیں۔ جو ہے وہ ختم کیجیے، پھر بات کرتے ہیں۔"]
+  },
+  "ven.binFirst": {
+    "en": ["Bin the empty one first, then I’ll fill you up again.", "Empty one in the bin, fresh one for you. Deal?"],
+    "es": ["Tira primero el vacío y luego te lo lleno otra vez.", "El vacío a la papelera y uno nuevo para ti. ¿Trato hecho?"],
+    "hi": ["पहले ख़ाली वाला डस्टबिन में डालिए, फिर नया भर देंगे।", "ख़ाली वाला डस्टबिन में, नया आपके लिए। डील?"],
+    "ur": ["پہلے خالی والا ڈسٹ بن میں ڈالیے، پھر نیا بھر دیں گے۔", "خالی والا ڈسٹ بن میں، نیا آپ کے لیے۔ ڈیل؟"]
+  },
+  "ven.short": {
+    "en": ["Your card says no, I’m afraid. The ATM is outside, by the doors.", "Not enough money for that one. There’s an ATM by the entrance.", "Hm, declined. The ATM outside will fix that."],
+    "es": ["Tu tarjeta dice que no, me temo. El cajero está fuera, junto a las puertas.", "No te llega para eso. Hay un cajero en la entrada.", "Mmm, rechazada. El cajero de fuera lo arregla."],
+    "hi": ["माफ़ कीजिए, कार्ड मना कर रहा है। एटीएम बाहर दरवाज़ों के पास है।", "इसके लिए पैसे कम पड़ रहे हैं। एंट्रेंस पर एटीएम है।", "हम्म, डिक्लाइन। बाहर वाला एटीएम ठीक कर देगा।"],
+    "ur": ["معاف کیجیے، کارڈ منع کر رہا ہے۔ اے ٹی ایم باہر دروازوں کے پاس ہے۔", "اس کے لیے پیسے کم پڑ رہے ہیں۔ انٹرنس پر اے ٹی ایم ہے۔", "ہمم، ڈکلائن۔ باہر والا اے ٹی ایم ٹھیک کر دے گا۔"]
+  },
+  "bark.vendor": {
+    "en": ["Fresh popcorn, still popping!", "Caramel’s warm, just saying.", "Large is the new medium.", "Cold drinks here!", "Popcorn! Salted, caramel, or both. No judgement.", "Snacks for the film, folks!"],
+    "es": ["¡Palomitas recién hechas, todavía saltando!", "El caramelo está calentito, solo lo digo.", "La grande es la nueva mediana.", "¡Bebidas frías aquí!", "¡Palomitas! Saladas, de caramelo o las dos. Sin juzgar.", "¡Snacks para la película, amigos!"],
+    "hi": ["ताज़ा पॉपकॉर्न, अभी भी फूट रहे हैं!", "कैरेमल गरम है, बस बता रहे हैं।", "बड़ा ही नया मीडियम है।", "ठंडी ड्रिंक्स यहाँ!", "पॉपकॉर्न! नमकीन, कैरेमल, या दोनों। कोई कुछ नहीं कहेगा।", "फ़िल्म के लिए स्नैक्स, दोस्तो!"],
+    "ur": ["تازہ پاپ کارن، ابھی بھی پھوٹ رہے ہیں!", "کیریمل گرم ہے، بس بتا رہے ہیں۔", "بڑا ہی نیا میڈیم ہے۔", "ٹھنڈی ڈرنکس یہاں!", "پاپ کارن! نمکین، کیریمل، یا دونوں۔ کوئی کچھ نہیں کہے گا۔", "فلم کے لیے اسنیکس، دوستو!"]
+  },
+  "bar.greet": {
+    "en": ["Evening. Coffee, a soda, or our famous mocktail, the Plot Twist?", "Welcome to the bar. Everything here is alcohol-free, except the gossip. That’s strong.", "Hi! Need caffeine to survive a long film? I’ve got you.", "What can I get you? The Plot Twist is popular. Nobody sees it coming."],
+    "es": ["Buenas. ¿Café, un refresco o nuestro famoso cóctel sin alcohol, El Giro Final?", "Bienvenido al bar. Aquí todo es sin alcohol, menos los cotilleos. Esos son fuertes.", "¡Hola! ¿Necesitas cafeína para sobrevivir a una película larga? Aquí estoy.", "¿Qué te pongo? El Giro Final es muy popular. Nadie lo ve venir."],
+    "hi": ["हैलो। कॉफ़ी, सोडा, या हमारा मशहूर मॉकटेल, प्लॉट ट्विस्ट?", "बार में ख़ुश आमदीद। यहाँ सब कुछ अल्कोहल-फ़्री है, सिवाय गपशप के। वो काफ़ी तेज़ है।", "हाय! लंबी फ़िल्म झेलने के लिए कैफ़ीन चाहिए? मैं हूँ न।", "क्या लेंगे? प्लॉट ट्विस्ट बहुत चलता है। कोई उम्मीद नहीं करता।"],
+    "ur": ["ہیلو۔ کافی، سوڈا، یا ہمارا مشہور ماک ٹیل، پلاٹ ٹوئسٹ؟", "بار میں خوش آمدید۔ یہاں سب کچھ الکوحل فری ہے، سوائے گپ شپ کے۔ وہ کافی تیز ہے۔", "ہائے! لمبی فلم جھیلنے کے لیے کیفین چاہیے؟ میں ہوں نا۔", "کیا لیں گے؟ پلاٹ ٹوئسٹ بہت چلتا ہے۔ کوئی امید نہیں کرتا۔"]
+  },
+  "bar.gossip": {
+    "en": ["The projectionist names every projector. The IMAX one is called Gerald. Gerald has never failed. Don’t jinx Gerald.", "Marcel once walked a man to his seat so gracefully that the whole row applauded. He bowed. Twice.", "Someone left a sandwich in Screen 3 last week. We still don’t know whose. We do know it was tuna.", "Éloïse can sell a ticket in under four seconds. We timed her. She didn’t blink once.", "Rémy says the seat bells ring by themselves at night. Rémy also believes his plant can hear him."],
+    "es": ["El proyeccionista le pone nombre a cada proyector. El de la IMAX se llama Gerald. Gerald nunca ha fallado. No gafes a Gerald.", "Una vez Marcel acompañó a un hombre a su butaca con tanta elegancia que toda la fila aplaudió. Hizo una reverencia. Dos veces.", "Alguien se dejó un bocadillo en la Sala 3 la semana pasada. Seguimos sin saber de quién. Sí sabemos que era de atún.", "Éloïse puede vender una entrada en menos de cuatro segundos. La cronometramos. No parpadeó ni una vez.", "Rémy dice que los timbres de las butacas suenan solos por la noche. Rémy también cree que su planta le escucha."],
+    "hi": ["प्रोजेक्शनिस्ट हर प्रोजेक्टर का नाम रखता है। आईमैक्स वाले का नाम जेराल्ड है। जेराल्ड कभी फ़ेल नहीं हुआ। उसे नज़र मत लगाइए।", "एक बार मार्सेल ने एक आदमी को इतनी शान से सीट तक पहुँचाया कि पूरी लाइन ने तालियाँ बजाईं। उसने झुककर सलाम किया। दो बार।", "पिछले हफ़्ते कोई स्क्रीन थ्री में सैंडविच छोड़ गया। आज तक नहीं पता किसका था। इतना पता है कि टूना था।", "एलोईज़ चार सेकंड से कम में टिकट बेच देती है। हमने टाइम नापा था। उसने एक बार भी पलक नहीं झपकाई।", "रेमी कहता है कि रात में सीटों की घंटियाँ अपने आप बजती हैं। रेमी यह भी मानता है कि उसका पौधा उसकी बात सुनता है।"],
+    "ur": ["پروجیکشنسٹ ہر پروجیکٹر کا نام رکھتا ہے۔ آئی میکس والے کا نام جیرالڈ ہے۔ جیرالڈ کبھی فیل نہیں ہوا۔ اسے نظر مت لگائیے۔", "ایک بار مارسیل نے ایک آدمی کو اتنی شان سے سیٹ تک پہنچایا کہ پوری لائن نے تالیاں بجائیں۔ اس نے جھک کر سلام کیا۔ دو بار۔", "پچھلے ہفتے کوئی اسکرین تھری میں سینڈوچ چھوڑ گیا۔ آج تک نہیں پتہ کس کا تھا۔ اتنا پتہ ہے کہ ٹونا تھا۔", "ایلوئیز چار سیکنڈ سے کم میں ٹکٹ بیچ دیتی ہے۔ ہم نے ٹائم ناپا تھا۔ اس نے ایک بار بھی پلک نہیں جھپکائی۔", "ریمی کہتا ہے کہ رات میں سیٹوں کی گھنٹیاں اپنے آپ بجتی ہیں۔ ریمی یہ بھی مانتا ہے کہ اس کا پودا اس کی بات سنتا ہے۔"]
+  },
+  "bar.serve": {
+    "en": ["Here you go. If anyone asks, it’s very sophisticated.", "One drink, made with love and a little ice.", "Coming up. Sip slowly, the film is long."],
+    "es": ["Aquí tienes. Si alguien pregunta, es muy sofisticado.", "Una bebida, hecha con cariño y un poco de hielo.", "Marchando. Bebe despacio, que la película es larga."],
+    "hi": ["यह लीजिए। कोई पूछे तो कहिएगा, बहुत क्लासी है।", "एक ड्रिंक, प्यार और थोड़ी सी बर्फ़ के साथ।", "बस बन रही है। धीरे-धीरे पीजिए, फ़िल्म लंबी है।"],
+    "ur": ["یہ لیجیے۔ کوئی پوچھے تو کہیے گا، بہت کلاسی ہے۔", "ایک ڈرنک، پیار اور تھوڑی سی برف کے ساتھ۔", "بس بن رہی ہے۔ دھیرے دھیرے پیجیے، فلم لمبی ہے۔"]
+  },
+  "bar.give": {
+    "en": ["Enjoy. It’s better than it looks, and it looks great.", "There you go. The cup is recyclable, the memories are not.", "All yours. Don’t spill it on Marcel, he notices everything."],
+    "es": ["Que lo disfrutes. Está más rico de lo que parece, y parece buenísimo.", "Aquí tienes. El vaso es reciclable, los recuerdos no.", "Todo tuyo. No se lo tires encima a Marcel, se da cuenta de todo."],
+    "hi": ["मज़े लीजिए। यह दिखने से भी अच्छा है, और दिखता भी कमाल है।", "यह लीजिए। कप रीसायकल हो जाता है, यादें नहीं।", "सब आपका। मार्सेल पर मत गिराइएगा, उसकी हर चीज़ पर नज़र रहती है।"],
+    "ur": ["مزے لیجیے۔ یہ دکھنے سے بھی اچھا ہے، اور دکھتا بھی کمال ہے۔", "یہ لیجیے۔ کپ ری سائیکل ہو جاتا ہے، یادیں نہیں۔", "سب آپ کا۔ مارسیل پر مت گرائیے گا، اس کی ہر چیز پر نظر رہتی ہے۔"]
+  },
+  "bark.bar": {
+    "en": ["Coffee’s fresh.", "Plot Twist, anyone? It’s just juice, but dramatic.", "Hot drinks, cold drinks, warm smiles.", "Need a coffee for the late show?", "The coffee machine is happy tonight. That’s rare."],
+    "es": ["El café está recién hecho.", "¿Alguien quiere un Giro Final? Es solo zumo, pero dramático.", "Bebidas calientes, bebidas frías y sonrisas cálidas.", "¿Un café para la sesión de noche?", "La cafetera está contenta esta noche. Eso es raro."],
+    "hi": ["कॉफ़ी ताज़ा है।", "प्लॉट ट्विस्ट, किसी को? बस जूस है, पर ड्रामे वाला।", "गरम ड्रिंक्स, ठंडी ड्रिंक्स, और गर्मजोशी वाली मुस्कान।", "लेट शो के लिए कॉफ़ी चाहिए?", "आज कॉफ़ी मशीन का मूड अच्छा है। ऐसा कम होता है।"],
+    "ur": ["کافی تازہ ہے۔", "پلاٹ ٹوئسٹ، کسی کو؟ بس جوس ہے، پر ڈرامے والا۔", "گرم ڈرنکس، ٹھنڈی ڈرنکس، اور گرم جوشی والی مسکان۔", "لیٹ شو کے لیے کافی چاہیے؟", "آج کافی مشین کا موڈ اچھا ہے۔ ایسا کم ہوتا ہے۔"]
+  },
+  "srv.hello": {
+    "en": ["You rang?", "Good evening. You called?", "Here I am. What can I do for you?"],
+    "es": ["¿Ha llamado?", "Buenas noches. ¿Me ha llamado?", "Aquí estoy. ¿En qué puedo ayudarle?"],
+    "hi": ["आपने बुलाया?", "जी, हाज़िर हूँ। आपने बुलाया?", "मैं आ गया। बताइए, क्या ख़िदमत करूँ?"],
+    "ur": ["آپ نے بلایا؟", "جی، حاضر ہوں۔ آپ نے بلایا؟", "میں آ گیا۔ بتائیے، کیا خدمت کروں؟"]
+  },
+  "srv.greet": {
+    "en": ["Would you like to order something, or is it about the film?", "Snacks to your seat, or something about the film? I can do both.", "How can I help? Food, drinks, or the film controls?"],
+    "es": ["¿Quiere pedir algo o es sobre la película?", "¿Algo de comer en su butaca, o algo de la película? Puedo con las dos cosas.", "¿En qué le ayudo? ¿Comida, bebida o los controles de la película?"],
+    "hi": ["कुछ ऑर्डर करना है, या फ़िल्म के बारे में कुछ?", "सीट पर स्नैक्स, या फ़िल्म का कुछ? मैं दोनों कर सकता हूँ।", "कैसे मदद करूँ? खाना, ड्रिंक्स, या फ़िल्म के कंट्रोल?"],
+    "ur": ["کچھ آرڈر کرنا ہے، یا فلم کے بارے میں کچھ؟", "سیٹ پر اسنیکس، یا فلم کا کچھ؟ میں دونوں کر سکتا ہوں۔", "کیسے مدد کروں؟ کھانا، ڈرنکس، یا فلم کے کنٹرول؟"]
+  },
+  "srv.menu": {
+    "en": ["Popcorn, a cola, or a coffee? I’ll bring it right here.", "What would you like? Everything comes straight to your seat."],
+    "es": ["¿Palomitas, una cola o un café? Se lo traigo aquí mismo.", "¿Qué le apetece? Todo llega directo a su butaca."],
+    "hi": ["पॉपकॉर्न, कोला, या कॉफ़ी? मैं यहीं ले आऊँगा।", "क्या लेंगे? सब कुछ सीधे आपकी सीट पर आएगा।"],
+    "ur": ["پاپ کارن، کولا، یا کافی؟ میں یہیں لے آؤں گا۔", "کیا لیں گے؟ سب کچھ سیدھے آپ کی سیٹ پر آئے گا۔"]
+  },
+  "srv.order": {
+    "en": ["Here you go. Careful, it’s full.", "Delivered to your seat. Enjoy the film.", "There you are. Service with a whisper."],
+    "es": ["Aquí tiene. Cuidado, que está lleno.", "Entregado en su butaca. Disfrute de la película.", "Aquí tiene. Servicio en voz baja."],
+    "hi": ["यह लीजिए। ध्यान से, भरा हुआ है।", "आपकी सीट पर हाज़िर। फ़िल्म का मज़ा लीजिए।", "यह रहा। धीमी आवाज़ में सर्विस।"],
+    "ur": ["یہ لیجیے۔ دھیان سے، بھرا ہوا ہے۔", "آپ کی سیٹ پر حاضر۔ فلم کا مزہ لیجیے۔", "یہ رہا۔ دھیمی آواز میں سروس۔"]
+  },
+  "srv.tablet": {
+    "en": ["Here’s the tablet. Pause, rewind, change the film, whatever you like. Hand it back when you’re done.", "This tablet controls the film. Another film costs extra, so choose wisely.", "The remote is all yours. Please don’t skip the best part."],
+    "es": ["Aquí tiene la tablet. Pausar, rebobinar, cambiar de película, lo que quiera. Devuélvamela al terminar.", "Esta tablet controla la película. Otra película se cobra aparte, así que elija bien.", "El mando es todo suyo. Por favor, no se salte la mejor parte."],
+    "hi": ["यह लीजिए टैबलेट। रोकिए, पीछे कीजिए, फ़िल्म बदलिए, जो चाहें। ख़त्म हो जाए तो वापस दे दीजिए।", "यह टैबलेट फ़िल्म कंट्रोल करता है। दूसरी फ़िल्म के अलग पैसे लगेंगे, सोच-समझकर चुनिए।", "रिमोट अब आपका। प्लीज़, सबसे अच्छा हिस्सा आगे मत बढ़ाइएगा।"],
+    "ur": ["یہ لیجیے ٹیبلٹ۔ روکیے، پیچھے کیجیے، فلم بدلیے، جو چاہیں۔ ختم ہو جائے تو واپس دے دیجیے۔", "یہ ٹیبلٹ فلم کنٹرول کرتا ہے۔ دوسری فلم کے الگ پیسے لگیں گے، سوچ سمجھ کر چنیے۔", "ریموٹ اب آپ کا۔ پلیز، سب سے اچھا حصہ آگے مت بڑھائیے گا۔"]
+  },
+  "srv.handBack": {
+    "en": ["Thank you. Anything extra goes on your bill.", "Got it. I’ll slip away now."],
+    "es": ["Gracias. Lo extra va a su cuenta.", "Entendido. Me retiro con discreción."],
+    "hi": ["शुक्रिया। जो एक्स्ट्रा है, वो आपके बिल में जुड़ जाएगा।", "ठीक है। मैं चुपचाप चलता हूँ।"],
+    "ur": ["شکریہ۔ جو ایکسٹرا ہے، وہ آپ کے بل میں جڑ جائے گا۔", "ٹھیک ہے۔ میں چپ چاپ چلتا ہوں۔"]
+  },
+  "srv.bye": {
+    "en": ["Enjoy the rest of the film.", "I’ll leave you to it. Ring if you need me.", "Back into the dark I go. Enjoy!"],
+    "es": ["Disfrute del resto de la película.", "Le dejo con la película. Llame si me necesita.", "Vuelvo a la oscuridad. ¡Que disfrute!"],
+    "hi": ["बाक़ी फ़िल्म का मज़ा लीजिए।", "मैं चलता हूँ। ज़रूरत हो तो घंटी बजाइए।", "मैं वापस अँधेरे में चला। मज़े कीजिए!"],
+    "ur": ["باقی فلم کا مزہ لیجیے۔", "میں چلتا ہوں۔ ضرورت ہو تو گھنٹی بجائیے۔", "میں واپس اندھیرے میں چلا۔ مزے کیجیے!"]
+  }
+}

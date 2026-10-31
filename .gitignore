@@ -1,0 +1,11 @@
+node_modules/
+*.unsigned
+*.apk
+*.mp4
+__pycache__/
+tools/kiln/.kiln-install/
+tools/kiln/.kiln-ws/
+tools/textures/.cache/
+tools/bake/.work/
+graphify-out/
+www/bake/*.png

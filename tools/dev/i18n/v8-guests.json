@@ -1,0 +1,92 @@
+{
+  "greet": {
+    "en": ["Evening!", "Hi there!", "Oh, hello!", "Nice night for a film.", "How’s it going?", "Enjoy the film!", "Hello, hello!", "Lovely evening, isn’t it?"],
+    "es": ["¡Buenas!", "¡Hola!", "¡Ah, hola!", "Buena noche para una peli.", "¿Qué tal?", "¡Que disfrutes la peli!", "¡Hola, hola!", "Qué noche tan bonita, ¿no?"],
+    "hi": ["गुड ईवनिंग!", "हाय!", "अरे, हैलो!", "फ़िल्म के लिए बढ़िया शाम है।", "क्या हाल है?", "फ़िल्म का मज़ा लीजिए!", "हैलो, हैलो!", "कितनी प्यारी शाम है, है न?"],
+    "ur": ["گڈ ایوننگ!", "ہائے!", "ارے، ہیلو!", "فلم کے لیے بڑھیا شام ہے۔", "کیا حال ہے؟", "فلم کا مزہ لیجیے!", "ہیلو، ہیلو!", "کتنی پیاری شام ہے، ہے نا؟"]
+  },
+  "guest.small": {
+    "en": ["Is it just me, or are the seats in the curved hall basically beds?", "I came for the film. I’m staying for the popcorn.", "I always cry at the trailers. Don’t tell anyone.", "My friend says this film is boring. My friend also eats pizza with a fork.", "Have you seen Sintel? Bring tissues. Bring two boxes.", "The popcorn here is dangerous. I ordered a small and somehow left with a bucket.", "I sat in the front row once. I could see the characters’ thoughts.", "Big Buck Bunny again? That’s my eleventh time. It’s a tradition.", "Do you think the usher ever gets lost? He walks like he owns the building.", "This lobby is fancier than my whole flat.", "If someone talks during the film, I’m shushing. Loudly.", "The IMAX screen is so big my neck needs a holiday after.", "Have you tried the seat bell? Someone brings you snacks. In the dark. Like magic.", "I tried to sneak in my own snacks once. The usher just looked at me. I still think about it.", "My phone is on silent. My stomach, unfortunately, is not.", "Cosmos Laundromat is so strange. Loved it. No idea why."],
+    "es": ["¿Soy yo, o las butacas de la sala curva son prácticamente camas?", "Vine por la película. Me quedo por las palomitas.", "Siempre lloro con los tráilers. No se lo digas a nadie.", "Mi amigo dice que esta película es aburrida. Mi amigo también come pizza con tenedor.", "¿Has visto Sintel? Trae pañuelos. Trae dos cajas.", "Las palomitas de aquí son peligrosas. Pedí unas pequeñas y, no sé cómo, salí con un cubo.", "Una vez me senté en primera fila. Podía ver lo que pensaban los personajes.", "¿Otra vez Big Buck Bunny? Es mi undécima vez. Es una tradición.", "¿Crees que el acomodador se pierde alguna vez? Camina como si fuera el dueño del edificio.", "Este vestíbulo es más elegante que todo mi piso.", "Si alguien habla durante la película, chisto. Fuerte.", "La pantalla IMAX es tan grande que mi cuello necesita vacaciones después.", "¿Has probado el timbre de la butaca? Alguien te trae snacks. A oscuras. Como por arte de magia.", "Una vez intenté colar mis propios snacks. El acomodador solo me miró. Todavía lo pienso.", "Mi móvil está en silencio. Mi estómago, por desgracia, no.", "Cosmos Laundromat es rarísima. Me encantó. No sé por qué."],
+    "hi": ["सिर्फ़ मुझे लगता है, या कर्व्ड हॉल की सीटें बिल्कुल बिस्तर जैसी हैं?", "फ़िल्म तो बहाना है, असल में पॉपकॉर्न के लिए आते हैं।", "मुझे ट्रेलर देखकर ही रोना आ जाता है। किसी को बताइएगा मत।", "मेरा दोस्त कहता है यह फ़िल्म बोरिंग है। मेरा दोस्त पिज़्ज़ा भी काँटे से खाता है।", "सिंटेल देखी है? टिशू लेकर जाइए। दो डिब्बे।", "यहाँ का पॉपकॉर्न ख़तरनाक है। ऑर्डर छोटा किया था, हाथ में बाल्टी आ गई।", "एक बार सबसे आगे बैठना पड़ा था। किरदारों के ख़याल तक दिख रहे थे।", "फिर से बिग बक बनी? यह ग्यारहवीं बार है। ट्रेडिशन है।", "क्या लगता है, अशर कभी रास्ता भूलता होगा? ऐसे चलता है जैसे बिल्डिंग उसी की हो।", "यह लॉबी मेरे पूरे फ़्लैट से ज़्यादा शानदार है।", "फ़िल्म के दौरान किसी ने बात की, तो ज़ोर से 'शश' होगा।", "आईमैक्स स्क्रीन इतनी बड़ी है कि बाद में गर्दन को छुट्टी चाहिए।", "सीट वाली घंटी आज़माई? कोई अँधेरे में स्नैक्स ले आता है। बिल्कुल जादू।", "एक बार अपने स्नैक्स छुपाकर लाने की कोशिश की थी। अशर ने बस घूरा। आज तक याद है।", "मेरा फ़ोन साइलेंट पर है। मेरा पेट, बदक़िस्मती से, नहीं।", "कॉसमॉस लॉन्ड्रोमैट बहुत अजीब है। बहुत पसंद आई। पता नहीं क्यों।"],
+    "ur": ["صرف مجھے لگتا ہے، یا کرووڈ ہال کی سیٹیں بالکل بستر جیسی ہیں؟", "فلم تو بہانہ ہے، اصل میں پاپ کارن کے لیے آتے ہیں۔", "مجھے ٹریلر دیکھ کر ہی رونا آ جاتا ہے۔ کسی کو بتائیے گا مت۔", "میرا دوست کہتا ہے یہ فلم بورنگ ہے۔ میرا دوست پیزا بھی کانٹے سے کھاتا ہے۔", "سنٹیل دیکھی ہے؟ ٹشو لے کر جائیے۔ دو ڈبے۔", "یہاں کا پاپ کارن خطرناک ہے۔ آرڈر چھوٹا کیا تھا، ہاتھ میں بالٹی آ گئی۔", "ایک بار سب سے آگے بیٹھنا پڑا تھا۔ کرداروں کے خیال تک دکھ رہے تھے۔", "پھر سے بگ بک بنی؟ یہ گیارہویں بار ہے۔ ٹریڈیشن ہے۔", "کیا لگتا ہے، اشر کبھی راستہ بھولتا ہوگا؟ ایسے چلتا ہے جیسے بلڈنگ اسی کی ہو۔", "یہ لابی میرے پورے فلیٹ سے زیادہ شاندار ہے۔", "فلم کے دوران کسی نے بات کی، تو زور سے 'شش' ہوگا۔", "آئی میکس اسکرین اتنی بڑی ہے کہ بعد میں گردن کو چھٹی چاہیے۔", "سیٹ والی گھنٹی آزمائی؟ کوئی اندھیرے میں اسنیکس لے آتا ہے۔ بالکل جادو۔", "ایک بار اپنے اسنیکس چھپا کر لانے کی کوشش کی تھی۔ اشر نے بس گھورا۔ آج تک یاد ہے۔", "میرا فون سائلنٹ پر ہے۔ میرا پیٹ، بدقسمتی سے، نہیں۔", "کاسموس لانڈرومیٹ بہت عجیب ہے۔ بہت پسند آئی۔ پتہ نہیں کیوں۔"]
+  },
+  "guest.more": {
+    "en": ["Anyway. Enjoy the film!", "Sit in the middle. Trust me.", "Don’t tell the usher I said that.", "Right, I need popcorn.", "See you in there!", "Nice talking to you!"],
+    "es": ["En fin. ¡Disfruta de la peli!", "Siéntate en el centro. Hazme caso.", "No le digas al acomodador que lo dije yo.", "Bueno, necesito palomitas.", "¡Nos vemos dentro!", "¡Un placer charlar contigo!"],
+    "hi": ["ख़ैर। फ़िल्म का मज़ा लीजिए!", "बीच में बैठिए। मेरी बात मानिए।", "अशर को मत बताइएगा कि मैंने कहा।", "चलो, मुझे पॉपकॉर्न चाहिए।", "अंदर मिलते हैं!", "आपसे बात करके अच्छा लगा!"],
+    "ur": ["خیر۔ فلم کا مزہ لیجیے!", "بیچ میں بیٹھیے۔ میری بات مانیے۔", "اشر کو مت بتائیے گا کہ میں نے کہا۔", "چلو، مجھے پاپ کارن چاہیے۔", "اندر ملتے ہیں!", "آپ سے بات کر کے اچھا لگا!"]
+  },
+  "guest.bump": {
+    "en": ["Oh! Sorry.", "Whoa, careful!", "Excuse me!", "Watch it, I’ve got snacks!", "Oops! My fault. Or yours.", "Personal space, please!"],
+    "es": ["¡Ay! Perdón.", "¡Eh, cuidado!", "¡Perdone!", "¡Cuidado, que llevo snacks!", "¡Uy! Culpa mía. O tuya.", "¡Un poco de espacio, por favor!"],
+    "hi": ["अरे! सॉरी।", "अरे, संभलकर!", "माफ़ कीजिए!", "ध्यान से, हाथ में स्नैक्स हैं!", "उफ़! मेरी ग़लती। या आपकी।", "थोड़ी दूरी, प्लीज़!"],
+    "ur": ["ارے! سوری۔", "ارے، سنبھل کر!", "معاف کیجیے!", "دھیان سے، ہاتھ میں اسنیکس ہیں!", "اف! میری غلطی۔ یا آپ کی۔", "تھوڑی دوری، پلیز!"]
+  },
+  "guest.stare": {
+    "en": ["Can I help you?", "Do I know you?", "Is there something on my face?", "You’re very close. Very, very close."],
+    "es": ["¿Te puedo ayudar en algo?", "¿Nos conocemos?", "¿Tengo algo en la cara?", "Estás muy cerca. Muy, muy cerca."],
+    "hi": ["कोई काम था?", "हम एक-दूसरे को जानते हैं क्या?", "मेरे चेहरे पर कुछ लगा है क्या?", "आप बहुत पास हैं। बहुत, बहुत पास।"],
+    "ur": ["کوئی کام تھا؟", "ہم ایک دوسرے کو جانتے ہیں کیا؟", "میرے چہرے پر کچھ لگا ہے کیا؟", "آپ بہت پاس ہیں۔ بہت، بہت پاس۔"]
+  },
+  "chat": {
+    "en": [["Which one are we watching?", "The one with the dragon.", "You cried at the trailer.", "The trailer was very emotional."], ["Did you bring snacks?", "I bought a bucket.", "A bucket? For a short film?", "For the first five minutes."], ["Big screen or curved screen?", "Big. I want to feel small.", "Your height already does that.", "Emotionally, I mean."], ["Where are our seats?", "Middle of the row.", "The best seats!", "I booked a week ago. I plan things."], ["Phones on silent?", "Mine’s on silent.", "Then why is it ringing?", "That’s... my other phone."], ["Is this film long?", "About fifteen minutes.", "Then why did we buy so much popcorn?", "Because we’re winners."], ["Have you seen the bunny one?", "Big Buck Bunny? Of course.", "Is it for kids?", "It’s for legends."], ["These seats recline.", "I know. I fell asleep last time.", "During the film?", "During the ads. Every single time."], ["Let’s sit in the front row.", "Absolutely not.", "Why not?", "My neck has plans tomorrow."], ["Coffee or soda?", "Coffee. It’s a late show.", "You’ll be awake all night.", "Then I’ll watch another film."]],
+    "es": [["¿Cuál vamos a ver?", "La del dragón.", "Lloraste con el tráiler.", "El tráiler era muy emotivo."], ["¿Has traído algo de picar?", "He comprado un cubo.", "¿Un cubo? ¿Para un corto?", "Para los cinco primeros minutos."], ["¿Pantalla grande o curva?", "Grande. Quiero sentirme poca cosa.", "Para eso ya tienes tu altura.", "Emocionalmente, digo."], ["¿Dónde están nuestros asientos?", "En el centro de la fila.", "¡Los mejores!", "Los reservé hace una semana. Soy de planificar."], ["¿Móviles en silencio?", "El mío está en silencio.", "¿Entonces por qué suena?", "Es que... es mi otro móvil."], ["¿Es larga esta peli?", "Unos quince minutos.", "¿Y por qué hemos comprado tantas palomitas?", "Porque somos unos campeones."], ["¿Has visto la del conejo?", "¿Big Buck Bunny? Claro.", "¿Es para niños?", "Es para leyendas."], ["Estas butacas se reclinan.", "Ya lo sé. La última vez me dormí.", "¿Durante la película?", "Durante los anuncios. Siempre."], ["Sentémonos en primera fila.", "Ni hablar.", "¿Por qué no?", "Mi cuello tiene planes mañana."], ["¿Café o refresco?", "Café. Es una sesión tardía.", "No vas a dormir en toda la noche.", "Pues veré otra película."]],
+    "hi": [["हम कौन सी देख रहे हैं?", "ड्रैगन वाली।", "ट्रेलर पर ही रोना आ गया था तुम्हें।", "ट्रेलर बहुत इमोशनल था।"], ["स्नैक्स लाए?", "पूरी बाल्टी ले ली।", "बाल्टी? एक छोटी सी फ़िल्म के लिए?", "पहले पाँच मिनट के लिए।"], ["बड़ी स्क्रीन या कर्व्ड?", "बड़ी। मुझे ख़ुद को छोटा महसूस करना है।", "तुम्हारा क़द तो पहले से छोटा है।", "मेरा मतलब, दिल से।"], ["हमारी सीटें कहाँ हैं?", "लाइन के बीच में।", "सबसे अच्छी सीटें!", "एक हफ़्ते पहले बुक कर ली थीं। प्लानिंग है अपनी।"], ["फ़ोन साइलेंट पर?", "मेरा तो साइलेंट पर है।", "तो फिर बज क्यों रहा है?", "वो... मेरा दूसरा फ़ोन है।"], ["यह फ़िल्म लंबी है?", "कोई पंद्रह मिनट की।", "तो इतना पॉपकॉर्न क्यों ले लिया?", "क्योंकि हम चैंपियन हैं।"], ["ख़रगोश वाली देखी है?", "बिग बक बनी? बिल्कुल।", "बच्चों के लिए है?", "लीजेंड्स के लिए है।"], ["ये सीटें पीछे झुकती हैं।", "पता है। पिछली बार नींद आ गई थी।", "फ़िल्म के दौरान?", "ऐड्स के दौरान। हर बार यही होता है।"], ["चलो, सबसे आगे बैठते हैं।", "बिल्कुल नहीं।", "क्यों नहीं?", "मेरी गर्दन के कल कुछ प्लान हैं।"], ["कॉफ़ी या सोडा?", "कॉफ़ी। लेट शो है।", "पूरी रात नींद नहीं आएगी।", "तो एक और फ़िल्म देख लेंगे।"]],
+    "ur": [["ہم کون سی دیکھ رہے ہیں؟", "ڈریگن والی۔", "ٹریلر پر ہی رونا آ گیا تھا تمہیں۔", "ٹریلر بہت ایموشنل تھا۔"], ["اسنیکس لائے؟", "پوری بالٹی لے لی۔", "بالٹی؟ ایک چھوٹی سی فلم کے لیے؟", "پہلے پانچ منٹ کے لیے۔"], ["بڑی اسکرین یا کرووڈ؟", "بڑی۔ مجھے خود کو چھوٹا محسوس کرنا ہے۔", "تمہارا قد تو پہلے سے چھوٹا ہے۔", "میرا مطلب، دل سے۔"], ["ہماری سیٹیں کہاں ہیں؟", "لائن کے بیچ میں۔", "سب سے اچھی سیٹیں!", "ایک ہفتے پہلے بک کر لی تھیں۔ پلاننگ ہے اپنی۔"], ["فون سائلنٹ پر؟", "میرا تو سائلنٹ پر ہے۔", "تو پھر بج کیوں رہا ہے؟", "وہ... میرا دوسرا فون ہے۔"], ["یہ فلم لمبی ہے؟", "کوئی پندرہ منٹ کی۔", "تو اتنا پاپ کارن کیوں لے لیا؟", "کیونکہ ہم چیمپئن ہیں۔"], ["خرگوش والی دیکھی ہے؟", "بگ بک بنی؟ بالکل۔", "بچوں کے لیے ہے؟", "لیجنڈز کے لیے ہے۔"], ["یہ سیٹیں پیچھے جھکتی ہیں۔", "پتہ ہے۔ پچھلی بار نیند آ گئی تھی۔", "فلم کے دوران؟", "ایڈز کے دوران۔ ہر بار یہی ہوتا ہے۔"], ["چلو، سب سے آگے بیٹھتے ہیں۔", "بالکل نہیں۔", "کیوں نہیں؟", "میری گردن کے کل کچھ پلان ہیں۔"], ["کافی یا سوڈا؟", "کافی۔ لیٹ شو ہے۔", "پوری رات نیند نہیں آئے گی۔", "تو ایک اور فلم دیکھ لیں گے۔"]]
+  },
+  "aud.excuse": {
+    "en": ["Excuse me.", "Sorry, squeezing by.", "Mind my popcorn!", "Thanks, sorry!"],
+    "es": ["Perdón.", "Perdón, paso un momento.", "¡Cuidado con mis palomitas!", "¡Gracias, perdón!"],
+    "hi": ["माफ़ कीजिए।", "सॉरी, ज़रा निकलने दीजिए।", "मेरे पॉपकॉर्न का ध्यान!", "शुक्रिया, सॉरी!"],
+    "ur": ["معاف کیجیے۔", "سوری، ذرا نکلنے دیجیے۔", "میرے پاپ کارن کا دھیان!", "شکریہ، سوری!"]
+  },
+  "aud.pre": {
+    "en": ["Ooh, it’s starting soon!", "Phones off, everyone.", "Can you see okay?", "Who sits in the front row on purpose?", "Pass the popcorn.", "I hope there are trailers.", "Shh, the lights are going down!", "These seats are amazing."],
+    "es": ["¡Uy, empieza ya!", "Móviles apagados, todos.", "¿Ves bien?", "¿Quién se sienta en primera fila a propósito?", "Pásame las palomitas.", "Ojalá pongan tráilers.", "¡Chis, que apagan las luces!", "Estas butacas son increíbles."],
+    "hi": ["अरे, बस शुरू होने वाली है!", "सब लोग फ़ोन बंद कर दो।", "ठीक से दिख रहा है?", "जानबूझकर सबसे आगे कौन बैठता है?", "पॉपकॉर्न इधर देना।", "उम्मीद है ट्रेलर भी होंगे।", "श्श, लाइट्स बंद हो रही हैं!", "ये सीटें कमाल की हैं।"],
+    "ur": ["ارے، بس شروع ہونے والی ہے!", "سب لوگ فون بند کر دو۔", "ٹھیک سے دکھ رہا ہے؟", "جان بوجھ کر سب سے آگے کون بیٹھتا ہے؟", "پاپ کارن ادھر دینا۔", "امید ہے ٹریلر بھی ہوں گے۔", "شش، لائٹس بند ہو رہی ہیں!", "یہ سیٹیں کمال کی ہیں۔"]
+  },
+  "aud.scare": {
+    "en": ["Nope!", "Why would you go in there?!", "I’m fine. Totally fine.", "My heart!", "Oh no, no, no.", "Did you see that?!"],
+    "es": ["¡Ni hablar!", "¡¿Por qué entras ahí?!", "Estoy bien. Perfectamente.", "¡Mi corazón!", "Ay no, no, no.", "¡¿Has visto eso?!"],
+    "hi": ["नहीं, नहीं!", "वहाँ क्यों जा रहे हो?!", "मैं ठीक हूँ। बिल्कुल ठीक।", "मेरा दिल!", "अरे नहीं, नहीं, नहीं।", "देखा तुमने?!"],
+    "ur": ["نہیں، نہیں!", "وہاں کیوں جا رہے ہو؟!", "میں ٹھیک ہوں۔ بالکل ٹھیک۔", "میرا دل!", "ارے نہیں، نہیں، نہیں۔", "دیکھا تم نے؟!"]
+  },
+  "aud.tension": {
+    "en": ["Don’t open the door...", "Here it comes...", "I can’t look.", "Something’s wrong..."],
+    "es": ["No abras la puerta...", "Ahí viene...", "No puedo mirar.", "Algo va mal..."],
+    "hi": ["दरवाज़ा मत खोलना...", "अब आएगा...", "मुझसे देखा नहीं जाएगा।", "कुछ गड़बड़ है..."],
+    "ur": ["دروازہ مت کھولنا...", "اب آئے گا...", "مجھ سے دیکھا نہیں جائے گا۔", "کچھ گڑبڑ ہے..."]
+  },
+  "aud.laugh": {
+    "en": ["Ha! Classic.", "Did not see that coming.", "Stop, I’m crying.", "That’s brilliant!", "Hahaha!"],
+    "es": ["¡Ja! Un clásico.", "No me lo esperaba.", "Para, que lloro de la risa.", "¡Qué genialidad!", "¡Jajaja!"],
+    "hi": ["हा! क्या बात है।", "यह तो सोचा भी नहीं था।", "बस करो, हँसते-हँसते आँसू आ गए।", "कमाल है!", "हाहाहा!"],
+    "ur": ["ہا! کیا بات ہے۔", "یہ تو سوچا بھی نہیں تھا۔", "بس کرو، ہنستے ہنستے آنسو آ گئے۔", "کمال ہے!", "ہاہاہا!"]
+  },
+  "aud.aww": {
+    "en": ["Aww, look at that.", "That’s so sweet.", "I’m not crying, you’re crying.", "Look at him!"],
+    "es": ["Ay, mira eso.", "Qué bonito.", "No estoy llorando, tú estás llorando.", "¡Míralo!"],
+    "hi": ["अरे, देखो तो।", "कितना प्यारा है।", "रोना किसे आ रहा है? मुझे तो नहीं।", "उसे तो देखो!"],
+    "ur": ["ارے، دیکھو تو۔", "کتنا پیارا ہے۔", "رونا کسے آ رہا ہے؟ مجھے تو نہیں۔", "اسے تو دیکھو!"]
+  },
+  "aud.climax": {
+    "en": ["Yes!", "Bravo!", "Whoa!", "Come on!", "Unbelievable!"],
+    "es": ["¡Sí!", "¡Bravo!", "¡Hala!", "¡Venga!", "¡Increíble!"],
+    "hi": ["हाँ!", "शाबाश!", "वाह!", "चलो, चलो!", "यक़ीन नहीं होता!"],
+    "ur": ["ہاں!", "شاباش!", "واہ!", "چلو، چلو!", "یقین نہیں ہوتا!"]
+  },
+  "aud.shush": {
+    "en": ["Shh!", "Some of us are watching!", "Shhh!", "Quiet, please!"],
+    "es": ["¡Chis!", "¡Algunos estamos viendo la peli!", "¡Chissst!", "¡Silencio, por favor!"],
+    "hi": ["श्श!", "कुछ लोग फ़िल्म देख रहे हैं!", "श्श्श!", "चुप, प्लीज़!"],
+    "ur": ["شش!", "کچھ لوگ فلم دیکھ رہے ہیں!", "ششش!", "چپ، پلیز!"]
+  },
+  "aud.end": {
+    "en": ["Bravo! Bravo!", "That was amazing!", "Okay, that was worth it.", "I need a minute.", "Again! Again!", "Best film ever."],
+    "es": ["¡Bravo! ¡Bravo!", "¡Ha sido increíble!", "Vale, ha merecido la pena.", "Necesito un minuto.", "¡Otra! ¡Otra!", "La mejor película del mundo."],
+    "hi": ["वाह, वाह!", "कमाल की फ़िल्म थी!", "ठीक है, पैसे वसूल।", "मुझे एक मिनट चाहिए।", "एक बार और! एक बार और!", "अब तक की सबसे अच्छी फ़िल्म।"],
+    "ur": ["واہ، واہ!", "کمال کی فلم تھی!", "ٹھیک ہے، پیسے وصول۔", "مجھے ایک منٹ چاہیے۔", "ایک بار اور! ایک بار اور!", "اب تک کی سب سے اچھی فلم۔"]
+  }
+}
