@@ -4,7 +4,7 @@
 #    lint), gltf-transform 4.5.1 (GLB inspect / validate / optimise)
 #  * Blender 5.2.3 LTS in /opt (headless modelling, Cycles renders and light bakes, GLB export; the blender-web-3d skill), checksum
 #    verified, plus Mesa's software OpenGL/EGL so EEVEE previews render without a GPU
-#  * SciPy and headless OpenCV for the cc-blender skills' image-analysis scripts
+#  * graphify 0.9.99 in /opt/graphify (code knowledge graph for the graphify skill), then an AST-only build of graphify-out/
 # Exports KILN_WS, ACORN and BLENDER so `node tools/kiln/build.mjs`, `sh tools/run-tests.sh` and the Blender tools work.
 set -euo pipefail
 
@@ -45,8 +45,15 @@ setup_blender() {
 }
 setup_blender || echo "session-start: Blender setup failed; Blender tools are unavailable this session" >&2
 
-# Python packages for the cc-blender reference-analysis scripts (OpenCV, SciPy); numpy and Pillow are already present
-python3 -c "import cv2, scipy" 2>/dev/null || pip3 install -q --break-system-packages scipy opencv-python-headless > /dev/null 2>&1 || echo "session-start: pip install of scipy/opencv failed" >&2
+# graphify in its own venv (pinned; the PyPI package matched the reviewed source), then the code graph: AST only, no model calls,
+# about 6 s (.graphifyignore keeps docs and assets out). A failure here leaves everything else working.
+GV=0.9.99
+setup_graphify() {
+  [ "$(/opt/graphify/bin/graphify --version 2>/dev/null)" = "graphify $GV" ] || { python3 -m venv /opt/graphify && /opt/graphify/bin/pip install -q "graphifyy==$GV"; }
+  ln -sfn /opt/graphify/bin/graphify /usr/local/bin/graphify
+  graphify update . > /dev/null 2>&1
+}
+setup_graphify || echo "session-start: graphify setup failed; graph queries are unavailable this session" >&2
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo "export KILN_WS=\"$PWD/$WS\"" >> "$CLAUDE_ENV_FILE"

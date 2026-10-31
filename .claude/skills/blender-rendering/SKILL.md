@@ -1,304 +1,70 @@
 ---
 name: blender-rendering
-description: Render Blender scenes with the right engine and settings — Cycles for photoreal, EEVEE for speed/stylized, sample counts, denoising (OptiX/OIDN), light path tuning, color management (AgX/Filmic), file output (PNG/EXR/MP4), animation rendering. Use whenever the user asks to "render this", "produce an image", "render a frame / animation", "make a final image", "save the render", or any output-generation request. Make sure to use this skill even if the user does not say "render" — also covers "make a picture", "save the result", "produce a final image", "export as image".
-allowed-tools: Read Bash mcp__blender__execute_blender_code mcp__blender__get_scene_info mcp__blender__get_object_info mcp__blender__get_objects_summary mcp__blender__get_object_detail_summary mcp__blender__render_viewport_to_path mcp__blender__search_api_docs mcp__blender_official__execute_blender_code mcp__blender_official__get_objects_summary mcp__blender_official__get_object_detail_summary mcp__blender_official__render_viewport_to_path mcp__blender_official__search_api_docs
+description: Render with Blender 5.2 Cycles/EEVEE/Workbench - quality presets, GPU setup, adaptive sampling, denoising, light paths, color management (AgX, Khronos PBR Neutral, ACES), PNG/EXR/MP4 output, passes, the 5.0 compositor API, CLI and multi-camera batch rendering. Use for any still, animation or turntable render.
+license: MIT
+metadata:
+  author: blender-agent-skills
+  version: "1.2.0"
 ---
 
+# Rendering
 
-## MCP backend
+The execution model is in `blender-core`. Scene lighting and cameras are in `blender-lighting-lookdev`.
 
-Use when: Any image or animation render output request in Blender.
-
-Before the first Blender call, read [../text-to-blender/references/mcp-backends.md](../text-to-blender/references/mcp-backends.md). Prefer official MCP for shared capabilities; preserve the selected backend for the whole task. Tool names in recipes are client/legacy examples: map them through that reference and its agent-host guide.
-# Blender Rendering
-
-Render efficiently. The defaults are wrong for production; the recipes below are tuned for the common cases.
-
-## Engine decision tree
-
+## One call
 ```
-Need photoreal? Caustics? Accurate SSS? Glass-rich?
-├── YES → Cycles (path tracer)
-└── NO  → Need speed? Stylized look? Animation iteration?
-          ├── YES → EEVEE
-          └── NO  → Cycles (default fallback for photoreal)
+scripts/render_batch.py -- --engine CYCLES --preset final --res 1920 1080 --out //render/hero_#### --frames 1
+scripts/render_batch.py -- --preset preview --frames 1-120 --format MP4 --out //render/turntable
+scripts/render_batch.py -- --cameras CamA CamB CamC --format EXR_MULTI --out //render/shots/
 ```
+Presets: `preview` (Cycles 64 spp, threshold 0.05, 50% res; EEVEE 16), `final` (512 spp, 0.01; EEVEE 128 + raytracing), `product` (1024 spp, transparent background). GPU is picked automatically (OptiX > CUDA > HIP > Metal > oneAPI), and the denoiser matches (OptiX or OpenImageDenoise).
 
-**Quick rule**:
-- Stills, archviz, product, hero shots → **Cycles**
-- Animation previews, motion graphics, stylized → **EEVEE**
+## Engine choice
+| Engine | Use | Notes |
+|---|---|---|
+| Cycles | final quality, product, archviz, glass/SSS/caustics, baking | path tracer; set the GPU; adaptive sampling + denoise |
+| EEVEE (5.x, ex-"Next") | fast look-dev, stylized, motion graphics, previews | ray-traced reflections/GI (`use_raytracing`), virtual shadow maps; needs a GPU even headless |
+| Workbench | playblasts, clay/matcap reviews, QA sheets | instant, no lighting accuracy |
+Engine ids: `CYCLES`, `BLENDER_EEVEE`, `BLENDER_WORKBENCH`.
 
-## Reference-look handoff
+## Cycles quality levers (ordered by impact)
+1. **Adaptive sampling** (`adaptive_threshold` 0.01 final / 0.05 preview) + **denoise** (OIDN with albedo+normal passes, `denoising_input_passes="RGB_ALBEDO_NORMAL"`). Raising samples alone is the least efficient fix.
+2. **Light paths**: interiors need diffuse bounces ≥ 4. Product shots: total 12, glossy 4, transmission 8–12 for glass. Clamp indirect 5–10 kills fireflies at a small energy cost.
+3. **Light tree** (`use_light_tree`, on) for many lights. **Path guiding** (CPU only) for difficult indirect light.
+4. Fewer, larger lights beat many small ones. Emissive meshes are noisier than area lights.
+5. Persistent data (`render.use_persistent_data`) speeds up animations and turntables. Use `simplify` (max subdivision, texture limit) for previews.
+6. 5.2: **texture cache** (`render.use_texture_cache`, `use_auto_generate_texture_cache`) cuts memory in texture-heavy scenes by generating `.tx` mip tiles.
 
-If the goal is to match an original/reference image rather than make a generally attractive render, chain-load `reference-look-calibration`. It owns measurement of hue/saturation/value, object extent, glow/aura color, and before/after look metrics. This skill should then apply the requested material/lighting/render changes within that calibrated target.
+## Color management (decide once per project)
+- **AgX** (default): photographic, handles bright highlights. Looks: `AgX - Punchy`, `- Base Contrast`...
+- **Khronos PBR Neutral**: shows albedo faithfully. Use it for product/e-commerce and asset reviews, and to match three.js `NeutralToneMapping`.
+- **Standard**: graphics/UI/texture output that must match pixel values.
+- **ACES 1.3 / 2.0**: VFX pipelines (plates, other DCCs).
+- Use exposure (`view_settings.exposure`), not light power, for global brightness tweaks. Display device sRGB, or Display P3 / Rec.2100 for HDR delivery.
 
+## Output formats
+- Stills: PNG 8/16-bit (RGBA when the film is transparent) or JPEG for web previews.
+- Comp/VFX: **EXR multilayer** (`EXR_MULTI`, DWAA 16-bit) with passes (Denoising Data, Cryptomatte, AO, Mist, Z). 5.0 renamed passes: `Diffuse Color`, `Depth`, etc.
+- Video: render **frames first** (PNG/EXR), then encode (FFmpeg or the VSE), because a crash mid-MP4 loses everything. Direct MP4 is fine for previews. Set `image_settings.media_type` **before** `file_format` (5.0+).
+- Transparent: `film_transparent=True` + PNG/EXR. A glass-only alpha needs `film_transparent_glass`.
 
-## Recipes
-
-### Recipe 1 — Cycles production preset (256 samples + denoise)
-
+## Compositor (5.0+ API)
 ```python
-import bpy
-
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'
-scene.cycles.device = 'GPU'
-
-# Sampling
-scene.cycles.samples = 256
-scene.cycles.use_adaptive_sampling = True
-scene.cycles.adaptive_threshold = 0.01
-scene.cycles.adaptive_min_samples = 32
-
-# Denoising (recommended)
-scene.cycles.use_denoising = True
-scene.cycles.denoiser = 'OPENIMAGEDENOISE'   # safe default; switch to 'OPTIX' on NVIDIA RTX
-
-# Light paths (defaults are reasonable; bump transmission for glass-rich scenes)
-scene.cycles.max_bounces = 12
-scene.cycles.transmission_bounces = 12
-
-# Resolution
-scene.render.resolution_x = 1920
-scene.render.resolution_y = 1080
-scene.render.resolution_percentage = 100
-
-print('render:cycles_production_preset')
+ng = bpy.data.node_groups.new("Comp", "CompositorNodeTree"); scene.compositing_node_group = ng
+ng.interface.new_socket("Image", in_out="OUTPUT", socket_type="NodeSocketColor")
+rl, glare, out = ng.nodes.new("CompositorNodeRLayers"), ng.nodes.new("CompositorNodeGlare"), ng.nodes.new("NodeGroupOutput")
+ng.links.new(rl.outputs["Image"], glare.inputs["Image"]); ng.links.new(glare.outputs["Image"], out.inputs[0])
 ```
+There's no Composite node anymore: the group output is the final image. Many node options are now **input sockets** (Glare `Type`, `Threshold`, `Strength`), so `--describe` them with `blender-geometry-nodes/scripts/gn_builder.py`. File Output node: `directory`, `file_name`, `file_output_items`.
 
-### Recipe 2 — Cycles draft preset (faster iteration)
+## CLI rendering (render farms, CI)
+- `blender -b scene.blend -E CYCLES -o //out/frame_#### -F PNG -s 1 -e 120 -a` renders an animation. `-f 10` renders a single frame. Python args go after `--`.
+- `-- --cycles-device OPTIX` (or CUDA/HIP/METAL/ONEAPI) selects the device without Python.
+- Split frames across machines with `-s/-e`, or with Placeholders + No Overwrite (`render.use_placeholder`, `use_overwrite=False`) on shared storage.
 
-```python
-import bpy
-
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'
-scene.cycles.device = 'GPU'
-scene.cycles.samples = 64
-scene.cycles.use_adaptive_sampling = True
-scene.cycles.adaptive_threshold = 0.05
-scene.cycles.use_denoising = True
-scene.render.resolution_percentage = 50    # half res for tests
-print('render:cycles_draft')
-```
-
-### Recipe 3 — EEVEE preset
-
-```python
-import bpy
-
-scene = bpy.context.scene
-
-# Engine name changed across versions:
-#   Blender ≤ 4.1:        'BLENDER_EEVEE'
-#   Blender 4.2 only:     'BLENDER_EEVEE_NEXT' (transitional; replaced)
-#   Blender ≥ 5.0:        'BLENDER_EEVEE' (the new EEVEE replaced the old)
-# Try the new name first; fall back if it doesn't exist on this Blender.
-try:
-    scene.render.engine = 'BLENDER_EEVEE_NEXT'
-except (TypeError, ValueError):
-    scene.render.engine = 'BLENDER_EEVEE'
-
-# Preserve older EEVEE options only where the installed API exposes them.
-settings = dict(taa_render_samples=64, taa_samples=16, use_gtao=True,
-                gtao_distance=0.2, use_bloom=True, use_ssr=True,
-                use_ssr_refraction=True, use_volumetric_lights=True)
-eevee = getattr(scene, 'eevee', None)
-unavailable = []
-for name, value in settings.items():
-    if eevee is not None and hasattr(eevee, name):
-        setattr(eevee, name, value)
-    else:
-        unavailable.append(name)
-if (eevee is not None and not hasattr(eevee, 'use_gtao')
-        and all(hasattr(eevee, n) for n in ('use_fast_gi', 'fast_gi_method', 'fast_gi_distance'))
-        and 'AMBIENT_OCCLUSION_ONLY' in
-        {item.identifier for item in eevee.bl_rna.properties['fast_gi_method'].enum_items}):
-    eevee.use_fast_gi = True
-    eevee.fast_gi_method = 'AMBIENT_OCCLUSION_ONLY'
-    eevee.fast_gi_distance = 0.2
-    unavailable = [n for n in unavailable if n not in ('use_gtao', 'gtao_distance')]
-scene.render.resolution_x = 1920
-scene.render.resolution_y = 1080
-print(f'render:eevee_preset unavailable_legacy_options:{unavailable}')
-```
-
-Removed options are reported, not treated as enabled. In newer EEVEE, use supported
-ray-tracing settings for reflections/refraction and compositor Glare for requested
-glow; consult the installed API or `reference-look-calibration` before changing look.
-This preset does not silently create or overwrite a compositor setup.
-
-**EEVEE limitations to know**:
-- Reflections are screen-space (can't reflect what's off-screen) — workaround: place Reflection Plane / Cubemap probes
-- Same for refraction
-- Indirect light baked, not real-time — bake Light Probes for accurate bounce
-- No accurate caustics
-
-### Recipe 4 — Color management
-
-```python
-import bpy
-
-scene = bpy.context.scene
-
-# View transform — controls the "look" mapping HDR → display
-scene.view_settings.view_transform = 'AgX'         # default Blender 4.x; replaces Filmic
-scene.view_settings.look = 'AgX - Medium High Contrast'
-
-# Or: 'Filmic' (older but still supported), 'Standard' (oversaturates highlights)
-
-scene.view_settings.exposure = 0.0
-scene.view_settings.gamma = 1.0
-print('render:colormanagement_AgX')
-```
-
-**Rule**: Never use 'Standard' for photographic output — it blows out highlights. AgX or Filmic almost always.
-
-### Recipe 5 — Render a single frame to PNG
-
-⚠ **`bpy.ops.render.render()` fails with `Error: Cannot render, no camera` if `scene.camera` is None.** Always run the camera guard first. The guard auto-assigns the first CAMERA-type object if the scene has any, and raises a clear error otherwise.
-
-```python
-import bpy
-
-scene = bpy.context.scene
-
-# Camera guard — required before every render
-def ensure_camera(scene):
-    if scene.camera is not None:
-        return scene.camera.name
-    cams = [o for o in bpy.data.objects if o.type == 'CAMERA']
-    if not cams:
-        raise RuntimeError("No camera in scene — add one before rendering")
-    scene.camera = cams[0]
-    return cams[0].name
-
-cam_name = ensure_camera(scene)
-print(f"camera:{cam_name}")
-
-scene.render.image_settings.file_format = 'PNG'
-scene.render.image_settings.color_mode = 'RGBA'
-scene.render.image_settings.color_depth = '16'    # 16-bit for compositing later
-scene.render.filepath = '/tmp/output_hero.png'
-
-bpy.ops.render.render(write_still=True)
-print(f"render:saved {scene.render.filepath}")
-```
-
-After this, verify with the shell tool: `ls -la /tmp/output_hero.png` — confirm file exists and report size.
-
-### Recipe 6 — Render an animation as PNG sequence
-
-```python
-import bpy
-
-scene = bpy.context.scene
-
-# Camera guard — same pattern as Recipe 5
-def ensure_camera(scene):
-    if scene.camera is not None:
-        return scene.camera.name
-    cams = [o for o in bpy.data.objects if o.type == 'CAMERA']
-    if not cams:
-        raise RuntimeError("No camera in scene — add one before rendering")
-    scene.camera = cams[0]
-    return cams[0].name
-
-cam_name = ensure_camera(scene)
-print(f"camera:{cam_name}")
-
-scene.frame_start = 1
-scene.frame_end = 240
-scene.render.fps = 24
-
-scene.render.image_settings.file_format = 'PNG'
-scene.render.filepath = '/tmp/anim/frame_'   # output: frame_0001.png, frame_0002.png, ...
-
-# Resilience: keep partial work on crash
-scene.render.use_placeholder = True
-scene.render.use_overwrite = False
-
-# Reuse mesh data between frames (faster)
-scene.render.use_persistent_data = True
-
-bpy.ops.render.render(animation=True)
-print('render:animation_done')
-```
-
-**Pro pattern**: render to PNG sequence, then encode to MP4 with ffmpeg afterward:
-
-```bash
-ffmpeg -framerate 24 -i frame_%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 anim.mp4
-```
-
-### Recipe 7 — Performance tuning for slow renders
-
-```python
-import bpy
-
-scene = bpy.context.scene
-
-# 1. Cap subdivision in render
-scene.render.use_simplify = True
-scene.render.simplify_subdivision = 1
-scene.render.simplify_subdivision_render = 2
-
-# 2. Higher noise threshold (faster, more denoiser-dependent)
-scene.cycles.adaptive_threshold = 0.05
-
-# 3. Lower light path bounces (lose some realism)
-scene.cycles.max_bounces = 8
-scene.cycles.diffuse_bounces = 3
-scene.cycles.glossy_bounces = 3
-print('render:performance_tuned')
-```
-
-### Recipe 8 — Configure GPU compute device (one-time)
-
-```python
-import bpy
-
-prefs = bpy.context.preferences.addons['cycles'].preferences
-prefs.compute_device_type = 'OPTIX'   # or 'CUDA', 'HIP' (AMD), 'METAL' (Mac)
-for device in prefs.devices:
-    device.use = True
-print(f"gpu:{prefs.compute_device_type} devices:{len(prefs.devices)}")
-```
-
-This is a Blender preference — only needs to run once per machine.
-
-## Sample count guide
-
-| Scene type | Samples | Why |
-|------------|---------|-----|
-| Outdoor, direct sun | 64–128 | Mostly direct light |
-| General product/portrait | 256 | Standard quality |
-| Indoor with bounce | 512 | More indirect = more noise |
-| Caustics, glass, complex SSS | 1024–2048 | Hardest to converge |
-
-Always pair with denoising. 256 samples + denoise ≈ 4096 raw samples in visual quality.
-
-## Common pitfalls
-
-| Symptom | Fix |
-|---------|-----|
-| `Error: Cannot render, no camera` | `scene.camera is None`. Use the `ensure_camera()` guard at the top of Recipes 5/6 — it auto-assigns the first CAMERA object or raises a clear error if none exists |
-| Render takes hours | Reduce samples; enable adaptive; lower bounces |
-| Cycles GPU not used | Configure compute device in preferences (Recipe 8) |
-| Render direct to MP4 lost on crash | Render PNG sequence, encode after |
-| Standard view transform → blown highlights | Use AgX or Filmic |
-| Glass renders black | Increase transmission_bounces (16+) |
-| EEVEE missing reflections | Add Reflection Plane / Cubemap probes |
-| Animation flickers between frames | Use persistent data; consider temporal denoising |
-| Output file empty / nothing rendered | Set `scene.render.filepath` first; check `write_still=True` for stills |
-
-## When to load `references/overview.md`
-
-Load when:
-- Need detailed engine comparison (Cycles vs EEVEE feature matrix)
-- Tuning light paths for specific scene types (caustics, foliage, hair)
-- Light groups for re-lighting in compositor
-- AOV / custom render passes
-- Distributed / farm rendering
-
-The reference covers: full Cycles vs EEVEE matrix, sample-count guides per scene, denoiser comparison (OptiX vs OIDN), light-path bounce tuning, color management deep-dive, and animation rendering best practices.
+## Gotchas
+- `scene.render.engine` enum under-reports (add-on engines). Assign in try/except (the script does).
+- EEVEE in background still needs a GPU context. In CI without a GPU, use Cycles CPU or Workbench.
+- `bpy.ops.render.render(write_still=True)` writes `render.filepath`. Without `write_still`, the result only lives in `Render Result`.
+- Noise in glass/caustics: enable caustics only if needed (`caustics_refractive`), raise transmission bounces, or fake it with Thin Wall (5.2) for windows.
+- Fireflies: clamp indirect, a filter glossy / blur glossy (`blur_glossy` 0.5–1), and bigger light sources.

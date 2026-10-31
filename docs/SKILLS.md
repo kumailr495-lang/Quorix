@@ -1,6 +1,6 @@
 # Skills, plugins and connectors used on LUMIERE
 
-Installed 2026-10-30. Project skills live in `.claude/skills/` (checked into git), so every Claude Code session opened on this
+Installed 2026-10-30; updated 2026-10-31 (EL4CTEO Blender pack, karpathy-guidelines, graphify; 23 unused skills removed). Project skills live in `.claude/skills/` (checked into git), so every Claude Code session opened on this
 repo, including sessions started from the Claude app on the phone, loads them. `.claude/hooks/session-start.sh` reinstalls
 Kiln and the comment-lint parser in each cloud session (pinned versions, skipped when already installed).
 
@@ -19,9 +19,25 @@ whether they would also run inside Termux.
 | `animation-forge` | https://github.com/Eskapeum/animation-forge (`ee08fc1`) | MIT (stated in its README) | Motion design for the HTML UI: easing, timing, choreography, micro-interactions, transitions, a motion audit | The most complete motion-design guide found; the UI is HTML/CSS, which it targets | Instructions only |
 
 | `blender-web-3d` | https://github.com/czlonkowski/blender-web-3d-skill (`858762f`) | MIT | Headless Blender modelling scripts, Cycles beauty renders and light bakes, GLB export and optimisation, look-dev rules | Battle-tested Blender-to-web pipeline; the user asked for it | No: Blender has no Android build. Runs in the cloud session (Blender 5.2.3 installed by the session hook) |
-| 30 `cc-blender` skills (`text-to-blender`, `blender-modeling`, `blender-materials`, `blender-lighting`, `blender-cameras`, `blender-rendering`, `blender-export`, `blender-uv-texturing`, `blender-pro-workflow`, reference/fit skills...) | https://github.com/RobLe3/cc-blender-skill (`a2634b5`) | MIT | Real-world material values, lighting setups, modelling and export recipes, production order and critique checklists | The user asked for it; the most complete Blender knowledge pack found | Knowledge only here: its tool calls assume a live Blender over MCP (not available in a cloud session). Use the recipes inside headless `blender --background --python` scripts |
+| 7 `cc-blender` skills kept (`blender-modeling`, `blender-materials`, `blender-lighting`, `blender-cameras`, `blender-export`, `blender-uv-texturing`, `blender-pro-workflow`) | https://github.com/RobLe3/cc-blender-skill (`a2634b5`) | MIT | Real-world material values, lighting setups, modelling and export recipes, production order | Used for the v5.20 seats and fixtures. Its other 23 skills were removed on 2026-10-31 (see below); `blender-animation` and `blender-rendering` now come from EL4CTEO | Knowledge only: run the recipes inside headless `blender --background --python` scripts |
+| 24 `blender-*` skills (`blender-core` routes to the others: clothing, facial-shapekeys, hair-grooming, character-rigging, animation, asset-qa, game-optimization, export-pipelines, environment-kits, geometry-nodes, hardsurface-modeling, retopology-uv, pbr-materials, texturing, texture-baking, lighting-lookdev, rendering, time-of-day, weather-fx, simulation, scene-setup, pipeline-automation, workflow-recipes) | https://github.com/EL4CTEO/blender-skills (`fb92cfb`, v1.2.0) | MIT | People (garments that follow the body, visemes and face shape keys, hair cards, skin weights), z-fight / floating-part / normals QA, LOD and draw-call budgets, rain and wet-street looks, cloth drapes | Written for Blender 5.2 (the version installed here) and for headless runs: each skill ships bpy scripts (`qa_check.py`, `garment.py`, `retarget.py`, `loop_check.py`...). The user asked for it (chen.media guide; the pack has grown from 22 to 28 skills) | No (Blender) |
+| `karpathy-guidelines` | https://github.com/multica-ai/andrej-karpathy-skills (`2c60614`) | MIT | Coding discipline: state assumptions, simplest change, surgical diffs, goals that can be verified | The user asked for it; four short rules, no scripts | Instructions only |
+| `graphify` | https://github.com/Graphify-Labs/graphify (`a0946f9`; PyPI `graphifyy` 0.9.99 in `/opt/graphify`) | Apache-2.0 | A knowledge graph of the code (`graphify-out/`, 1568 symbols, 3482 edges): `graphify query`, `explain` (who calls what), `path`. Fewer greps and file reads per task | The user asked for it. Code is parsed locally with tree-sitter; no model calls and no key for code. The session hook rebuilds the graph (about 6 s) | Yes: `pip install graphifyy==0.9.99` in Termux (needs Python 3.10+) |
 
 | `environment-art`, `level-design`, `lighting-design`, `3d-modeling` | https://github.com/omer-metin/skills-for-antigravity (`e8dcf4e`) | Apache-2.0 | Environment craft for the v7 rebuild: hero/unique/modular/dressing hierarchy, colour scripting, composition, landmarks and player flow, light layers and probes, topology/UV/LOD rules | The deepest free environment-art packs found (patterns, validations, sharp edges); markdown only, no scripts | Instructions only |
+
+## Removed on 2026-10-31, and why
+Measured first: this session's transcript (every Skill call and every SKILL.md read) and `claude plugin details` (token cost).
+- 21 cc-blender skills for reconstructing mascots and logos from templates, never used here: `mascot-logo-reconstruction`, `orbital-hud-motion`,
+  `multiview-constraint-solver`, `multiview-fit-loop`, `orthographic-registration`, `landmark-fit-repair`, `fit-repair-optimizer`,
+  `source-part-segmentation`, `contour-to-mesh`, `reference-analysis-validator`, `reference-to-3d`, `reference-look-calibration`, `wireframe-to-3d`,
+  `texture-driven-mesh-fitting`, `texture-state-animation`, `atlas-uv-fitting`, `closed-surface-uv-coverage`, `text-to-blender` (needs a live Blender
+  MCP), `blender-skill-harmonizer`, `quality-refinement-autoloop`, `animation-quality-gate`. SciPy and OpenCV left the session hook with them.
+- `threejs-physics` (Rapier integration; the game uses its own colliders) and `threejs-accessibility` (keyboard and screen-reader fallbacks for 3D
+  web pages; this is a touch game).
+- Plugins disabled for this project only (`enabledPlugins` in `.claude/settings.json`; re-enable with `claude plugin enable <name>@synced --scope project`):
+  `unity` (31 skills, ~5,900 tokens every session), `sanity` (11, ~1,400), `model-builder` (6 finance skills, ~950).
+- Nothing about saving tokens or compacting context was removed (no installed skill does that; the context summary is built into Claude Code).
 
 ## Blender toolchain in the cloud session
 - `blender` = Blender 5.2.3 LTS (`/opt`, checksum verified by `.claude/hooks/session-start.sh`). Headless only: `blender --background --python script.py -- args`.
@@ -41,6 +57,12 @@ whether they would also run inside Termux.
 - img2threejs `forge/tests`, CI scripts and its plugin harness (`npx @img2threejs/img2`): not needed to use the skill, and the
   harness downloads more code at run time.
 - anthropics/skills `webapp-testing`: duplicates the Playwright plugin and `tools/dev/shoot.mjs`.
+- EL4CTEO `blender-sculpting`, `blender-stylized-npr`, `blender-video-editing`, `blender-addon-development`: no sculpting, toon look, video editing or
+  Blender add-ons in this project.
+- graphify's PreToolUse hooks (`graphify hook-guard` on every Bash, Grep, Read and Glob call) and its post-commit hook: CLAUDE.md carries the same rule
+  without slowing every tool call. Graphify Cloud: a paid service, not used.
+- ChrisCompton/omniroute (asked for on 2026-10-30): not a skill but an AI gateway app; its install rebuilds a native module, can install a MITM root
+  certificate and imports editor OAuth credentials. Reviewed, not installed.
 - gamedev-skills/awesome-gamedev-agent-skills three.js entries, Jeffallan/claude-skills `game-developer`, majiayu000 `3d-modeling`:
   overlap the sets above with less depth.
 
@@ -49,6 +71,9 @@ whether they would also run inside Termux.
   `eval`/`exec` of downloaded text, destructive commands and instructions aimed at the agent. Nothing malicious found.
 - img2threejs runs one subprocess (its own generator, with a timeout) and its installer only runs `git`; neither is used here.
 - Nothing installed needs an account, key or payment.
+- 2026-10-31 review: EL4CTEO scripts run only Blender itself (`run_in_blender.py`), no network calls, no installers needed (its `install.sh` was not run;
+  folders were copied). karpathy-guidelines is one markdown file. graphify contacts the network only for `graphify add <url>` and optional model
+  backends that need keys this project never sets; the PyPI 0.9.99 package was diffed against the reviewed source (identical code).
 
 ## Plugins and connectors already in this environment, and what they are used for
 | Tool | Use on LUMIERE |
@@ -64,6 +89,8 @@ whether they would also run inside Termux.
 | Linear, Sentry, Vercel, Replit, Sanity, Unity skills, model-builder | Not relevant to an offline WebView game |
 
 ## Using them (rule for every future task)
+- Finding code: `graphify query` / `graphify explain` first, then read only the located lines. Writing code: `karpathy-guidelines`.
+- Blender work: `blender-core` first; people: `blender-clothing`, `blender-facial-shapekeys`, `blender-hair-grooming`; every model: `blender-asset-qa`.
 - Phone feedback about speed or flicker: `threejs-performance`, `threejs-debugging`, then `threejs-api-performance`.
 - Shaders, materials, video picture: `threejs-shaders`, `threejs-materials`, `threejs-api-textures`.
 - People and crowd motion: `threejs-animation`, `threejs-api-animation`; particles (popcorn, money): `threejs-particles`.

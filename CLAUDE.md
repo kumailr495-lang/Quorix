@@ -71,9 +71,17 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 ## Skills (use them on every task)
 - Project skills are checked in under `.claude/skills/` (Kiln, img2threejs, three.js workflows `threejs-*`, three.js API references
   `threejs-api-*`, `animation-forge`). Sources, licences, why chosen and which skill for which job: `docs/SKILLS.md`.
-- `.claude/hooks/session-start.sh` installs Kiln 1.6.0, acorn and gltf-transform, Blender 5.2.3 (headless, with software EGL for EEVEE), SciPy and
-  OpenCV in cloud sessions, and exports `KILN_WS`, `ACORN`, `BLENDER`.
-- Blender: `blender-web-3d` and the 30 `cc-blender` skills. No Blender MCP here: run their recipes as `blender --background --python` scripts.
+- `.claude/hooks/session-start.sh` installs Kiln 1.6.0, acorn and gltf-transform, Blender 5.2.3 (headless, with software EGL for EEVEE) and
+  graphify 0.9.99 in cloud sessions, builds the code graph, and exports `KILN_WS`, `ACORN`, `BLENDER`.
+- Blender: start at `blender-core` (24 `blender-*` skills for Blender 5.2 with headless scripts: `blender-clothing`, `blender-facial-shapekeys`,
+  `blender-hair-grooming`, `blender-character-rigging` for people; `blender-asset-qa` before any model is done), plus `blender-web-3d` and the
+  kept cc-blender recipes (modeling, materials, lighting, cameras, export, uv-texturing, pro-workflow). No Blender MCP here: run them as
+  `blender --background --python` scripts.
+- Code graph: `graphify-out/` is rebuilt at session start (code only, `.graphifyignore`). Before grepping for a codebase question run
+  `graphify query "<question>"`, `graphify explain "<symbol>"` (callers and callees) or `graphify path "<A>" "<B>"`; read only the lines it
+  locates. After code changes: `graphify update .` (AST only, no model calls). No graphify hooks are installed.
+- Writing or reviewing code: `karpathy-guidelines` (simplest change, surgical diffs, verifiable goals).
+- Unity, Sanity and model-builder plugins are disabled for this project in `.claude/settings.json` (about 8k tokens a session, no use here).
 - Textures are real CC0 scans (Poly Haven, ambientCG) converted by `tools/textures/fetch_cc0.py` over the `gen.py` baseline; sources in
   `tools/textures/SOURCES.md`. Metres-per-tile in `www/js/library.js` must match each scan's physical size.
 - Before a feature: `superpowers:brainstorming`; before a fix: `superpowers:systematic-debugging` plus the matching `threejs-*`

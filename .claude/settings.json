@@ -10,5 +10,10 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "unity@synced": false,
+    "sanity@synced": false,
+    "model-builder@synced": false
   }
 }
