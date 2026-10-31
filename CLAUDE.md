@@ -102,7 +102,19 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - After changing a room's geometry or lights, re-bake it (`sh tools/bake/bake-all.sh <room>`); the console warns about stale bakes.
 - Blender lathes: put axis points on a centre vertex (lbl.py does), or parts sharing the axis overlap coplanar faces.
 
-## Current state (2026-10-30, v7.00 built)
+## Current state (2026-10-31, v8.00)
+- v8 on branch `ccr-7bb5aa6a-upup1u` (plan with honest ticks: docs/V8-PLAN.md; status per feedback point at the top of docs/PHONE-FEEDBACK.md;
+  release: docs/V8-RELEASE-NOTES.md). Not yet seen on the phone.
+- New pipelines: people (`tools/blender/people.py`, PEOPLE.md), voices (`tools/tts/make_voices.py`: Kokoro, Opus clips + mouth envelopes in
+  `www/voice/<lang>/`; Urdu plays the Hindi clips, so `hi` and `ur` lines must stay the same Hindustani sentences), cars
+  (`tools/blender/cars.py`), Android wrapper (`tools/android/`: Java source, `build.sh` with javac + build-tools 35 + android.jar 35;
+  make-apk.py then adds www and signs).
+- Dialogue lines live in `tools/dev/i18n/v8-*.json` and are applied with `tools/dev/i18n_add.py` (handles nested lists). After changing a
+  spoken line, re-run make_voices.py (it only re-records changed clips).
+- Story mode starts with the taxi arrival (`www/js/intro.js`); Screen 1 is 22.6 m wide with 140 recliners; Screens 1 and 3 are entered
+  along a side vomitory from their rear corner (`entry: 'vom'` in hallmath SPECS).
+
+## Earlier state (2026-10-30, v7.00 built)
 - v7 on branch `ccr-7bb5aa6a-upup1u` (docs/V7-DESIGN.md; feedback status at the top of docs/PHONE-FEEDBACK.md): lobby and plaza rebuilt after
   Allu Cinemas, Dolby-style corridor, IMAX gateway hall with a panorama wall, IMAX trench removed (side vomitories, 6 + 20 + 6 aisles), Screen 1
   centre aisle, restrooms dressed, no automatic shows (audiences only for your booking), you start outside at the kerb, outdoor distance fog.
@@ -120,7 +132,8 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   each item: `docs/PHONE-FEEDBACK.md`. Work it in that file's order and tick items there.
 
 ## Next steps
-0. Build v7 into an APK, get the user's phone feedback, then work the open items at the top of docs/PHONE-FEEDBACK.md.
+0. Get the user's phone feedback on v8.00 (both APKs), then work the open items at the top of docs/PHONE-FEEDBACK.md
+   (lobby stairs and escalators, concession machines, curtain, loading hitches, screen light, the remaining screenshot fixes).
 1. Work through `docs/PHONE-FEEDBACK.md` (performance first, then layout, NPCs, services, presentation).
 2. Approved ideas (build them): Kiln-modelled people with better faces and outfits; a Dolby-style video-wall entrance tunnel;
    Kiln versions of the last box props (cup stacks, menu boards, guide sign); popcorn and drinks carried to the seat with refill;

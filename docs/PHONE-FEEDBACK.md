@@ -1,3 +1,54 @@
+# Phone feedback on v7 (2026-10-30, 11 screenshot sheets): status in v8.00
+
+Plan: docs/V8-PLAN.md. Release: docs/V8-RELEASE-NOTES.md. Checked in headless Chromium on a software GPU only: nothing below has
+been seen on the phone yet. `[x]` done, `[~]` partly, `[ ]` not yet.
+- [x] No taxi drop-off intro: Story mode now starts with a taxi (new Blender model) pulling in at the red carpet; you step out beside
+  it, it drives off. First time can't be skipped, later ones can.
+- [~] Models overlapping, z-fighting, flicker, no animations: every room checks at 0 coplanar triangle pairs; new people with library
+  animation; new cars pass Blender QA. Hall seats and many props are still the v5/v7 models.
+- [~] Reflections too strong, lighting fake: reflections have a strength setting (off/soft/full, soft by default) and are toned down;
+  changed rooms re-baked in Cycles. Specific screenshot fixes (zebra decal, tilted sign, speaker reading as a door) not done.
+- [x] NPCs look the worst: new people from CC0 bodies with modern outfits, faces, hair, eye and jaw movement (v8 people system).
+- [x] Holding/eating animations: IK hand-to-mouth eating and drinking, cups and buckets held upright.
+- [x] Dialogue 1-2 lines, repetitive: 285 new lines in four languages, never the same line twice in a row, context-aware.
+- [x] Most NPCs have Hindi/Urdu names: international names matched to each person (Clara, Marcel, Éloïse, Odette, Rémy, Mia, Gaston...).
+- [x] No greeter: Clara greets you at the door, points to tickets and the ATM.
+- [~] No textures outside the theatres: corridor beams and film islands added; the hall exteriors are not visible anywhere.
+- [~] Unrealistic shadows: re-baked light maps for every changed room; a shadows switch in settings.
+- [~] LODs and chunk loading: LOD distance and render distance settings; no new loading work (E7 open).
+- [x] Car models: new lofted cars with arches, windows, spoked rims (tools/blender/cars.py).
+- [x] Velvet etc. still on cards: the films are the Blender open movies everywhere (cards, posters, LED wall).
+- [x] Blender films not there: nine Blender Studio films with posters, light tracks and reaction cues.
+- [~] Reception + tablet with your MP4s, thumbnails, search, filter, albums, collections, favourites: built (the receptionist offers the
+  tablet; the new APK wrapper lists your videos). Needs your phone to confirm the permission prompt and the list.
+- [x] Guide too slow: he matches your pace and waits for you.
+- [x] Subtitles/dialogue look cheap: letterboxed conversation, centred subtitle, speaking wave, dark-glass bubbles.
+- [x] Washrooms functioning: wash and dry hands, cubicles and urinals with sounds.
+- [x] Bins usable: empty cups and buckets go in any bin.
+- [~] Curved hall vibe, IMAX entrances for other halls, exit doors wrong: Screen 1 rebuilt wider and longer with new colours; Screens 1
+  and 3 now entered along a walled side passage like the IMAX; exits stay by the screen. The IMAX itself is unchanged.
+- [x] Curved screen seat direction: seats on curved rows faced away from the screen (a sign error); they now face it.
+- [x] Corridor has no architecture: walnut ceiling beams and two lit film islands (more could follow: columns, bulkheads).
+- [x] Walking through people: NPC bodies block you (and say so).
+- [x] Held items go through walls: drawn on top (view model).
+- [x] Popcorn shows it is ending: four levels over nine bites; cups drain.
+- [~] Popcorn/coffee machines and other models: ATM and cars new; the concession machines are still the v7 models.
+- [ ] Allu/Dolby stairs and escalators: not built yet.
+- [x] Money: limited wallet, ATM with a per-visit limit, rejoin resets.
+- [x] No teleport; meet the guide, he reads your ticket and walks you to your seat; only your seat can be used.
+- [x] Middle seats in every hall (Screen 1's centre aisle removed); steeper rakes, sightline clearance at least 0.197 m everywhere.
+- [x] NPCs can be turned down or off; arrivals are gradual from the street.
+- [x] Full-quality film: the native video layer (no texture upload).
+- [x] Voices: every line is spoken (offline Kokoro voices, en/es/hi; Urdu uses the Hindi clips), with lip movement; can be turned off.
+  Laughs and gasps in the hall are still synthesised.
+- [x] Seat bell, server, tablet remote with live scrub preview, play another (costs money), hand back.
+- [x] Loading screen = "LUMIÈRE PRESENTS"; menu redone. [~] Curtain animation not reworked.
+- [~] Lights placement and transition: house lights now fade in smooth stages (7 s to black); fittings not audited.
+- [~] Screen light on the room: unchanged (offline light tracks per film).
+- [x] Settings: shadows, reflections, LOD distance, render distance, NPC count, voices, subtitles; device-based defaults on first launch.
+- [x] Two ways to play: Quick and Story. [x] Skip intros after the first time; tutorial with ask, settings tab, start/start again.
+- [x] Customise controls (layout editor, left-handed, HUD scale).
+
 # Feedback on the v5.20 renders and 20 reference photos (2026-10-30, later): status in v7
 
 The user judged the v5.20 renders and sent 20 photos (Allu Cinemas Kokapet, a Dolby corridor, Dubai/India IMAX halls, a VIP

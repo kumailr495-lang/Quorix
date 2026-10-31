@@ -99,6 +99,8 @@ export class Shows {
       if (s.state === 'playing' && s.pic) { if (s.src === 'film' && s.track) { const L = lightAt(s.track, this.stream.currentTime, this.light).avg; sc = [L.r, L.g, L.b]; } else if (s.src === 'user') sc = [this.userSpill.r, this.userSpill.g, this.userSpill.b]; else sc = [0.18, 0.18, 0.2]; g = 3.2; }
       else if (s.state === 'pending' || s.state === 'preshow' || s.state === 'ending') { sc = [0.12, 0.11, 0.14]; g = 1.6; }
       h.room.U.uScreen.value.setRGB(sc[0] * g, sc[1] * g, sc[2] * g);
+      // v8: the left and right of the picture light their own side of the hall (light track bands 0 and 2), around the average colour
+      { const U = h.room.U, B = this.light.band, on = s.state === 'playing' && s.pic && s.src === 'film' && s.track; if (U.uScreenD) { U.uScreenX.value.set(h.cfg.cx, (h.cfg.x1 - h.cfg.x0) / 2); if (on) U.uScreenD.value.setRGB((B[6] - B[0]) * g * 0.5, (B[7] - B[1]) * g * 0.5, (B[8] - B[2]) * g * 0.5); else U.uScreenD.value.setRGB(0, 0, 0); } }
     }
     // your own video: sample its colour asynchronously (never a synchronous GPU read-back: that stalls phones)
     const us = this.active && this.s[this.active]; if (us && us.src === 'user' && us.state === 'playing' && this.spillOk && !this._spillBusy && now - this._spillT > 400 && this.user.readyState >= 2 && window.createImageBitmap) {
