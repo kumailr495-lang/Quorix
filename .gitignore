@@ -8,3 +8,4 @@ tools/kiln/.kiln-ws/
 tools/textures/.cache/
 tools/bake/.work/
 graphify-out/
+www/bake/*.png
