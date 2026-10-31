@@ -10,6 +10,9 @@ Two APKs, same package (`com.buddyapps.lumiere`) and signing key as v7, so eithe
   never run on a device.** If it fails to open, install the safe one.
 - `lumiere-v8.00-safe.apk`: the same game in the v7 wrapper (known to work). The tablet's "My videos" falls back to the system picker.
 
+Files: lumiere-v8.00.apk (34.0 MB, SHA-256 8c3321f2941c0acb60cac9700392c977bfb8ca4687775cc61e43dded1a358815), lumiere-v8.00-safe.apk (34.0 MB, SHA-256 8d59051ab2ebc48ac47ec9493e947481b2a657482ef1beb462d234b4b428152b); both signed with the
+v5/v7 certificate (SHA-256 df8f000f...8595a, checked with apksigner). Preview renders: docs/v8-preview.jpg.
+
 ## What changed
 **Arrival and services**
 - Story mode starts with a taxi (new Blender model) pulling in at the red carpet; you step out beside it; it drives off. The first
@@ -63,7 +66,7 @@ the new people (CC0 bodies, modern outfits, library animation, IK eating and dri
   less natural than its English.
 - Laughs, gasps and cheers in the hall are still synthesised; the clips are words.
 - Not built yet: lobby stairs and escalators, new concession machines, LOD hysteresis, the remaining screenshot fixes (zebra decal, tilted sign, speaker that reads as a door).
-- APK size about 45 MB (voices 13 MB, light maps 14 MB, models 15 MB).
+- APK size 34 MB (voices 13 MB, light maps 14 MB, models 15 MB before compression).
 
 ## Rollback
 - Phone: install `lumiere-v8.00-safe.apk` if the new one misbehaves. Going back to v7 needs an uninstall first (lower versionCode).
