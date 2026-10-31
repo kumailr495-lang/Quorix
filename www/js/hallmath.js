@@ -11,12 +11,14 @@
 // door: 'east' / 'west' = entrance in that side wall at the crossing aisle (from the gallery); 'vom' = through the rear wall and a centre
 // trench; 'svom' = through the rear wall at both side walls (side vomitories)
 export const SPECS = [
-  { id: 'I', key: 'hallI', name: 'SCREEN 1', kind: 'curved', aspect: 2.39, W: 14.0, D1: 8.4, pitch: 1.7, rows: 7, crossAfter: 2, crossW: 1.4, eye: 1.1, hB: 1.0, c: 0.18, seatW: 0.86, perRow: 12, sag: 0.08, rowR: 22,
-    x0: -21.0, x1: -3.8, zBack: -8.3, door: 'east', aisles: [6], aisleW: 1.3 },
-  { id: 'II', key: 'hallII', name: 'SCREEN 2', kind: 'imax', aspect: 1.90, W: 22.0, D1: 11.5, pitch: 1.25, rows: 13, crossAfter: 4, crossW: 1.6, eye: 1.2, hB: 0.5, c: 0.2, seatW: 0.62, perRow: 32, sag: 0.03, rowR: 0,
+  // v8 (phone feedback: wider, a little longer, middle seats, seats facing the screen): 22.6 m wide, an 17.6 m wall-to-wall curved
+  // screen, 7 curved rows of 20 recliners with no centre aisle, entered along a side vomitory (entry: 'vom')
+  { id: 'I', key: 'hallI', name: 'SCREEN 1', kind: 'curved', aspect: 2.39, W: 17.6, D1: 9.6, pitch: 1.6, rows: 7, crossAfter: 2, crossW: 1.4, eye: 1.1, hB: 1.0, c: 0.2, seatW: 0.86, perRow: 20, sag: 0.08, rowR: 22,
+    x0: -26.4, x1: -3.8, zBack: -8.3, door: 'east', entry: 'vom' },
+  { id: 'II', key: 'hallII', name: 'SCREEN 2', kind: 'imax', aspect: 1.90, W: 22.0, D1: 11.5, pitch: 1.25, rows: 13, crossAfter: 4, crossW: 1.6, eye: 1.2, hB: 0.5, c: 0.23, seatW: 0.62, perRow: 32, sag: 0.03, rowR: 0,
     x0: -14.0, x1: 14.0, zBack: -40.3, door: 'svom', aisles: [6, 26], aisleW: 1.1, balcony: 10, balconyLift: 0.75, balconyGap: 1.2 },
-  { id: 'III', key: 'hallIII', name: 'SCREEN 3', kind: 'standard', aspect: 1.85, W: 12.0, D1: 7.4, pitch: 1.2, rows: 11, crossAfter: 4, crossW: 1.5, eye: 1.2, hB: 1.0, c: 0.18, seatW: 0.6, perRow: 18, sag: 0, rowR: 0,
-    x0: 3.8, x1: 19.0, zBack: -8.3, door: 'west' },
+  { id: 'III', key: 'hallIII', name: 'SCREEN 3', kind: 'standard', aspect: 1.85, W: 12.0, D1: 7.4, pitch: 1.2, rows: 11, crossAfter: 4, crossW: 1.5, eye: 1.2, hB: 1.0, c: 0.21, seatW: 0.6, perRow: 18, sag: 0, rowR: 0,
+    x0: 3.8, x1: 19.0, zBack: -8.3, door: 'west', entry: 'vom' },
 ];
 // seat footprint relative to the hip point (seat cushion centre): front edge fr, back of the backrest bk
 export const SEAT = { standard: { fr: 0.3, bk: 0.32, eye: 1.2 }, curved: { fr: 0.42, bk: 0.42, eye: 1.1 }, imax: { fr: 0.3, bk: 0.32, eye: 1.2 } };
@@ -46,18 +48,24 @@ export function makeHall(s) {
   const h = { ...s, ...k, cx, B, dHip, pf, depth, zs, z0: zs, z1: s.zBack, seat: sd, cross: { row: cr, d0: laneA, d1: laneB, dDoor: (laneA + laneB) / 2 }, rowSag: sag,
     ceil: Math.max(k.topY + 1.6, k.rowY[s.rows - 1] + 2.9), stageD: BEHIND + k.sagD + 0.9 };
   h.ceil = Math.round(h.ceil * 10) / 10;
+  // v8 (phone feedback: on curved rows the seats faced away from the screen): a seat at u, dz from the screen wall turns towards a point
+  // just behind the middle of the curved screen; straight rows face straight ahead
+  h.seatYaw = (u, dz) => (s.rowR ? Math.atan2(u, dz + k.sagD + 2) : 0);
   // seats across a row: u of seat c (1-based) and the stepped aisles between the seat blocks
   h.seatU = (c) => -B / 2 + (c - 0.5) * s.seatW + aw * AI.filter((q) => q < c).length;
   h.innerAisles = AI.map((q, i) => { const a = -B / 2 + q * s.seatW + i * aw; return [a, a + aw]; });
   // vomitories: level walkways at entrance height from the rear wall to the crossing aisle. 'vom': one trench on the centre line (v5.20);
   // 'svom': one along each side wall, outside the seat blocks, behind a parapet
   const e = B / 2 + PARAPET + 0.1;
-  h.voms = s.door === 'vom' ? [{ u0: -(s.vomW || 2.4) / 2, u1: (s.vomW || 2.4) / 2, d0: laneA }] : s.door === 'svom' ? [{ u0: s.x0 - cx, u1: -e, d0: laneA }, { u0: e, u1: s.x1 - cx, d0: laneA }] : [];
+  // v8 entry: 'vom' on a side-door hall: one vomitory along the door's wall, entered from the gallery at the hall's rear corner (a longer,
+  // darker way in, like the IMAX), not through the rear wall (rear: false)
+  h.voms = s.door === 'vom' ? [{ u0: -(s.vomW || 2.4) / 2, u1: (s.vomW || 2.4) / 2, d0: laneA }] : s.door === 'svom' ? [{ u0: s.x0 - cx, u1: -e, d0: laneA }, { u0: e, u1: s.x1 - cx, d0: laneA }]
+    : s.entry === 'vom' ? [s.door === 'east' ? { u0: e, u1: s.x1 - cx, d0: laneA, rear: false } : { u0: s.x0 - cx, u1: -e, d0: laneA, rear: false }] : [];
   h.vom = s.door === 'vom' ? { u: (s.vomW || 2.4) / 2, d0: laneA, d1: depth } : null;
   // entrance: side wall at the crossing aisle, or the rear wall at the trench. exit: side wall near the screen (where the light is)
   const side = s.door === 'east' ? 1 : s.door === 'west' ? -1 : 0;
   h.doorSide = side;
-  h.entrance = side ? { x: side > 0 ? s.x1 : s.x0, z: zs + h.cross.dDoor - sag(side > 0 ? s.x1 - cx : s.x0 - cx), side, axis: 'x' } : { x: cx + (h.voms[0].u0 + h.voms[0].u1) / 2, z: s.zBack, side: 0, axis: 'z' };
+  h.entrance = side ? { x: side > 0 ? s.x1 : s.x0, z: s.entry === 'vom' ? s.zBack - 1.25 : zs + h.cross.dDoor - sag(side > 0 ? s.x1 - cx : s.x0 - cx), side, axis: 'x' } : { x: cx + (h.voms[0].u0 + h.voms[0].u1) / 2, z: s.zBack, side: 0, axis: 'z' };
   h.exit = side ? { x: side > 0 ? s.x1 : s.x0, z: zs + h.stageD + 1.6, side, axis: 'x' } : null;
   // the exit sits at entrance level above the front pit: a landing against the wall, steps along the wall down towards the audience
   // (risers <= 0.18 m), so the side aisle beside them stays clear
@@ -83,13 +91,16 @@ export const inTrench = (h, r, u, halfWidth) => r >= h.cross.row && h.voms.some(
 export const inAisle = (h, u) => h.innerAisles.some(([a, b]) => u > a + 0.02 && u < b - 0.02);
 // the aisle a viewer uses for a seat: the nearest stepped aisle that reaches its row (side aisles stop where a side vomitory runs)
 export function aisleU(h, s) {
-  const c = h.innerAisles.map(([a, b]) => (a + b) / 2); if (!(h.door === 'svom' && s.row >= h.cross.row) || !c.length) c.push(-(h.B / 2 + 0.55), h.B / 2 + 0.55);
+  // a side aisle stops where a vomitory runs along that wall (behind the crossing aisle)
+  const c = h.innerAisles.map(([a, b]) => (a + b) / 2), vomAt = (sg) => s.row >= h.cross.row && h.voms.some((v) => (sg < 0 ? v.u0 <= h.x0 - h.cx + 0.01 : v.u1 >= h.x1 - h.cx - 0.01));
+  for (const sg of [-1, 1]) if (!vomAt(sg)) c.push(sg * (h.B / 2 + 0.55));
+  if (!c.length) c.push(-(h.B / 2 + 0.55), h.B / 2 + 0.55);
   let best = c[0]; for (const u of c) if (Math.abs(u - s.u) < Math.abs(best - s.u)) best = u; return best;
 }
 export function hallSeats(h) {
   const a = [];
   for (let r = 0; r < h.rows; r++) for (let c = 1; c <= h.perRow; c++) {
-    const u = h.seatU(c), dz = h.dHip[r] - h.rowSag(u), yaw = h.rowR ? -Math.asin(u / h.rowR) : 0;   // yaw 0 = facing the screen (-z)
+    const u = h.seatU(c), dz = h.dHip[r] - h.rowSag(u), yaw = h.seatYaw(u, dz);   // yaw 0 = facing the screen (-z)
     if (inTrench(h, r, u, h.seatW / 2)) continue;
     a.push({ id: ROW_LETTERS[r] + c, hall: h.id, row: r, col: c, x: h.cx + u, y: h.rowY[r], z: h.zs + dz, yaw, u, taken: false, npc: null, player: false });
   }

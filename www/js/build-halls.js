@@ -13,7 +13,9 @@ import { slateTexture } from './textures.js';
 export const THEME = {   // I = curved premium: walnut slats, burgundy, star ceiling; II = IMAX: black with blue light lines (Dolby/IMAX style); III = standard: Everyman teal
   // v5.20 identities (docs/V6-ENVIRONMENT.md): nose = step nosing light; floorMat = row carpet; trim = downlight trim (null = brass);
   // panels = IMAX acoustic panels on a 1.2 m module; arrays = overhead speaker arrays; dado + sconces = Screen 3's picture-palace walls
-  I: { lodK: 1, seatOver: { leather_chocolate: { id: MAT.leather, tint: col('#38393e') }, leather_oxblood: { id: MAT.leather, tint: col('#1d1e21') } }, seat: '#6e1424', wall: '#6b4630', wall2: '#1a1210', led: '#ffb877', carpet: '#b8a796', floorMat: MAT.deco, riser: '#100c0c', curtain: '#3a0e16', ceil: '#0a0b10', accent: '#e8a25a', stars: true, slats: true, nose: '#ffcf96', trim: null },
+  // v8 (phone feedback: "the colour in it doesn't make sense"): one palette, midnight navy fabric walls, cognac leather, a navy patterned carpet,
+  // champagne curtains, brass and amber light, the star ceiling
+  I: { lodK: 1, seatOver: { leather_chocolate: { id: MAT.leather, tint: col('#7a3f1d') }, leather_oxblood: { id: MAT.leather, tint: col('#2a1910') } }, seat: '#7a3f1d', wall: '#161b2e', wall2: '#0b0d16', led: '#ffb877', carpet: '#232a44', floorMat: MAT.deco, riser: '#0b0c12', curtain: '#7a6440', ceil: '#080a12', accent: '#e8a25a', stars: true, slats: false, nose: '#ffcf96', trim: null },
   II: { lodK: 0.62, seat: '#1e2c4a', wall: '#141418', wall2: '#0c0c0f', led: '#4c9dff', carpet: '#1a1d26', riser: '#0e0e11', curtain: null, ceil: '#0b0b0e', accent: '#4c9dff', cove: true, fascia: '#101014', nose: '#4c9dff', trim: '#111114', panels: '#2a2b31', arrays: true,
     imaxWall: true, pods: '#5a3a26' },   // v7: IMAX letters and staggered light bars on the side walls, curved walnut balcony pods (the user's IMAX photos)
   III: { lodK: 0.75, plates: true, seat: '#1d5a56', wall: '#18403f', wall2: '#0d1416', led: '#ffb066', carpet: '#4a1a22', riser: '#121215', curtain: '#6f1520', ceil: '#0e0e10', accent: '#ff8a3d', nose: '#ffc66e', trim: '#111114', dado: '#3e2618', sconces: true },
@@ -131,10 +133,10 @@ function buildHall(ctx, h) {
       room.box(side < 0 ? x : x - 0.038, y + 1.0, za, side < 0 ? x + 0.038 : x, y + 1.016, zb, '#c9a061', { mat: MAT.brass, faces: `${face} py ny pz nz`, edge: 0 }); }
   }
   room.wall('x', zs, h.x0, h.x1, yF, top, 1, '#08080a', [], { mat: MAT.acoustic, thick: 0.3 });
-  room.wall('x', h.zBack, h.x0, h.x1, yF, top, -1, T.wall2, h.voms.map((v) => [cx + v.u0, cx + v.u1, h.rowY[h.cross.row] + 2.8]), { mat: MAT.acoustic, thick: 0.3 });
+  room.wall('x', h.zBack, h.x0, h.x1, yF, top, -1, T.wall2, h.voms.filter((v) => v.rear !== false).map((v) => [cx + v.u0, cx + v.u1, h.rowY[h.cross.row] + 2.8]), { mat: MAT.acoustic, thick: 0.3 });
   if (T.panels) for (let x0p = h.x0; x0p < h.x1 - 0.3; x0p += 1.2) { const xA = x0p + 0.012, xB = Math.min(x0p + 1.2, h.x1) - 0.012, base = Math.max(hallFloorY(h, xA, h.zBack - 0.3), hallFloorY(h, xB, h.zBack - 0.3)) + 0.12;
     for (let g = 0; g * 1.2 < top; g++) { const y0p = Math.max(g * 1.2, base) + 0.012, y1p = Math.min(g * 1.2 + 1.2, top - 0.45) - 0.012; if (y1p - y0p < 0.25) continue;
-      if (h.voms.some((v) => xB > cx + v.u0 - 0.15 && xA < cx + v.u1 + 0.15) && y0p < h.rowY[h.cross.row] + 2.95) continue;   // vomitory mouths
+      if (h.voms.some((v) => v.rear !== false && xB > cx + v.u0 - 0.15 && xA < cx + v.u1 + 0.15) && y0p < h.rowY[h.cross.row] + 2.95) continue;   // vomitory mouths
       if (xB > cx - 0.75 && xA < cx + 0.75 && y1p > top - 2.05 && y0p < top - 1.2) continue;   // projector porthole
       room.box(xA, y0p, h.zBack - 0.025, xB, y1p, h.zBack, T.panels, { mat: MAT.acoustic, faces: 'nz px nx py ny', edge: 1.2 }); } }
   if (T.cove) for (const [x, d] of [[h.x0, 1], [h.x1, -1]]) { room.glowBox(d > 0 ? x : x - 0.05, top - 0.42, zs + 0.5, d > 0 ? x + 0.05 : x, top - 0.38, h.zBack - 0.3, T.led, 2.2, 1, d > 0 ? 'px ny' : 'nx ny'); L.line(x + d * 0.3, top - 0.5, zs + 1, x + d * 0.3, top - 0.5, h.zBack - 1, T.led, 0.5, 6, 'h', [d * 0.3, -0.9, 0]); }   // Dolby-style light line along the walls
@@ -209,7 +211,7 @@ function buildHall(ctx, h) {
   // arm positions: every seat boundary of every row (n + 1 per row), following curved rows like the seats do
   const arms = [];
   const armU = []; for (let c = 1; c <= h.perRow; c++) for (const du of [-h.seatW / 2, h.seatW / 2]) { const u = Math.round((h.seatU(c) + du) * 1000) / 1000; if (!armU.includes(u)) armU.push(u); }   // every seat edge, once
-  for (let r = 0; r < h.rows; r++) for (const u of armU) { if (inTrench(h, r, u, 0.04)) continue; arms.push({ x: h.cx + u, y: h.rowY[r], z: zs + h.dHip[r] - h.rowSag(u), yaw: h.rowR ? -Math.asin(u / h.rowR) : 0 }); }
+  for (let r = 0; r < h.rows; r++) for (const u of armU) { if (inTrench(h, r, u, 0.04)) continue; arms.push({ x: h.cx + u, y: h.rowY[r], z: zs + h.dHip[r] - h.rowSag(u), yaw: h.seatYaw(u, h.dHip[r] - h.rowSag(u)) }); }
   const H3 = [0, 0, 0], F3 = [0, 0, 0], litOf = (list) => { const a = new Float32Array(list.length * 7); list.forEach((s, i) => { L.at(s.x, s.y + 0.9, s.z + 0.2, 0, 0.6, 0.8, H3, F3); a.set([H3[0], H3[1], H3[2], F3[0], F3[1], F3[2], L.screenAt(s.x, s.y + 0.8, s.z - 0.3, 0, 0.29, -0.96)], i * 7); }); return a; };
   const lit = litOf(seats), armLit = litOf(arms), seatU = room.U;
   // light probes (lightmap.js, tools/bake): above each seat's back (house and fixed light on the parts of a seat you see) and facing the
