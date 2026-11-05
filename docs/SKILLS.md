@@ -101,3 +101,27 @@ Measured first: this session's transcript (every Skill call and every SKILL.md r
 ## Updating or removing
 - Update a skill: clone its repository at a newer commit, re-run the security review, copy the folder over, update this table.
 - Remove: delete its folder in `.claude/skills/`. Remove the hook: delete `.claude/hooks/` and `.claude/settings.json`.
+
+## v9 review of the skills linked on 2026-11-05
+Each repo was cloned into the scratchpad, its SKILL.md and scripts read, and its licence checked before anything was copied.
+
+| Repo | Licence | Decision |
+|---|---|---|
+| blader/humanizer | MIT | Installed (`humanizer`): NPC dialogue rewrites. |
+| pbakaus/impeccable | Apache-2.0 | Installed (`impeccable`) without its launcher scripts, which download a prebuilt engine binary. Docs only. |
+| heydamir/unslop | CC BY 4.0 | Installed (`unslop`). Credit: heydamir, CC BY 4.0. |
+| nextlevelbuilder/ui-ux-pro-max-skill | MIT | Installed (`ui-ux-pro-max`, local CSV search). Its `design` skill (logo generation through a paid image API) not installed. |
+| cathrynlavery/diagram-design | MIT | Installed (`diagram-design`): flow and plan diagrams. |
+| Nutlope/hallmark | MIT | Installed (`hallmark`); its optional image step needs a paid key and is not used. |
+| RobLe3/cc-blender-skill | MIT | Restored `quality-refinement-autoloop`, `reference-look-calibration`, `animation-quality-gate`. |
+| DietrichGebert/ponytail | MIT | Installed `ponytail`, `ponytail-audit`, `ponytail-review`. |
+| emilkowalski/skills (apple-design) | MIT | Installed as `apple-motion` (the Notion page's motion skill). |
+| dickwu/apple-design-skill | none; text is Apple's HIG | Used for this session only from `~/.claude/skills/apple-look`, not committed (Apple's copyright). |
+| mvanhorn/last30days-skill | MIT | Not installed: it reads browser cookie stores and asks for third-party API keys. |
+| D4Vinci/Scrapling | BSD-3 | Not installed: Firecrawl already covers scraping; its stealth mode is meant to get past bot checks. |
+| latent-spaces/brag | MIT | Not installed: makes launch videos, not part of the app. |
+| Autom8AI/Open-Higgsfield-AI | no licence | Not installed: no licence and it needs paid generation APIs. |
+| DhvanilPatel/swarm-cursors | no licence | Not installed. |
+| guillaumemeyer/watermarks-remover | n/a | Not used: removing other people's watermarks conflicts with their licences. |
+| genai-skills/prima-memory | n/a | Not installed: the repository is not public (clone asks for a login). |
+| growthforge pre-launch security kit (PDF) | n/a | Read (fetched without its token). Applicable checks applied in v9: no secrets in the app, no wildcard CORS, path traversal blocked in the local server, debug off. Finding: the APK signing key is committed in this public repository (see the v9 release notes). |
