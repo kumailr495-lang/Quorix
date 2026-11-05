@@ -9,3 +9,6 @@ tools/textures/.cache/
 tools/bake/.work/
 graphify-out/
 www/bake/*.png
+tools/android/test/out/
+tools/android/test/media/
+tools/android/test/server.log

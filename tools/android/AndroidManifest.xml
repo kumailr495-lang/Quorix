@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- LUMIERE v8 wrapper: a full-screen landscape WebView serving assets/www at https://appassets.androidplatform.net, plus the media
-     bridge (window.LumiereMedia) that lists the phone's videos for the tablet and streams them with range requests. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.buddyapps.lumiere" android:versionCode="800" android:versionName="8.00">
+<!-- LUMIERE v9 wrapper: a full-screen landscape WebView; the game, your videos and downloaded films come from the app's own loopback
+     server (LocalServer.java, http://127.0.0.1:47821; cleartext allowed for loopback only, res/xml/network_security_config.xml) -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.buddyapps.lumiere" android:versionCode="900" android:versionName="9.00">
   <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
   <application android:label="@string/app_name" android:icon="@drawable/ic_launcher" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
-      android:allowBackup="false" android:hardwareAccelerated="true" android:usesCleartextTraffic="false">
+      android:allowBackup="false" android:hardwareAccelerated="true" android:networkSecurityConfig="@xml/network_security_config">
     <activity android:name="com.buddyapps.lumiere.MainActivity" android:exported="true" android:screenOrientation="sensorLandscape"
         android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize" android:launchMode="singleTask">
       <intent-filter>
