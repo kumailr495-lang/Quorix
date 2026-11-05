@@ -312,3 +312,13 @@ body.lefty #stick{inset-inline-start:auto;inset-inline-end:calc(28px + var(--sar
   .mn-modes{gap:6px}.mode{padding:7px 12px;gap:1px}.mode b{font-size:15px}.mode small{font-size:10px}
   .mn-list{margin-top:8px}.mn-list button{height:31px;font-size:12px}
 }
+/* v9: YouTube's own player over the screen (film9.js places it in perspective); the crosshair; insets from the wrapper */
+#yt{position:fixed;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+#yt iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#000}
+#xhair{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(242,235,221,.75);box-shadow:0 0 0 1.5px rgba(0,0,0,.35);z-index:6;pointer-events:none;transition:transform .15s ease,opacity .2s}
+body.watching #xhair,body.talking #xhair,body.cutscene #xhair{opacity:0}
+body.aim #xhair{transform:scale(1.8);background:#e3b25f}
+#book .addon{display:flex;align-items:center;gap:10px;width:100%;margin:8px 0;padding:10px 12px;border-radius:12px;border:1px solid rgba(227,178,95,.35);background:rgba(255,255,255,.03);color:inherit;text-align:left}
+#book .addon.on{border-color:#e3b25f;background:rgba(227,178,95,.12)}
+#book .addon small{display:block;opacity:.7;font-size:11px}
+#book .paybox .row.total{font-weight:600;border-top:1px solid rgba(255,255,255,.12);padding-top:6px;margin-top:4px}

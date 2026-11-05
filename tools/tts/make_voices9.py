@@ -39,13 +39,15 @@ def speakers(key):
     return G2
 
 def clips(table):
-    # (stem, text, voice): lists give key.i; chats give key.i.j
+    # (stem, text, voice): lists give key.i; chats give key.i.j, where the first speaker (even j) uses guestM / guestF and the second
+    # (odd j) guestM2 / guestF2, so two guests of the same gender never share a voice
     for key, lines in table.items():
         for i, x in enumerate(lines):
-            for w in speakers(key):
-                if isinstance(x, list):
-                    for j, t in enumerate(x): yield f'{key}.{i}.{j}', t, w, key
-                else: yield f'{key}.{i}', x, w, key
+            if isinstance(x, list):
+                for j, t in enumerate(x):
+                    for w in (['guestM', 'guestF'] if j % 2 == 0 else ['guestM2', 'guestF2']): yield f'{key}.{i}.{j}', t, w, key
+            else:
+                for w in speakers(key): yield f'{key}.{i}', x, w, key
 
 def speakable(text, lang):
     s = text.replace('’', "'").replace('‘', "'").replace('…', '...').replace('“', '"').replace('”', '"')

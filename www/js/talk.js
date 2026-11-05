@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { t, pick } from './i18n.js';
 const $ = (s) => document.querySelector(s);
-const ROLE = { reception: 'role.reception', usher: 'role.usher', vendor: 'role.vendor', bar: 'role.bar', server: 'role.server', greeter: 'role.greeter' };
+const ROLE = { reception: 'role.reception', usher: 'role.usher', vendor: 'role.vendor', bar: 'role.bar', server: 'role.server', greeter: 'role.greeter', host: 'role.greeter', box: 'role.reception', driver: 'role9.driver' };
 export class Talk {
   constructor(sound, hooks = {}, settings = {}) {
     this.sound = sound; this.hooks = hooks; this.el = $('#talk'); this.nameEl = $('#talkName'); this.roleEl = $('#talkRole'); this.textEl = $('#talkText'); this.optsEl = $('#talkOpts'); this.layer = $('#bubbles');
@@ -47,6 +47,7 @@ export class Talk {
     const now = performance.now();
     for (const [npc, b] of this.bubbles) {
       if (now > b.until || !npc.alive) { this.removeBubble(npc); continue; }
+      if (!npc.ch || !npc.ch.s) { b.el.style.opacity = '0'; continue; }
       const seated = npc.ch.s.sit > 0.5, head = (seated ? 1.42 : 2.0) * npc.ch.scale; this.v.set(npc.x, npc.y + head, npc.z).project(camera);
       const dist = Math.hypot(camera.position.x - npc.x, camera.position.y - npc.y - head, camera.position.z - npc.z), on = npc.group.visible && this.v.z < 1 && this.v.z > -1 && Math.abs(this.v.x) < 1.1 && Math.abs(this.v.y) < 1.1 && dist < 12;
       if (!on) { b.el.style.opacity = '0'; continue; }

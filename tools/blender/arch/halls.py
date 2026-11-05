@@ -255,7 +255,10 @@ def build_hall(h, L1):
         hw, dep, ht = {'rocker': (0.31, 0.62, 1.04), 'recliner': (0.47, 0.98, 1.08), 'sofa': (0.41, 0.94, 1.0), 'pod': (0.43, 1.0, 1.06)}[s['kind']]
         u, d, y = s['u'], s['d'], s['y'] - y0
         occ.box(u - hw, y, d - dep * 0.45, u + hw, y + ht, d + dep * 0.55, 0, (0.18, 0.16, 0.15))
-        probes.append((s['x'], s['y'] + 0.75, s['z']))
+        # bake_room.py probe: point above the seat back, normal A up and back (house light on what you see of a seat), normal B
+        # toward the screen (its light). three.js yaw: local +z is the seat's back
+        sn, cs = math.sin(s['yaw']), math.cos(s['yaw']); bk = dep * 0.33
+        probes.append((s['x'] + sn * bk, s['y'] + ht + 0.04, s['z'] + cs * bk, 0.7 * sn, 0.7, 0.7 * cs, -0.96 * sn, 0.29, -0.96 * cs))
     c = [T((-W2, 0, Dw)), T((W2, 0, depth))]
     lit.rect = [min(c[0][0], c[1][0]), min(c[0][2], c[1][2]), max(c[0][0], c[1][0]), max(c[0][2], c[1][2])]
     return acc, glow, lit, occ, scr, probes

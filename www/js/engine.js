@@ -47,6 +47,9 @@ export class Engine {
     if (this._slow && now - this._slow > 2000 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); }
     else if (this._fast && now - this._fast > 12000 && i < lv.length - 1) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this.resize(); }
   }
+  // v9 show mode: watching the film you get the screen's full resolution (up to the device's pixels); the governor still steps down
+  // if the phone can't keep up, and leaving your seat returns to the preset
+  showMode(on) { if (on === !!this._show) return; this._show = on; const P = this.preset; this.maxScale = on ? Math.min(this.dpr, Math.max(P.scale, 1.5)) : Math.min(P.scale, this.dpr); if (!this.fixed) { this.scale = this.maxScale; this._tAdj = performance.now(); this.resize(); } }
   // seated in a hall the view narrows a little (like your attention does), so the screen fills the picture the way it does in a real cinema
   setZoom(z, dt) { const k = this.zoom || 1, n = k + (z - k) * (1 - Math.exp(-dt * 2.5)); if (Math.abs(n - k) < 1e-4) return; this.zoom = n; this.camera.fov = this.baseFov * n; this.camera.updateProjectionMatrix(); }
   render() {

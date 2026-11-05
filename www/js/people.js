@@ -183,7 +183,11 @@ const GEST = {
 };
 export const GESTURES = Object.keys(GEST);
 class Rig {   // bone lookups for one skeleton
-  constructor(root) { const B = {}; root.traverse((o) => { if (o.isBone) B[o.name] = o; }); this.B = B; this.root = root; }
+  constructor(root) { const B = {}; root.traverse((o) => { if (o.isBone) B[o.name] = o; }); this.B = B; this.root = root;
+    // v9 (phone feedback: "their eyes spin"): the clips don't animate the eyes or the jaw, so the per-frame turn added up; they now
+    // start every frame from their rest pose
+    this.rest = ['eye_l', 'eye_r', 'jaw'].filter((n) => B[n]).map((n) => [B[n], B[n].quaternion.clone()]); }
+  reset() { for (const [b, q] of this.rest) b.quaternion.copy(q); }
   get(n) { return this.B[n]; }
 }
 // apply a gesture (weight w) and the face controls to a posed skeleton. frame: the person's world matrix (for "their" axes)
@@ -255,7 +259,7 @@ export class Person {
     const f = this.face; f.lookYaw = s.lookYaw; f.lookPitch = s.lookPitch; f.lookAmt = s.lookAmt;
     this._sacc -= dt; if (this._sacc <= 0) { this._sacc = 0.4 + Math.random() * 2.2; f.eyeYaw = (Math.random() - 0.5) * 0.35 + clamp(s.lookYaw * s.lookAmt * 0.3, -0.3, 0.3); f.eyePitch = (Math.random() - 0.5) * 0.15; }
     const tj = this.mouth != null ? 0.012 + 0.16 * this.mouth : this.talking ? 0.05 + 0.07 * Math.max(0, Math.sin(s.t * 13.1) * Math.sin(s.t * 4.7 + 1.3)) : this.expr === 'scream' ? 0.3 : this.expr === 'laugh' ? 0.12 : 0; f.jaw += (tj - f.jaw) * Math.min(1, dt * 18);
-    poseLayers(this.rig, this.group.matrixWorld, this._g, this._gt, this._gw, f); this._items();
+    this.rig.reset(); this.root.updateMatrixWorld(true); poseLayers(this.rig, this.group.matrixWorld, this._g, this._gt, this._gw, f); this._items();
   }
   dispose() { this.mixer.stopAllAction(); this.mat.dispose(); }
 }
@@ -274,7 +278,7 @@ function bakeKind(k) {
       const t = i / FPS; mixer.setTime(g ? t % clip.duration : t); tpl.updateMatrixWorld(true);
       const w = g ? smooth(0, 0.3, t) * (1 - smooth(dur - 0.35, dur, t)) : 0;
       const face = { jaw: 0, lookYaw: name === 'look' ? 0.9 * Math.sin(Math.PI * t / dur) * (k === 'm' ? 1 : -1) : 0, lookPitch: 0, lookAmt: name === 'look' ? 1 : 0 };
-      if (g || name === 'look') poseLayers(rig, frame, g, t, w, face);
+      if (g || name === 'look') { rig.reset(); tpl.updateMatrixWorld(true); poseLayers(rig, frame, g, t, w, face); }
       const row = new Float32Array(nb * 12);
       for (let b = 0; b < nb; b++) { M.multiplyMatrices(bones[b].matrixWorld, sk.boneInverses[b]); const e = M.elements; row.set([e[0], e[4], e[8], e[12], e[1], e[5], e[9], e[13], e[2], e[6], e[10], e[14]], b * 12); }
       rows.push(row); }

@@ -1,0 +1,21 @@
+{
+ "room": "hall270",
+ "res": 2048,
+ "hall": true,
+ "hash": "v9.b1de743d2381",
+ "maps": [
+  "hall270_h.png",
+  "hall270_f.png",
+  "hall270_s.png"
+ ],
+ "scale": [
+  1.2657093346733213,
+  0.1815454550087435,
+  0.9033409953117371
+ ],
+ "avg": 0.03837455174154455,
+ "probes": "hall270_probes.json",
+ "glb": "hall270.glb",
+ "verts": 6576,
+ "tris": 2192
+}

@@ -20,7 +20,7 @@ export class Sound {
       while (t < sec) { const s0 = Math.floor(t * sr), len = Math.floor(sr * rnd(0.008, 0.016)); let hp = 0, prev = 0; for (let i = 0; i < len && s0 + i < n; i++) { const w = Math.random() * 2 - 1; hp = br * (hp + w - prev); prev = w; const e = Math.exp(-i / (len * 0.28)) * amp * rnd(0.6, 1); L[s0 + i] += hp * e * (1 - pan); R[s0 + i] += hp * e * pan; } t += (1 / rate) * rnd(0.85, 1.15); } }
     let pk = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i])); const g = 0.9 / (pk || 1); for (let i = 0; i < n; i++) { L[i] *= g; R[i] *= g; } return b; }
   _build() {
-    const AC = window.AudioContext || window.webkitAudioContext, c = this.ctx = new AC({ latencyHint: 'playback' });
+    const AC = window.AudioContext || window.webkitAudioContext, c = this.ctx = new AC({ latencyHint: this.latency || 'playback' });
     this.master = c.createGain(); this.master.gain.value = this.muted ? 0 : this.vol.master; const comp = c.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4; comp.attack.value = 0.005; this.master.connect(comp); comp.connect(c.destination);
     this.noise = this._noiseBuf(3); this.white = this._whiteBuf(2); this.applauseBuf = this._applauseBuf(4);
     // reverb send (hall acoustics) shared by the crowd and the film effects

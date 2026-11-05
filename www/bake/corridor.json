@@ -1,0 +1,18 @@
+{
+ "room": "corridor",
+ "res": 2048,
+ "hall": false,
+ "hash": "v9.108449801e91",
+ "maps": [
+  "corridor_h.png"
+ ],
+ "scale": [
+  0.5674032511267195,
+  0.0,
+  0.0
+ ],
+ "avg": 0.023048097644313155,
+ "glb": "corridor.glb",
+ "verts": 12132,
+ "tris": 4044
+}

@@ -8,7 +8,7 @@
 import { HALLS, makeHall } from './hallmath.js';
 export const HALL = Object.fromEntries(HALLS.map((s) => [s.id, makeHall(s)]));
 export const L1 = HALL.MAX.total;   // the first floor = the MAX hall's rear aisle (its rake top)
-export const FACADE = 18, LOBBY = { x0: -22, x1: 22, z0: -14, z1: FACADE, ceil: 9.6 }, MEZZ = { z0: -14, z1: -9.4 };
+export const FACADE = 18, LOBBY = { x0: -22, x1: 22, z0: -14, z1: FACADE, ceil: 9.6 }, MEZZ = { z0: -14, z1: -7.4, void: { x0: 8.6, x1: 12.8, z0: -9.8, z1: -7.4 } };
 export const SPINE = { x0: -4.2, x1: 4.2, z0: -72.6, z1: -14, ceil: 4.5 };
 const RO = (h) => h.xRear - 0.4 * h.dir;   // a hall's rear wall, outer face
 export const BRIDGE = { x0: RO(HALL.MAX) - 6, x1: RO(HALL.CLASSIC) + 6, z0: -22, z1: -14, ceil: 4.2 };
@@ -30,7 +30,7 @@ export function escProfile(e) {
 export const LIFT = { x0: 13.4, x1: 15.8, z0: -12.6, z1: -10.2, doorZ: -10.2, stops: [0, L1], speed: 1.0, doorW: 1.1 };
 export const TRAVELATOR = { x0: -0.8, x1: 0.8, z0: -70.5, z1: -16.5, speed: 0.75 };   // carries you north (+z), towards the lobby
 // ticket gate at the foot of the up escalator: glass panels, one gate leaf, the usher's podium
-export const GATE = { z: 3.2, x0: 7.6, x1: 13.0, gate: [8.9, 10.5], podium: { x: 7.0, z: 3.9 } };
+export const GATE = { z: 3.2, x0: 7.4, x1: 10.7, gate: [8.9, 10.5], podium: { x: 7.0, z: 3.9 }, sides: [[8.7, 1.4], [10.7, 1.4]] };   // the down escalator lands outside the gate
 // doors. oneWay: the side you can pass from. kind: slide (auto glass), pair (heavy double doors), push (exit doors with push bars)
 export const DOORS = [
   { id: 'main', rooms: ['street', 'lobby'], kind: 'slide', axis: 'x', x: 0, z: FACADE, w: 4.0, h: 3.0, y: 0 },
@@ -78,7 +78,7 @@ export const POSTS = {
   server: { x: 0, y: L1, z: -23.6, yaw: 0, room: 'corridor' },   // the service pantry (a niche off the bridge, over the spine): the cart waits here
   driver: { x: -6.0, y: 0, z: 27.8, yaw: Math.PI / 2, room: 'street' },
 };
-export const SPAWN = { quick: { x: -2, y: 0, z: 8, yaw: Math.PI, room: 'lobby' }, kerb: { x: -6.0, y: 0, z: 25.4, yaw: Math.PI, room: 'street' } };
+export const SPAWN = { quick: { x: -2, y: 0, z: 9, yaw: 0, room: 'lobby' }, kerb: { x: -6.0, y: 0, z: 25.4, yaw: Math.PI, room: 'street' } };
 // counters and fixed furniture the engine needs to know about (the meshes are part of the room models)
 export const COUNTERS = {
   boxOffice: { x0: -20.4, x1: -16.6, z0: 4.0, z1: 14.0, top: 1.08, queue: { x: -12.6, z: 9.0 } },

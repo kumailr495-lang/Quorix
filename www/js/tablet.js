@@ -7,6 +7,7 @@
 //   My videos: the Android media bridge (window.LumiereMedia, the v8 APK) lists the phone's videos with thumbnails; without it (older APK,
 //              desktop) the system picker and a link field stand in.
 // Favourites and collections are kept on the device (localStorage).
+// v9: the app's own server gives each video's address and thumbnail in the list (it.url, it.thumb); the film is a WebGL picture now.
 import { t } from './i18n.js';
 import { CATALOG, posterURL, filmById, cleanTitle } from './films.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -87,12 +88,12 @@ export class Tablet {
     list.sort((a, b) => this.sort === 'name' ? a.name.localeCompare(b.name) : this.sort === 'long' ? (b.dur || 0) - (a.dur || 0) : (b.date || 0) - (a.date || 0));
     const grid = el('div', 'tb-vids');
     if (!list.length) grid.appendChild(el('p', 'note', t('tab.noneFound')));
-    for (const it of list.slice(0, 240)) { const c = el('div', 'tb-vid'), th = el('div', 'th'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = M.thumbUrl(it.id); th.appendChild(img); th.appendChild(el('span', 'dur', fmt((it.dur || 0) / 1000))); c.appendChild(th);
+    for (const it of list.slice(0, 240)) { const c = el('div', 'tb-vid'), th = el('div', 'th'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = (it.thumb || (M.thumbUrl && M.thumbUrl(it.id))); th.appendChild(img); th.appendChild(el('span', 'dur', fmt((it.dur || 0) / 1000))); c.appendChild(th);
       c.appendChild(el('b', null, cleanTitle(it.name))); c.appendChild(el('small', null, `${it.h ? it.h + 'p · ' : ''}${Math.round((it.size || 0) / 1e6)} MB`));
       const heart = el('button', 'heart' + (this.fav.has(it.id) ? ' on' : '')); heart.innerHTML = '<svg class="ic"><use href="#i-heart"/></svg>'; heart.addEventListener('click', (e) => { e.stopPropagation(); if (this.fav.has(it.id)) this.fav.delete(it.id); else this.fav.add(it.id); store.set('fav', [...this.fav]); heart.classList.toggle('on'); this.sound.click(); }); c.appendChild(heart);
       if (this.view.startsWith('col:')) { const rm = el('button', 'colrm', '−'); rm.addEventListener('click', (e) => { e.stopPropagation(); const k = this.view.slice(4); this.cols[k] = this.cols[k].filter((x) => x !== it.id); store.set('cols', this.cols); this.show('mine'); }); c.appendChild(rm); }
       else if (Object.keys(this.cols).length) { const add = el('button', 'coladd', '+'); add.addEventListener('click', (e) => { e.stopPropagation(); const names = Object.keys(this.cols), n = names.length === 1 ? names[0] : prompt(t('tab.addTo') + '\n' + names.join(', ')); if (n && this.cols[n] && !this.cols[n].includes(it.id)) { this.cols[n].push(it.id); store.set('cols', this.cols); this.hooks.toast(t('tab.added', { col: n }), 1600); } }); c.appendChild(add); }
-      c.addEventListener('click', () => { this.sound.click(); this.onLocal && this.onLocal(M.videoUrl(it.id), it.name); if (this.hooks.quick() || this.server) { if (this.hooks.playFilm({ own: true })) this.show('remote'); } else this.close(); });
+      c.addEventListener('click', () => { this.sound.click(); this.onLocal && this.onLocal((it.url || (M.videoUrl && M.videoUrl(it.id))), it.name); if (this.hooks.quick() || this.server) { if (this.hooks.playFilm({ own: true })) this.show('remote'); } else this.close(); });
       grid.appendChild(c); }
     B.appendChild(grid);
     q.addEventListener('input', () => { this.q = q.value; clearTimeout(this._qt); this._qt = setTimeout(() => { const pos = q.selectionStart; this.show('mine'); const nq = document.querySelector('#tbBody .tb-bar input'); if (nq) { nq.focus(); nq.setSelectionRange(pos, pos); } }, 250); });

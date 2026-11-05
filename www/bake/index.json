@@ -1,5 +1,20 @@
 {
  "rooms": {
+  "corridor": {
+   "avg": 0.023048097644313155,
+   "glb": "corridor.glb",
+   "hall": false,
+   "hash": "v9.108449801e91",
+   "maps": [
+    "corridor_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    0.5674032511267195,
+    0.0,
+    0.0
+   ]
+  },
   "gal": {
    "avg": 0.5908438211336975,
    "glb": "gal.glb",
@@ -22,6 +37,60 @@
     15.665338893235417,
     0.0,
     0.0
+   ]
+  },
+  "hall270": {
+   "avg": 0.03837455174154455,
+   "glb": "hall270.glb",
+   "hall": true,
+   "hash": "v9.b1de743d2381",
+   "maps": [
+    "hall270_h.jpg",
+    "hall270_f.jpg",
+    "hall270_s.jpg"
+   ],
+   "probes": "hall270_probes.json",
+   "res": 2048,
+   "scale": [
+    1.2657093346733213,
+    0.1815454550087435,
+    0.9033409953117371
+   ]
+  },
+  "hallClassic": {
+   "avg": 0.04039730437798985,
+   "glb": "hallClassic.glb",
+   "hall": true,
+   "hash": "v9.19961ad98d85",
+   "maps": [
+    "hallClassic_h.jpg",
+    "hallClassic_f.jpg",
+    "hallClassic_s.jpg"
+   ],
+   "probes": "hallClassic_probes.json",
+   "res": 2048,
+   "scale": [
+    2.419285378179931,
+    0.21292322546243664,
+    0.8553524017333984
+   ]
+  },
+  "hallCurve": {
+   "avg": 0.05005378380944415,
+   "glb": "hallCurve.glb",
+   "hall": true,
+   "hash": "v9.550c102938f2",
+   "maps": [
+    "hallCurve_h.jpg",
+    "hallCurve_f.jpg",
+    "hallCurve_s.jpg"
+   ],
+   "probes": "hallCurve_probes.json",
+   "res": 2048,
+   "scale": [
+    2.2794776133048065,
+    0.17529983201622967,
+    0.8221462368965149
    ]
   },
   "hallI": {
@@ -105,50 +174,65 @@
     0.9422376155853271
    ]
   },
+  "hallMax": {
+   "avg": 0.029622455806793544,
+   "glb": "hallMax.glb",
+   "hall": true,
+   "hash": "v9.033a41528730",
+   "maps": [
+    "hallMax_h.jpg",
+    "hallMax_f.jpg",
+    "hallMax_s.jpg"
+   ],
+   "probes": "hallMax_probes.json",
+   "res": 2048,
+   "scale": [
+    2.719995764613827,
+    0.22167494612463198,
+    0.9459422826766968
+   ]
+  },
   "lobby": {
-   "avg": 0.2745985254976792,
+   "avg": 0.07629954311039838,
    "glb": "lobby.glb",
    "hall": false,
-   "hash": "12957.29460.98741591.31234820.567708119",
+   "hash": "v9.3891bf57cb8d",
    "maps": [
     "lobby_h.jpg"
    ],
-   "pv": {
-    "file": "lobby_pv.bin",
-    "hash": "105761.312462.1962044050.222684977.1850930847",
-    "scale": [
-     9.708502283223545,
-     0.0001,
-     0.0001
-    ]
-   },
    "res": 2048,
    "scale": [
-    4.163732810189198,
+    1.1694102153342236,
+    0.0,
+    0.0
+   ]
+  },
+  "spine": {
+   "avg": 0.31569423181462086,
+   "glb": "spine.glb",
+   "hall": false,
+   "hash": "v9.746228184550",
+   "maps": [
+    "spine_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    1.467032263960171,
     0.0,
     0.0
    ]
   },
   "street": {
-   "avg": 0.1103696852243601,
+   "avg": 0.0064113440393558565,
    "glb": "street.glb",
    "hall": false,
-   "hash": "5298.15390.65500388.13236622.51007443",
+   "hash": "v9.f713dcc2b872",
    "maps": [
     "street_h.jpg"
    ],
-   "pv": {
-    "file": "street_pv.bin",
-    "hash": "163767.437637.1342834721.240745329.12452768",
-    "scale": [
-     0.0001,
-     7.2102989424518995,
-     0.0001
-    ]
-   },
    "res": 2048,
    "scale": [
-    1.075417612020045,
+    0.5986648579683119,
     0.0,
     0.0
    ]
@@ -173,6 +257,21 @@
    "res": 1024,
    "scale": [
     0.3943641436876134,
+    0.0,
+    0.0
+   ]
+  },
+  "wc": {
+   "avg": 0.12700844890028112,
+   "glb": "wc.glb",
+   "hall": false,
+   "hash": "v9.dc4564ee6385",
+   "maps": [
+    "wc_h.jpg"
+   ],
+   "res": 1024,
+   "scale": [
+    0.856241216659546,
     0.0,
     0.0
    ]

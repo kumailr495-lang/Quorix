@@ -112,6 +112,10 @@ varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varyi
 #ifdef USE_LIGHTMAP
 uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; uniform vec3 uScreenD; uniform vec2 uScreenX; varying vec2 vLm;
 #endif
+#ifdef LM_SPILL
+uniform sampler2D uSpill; uniform vec4 uSpillP; uniform float uSpillA;
+vec3 spillAt(vec3 p) { vec2 st = clamp(vec2(0.5 + (p.z - uSpillP.x) * uSpillP.y, (p.y - uSpillP.z) * uSpillP.w), 0.02, 0.98); return mix(textureLod(uSpill, vec2(0.5), 6.0).rgb, textureLod(uSpill, st, 1.5).rgb, uSpillA); }
+#endif
 vec3 perturb(vec3 p, vec3 n, vec3 m) {
   vec3 q0 = dFdx(p); vec3 q1 = dFdy(p); vec2 st0 = dFdx(vUv); vec2 st1 = dFdy(vUv);
   vec3 q1p = cross(q1, n); vec3 q0p = cross(n, q0); vec3 T = q1p * st0.x + q0p * st1.x; vec3 B = q1p * st0.y + q0p * st1.y;
@@ -128,7 +132,11 @@ void main() {
 #ifdef USE_LIGHTMAP
   Lt = texture(uLmH, vLm).rgb * (uLmK.x * uHouse);
 #ifdef LM_HALL
+#ifdef LM_SPILL
+  Lt += texture(uLmF, vLm).rgb * (uLmK.y * uFix) + texture(uLmS, vLm).r * uLmK.z * uScreen * spillAt(vWP);
+#else
   Lt += texture(uLmF, vLm).rgb * (uLmK.y * uFix) + texture(uLmS, vLm).r * uLmK.z * (uScreen + uScreenD * clamp((vWP.x - uScreenX.x) / uScreenX.y, -1.0, 1.0));
+#endif
 #endif
 #endif
   float uMetal = vPA.y; float uSheen = vPA.w; float uSpec = vPB.x; float uRelief = vPB.y;
@@ -318,7 +326,7 @@ export class Materials {
   litRoom(U, inst = false, bake = null) {
     let per = this._lit.get(U); if (!per) this._lit.set(U, per = {}); const key = bake ? 'l' : inst ? 'i' : 's'; if (per[key]) return per[key];
     const A = libArrays(this.renderer, this.texSize, 'USE_NMAP' in this.defines), defines = { ...this.defines }, lm = {};
-    if (bake) { const [h, f, s] = bake.maps; defines.USE_LIGHTMAP = ''; if (bake.hall) defines.LM_HALL = '';
+    if (bake) { const [h, f, s] = bake.maps; defines.USE_LIGHTMAP = ''; if (bake.hall) defines.LM_HALL = ''; if (bake.hall && U.uSpill) defines.LM_SPILL = '';
       Object.assign(lm, { uLmH: { value: h }, uLmF: { value: f || h }, uLmS: { value: s || h }, uLmK: { value: new THREE.Vector3(...bake.scale) } }); }
     const m = mk(LIT_VERT, LIT_FRAG, { ...G, ...U, ...lm, uMaps: { value: A.a }, uNmaps: { value: A.n || A.a }, uP: { value: PARAMS } }, { defines });
     m.name = 'lit-' + key; per[key] = m; return this._t(m);

@@ -17,7 +17,9 @@ export const ASSET_LIST = ['counter_module', 'popcorn_machine', 'bar_stool', 'ar
   'chandelier_cascade', 'sofa_curve', 'table_lounge', 'pendant_ring', 'back_bar_onyx', 'bar_counter', 'poster_totem', 'number_totem', 'planter_hedge', 'bollard_light',
   'letters_lumiere_lit', 'letters_lumiere', 'letters_cinemas', 'letters_imax', 'restroom_set',
   // v8 (docs/V8-PLAN.md)
-  'atm'];
+  'atm',
+  // v9
+  'planter_tree'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
