@@ -25,6 +25,11 @@ for d in SPEC['DOORS']:
     else: q = [(d['x'] - w, y0, d['z']), (d['x'] + w, y0, d['z']), (d['x'] + w, y1, d['z']), (d['x'] - w, y1, d['z'])]
     b = len(verts); verts += [Vector(p) for p in q]; tris += [(b, b + 1, b + 2), (b, b + 2, b + 3), (b, b + 2, b + 1), (b, b + 3, b + 2)]; plugs += 1
 nsolid = len(P) // 3
+# neighbouring rooms (--with a.json,b.json): their walls close this room in the game (e.g. the halls' screen walls line the spine)
+if '--with' in argv:
+    for f in argv[argv.index('--with') + 1].split(','):
+        Q = arr(json.load(open(f))['solid']['pos'], np.float32, 3).astype(np.float64); b = len(verts)
+        verts += [Vector(p) for p in Q]; tris += [(b + 3 * i, b + 3 * i + 1, b + 3 * i + 2) for i in range(len(Q) // 3)]
 T = BVHTree.FromPolygons(verts, tris, epsilon=0.0)
 x0, z0, x1, z1 = D['lights']['rect']; ceil = D['lights']['ceil']
 rnd = random.Random(1)
@@ -48,7 +53,13 @@ while x < x1 - 0.5:
                 for hgt in (1.6, 1.1):
                     e = loc + Vector((0, hgt, 0))
                     up, _, _, du = T.ray_cast(loc + Vector((0, 0.05, 0)), Vector((0, 1, 0)), hgt)
-                    if up is None: eyes.append(e)
+                    if up is not None: continue
+                    # inside a solid (a wall the grid point fell into)? then most axis rays first meet a back face
+                    inside = 0
+                    for ax in (Vector((1, 0, 0)), Vector((-1, 0, 0)), Vector((0, 0, 1)), Vector((0, 0, -1)), Vector((0, 1, 0))):
+                        l2, n2, i2, d2 = T.ray_cast(e, ax, 60)
+                        if l2 is not None and i2 < nsolid and n2.dot(ax) > 0: inside += 1
+                    if inside < 3: eyes.append(e)
                 need_under = True
             elif idx < nsolid and nrm.y < -0.7: need_under = False
             o = loc + dn * 0.03

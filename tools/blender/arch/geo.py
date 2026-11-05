@@ -15,7 +15,9 @@ MAT = dict(paint=0, fabric=1, velvet=1, wood=2, terrazzo=3, metal=4, carpet=5, p
 
 def lin(hexs, k=1.0):
     """sRGB hex (#rrggbb) -> linear rgb, times k"""
-    h = hexs.lstrip('#'); c = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    h = hexs.lstrip('#')
+    if len(h) == 3: h = ''.join(ch * 2 for ch in h)
+    c = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
     return tuple(k * (v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4) for v in c)
 
 def mix(a, b, t): return tuple(a[i] * (1 - t) + b[i] * t for i in range(3))
@@ -100,6 +102,14 @@ class Acc:
             cm, cc = capmat if capmat is not None else mat, capcol or col
             s.poly([(x, y1, z) for x, z in pts], cm, cc)
             if bottom: s.poly([(x, y0, z) for x, z in pts[::-1]], cm, cc)
+    def prism_x(s, poly, x0, x1, mat, col):
+        """extrusion along x of a polygon given in (z, y): closed, faces outward"""
+        n = len(poly); area = sum(poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1] for i in range(n))
+        pts = poly if area > 0 else poly[::-1]   # counter-clockwise in (z, y) = seen from -x looking to +x... sides checked below
+        for i in range(n):
+            (za, ya), (zb, yb) = pts[i], pts[(i + 1) % n]
+            s.quad((x0, ya, za), (x1, ya, za), (x1, yb, zb), (x0, yb, zb), mat, col)
+        s.poly([(x1, y, z) for z, y in pts[::-1]], mat, col); s.poly([(x0, y, z) for z, y in pts], mat, col)
     def wall(s, a, b, y0, y1, t, mat, col, openings=(), side=0, capmat=None, capcol=None, inner=None):
         """straight wall from a to b (2D x, z) of thickness t, centred (side 0) or offset to the left (+1) / right (-1) of a->b;
         openings: (s0, s1, top, bottom=y0) along the wall from a; each opening gets real reveals (jambs, head, sill)"""
