@@ -216,6 +216,8 @@ function panelTexture(id, w, h, hooks) {
   const draw = hooks[id.split('_')[0]]; if (draw) draw(g, px, py, id); else { g.fillStyle = '#111'; g.fillRect(0, 0, px, py); }
   return { tex: tx, canvas: c, g };
 }
+// the builder placed the west-wall boards at the wall's centre line (tools/blender/arch/rooms.py: x0 + 0.21); its face is 0.2 m further in
+const NUDGE = { showtimes: 0.22, menu: 0.22 };
 export const PANEL_DRAW = {
   sign: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#07080c'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.5}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     if ('letterSpacing' in g) g.letterSpacing = `${h * 0.08}px`; g.fillText(H_ ? H_.name.replace('LUMIERE ', '') : id, w / 2, h * 0.52); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.fillRect(w * 0.3, h * 0.86, w * 0.4, h * 0.03); },
@@ -271,7 +273,7 @@ function buildHall(world, h, room) {
   const armLit = new Float32Array(arms.length * 7); arms.forEach((a, i) => { let best = 0, bd = 1e9; for (const s of seats) { if (s.row !== a.row) continue; const d = Math.abs(s.a - a.a); if (d < bd) { bd = d; best = s.i; } } armLit.set(lit.subarray(best * 7, best * 7 + 7), i * 7); });
   const groups = [];
   const instanced = (geo, list, lt, sx) => { const ms = [0, 1].map((l) => { const g = geo[l] && geo[l].attributes.position.count ? geo[l] : l ? null : geo[0]; if (!g) return null; const m = new THREE.InstancedMesh(g, mats.litFor(U, g, true), list.length); m.count = 0; m.frustumCulled = false;
-    for (const [k, w] of [['iLh', 3], ['iLf', 3], ['iLs', 1]]) g.setAttribute(k, new THREE.InstancedBufferAttribute(new Float32Array(list.length * w), w)); room.group.add(m); return m; }); groups.push({ list, ms, lt, sx }); };
+    for (const [k, w] of [['iLh', 3], ['iLf', 3], ['iLs', 1]]) g.setAttribute(k, new THREE.InstancedBufferAttribute(new Float32Array(list.length * w), w)); room.group.add(m); return m; }); groups.push({ list, ms, lt, sx, arm: !!(list[0] && list[0].an) }); };
   for (const F of Object.values(fams)) {
     const geo = [0, 1].map((l) => assetGeometry(F.sn, l, flip, toGeometry, Acc)); if (!geo[0]) { console.warn('seat model missing: ' + F.sn); continue; }
     geo[0].computeBoundingBox(); const bw = geo[0].boundingBox.max.x - geo[0].boundingBox.min.x, aw = ASSETS[F.an] ? ASSETS[F.an].box.max.x - ASSETS[F.an].box.min.x : 0.06;
@@ -305,8 +307,9 @@ function buildHall(world, h, room) {
   const hall = { cfg: h, id: h.id, key: h.key, name: h.name, room, seats, arms, pic, picMat, slate, patches, curtains, seatLit: lit,
     updateLOD(cam, force, far = 7) {
       const px = cam.position.x, pz = cam.position.z; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.5) return; last = [px, pz]; const fin = (far - 0.8) ** 2, fout = (far + 0.8) ** 2;
-      for (const G_ of groups) { const cnt = [0, 0], { list, ms, lt, sx } = G_;
-        for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, d2 = dx * dx + dz * dz, l = (s.lod = force ? (d2 < far * far ? 0 : 1) : s.lod === 1 ? (d2 < fin ? 0 : 1) : (d2 > fout ? 1 : 0)), m = ms[l] || ms[0], k = cnt[ms[l] ? l : 0]++;
+      for (const G_ of groups) { const cnt = [0, 0], { list, ms, lt, sx, arm } = G_;
+        for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, d2 = dx * dx + dz * dz; if (arm && d2 > 196) continue;   // arms past 14 m hide behind the seat backs
+          const l = (s.lod = force ? (d2 < far * far ? 0 : 1) : s.lod === 1 ? (d2 < fin ? 0 : 1) : (d2 > fout ? 1 : 0)), m = ms[l] || ms[0], k = cnt[ms[l] ? l : 0]++;
           tmp.position.set(s.x, s.y, s.z); tmp.rotation.set(0, s.yaw, 0); tmp.scale.set(sx, 1, 1); tmp.updateMatrix(); m.setMatrixAt(k, tmp.matrix);
           const a = m.geometry.attributes; a.iLh.setXYZ(k, lt[i * 7], lt[i * 7 + 1], lt[i * 7 + 2]); a.iLf.setXYZ(k, lt[i * 7 + 3], lt[i * 7 + 4], lt[i * 7 + 5]); a.iLs.setX(k, lt[i * 7 + 6]); }
         ms.forEach((m, i) => { if (!m) return; m.count = cnt[i]; m.instanceMatrix.needsUpdate = true; for (const n of ['iLh', 'iLf', 'iLs']) m.geometry.attributes[n].needsUpdate = true; }); }
@@ -367,8 +370,8 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     } else console.warn(`[lumiere] room ${key}: no matching bake (${bk ? bk.hash : 'none'} vs ${x ? x.hash : 'no extras'}); run tools/bake/bake9.sh`);
     if (x && x.glow) { const P = b64f(x.glow.pos), C = b64f(x.glow.col), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('color', new THREE.BufferAttribute(C, 3)); g.setAttribute('grp', new THREE.BufferAttribute(new Float32Array(P.length / 3), 1));
       const m = new THREE.Mesh(g, mats.glowMat(U)); m.matrixAutoUpdate = false; m.name = key + '-glow'; group.add(m); }
-    for (const p of (x && x.panels) || []) { const pt = panelTexture(p.id, p.w, p.h, PANEL_DRAW), H = [0, 0, 0], F = [0, 0, 0], nx = Math.sin(p.yaw), nz = Math.cos(p.yaw); lights.at(p.x + nx * 0.1, p.y, p.z + nz * 0.1, nx, 0, nz, H, F);
-      const mat = mats.texMat(pt.tex, U, new THREE.Color(H[0], H[1], H[2]), p.emit ? 0.9 : 0), m = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), mat); m.position.set(p.x, p.y, p.z); m.rotation.y = p.yaw; m.updateMatrix(); m.matrixAutoUpdate = false; m.name = 'panel-' + p.id; group.add(m);
+    for (const p of (x && x.panels) || []) { const pt = panelTexture(p.id, p.w, p.h, PANEL_DRAW), H = [0, 0, 0], F = [0, 0, 0], nx = Math.sin(p.yaw), nz = Math.cos(p.yaw), k = NUDGE[p.id] || 0; lights.at(p.x + nx * 0.1, p.y, p.z + nz * 0.1, nx, 0, nz, H, F);
+      const mat = mats.texMat(pt.tex, U, new THREE.Color(H[0], H[1], H[2]), p.emit ? 0.9 : 0), m = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), mat); m.position.set(p.x + nx * k, p.y, p.z + nz * k); m.rotation.y = p.yaw; m.updateMatrix(); m.matrixAutoUpdate = false; m.name = 'panel-' + p.id; group.add(m);
       world.panels[p.id] = { ...p, ...pt, mesh: m, mat }; }
     if (x && x.fixtures) for (const fx of x.fixtures) world.uses.push({ ...fx, room: key, sub: fx.room });
     if (def.kind === 'hall') { const h = buildHall(world, HALL[def.hall], room); world.halls.push(h); room.hall = h; }

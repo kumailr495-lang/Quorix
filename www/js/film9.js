@@ -139,7 +139,7 @@ export class Shows {
       const dur = s.state === 'countdown' ? 9500 : s.state === 'playing' ? 2000 : 5000, u = clamp((now - s.lightAt) / dur); s.light = s.lightFrom + (want - s.lightFrom) * ss(u);
       h.room.U.uHouse.value = s.light; h.room.U.uGlow.value = 0.35 + 0.65 * Math.min(1, s.light * 2.5);
       // screen light gain: the picture's own colour comes from the spill copy
-      const g = s.state === 'playing' && s.pic ? 2.4 : s.state === 'countdown' ? 1.1 : s.state === 'pending' || s.state === 'ended' ? 0.7 : 0.35, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
+      const g = s.state === 'playing' && s.pic ? 5.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
       if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic ? 0.25 + 0.75 * this.spread : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; } }
     }

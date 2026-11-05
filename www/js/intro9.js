@@ -54,7 +54,7 @@ export class Intro {
     const cam = this.engine.camera;
     if (t < SHOT_B) {
       // shot A: from the far pavement, the taxi crosses the frame and stops at the carpet; the camera drifts and settles on the entrance
-      const k = ease((t - 1.2) / 3.0); cam.position.set(lerp(-4.2, -1.6, t / SHOT_B), 1.72, 39.2);
+      const k = ease((t - 1.2) / 3.0); cam.position.set(lerp(-4.2, -1.6, t / SHOT_B), 1.72, 38.2);
       cam.lookAt(lerp(cx + 2.5, 0.9, k), lerp(1.2, 3.0, k), lerp(cz, 19, k));
       if (t > SHOT_B - 0.32 && !this._cut) { this._cut = true; this.hooks.fade && this.hooks.fade(1, 0.28); }
     } else {

@@ -322,3 +322,6 @@ body.aim #xhair{transform:scale(1.8);background:#e3b25f}
 #book .addon.on{border-color:#e3b25f;background:rgba(227,178,95,.12)}
 #book .addon small{display:block;opacity:.7;font-size:11px}
 #book .paybox .row.total{font-weight:600;border-top:1px solid rgba(255,255,255,.12);padding-top:6px;margin-top:4px}
+.tb-film{position:relative}
+.tb-dl{position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:10px;font-size:10px;background:rgba(10,10,14,.75);color:#f2ebdd;border:1px solid rgba(227,178,95,.5)}
+.tb-dl.done{border-color:#2bb673;color:#bff3d6}

@@ -64,9 +64,16 @@ export class Tablet {
   // ---------------- films ----------------
   films(B) {
     $('#tbTitle').textContent = t('tab.films'); const grid = el('div', 'tb-grid'); const story = !this.hooks.quick();
-    for (const f of CATALOG) { const c = el('button', 'tb-film'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); c.appendChild(img); c.appendChild(el('b', null, f.short || f.title)); c.appendChild(el('small', null, `${t('genre.' + f.genre)} · ${t('book.mins', { n: f.mins })}` + (story ? ` · ${this.wallet.fmt(this.wallet.P.replay)}` : '')));
-      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.playFilm({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } }); grid.appendChild(c); }
+    // v9: each open film can be saved to the phone (the app downloads it; it then plays offline, with no Wi-Fi stutter)
+    const M = window.LumiereMedia, saved = (() => { try { return M ? JSON.parse(M.downloaded() || '[]') : []; } catch (e) { return []; } })();
+    for (const f of CATALOG) { const c = el('button', 'tb-film'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); c.appendChild(img); c.appendChild(el('b', null, f.short || f.title)); c.appendChild(el('small', null, `${t('genre.' + f.genre)} · ${t('book.mins', { n: f.mins })}` + (story && this.wallet.P.replay ? ` · ${this.wallet.fmt(this.wallet.P.replay)}` : '')));
+      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.playFilm({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } });
+      if (M && M.download) { const have = saved.find((d) => d.name === f.id + '.mp4' && d.done), dl = el('span', 'tb-dl' + (have ? ' done' : ''), have ? t('tab9.saved') : t('tab9.save'));
+        dl.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (have) return; dl.textContent = '0 %'; this._dl = this._dl || {}; this._dl[f.id + '.mp4'] = dl; M.download(f.url, f.id + '.mp4'); });
+        c.appendChild(dl); }
+      grid.appendChild(c); }
     B.appendChild(grid);
+    window.__lumiereDownload = (name, done, total, state) => { const d = this._dl && this._dl[name]; if (!d) return; d.textContent = state === 'done' ? t('tab9.saved') : String(state).startsWith('error') ? t('tab9.failed') : total > 0 ? Math.floor(done * 100 / total) + ' %' : Math.round(done / 1048576) + ' MB'; if (state === 'done') d.classList.add('done'); };
   }
   // ---------------- my videos ----------------
   mine(B) {

@@ -1,4 +1,5 @@
 import com.buddyapps.lumiere.LocalServer;
+import com.buddyapps.lumiere.Proxy;
 import java.io.*;
 import java.util.Map;
 // desktop test of the wrapper's loopback server: serves DIR as the asset root and as /m/<token>/<name> (the "phone's videos")
@@ -14,6 +15,7 @@ public class ServerTest {
                     public InputStream open(long off) throws IOException { FileInputStream in = new FileInputStream(f); in.getChannel().position(off); return in; } };
             } };
         s.assets(files); s.route("/m/", files, true);
+        Proxy px = new Proxy(); px.allowLoopbackHttp = true; s.route("/p/", px, true);   // v9: the film pass-through, tested against this server itself
         int p = s.start(Integer.parseInt(a[1]), 5);
         System.out.println("BASE " + s.base() + " TOKEN " + s.token); System.out.flush();
         Thread.sleep(Long.MAX_VALUE);

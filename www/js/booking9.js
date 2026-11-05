@@ -57,17 +57,17 @@ export class Booking9 {
   stepSeat() {
     const h = this.hall(), c = h.cfg, m = $('#seatmap'); m.innerHTML = ''; $('#hallName').textContent = `${c.name.replace('LUMIERE ', '')} · ${t('fmt9.' + c.id)}`;
     const free = h.seats.some((s) => !s.taken && !s.npc); $('#seatEmpty').hidden = free; m.hidden = !free; if (!free) return;
-    const body = $('#book .sh-body'), W = Math.max(240, (body.clientWidth || 600) - 24), Hh = Math.max(150, (body.clientHeight || 260) - 70);
-    const us = h.seats.map((s) => s.u), ds = h.seats.map((s) => s.d), u0 = Math.min(...us) - 0.6, u1 = Math.max(...us) + 0.6, d0 = Math.min(...ds) - 0.8, d1 = Math.max(...ds) + 0.5, k = Math.min(W / (u1 - u0), Hh / (d1 - d0));
-    m.style.position = 'relative'; m.style.height = ((d1 - d0) * k + 34) + 'px'; m.style.width = ((u1 - u0) * k) + 'px'; m.style.margin = '0 auto';
-    const scr = el('div', 'scr'); scr.appendChild(el('span', null, t('book.screen').toUpperCase())); scr.style.cssText = 'position:absolute;left:4%;right:4%;top:0;margin:0'; m.appendChild(scr);
-    for (const s of h.seats) { const taken = (s.taken || s.npc) && !s.player, w = Math.max(8, (s.kind === 'rocker' ? 0.52 : 0.78) * k), b = el('button', 'seat' + (taken ? ' taken' : '') + (s.id === this.sel.seat ? ' sel' : ''));
-      b.setAttribute('aria-label', `${s.id} ${CLASSES[s.cls].label}`); b.style.cssText = `position:absolute;left:${((s.u - u0) * k - w / 2).toFixed(1)}px;top:${(26 + (s.d - d0) * k - w / 2).toFixed(1)}px;width:${w.toFixed(1)}px;height:${(w * 0.8).toFixed(1)}px;border-color:${CLASS_COL[s.cls]};${s.pair >= 0 ? 'border-radius:' + (s.pairSide ? '2px 6px 6px 2px' : '6px 2px 2px 6px') : ''}`;
-      if (!taken) b.addEventListener('click', () => { this.sel.seat = s.id; this.sound.click(); this.build(); }); m.appendChild(b); }
-    // the legend: each class in the hall with its price
-    const lg = el('div', 'legend'); lg.style.cssText = 'position:absolute;left:0;right:0;bottom:-2px;display:flex;gap:10px;justify-content:center;font-size:11px;opacity:.85';
-    for (const cls of [...new Set(h.seats.map((s) => s.cls))]) { const i = el('span'); i.innerHTML = `<i style="display:inline-block;width:9px;height:9px;border:2px solid ${CLASS_COL[cls]};border-radius:3px;margin-right:4px;vertical-align:-1px"></i>`; i.appendChild(document.createTextNode(CLASSES[cls].label + (this.quick ? '' : ' ' + this.bill.fmt(CLASSES[cls].price)))); lg.appendChild(i); }
-    m.appendChild(lg);
+    const body = $('#book .sh-body'), W = Math.max(240, (body.clientWidth || 600) - 24), Hh = Math.max(150, (body.clientHeight || 260) - 60);
+    const us = h.seats.map((s) => s.u), ds = h.seats.map((s) => s.d), u0 = Math.min(...us) - 0.6, u1 = Math.max(...us) + 0.6, d0 = Math.min(...ds) - 0.8, d1 = Math.max(...ds) + 0.5, k = Math.min(W / (u1 - u0), 1.9 * Hh / (d1 - d0));
+    // the legend first (each class in its colour and price), then the map: it may scroll a little on small screens, the seats stay tappable
+    const lg = el('div', 'legend'); lg.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;justify-content:center;font-size:11px;opacity:.9;margin:2px 0 6px';
+    for (const cls of [...new Set(h.seats.map((s) => s.cls))]) { const i = el('span'); i.innerHTML = `<i style="display:inline-block;width:10px;height:10px;background:${CLASS_COL[cls]};border-radius:3px;margin-right:5px;vertical-align:-1px"></i>`; i.appendChild(document.createTextNode(CLASSES[cls].label + (this.quick ? '' : ' · ' + this.bill.fmt(CLASSES[cls].price)))); lg.appendChild(i); }
+    m.appendChild(lg); const map = el('div'); map.style.cssText = `position:relative;height:${((d1 - d0) * k + 30).toFixed(0)}px;width:${((u1 - u0) * k).toFixed(0)}px;margin:0 auto`; m.appendChild(map); m.style.position = ''; m.style.height = ''; m.style.width = ''; m.style.margin = '';
+    const scr = el('div', 'scr'); scr.appendChild(el('span', null, t('book.screen').toUpperCase())); scr.style.cssText = 'position:absolute;left:4%;right:4%;top:0;margin:0'; map.appendChild(scr);
+    for (const s of h.seats) { const taken = (s.taken || s.npc) && !s.player, sel = s.id === this.sel.seat, w = Math.max(9, (s.kind === 'rocker' ? 0.54 : 0.8) * k), b = el('button', 'seat9');
+      b.setAttribute('aria-label', `${s.id} ${CLASSES[s.cls].label}`);
+      b.style.cssText = `position:absolute;padding:0;border:0;left:${((s.u - u0) * k - w / 2).toFixed(1)}px;top:${(24 + (s.d - d0) * k - w * 0.4).toFixed(1)}px;width:${w.toFixed(1)}px;height:${(w * 0.8).toFixed(1)}px;border-radius:${s.pair >= 0 ? (s.pairSide ? '2px 5px 5px 2px' : '5px 2px 2px 5px') : '3px 3px 5px 5px'};background:${taken ? 'rgba(255,255,255,.08)' : sel ? '#f2ebdd' : CLASS_COL[s.cls]};opacity:${taken ? 1 : sel ? 1 : 0.82};box-shadow:${sel ? '0 0 0 2px #e3b25f,0 0 10px rgba(227,178,95,.8)' : 'none'};cursor:${taken ? 'default' : 'pointer'}`;
+      if (!taken) b.addEventListener('click', () => { this.sel.seat = s.id; this.sound.click(); this.build(); }); map.appendChild(b); }
   }
   stepPay() {
     const h = this.hall(), c = h.cfg, s = this.seat(), S = $('#bkSummary'); S.innerHTML = '';

@@ -77,12 +77,16 @@ export class Crowd {
   lightAt(x, y, z, out) {
     const k = this.world.roomAt(x, y - 1.2, z), r = this.world.rooms[k]; if (!r) return out; const p = r.lights.probe(x, y, z), hU = r.U.uHouse.value, fU = r.U.uFix.value;
     const ar = p.ah[0] * hU + p.af[0] * fU, ag = p.ah[1] * hU + p.af[1] * fU, ab = p.ah[2] * hU + p.af[2] * fU;
-    out.amb.setRGB(Math.min(ar * 0.85, 1.2), Math.min(ag * 0.85, 1.2), Math.min(ab * 0.85, 1.2)); out.key.setRGB(ar, ag, ab).multiplyScalar(0.5 + 0.6 * p.s); out.dir.set(p.keyDir[0], p.keyDir[1], p.keyDir[2]);
+    // capped: next to a wall light the analytic falloff climbs fast (faces flashed orange-white in v8 and in the first v9 renders)
+    const m = Math.max(ar, ag, ab, 1e-4), cap = Math.min(1, 0.75 / m); out.amb.setRGB(ar * cap * 0.85, ag * cap * 0.85, ab * cap * 0.85); out.key.setRGB(ar * cap, ag * cap, ab * cap).multiplyScalar(0.45 + 0.4 * p.s); out.dir.set(p.keyDir[0], p.keyDir[1], p.keyDir[2]);
     const sc = r.U.uScreen.value, ls = Math.min(p.ls || 0, 0.6); out.screen.setRGB(Math.min(sc.r * ls, 0.5), Math.min(sc.g * ls, 0.5), Math.min(sc.b * ls, 0.5)); return out;
   }
   // ---------------------------------------------------------- the audience of a show
   planAudience(hallId, n, windowMs, exclude = new Set()) {
-    const h = this.world.hallById(hallId); if (!h) return; this.clearAudience(hallId); const free = h.seats.filter((s) => !s.taken && !exclude.has(s.id) && !s.player);
+    const h = this.world.hallById(hallId); if (!h) return; this.clearAudience(hallId);
+    // strangers leave a seat between you and them (and nobody looms right beside your head)
+    const mine = h.seats.find((s) => exclude.has(s.id) || s.player), near = mine ? new Set(h.seats.filter((s) => s.row === mine.row && Math.abs(s.col - mine.col) === 1).map((s) => s.id)) : new Set();
+    const free = h.seats.filter((s) => !s.taken && !exclude.has(s.id) && !s.player && !near.has(s.id));
     // fill like people do: the middle rows and the middle of each row first, couples together, a few singles
     free.sort((a, b) => (Math.abs(a.row - h.cfg.rows.length * 0.55) + Math.abs(a.a) * 0.35 + Math.random() * 3.5) - (Math.abs(b.row - h.cfg.rows.length * 0.55) + Math.abs(b.a) * 0.35 + Math.random() * 3.5));
     const list = this.viewers[hallId] = [], chosen = free.slice(0, n), t0 = this.now + 1500;
@@ -90,6 +94,8 @@ export class Crowd {
       const v = { seat: s, hall: h, rec, state: 'due', at: t0 + (i / Math.max(1, chosen.length)) * windowMs * 0.85 + rnd(0, 1200), agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
       s.npc = v; list.push(v); });
     list.sort((a, b) => a.at - b.at);
+    // a show that starts soon: most of the audience is already in their seats; only a few still come in, one at a time
+    if (windowMs < 40000) list.forEach((v, i) => { if (i % 5 !== 0) { v.state = 'seated'; v.at = 0; } else v.at = t0 + (i / list.length) * Math.max(windowMs, 20000); });
   }
   clearAudience(hallId) { for (const v of this.viewers[hallId] || []) this.dropViewer(v); this.viewers[hallId] = []; }
   dropViewer(v) { if (v.agent) { this.remove(v.agent); v.agent = null; } if (v.seat.npc === v) { v.seat.npc = null; v.seat.taken = false; } v.state = 'gone'; }
@@ -203,7 +209,7 @@ export class Crowd {
       const t = a.path[a.pi], dx = t.x - a.x, dz = t.z - a.z, d = Math.hypot(dx, dz);
       // keep your distance: wait while someone walks right in front of you
       let blocked = false; if (a.role !== 'usher' && a.role !== 'server') for (const o of this.agents) { if (o === a || !o.alive || !o.path || o.sit > 0.2) continue; const ox = o.x - a.x, oz = o.z - a.z, od = Math.hypot(ox, oz); if (od < 0.75 && od > 1e-3 && (ox * dx + oz * dz) / (od * (d || 1)) > 0.6 && Math.abs(o.y - a.y) < 0.8) { blocked = true; break; } }
-      const ride = !!t.ride, sp = ride ? 0.62 : blocked ? 0 : a.speed; a.walkT = ride || blocked ? 0 : sp;
+      const ride = !!t.ride, sp = ride ? (a.state === 'guiding' ? 1.15 : 0.62) : blocked ? 0 : a.speed;   // the guide walks up the moving steps a.walkT = ride || blocked ? 0 : sp;
       if (d < 0.08 || (d < sp * dt + 0.02)) { a.x = t.x; a.z = t.z; a.y = t.y ?? a.y; a.pi++; if (a.pi >= a.path.length) { const f = a.onArrive; a.path = null; a.onArrive = null; a.walkT = 0; f && f(); } }
       else { const k = sp * dt / d; a.x += dx * k; a.z += dz * k; const want = Math.atan2(dx, dz); a.yaw += adiff(want, a.yaw) * Math.min(1, dt * 8);
         const fy = ride ? null : this.world.floorY(a.x, a.z, a.y); if (ride) { const p0 = a.path[a.pi - 1] || t, u = 1 - d / (Math.hypot(t.x - p0.x, t.z - p0.z) || 1); a.y = p0.y + (t.y - p0.y) * clamp(u); } else a.y += (fy - a.y) * Math.min(1, dt * 12); }
@@ -230,7 +236,7 @@ export class Crowd {
     const R = h.crowdGPU; if (!visible) { R.hide(); return; } R.begin(); const t = this.now / 1000, lit = h.seatLit, hU = h.room.U;
     for (const v of this.viewers[h.id]) { if (v.state !== 'seated' || (v.agent && v.agent.ch && v.agent.ch.group.visible)) continue; const s = v.seat, sp = this.seatPose(s), i = s.i * 7;
       const blend = v.clipB && this.now < v.reactUntil ? Math.min(1, (t - v.t0B) / 0.3) * Math.min(1, (v.reactUntil - this.now) / 400) : 0;
-      R.add({ rec: v.rec, x: s.x, y: s.y + sp.drop, z: s.z, yaw: sp.face, lit: [lit[i] * 0.9, lit[i + 1] * 0.9, lit[i + 2] * 0.9, Math.min(lit[i + 6], 0.6)], clip: v.clip, t0: v.t0, speed: 1, clipB: blend > 0 ? v.clipB : null, t0B: v.t0B, blend }, 2); }
+      R.add({ rec: v.rec, x: s.x, y: s.y + sp.drop, z: s.z, yaw: sp.face, lit: [Math.min(lit[i] * 0.9, 0.7), Math.min(lit[i + 1] * 0.9, 0.7), Math.min(lit[i + 2] * 0.9, 0.7), Math.min(lit[i + 6], 0.6)], clip: v.clip, t0: v.t0, speed: 1, clipB: blend > 0 ? v.clipB : null, t0B: v.t0B, blend }, 2); }
     R.end();
   }
 }

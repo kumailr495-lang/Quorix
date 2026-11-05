@@ -28,6 +28,7 @@ import { Intro, ARRIVAL } from './intro9.js';
 import { treeFor } from './dialogue9.js';
 import { makeHeld, setHeldMaterial } from './held.js';
 import { cleanTitle } from './films.js';
+import { ledWall, showtimes, menuBoard } from './panels9.js';
 import { loadSettings, saveSettings, presetFor } from './settings.js';
 import { setLang, t, pick, fmtTime } from './i18n.js';
 import { SPAWN, GATE, LIFT, ESC, COUNTERS, HALL, L1 } from './building.js';
@@ -93,6 +94,7 @@ async function boot() {
     openRemote: () => tablet.open('remote'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
   const booking = new Booking9(world, shows, sound, bill, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), onTicket: (tk) => bought(tk), pickOwn: () => pickOwn(), useLink: (u) => useLink(u) });
+  const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet) });
   tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
   const layoutEd = new LayoutEditor(settings, sound, { onModal, save: () => { saveSettings(settings); applyLayout(settings); } });
@@ -176,7 +178,7 @@ async function boot() {
   // Quick play: the tablet plays in the hall you are in (or your ticket's), on the seat you sit in
   function remotePlay(o) {
     const hk = room && room.startsWith('hall') ? room : ticket ? ticket.hallKey : 'hallMax', h = world.hallByKey(hk);
-    const s = (player.seated && h.seats.find((q) => q.npc === 'player')) || (ticket && ticket.hallKey === hk && seatOf(ticket)) || h.seats.find((q) => !q.taken && q.row === Math.floor(h.cfg.rows.length * 0.55)) || h.seats[0];
+    const best = Math.round(h.cfg.rows.length * 0.58), s = (player.seated && h.seats.find((q) => q.npc === 'player')) || (ticket && ticket.hallKey === hk && seatOf(ticket)) || h.seats.filter((q) => !q.taken && !q.npc).sort((p, q) => (Math.abs(p.row - best) * 2 + Math.abs(p.a) * 0.8) - (Math.abs(q.row - best) * 2 + Math.abs(q.a) * 0.8))[0] || h.seats[0];
     const src = o.own ? shows.own : { kind: 'film', filmId: o.film }; if (!src) return false;
     const prev = seatOf(ticket); if (prev && prev !== s) { prev.player = false; prev.taken = false; }
     ticket = { hall: h.id, hallKey: hk, hallName: h.name, seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, src, title: src.title || '', delay: 0, shown: true, checked: true, tablet: true, quick: game === 'quick' };
@@ -252,7 +254,7 @@ async function boot() {
     prompts(r, hk);
     ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
     ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet)));
-    talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt);
+    talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt); if (world.vis.has('lobby')) { led(now); board(now); }
     slowT -= dt; if (slowT <= 0) { slowT = 0.5;
       const S = (id) => shows.get(id), status = (id) => { const s = S(id); return s.state === 'pending' ? t('show.pending', { time: fmtTime(shows.countdown(id) - 10) }) : s.state === 'countdown' ? t('show9.countdown') : s.state === 'playing' ? (shows.buffering ? t('show.buffering') : t('show.playing')) : s.state === 'ended' ? t('show.ended') : t('show.idle'); };
       if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.name, S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room9.' + r), '');

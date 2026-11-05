@@ -114,6 +114,7 @@ public class MainActivity extends Activity {
             server.route("/m/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return media(Long.parseLong(path)); } }, true);
             server.route("/t/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return thumb(Long.parseLong(path), q); } }, true);
             server.route("/f/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return film(path); } }, true);
+            server.route("/p/", new Proxy(), true);   // v9: a film from the web, passed through so the page can use its picture and sound
             server.start(PORT, 10);
         } catch (Exception e) { startError = String.valueOf(e); server = null; }
     }
@@ -195,6 +196,7 @@ public class MainActivity extends Activity {
             } });
         }
         @JavascriptInterface public String base() { return server == null ? "" : server.base(); }
+        @JavascriptInterface public String proxyBase() { return server == null ? "" : server.base() + "/p/" + server.token + "/?u="; }
         @JavascriptInterface public String serverError() { return startError == null ? "" : startError; }
         /** every video on the phone, newest first: [{ id, name, title, dur (ms), size, date (s), album, w, h, mime, url, thumb }] */
         @JavascriptInterface public String list() {
