@@ -70,4 +70,7 @@ export const HI = {
   'panel9.book': "अभी बुक करें", 'panel9.showtimes': "आज रात", 'panel9.popcorn': "पॉपकॉर्न", 'panel9.drinks': "ड्रिंक्स", 'panel9.more': "स्नैक्स",
   'set9.haptics': "बड़े सीन पर सीट कंपन", 'set9.fx': "बड़े सीन पर चिंगारियाँ",
   'menu9.stubs': "आपकी शामें", 'toast9.stub': "टिकट का हिस्सा सँभाल लिया। आपकी शामें मेन्यू में हैं।",
+  'toast9.liftTicket': "लिफ़्ट टिकट वालों के लिए है: पहले अशर को टिकट दिखाइए।",
+  'tab9.order': "ऑर्डर", 'tab9.ordered': "{item} आपकी सीट पर आ रहा है।", 'tab9.bin': "ख़ाली वाला ले जाइए",
+  'help9.diag': "डायग्नॉस्टिक्स", 'help9.server': "ऐप सर्वर", 'help9.decoders': "हार्डवेयर वीडियो डिकोडर",
 };

@@ -33,6 +33,7 @@ import { makeRain } from './rain.js';
 import { loadSettings, saveSettings, presetFor } from './settings.js';
 import { setLang, t, pick, fmtTime } from './i18n.js';
 import { SPAWN, GATE, LIFT, ESC, COUNTERS, HALL, L1 } from './building.js';
+import * as BLD from './building.js';
 import { SEAT, CLASSES } from './hallmath.js';
 const $ = (s) => document.querySelector(s), clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const BITES = { popcorn: 9, drink: 8, coffee: 6, nachos: 7 }, DENS = { off: 'off', few: 'low', normal: 'medium', many: 'high' };
@@ -68,7 +69,9 @@ async function boot() {
   const dist = (n) => Math.hypot(n.x - player.x, n.z - player.z), seatOf = (tk) => { const h = tk && world.hallById(tk.hall); return h ? h.seats.find((s) => s.id === tk.seat) : null; };
   // ---------- people and voices: only lines near you are heard (v8: "talking from far away") ----------
   const voice = new Voice(sound, settings); voice.voiceOf = (a) => a.voice || (a.rec && a.rec.kind === 'f' ? 'guestF' : 'guestM'); voice.rate = (a) => (a.role === 'guest' || a.role === 'aud' ? 0.96 + ((a.rec && a.rec.seed) % 9) / 100 : 1);
-  { const sp = voice.speak.bind(voice); voice.speak = (a, line, o = {}) => (!o.full && a && Math.hypot(a.x - player.x, a.z - player.z) > 7 ? Promise.resolve(0) : sp(a, line, o)); }
+  // a guest's second voice falls back to the first for lines recorded with one guest voice per gender (guest.*, aud.*)
+  { const sp = voice.speak.bind(voice), vo = voice.voiceOf; voice.voiceOf = (a) => { const v = vo(a), L = voice._line; if (!/2$/.test(v) || !L || !voice.man) return v; const id = `${v}/${L.key}.${L.i}${L.j != null ? '.' + L.j : ''}`; return voice.man.c[id] ? v : v.slice(0, -1); };
+    voice.speak = (a, line, o = {}) => { if (!o.full && a && Math.hypot(a.x - player.x, a.z - player.z) > 7) return Promise.resolve(0); voice._line = line; return sp(a, line, o); }; }
   voice.prepare();
   const speak = (n, ln) => { if (typeof ln === 'object' && ln.key) voice.speak(n, ln).then((ms) => { if (!ms && dist(n) < 5) sound.blip((ln.text || '').length, 1 - dist(n) / 5); }); };
   const crowd = new Crowd(world, mats, engine, {
@@ -104,7 +107,8 @@ async function boot() {
   { const ns = ui.nowShowing.bind(ui); ui.nowShowing = () => { ns(); const a = stubs.get(); if (!a.length) return; const L = $('#nowList'), h = document.createElement('div'); h.className = 'now-h'; h.textContent = t('menu9.stubs'); L.appendChild(h);
     for (const x of a.slice(0, 3)) { const row = document.createElement('div'); row.className = 'now stub'; const tx = document.createElement('div'), b = document.createElement('b'), sm = document.createElement('small'); b.textContent = x.title; sm.textContent = `${x.hall} · ${x.seat} · ${x.date}`; tx.append(b, sm); row.appendChild(tx); L.appendChild(row); } }; }
   const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
-  const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet) });
+  const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
+    order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });
   tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
   const layoutEd = new LayoutEditor(settings, sound, { onModal, save: () => { saveSettings(settings); applyLayout(settings); } });
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
@@ -115,10 +119,13 @@ async function boot() {
   bill.onChange = () => ui.setWallet(game === 'flow' && bill.total ? t('hud9.bill', { total: bill.fmt(bill.total) }) : null);
   function applySettings(gfx) {
     saveSettings(settings); engine.applySettings(settings); mats.setReflections && mats.setReflections(settings.reflections !== 'off' && settings.graphics !== 'low'); crowd.setDensity(DENS[settings.npcs] || 'medium');
+    if (settings.npcs === 'off') for (const h of world.halls) crowd.clearAudience(h.id);   // off means an empty hall, now
     sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd }); talk.setOptions(settings); voice.setOptions(settings); applyLayout(settings);
     if (gfx && (settings.shadows === 'off') === mats.lightMaps) ui.toast(t('set.restartNote'), 3600);
   }
   applyLayout(settings);
+  { const oi = ui.openInfo.bind(ui); ui.openInfo = (kind) => { oi(kind); const M = window.LumiereMedia; if (kind !== 'help' || !M) return; try { const I = JSON.parse(M.info() || '{}'), C = JSON.parse(M.codecs() || '[]'), hw = C.filter((c) => c.hw).map((c) => c.type.replace('video/', '')).filter((v, i, a) => a.indexOf(v) === i);
+    $('#infoBody').textContent += `\n\n${t('help9.diag')}\n${I.model || ''} · Android ${I.android || ''} · ${I.webview || ''}\n${t('help9.server')}: ${I.server || ''}\n${t('help9.decoders')}: ${hw.join(', ')}\n${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`; } catch (e) { /* older wrapper */ } }; }
   // ---------- your own video and links ----------
   function pickOwn() { if (window.LumiereMedia) { tablet.open('mine'); return; } $('#file').click(); }
   $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; shows.loadFile(f, cleanTitle(f.name || 'Video')); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); tablet.refresh(); e.target.value = ''; });
@@ -148,7 +155,8 @@ async function boot() {
   }
   function escort(npc) { const h = world.hallById(ticket.hall), s = seatOf(ticket); world.gate.pass(20000); if (crowd.guide(npc, h, s, player)) { npc.say(pick('ush.lead')); ui.toast(t('toast.followUsher', { name: npc.name }), 2600); settings.seen = { ...(settings.seen || {}), escort: true }; saveSettings(settings); } }
   // "locate my seat" (no red arrow, v8 feedback): your seat's reading light glows for a few seconds
-  let glowSeat = null, glowT = 0; function highlightSeat() { const s = seatOf(ticket); if (!s) return; glowSeat = s; glowT = 8; }
+  let glowSeat = null, glowT = 0; function highlightSeat() { const s = seatOf(ticket); if (!s) return; glowSeat = s; glowT = 10; seatGlow.position.set(s.x, s.y + 0.02, s.z); seatGlow.visible = true; }
+  const seatGlow = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.42, 40), new THREE.MeshBasicMaterial({ color: 0xe3b25f, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); seatGlow.rotation.x = -Math.PI / 2; seatGlow.visible = false; engine.scene.add(seatGlow);
   // ---------- what you hold ----------
   const itemU = { uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKeyDir: { value: new THREE.Vector3(-0.35, 0.8, 0.45).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, itemLight = { amb: itemU.uAmb.value, key: itemU.uKey.value, dir: itemU.uKeyDir.value, screen: itemU.uScreenL.value };
   const itemMat = mats.propMat(itemU); let itemMesh = null, itemAnim = 0, itemIn = 0, lightT = 0;
@@ -191,11 +199,20 @@ async function boot() {
     const src = o.own ? shows.own : { kind: 'film', filmId: o.film }; if (!src) return false;
     const prev = seatOf(ticket); if (prev && prev !== s) { prev.player = false; prev.taken = false; }
     ticket = { hall: h.id, hallKey: hk, hallName: h.name, seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, src, title: src.title || '', delay: 0, shown: true, checked: true, tablet: true, quick: game === 'quick' };
-    s.player = true; s.taken = true; const st = shows.get(h.id); if (st.state === 'ended' && st.src && !o.own && st.src.filmId === o.film) shows.replay(h.id); else shows.book(h.id, src, 0, s.id, { replay: st.state === 'playing' || st.state === 'ended' }); return true;
+    s.player = true; s.taken = true; const st = shows.get(h.id); if (st.state === 'ended' && st.src && !o.own && st.src.filmId === o.film) shows.replay(h.id); else shows.book(h.id, src, 0, s.id, { replay: st.state === 'playing' || st.state === 'ended' });
+    // picked outside the hall: straight to your seat
+    if (room !== hk) setTimeout(() => { tablet.close(); jumpToSeat(s); }, 400);
+    return true;
   }
   // the seat bell: the server comes with his cart (Flow mode, when you didn't buy the armrest tablet)
   function ringBell() { if (!player.seated || game !== 'flow') return; const s = player.seated && seatOf(ticket); sound.bell(); tut.event('bell');
     if (!s || !crowd.callServer(s, (npc) => { npc._served = true; if (dist(npc) < 3.5) startTalk(npc); })) ui.toast(t('srv.busy'), 2400); else ui.toast(t('toast9.serverComing'), 2400); }
+  // the armrest tablet: the order goes on the bill; a runner brings it to your seat a little later (Quick: at once)
+  function orderToSeat(k) {
+    if (held) { ui.toast(t('toast9.handsFull'), 2400); return false; } bill.pay(bill.itemPrice(k), k); if (game === 'flow') sound.pay();
+    if (game === 'flow' && player.seated && ticket) { const s = seatOf(ticket); if (s && crowd.callServer(s, (npc) => { npc.gesture('give', 1.2); npc.say(pick('srv.hand')); setTimeout(() => { takeItem(k); setTimeout(() => crowd.serverLeave(), 1500); }, 900); })) return true; }
+    setTimeout(() => takeItem(k), game === 'quick' ? 600 : 2500); return true;
+  }
   function handBack() { const s = crowd.staff.server; if (s && s.state === 'serving') { s.say(pick('srv.back')); setTimeout(() => crowd.serverLeave(), 2500); } sound.click(); }
   // the best scenes (strong cues only): a seat rumble and a few sparks before the screen, each with its own switch
   const sparks = makeSparks(engine); function bigScene(id, ev) {
@@ -214,8 +231,8 @@ async function boot() {
     game = m; bill.unlimited = m === 'quick'; bill.reset(); if (ticket) { const s = seatOf(ticket); if (s) { s.player = false; s.taken = false; } } ticket = null; if (held) binItem(); if (sitRelease) sitRelease();
     for (const h of world.halls) if (shows.get(h.id).state !== 'idle') shows._abort(h.id); visits++;
     ui.setButton('#bRemote', m === 'quick');
-    if (m === 'flow') { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); if (!intro.start({ skippable: !!(settings.seen && settings.seen.intro) })) arrived(); }
-    else { const s = SPAWN.quick; player.place(s.x, s.z, s.yaw, 0, 0); setTimeout(() => ui.toast(t('toast9.quick'), 3600), 900); }
+    world.gate.target = 0; if (m === 'flow') { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); if (!intro.start({ skippable: !!(settings.seen && settings.seen.intro) })) arrived(); }
+    else { const s = SPAWN.quick; player.place(s.x, s.z, s.yaw, 0, 0); world.gate.target = 1; setTimeout(() => ui.toast(t('toast9.quick'), 3600), 900); }
   }
   function arrived() { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); settings.seen = { ...(settings.seen || {}), intro: true }; saveSettings(settings); onModal(); ui.toast(t('toast.welcome'), 2600); maybeAskTutorial(); }
   function enterPlay(m) {
@@ -259,7 +276,7 @@ async function boot() {
     // held item
     if (itemMesh) { lightT -= dt; if (lightT <= 0) { lightT = 0.3; crowd.lightAt(player.x, player.y + 1.3, player.z, itemLight); } itemIn = Math.min(1, itemIn + dt * 3); itemAnim = Math.max(0, itemAnim - dt * 1.6); const e = Math.sin(itemAnim * Math.PI);
       itemMesh.position.set(0.27 - e * 0.1, -0.3 - (1 - itemIn) * 0.3 + e * 0.17, -0.55 + e * 0.2); itemMesh.rotation.set(0.22 + e * 0.75, -0.35, e * 0.15); itemMesh.scale.setScalar(1.25); }
-    if (glowSeat) { glowT -= dt; if (glowT <= 0) glowSeat = null; }
+    if (glowSeat) { glowT -= dt; seatGlow.material.opacity = 0.45 + 0.4 * Math.sin(now * 0.006); if (glowT <= 0 || player.seated) { glowSeat = null; seatGlow.visible = false; } }
     prompts(r, hk);
     ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
     ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet)));
@@ -279,8 +296,8 @@ async function boot() {
     const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
     if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
     if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
-    const L = world.lift; if (r === 'lobby') { if (L.inside(player.x, player.z)) { const to = L.level ? 0 : 1; ui.setPrompt(t(to ? 'hud9.liftUp' : 'hud9.liftDown'), () => { L.call(to); sound.click(); }); return; }
-      for (const k of [0, 1]) if (L.atDoor(player.x, player.y, player.z, k) && (L.level !== k || L.state !== 'idle')) { ui.setPrompt(t('hud9.liftCall'), () => { L.call(k); sound.click(); }); return; } }
+    const L = world.lift; if (r === 'lobby') { if (L.inside(player.x, player.z)) { const to = L.level ? 0 : 1; ui.setPrompt(t(to ? 'hud9.liftUp' : 'hud9.liftDown'), () => { if (to === 1 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(to); sound.click(); }); return; }
+      for (const k of [0, 1]) if (L.atDoor(player.x, player.y, player.z, k) && (L.level !== k || L.state !== 'idle')) { ui.setPrompt(t('hud9.liftCall'), () => { if (k === 0 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(k); sound.click(); }); return; } }
     if (hk) { const h = world.hallByKey(hk); let best = null, bd = 1.5;
       for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.6 || !ahead(s.x, s.z, 0.2)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
       if (best) { const mine = ticket && ticket.seat === best.id && ticket.hall === h.id; ui.setPrompt(mine ? t('hud.yourSeat', { seat: best.id }) : t('hud9.sitHere', { seat: best.id }), () => { if (!mine) { const tk = { hall: h.id, hallKey: hk, hallName: h.name, seat: best.id, row: best.id.replace(/\d+/, ''), col: best.col, src: ticket && ticket.src, title: ticket ? ticket.title : '', delay: 0, shown: true, checked: true, tablet: true, quick: true }; const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; } ticket = tk; best.player = true; best.taken = true; } sitSeat(best); }); return; } }
@@ -295,7 +312,7 @@ async function boot() {
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
   window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
-    pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
+    B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
 }
 // sparks: a burst of warm points before the screen on the strongest scenes (Settings > Sound > Effects)
 function makeSparks(engine) {

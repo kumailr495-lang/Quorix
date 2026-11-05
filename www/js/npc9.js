@@ -59,7 +59,7 @@ export class Crowd {
     mk('box1', 'receptionist', 'Éloïse', 'box', 'box', null, { x: -18.1, y: 0, z: 9.0, yaw: -Math.PI / 2 }); mk('box2', 'vendor', 'Priya', 'box', 'box', null, { x: -18.1, y: 0, z: 6.2, yaw: -Math.PI / 2 });
     mk('bar1', 'vendor', 'Mia', 'bar', 'barF', null, { x: -19.0, y: 0, z: -6.0, yaw: -Math.PI / 2 }); mk('bar2', 'vendor2', 'Gaston', 'bar', 'barM', null, { x: -19.0, y: 0, z: -2.4, yaw: -Math.PI / 2 });
     mk('usher', 'usher', 'Marcel', 'usher', 'usher', 'usher'); mk('server', 'server', 'Rahul', 'server', 'server', 'server');
-    this.staff.server.cart = true;
+    this.staff.server.cart = true; this.cart = makeCart(this.mats, this.scene);
     this.setDensity(this.density);
   }
   // NPC density applies at once (v8: "the NPC setting doesn't change anything until restart"): guests join or leave the lobby now
@@ -146,15 +146,19 @@ export class Crowd {
     back.push({ x: a.home.x, y: a.home.y || 0, z: a.home.z }); a.follow = null; a.go(back, () => { a.state = 'post'; a.yaw = a.home.yaw; }, { speed: 1.5, state: 'returning' }); }
   // ---------------------------------------------------------- the seat bell: the server comes with his cart and the tablet
   callServer(seat, onArrive) {
-    const s = this.staff.server; if (!s) return false; if (s.state === 'leaving') { s.say(pick('srv.recall')); }
-    else if (s.state !== 'post') return s.state === 'serving' || s.state === 'coming';
+    const s = this.staff.server; if (!s) return false; const arrive = () => { s.state = 'serving'; onArrive && onArrive(s); };
+    // rung while he walks away: he turns back along the way he came (v8: he ignored the bell once he had left)
+    if (s.state === 'leaving' && s.cameBy) { s.say(pick('srv.recall')); const i = nearestOn(s.cameBy, s); s.go(s.cameBy.slice(i), arrive, { state: 'coming' }); return true; }
+    if (s.state !== 'post') return s.state === 'serving' || s.state === 'coming';
     const h = this.world.hallById(seat.hall); if (!h) return false;
     const pts = navPath('pantry', 'bridgeC').map((n) => ({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] })), H = h.cfg, side = H.side < 0 ? ['bridgeW', 'flankW1'] : ['bridgeE', 'flankE1'];
     if (H.id === 'CURVE') side.push('flankW2', 'linkW'); if (H.id === 'X270') side.push('flankE2');
     for (const n of side) pts.push({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] });
-    const route = this.hallRoute(h, seat, true); s.go([...pts, ...route], () => { s.state = 'serving'; s.yaw = seat.yaw + Math.PI * 0; onArrive && onArrive(s); }, { speed: 1.6, state: 'coming' }); return true;
+    const route = this.hallRoute(h, seat, true); s.cameBy = [...pts, ...route]; s.go(s.cameBy, arrive, { speed: 1.6, state: 'coming' }); return true;
   }
-  serverLeave() { const s = this.staff.server; if (!s || s.state === 'post') return; s.state = 'leaving'; this.sendHome(s); }
+  // he goes back the way he came, from wherever he is on it
+  serverLeave() { const s = this.staff.server; if (!s || s.state === 'post') return; if (!s.cameBy) { s.state = 'leaving'; this.sendHome(s); return; }
+    const i = nearestOn(s.cameBy, s), back = s.cameBy.slice(0, i + 1).reverse(); s.go(back, () => { s.state = 'post'; s.yaw = s.home.yaw; s.cameBy = null; }, { state: 'leaving' }); }
   // ---------------------------------------------------------- talking
   talkTarget(px, py, pz, fx, fz) {
     let best = null, bs = 0;
@@ -197,6 +201,9 @@ export class Crowd {
       if (seatedFar || skinned >= cap) { if (a.ch) a.ch.group.visible = false; if (a.viewer && a.viewer.state === 'seated' && a.ch && d > 9) { this.remove(a); a.viewer.agent = null; } continue; }
       const ch = a.ensure(); if (!ch) continue; skinned++; ch.group.visible = true; this.draw(a, dt, d, player); }
     for (const h of this.world.halls) this.drawGPU(h, vis.has(h.key), cam);
+    // the server pushes his cart in front of him while he is out; at his post it stands beside the pantry counter
+    const sv = this.staff.server, C = this.cart; if (sv && C) { const out = sv.state !== 'post', fx = Math.sin(sv.yaw), fz = Math.cos(sv.yaw), seen = !!sv.room && vis.has(sv.room);
+      C.group.visible = seen; if (seen) { C.group.position.set(sv.x + (out ? fx * 0.75 : 1.0), sv.y, sv.z + (out ? fz * 0.75 : 0)); C.group.rotation.y = out ? sv.yaw : 0; C.t -= dt; if (C.t <= 0) { C.t = 0.4; this.lightAt(sv.x, sv.y + 1.0, sv.z, C.light); } } }
   }
   step(a, dt, player) {
     const now = this.now;
@@ -240,6 +247,19 @@ export class Crowd {
     R.end();
   }
 }
+// a service trolley: walnut and brass, two shelves, popcorn tubs and cups on top (lit like the room it is in)
+function makeCart(mats, scene) {
+  const U = { uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.2, 1, 0.3).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, mat = mats.propMat(U), grp = new THREE.Group();
+  const part = (geo, hex, x, y, z) => { const c = new THREE.Color(hex), n = geo.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); grp.add(m); };
+  for (const y of [0.32, 0.86]) part(new THREE.BoxGeometry(0.58, 0.04, 0.82), '#5b3a24', 0, y, 0);
+  for (const [x, z] of [[-0.27, -0.39], [0.27, -0.39], [-0.27, 0.39], [0.27, 0.39]]) { part(new THREE.CylinderGeometry(0.015, 0.015, 0.84, 8), '#c9a35e', x, 0.5, z); part(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12).rotateZ(Math.PI / 2), '#151515', x, 0.05, z); }
+  part(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 8).rotateZ(Math.PI / 2), '#c9a35e', 0, 0.98, -0.42);
+  for (let i = 0; i < 3; i++) { part(new THREE.CylinderGeometry(0.075, 0.06, 0.18, 14), i % 2 ? '#c3121c' : '#f1ece4', -0.15 + i * 0.15, 0.97, 0.18); part(new THREE.CylinderGeometry(0.06, 0.055, 0.04, 14), '#f2d27a', -0.15 + i * 0.15, 1.07, 0.18); }
+  for (let i = 0; i < 3; i++) part(new THREE.CylinderGeometry(0.045, 0.036, 0.16, 12), '#141416', -0.12 + i * 0.12, 0.96, -0.12);
+  grp.visible = false; scene.add(grp); const light = { amb: U.uAmb.value, key: U.uKey.value, dir: U.uKeyDir.value, screen: U.uScreenL.value };
+  return { group: grp, t: 0, light };
+}
+function nearestOn(pts, a) { let bi = 0, bd = 1e9; pts.forEach((p, i) => { const d = Math.hypot(p.x - a.x, (p.y - a.y) * 2, p.z - a.z); if (d < bd) { bd = d; bi = i; } }); return bi; }
 const HALL_ID = Object.fromEntries(Object.values(HALL).map((h) => [h.key, h.id]));
 // where lobby guests stand, sit or queue (x, z)
 const LOBBY_SPOTS = [[-12.6, 9.0], [-11.0, 9.4], [-12.8, -4.0], [-11.2, -3.6], [-4.6, 3.5], [2.2, -1.8], [-3.4, -2.6], [1.8, 4.0], [-6.5, 11.0], [6.6, 10.5], [4.5, 13.2], [-8.8, 1.2], [16.5, 3.0], [16.0, -4.5], [-8.0, -9.5], [3.0, -9.0], [11.0, 9.0], [-1.0, 8.5]];

@@ -83,4 +83,7 @@ export const EN = {
   'panel9.book': "Book now", 'panel9.showtimes': "Tonight", 'panel9.popcorn': "Popcorn", 'panel9.drinks': "Drinks", 'panel9.more': "Snacks",
   'set9.haptics': "Seat rumble on the biggest scenes", 'set9.fx': "Sparks on the biggest scenes",
   'menu9.stubs': "Your nights", 'toast9.stub': "Ticket stub kept. Your last nights are in the menu.",
+  'toast9.liftTicket': "The lift is for ticket holders: show your ticket to the usher first.",
+  'tab9.order': "Order", 'tab9.ordered': "{item} is on its way to your seat.", 'tab9.bin': "Take my empty one away",
+  'help9.diag': "Diagnostics", 'help9.server': "App server", 'help9.decoders': "Hardware video decoders",
 };

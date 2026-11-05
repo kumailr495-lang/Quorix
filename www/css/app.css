@@ -329,3 +329,10 @@ body.aim #xhair{transform:scale(1.8);background:#e3b25f}
 #nowList .now.stub{padding-left:10px;border-left:2px solid rgba(227,178,95,.6)}
 .tb-body.films{display:block;overflow-y:auto}
 .tb-body.films .tb-grid{width:100%}
+/* v9: the app's wrapper reports the display cutout and bars (__lumiereInsets -> --safe-*): the HUD keeps clear of the camera hole even
+   where the WebView's env(safe-area-inset-*) reads 0 */
+:root{--sat:max(env(safe-area-inset-top,0px),var(--safe-t,0px));--sab:max(env(safe-area-inset-bottom,0px),var(--safe-b,0px));--sal:max(env(safe-area-inset-left,0px),var(--safe-l,0px));--sar:max(env(safe-area-inset-right,0px),var(--safe-r,0px))}
+.tb-order{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.tb-item{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(227,178,95,.25);color:inherit;text-align:start}
+.tb-item b{font:600 13px/1.2 var(--font)}
+.tb-item small{font-size:11px;color:var(--muted)}

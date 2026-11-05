@@ -9,7 +9,8 @@ import { HALLS, makeHall } from './hallmath.js';
 export const HALL = Object.fromEntries(HALLS.map((s) => [s.id, makeHall(s)]));
 export const L1 = HALL.MAX.total;   // the first floor = the MAX hall's rear aisle (its rake top)
 export const FACADE = 18, LOBBY = { x0: -22, x1: 22, z0: -14, z1: FACADE, ceil: 9.6 }, MEZZ = { z0: -14, z1: -7.4, void: { x0: 8.6, x1: 12.8, z0: -9.8, z1: -7.4 } };
-export const SPINE = { x0: -4.2, x1: 4.2, z0: -72.6, z1: -14, ceil: 4.5 };
+// the spine is 4.5 m high under the bridge and the pantry (they are its roof) and 6.4 m south of zHi, where the raised halls' exit doors open
+export const SPINE = { x0: -4.2, x1: 4.2, z0: -72.6, z1: -14, ceil: 4.5, zHi: -27.0, ceilHi: 6.4 };
 const RO = (h) => h.xRear - 0.4 * h.dir;   // a hall's rear wall, outer face
 export const BRIDGE = { x0: RO(HALL.MAX) - 6, x1: RO(HALL.CLASSIC) + 6, z0: -22, z1: -14, ceil: 4.2 };
 export const FLANK_W = { x0: BRIDGE.x0, x1: RO(HALL.MAX), z0: -50.2, z1: -22 }, LINK_W = { x0: BRIDGE.x0, x1: RO(HALL.CURVE), z0: -56.4, z1: -50.2 };

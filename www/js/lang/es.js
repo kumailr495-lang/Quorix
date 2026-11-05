@@ -70,4 +70,7 @@ export const ES = {
   'panel9.book': "Reserva ya", 'panel9.showtimes': "Esta noche", 'panel9.popcorn': "Palomitas", 'panel9.drinks': "Bebidas", 'panel9.more': "Snacks",
   'set9.haptics': "Vibración del asiento en las escenas grandes", 'set9.fx': "Chispas en las escenas grandes",
   'menu9.stubs': "Tus noches", 'toast9.stub': "Guardamos tu entrada. Tus noches están en el menú.",
+  'toast9.liftTicket': "El ascensor es para quien tiene entrada: enséñala antes al acomodador.",
+  'tab9.order': "Pedir", 'tab9.ordered': "{item} va de camino a tu butaca.", 'tab9.bin': "Llévense lo vacío",
+  'help9.diag': "Diagnóstico", 'help9.server': "Servidor de la app", 'help9.decoders': "Decodificadores de vídeo por hardware",
 };

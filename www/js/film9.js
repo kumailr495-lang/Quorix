@@ -94,7 +94,7 @@ export class Shows {
   book(id, src, delayMs, playerSeat, o = {}) {
     const s = this.s[id]; if (this.active && this.active !== id) this._abort(this.active); if (s.state !== 'idle') this._stopPicture(s);
     if (src.kind === 'film') { const f = filmById(src.filmId) || filmById(FEATURED[id]) || CATALOG[0]; s.src = { kind: 'film', filmId: f.id, title: f.title, ...filmURL(f) }; s.track = null; loadTrack(f.id).then((tr) => { s.track = tr; }); }
-    else s.src = { ...src };
+    else { s.src = { ...src }; const M = window.LumiereMedia; if (s.src.kind === 'link' && M && M.proxyBase) { try { const b = M.proxyBase(); if (b) s.src.url = b + encodeURIComponent(src.url); } catch (e) { s.src.url = src.url; } } }
     s.credits = false; s.curtainKeep = !!o.replay; this.active = id; s.startAt = this.now + Math.max(o.replay ? 3000 : 12000, delayMs); s.state = 'pending'; s.phaseAt = this.now; s.booked = true;
     if (s.src.kind !== 'youtube') { const v = this.video; v.pause(); v.src = s.src.url; v.load(); }
     if (!o.replay) { this.crowd.clearAudience(id); const n = Math.min(this.engine.preset.crowd, Math.round(s.hall.seats.length * (0.4 + Math.random() * 0.3))); this.crowd.planAudience(id, n, Math.max(8000, s.startAt - this.now - 6000), new Set([playerSeat])); }

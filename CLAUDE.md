@@ -102,7 +102,25 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - After changing a room's geometry or lights, re-bake it (`sh tools/bake/bake-all.sh <room>`); the console warns about stale bakes.
 - Blender lathes: put axis points on a centre vertex (lbl.py does), or parts sharing the axis overlap coplanar faces.
 
-## Current state (2026-10-31, v8.00)
+## Current state (2026-11-05, v9.00)
+- v9 on branch `ccr-7bb5aa6a-upup1u`: design and calculations `docs/V9-DESIGN.md` (+ `docs/v9/` drawings), per-ask status `docs/V9-CHECKLIST.md`,
+  release notes `docs/V9-RELEASE-NOTES.md`, licences `docs/LICENSES.md`. Not yet seen on the phone.
+- **The building is data**: `www/js/hallmath.js` (UNIC hall maths) and `www/js/building.js` (rooms, doors, escalators, lift, nav graph,
+  palettes). `tools/dev/export-spec.mjs` -> `tools/blender/arch/build.py` builds every room in Python (`geo.py`, `halls.py`, `rooms.py`),
+  `tools/blender/arch/gate.py` ray-tests for see-through gaps, `sh tools/bake/bake9.sh [room]` bakes in Cycles to `www/bake/`. After
+  changing a room's geometry: re-run build + bake for it (the engine warns about a stale bake by hash).
+- **Engine**: `world9.js` (rooms from the bakes, glass split out, props, doors one-way, escalators, lift, travelator, gate, seats, picture,
+  collisions from the model's faces in 0.5 m bands, multi-level floors), `npc9.js` (crowd), `film9.js` (shows, WebGL picture, spill,
+  YouTube layer), `sound9.js`, `booking9.js`, `panels9.js`, `intro9.js`, `dialogue9.js`, `main.js` (flow). The v8 world/layout/npc/film
+  modules are retired (git history).
+- **Tests**: `sh tools/run-tests.sh` (Node: halls, building, nav, director, i18n). Browser: `node tools/dev/shoot9.mjs OUT shots.json`
+  (cams, evals; walking routes via a scripted autopilot, see the scratch tests described in the release notes).
+- **Voices**: English `tools/tts/make_voices9.py` (Chatterbox), Spanish/Hindi `tools/tts/make_voices9_kokoro.py` (Kokoro).
+- **APK**: `python3 tools/stage-www.py OUT` (only what the game loads, light maps for soft layers at 1024) then `tools/make-apk.py`.
+- Lessons from v9: never append a `//` comment to a line that continues (it happened twice in tests); doorways must belong to a room
+  (floor); check headroom of every door against the ceiling it opens under; walk every route in a scripted test before shipping.
+
+## Earlier state (2026-10-31, v8.00)
 - v8 on branch `ccr-7bb5aa6a-upup1u` (plan with honest ticks: docs/V8-PLAN.md; status per feedback point at the top of docs/PHONE-FEEDBACK.md;
   release: docs/V8-RELEASE-NOTES.md). Not yet seen on the phone.
 - New pipelines: people (`tools/blender/people.py`, PEOPLE.md), voices (`tools/tts/make_voices.py`: Kokoro, Opus clips + mouth envelopes in

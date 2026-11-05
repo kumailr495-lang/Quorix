@@ -9,7 +9,7 @@ import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
 import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_STAIRS } from './building.js';
-import { hallSeats, hallFloor, SEAT, SCREEN_GAP } from './hallmath.js';
+import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady } from './library.js';
 import { makeCanvas, SANS, SERIF } from './textures.js';
@@ -25,7 +25,8 @@ function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 1
 
 // ---------------------------------------------------------------- where am I: room, floor height (y = where your feet are now)
 export function roomAt(x, y, z) {
-  for (const h of HALLS) { const q = h.toLocal(x, z); if (Math.abs(q.u) <= h.width / 2 + 0.05 && q.d >= -SCREEN_GAP - 0.05 && q.d <= h.depthIn + 0.05) return h.key; }
+  // a hall owns its screen and rear walls' thickness too: the exit and entry doors stand in them (v9 route test: the floor dropped there)
+  for (const h of HALLS) { const q = h.toLocal(x, z); if (Math.abs(q.u) <= h.width / 2 + 0.05 && q.d >= -SCREEN_GAP - WALL && q.d <= h.depthIn + WALL) return h.key; }
   if (y > L1 - 1.2) for (const r of CORR) if (IN(r, x, z)) return 'corridor';
   if (IN(SPINE, x, z) && z < SPINE.z1 - 0.02) return 'spine';
   if (IN(LOBBY, x, z)) return 'lobby';
@@ -244,6 +245,8 @@ const RAD = Math.PI / 180, DRESS = (() => {
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
   for (const [x, z, yaw] of [[BRIDGE.x0 + 1.0, -30, Math.PI / 2], [BRIDGE.x1 - 1.0, -30, -Math.PI / 2]]) add('corridor', 'bench_velvet', x, L1, z, yaw);
+  // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup)
+  for (const h of Object.values(HALL)) { const w = h.toWorld(h.entryU - Math.sign(h.entryU) * 1.4, h.depthIn - 0.5); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z); }
   return L;
 })();
 function dressRooms(world) {

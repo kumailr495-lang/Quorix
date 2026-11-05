@@ -138,7 +138,10 @@ def build_lobby(S):
         slab(acc, a, b, c, d, L1, 0.32, MAT['paint'], mix(P['charcoal'], P['stone'], 0.4), top=MAT['carpet'], topcol=mix(P['velvet'], P['charcoal'], 0.5))
     for cx in (-18.0, -10.0, -2.0, 6.0, 18.0):
         acc.cyl(cx, MZ['z1'] - 0.5, 0.32, 0.0, L1 - 0.32, MAT['brass'], P['champagne'], n=24)
-    glass_rail(acc, glow, [(x0, MZ['z1']), (V['x0'], MZ['z1']), (V['x0'], V['z0']), (V['x1'], V['z0']), (V['x1'], MZ['z1']), (x1, MZ['z1'])], L1, led=B['gold'])
+    # the rail runs round the void except where the escalators arrive (its back edge, over the steps: v9 route test found it closed)
+    E = S['ESC']
+    glass_rail(acc, glow, [(x0, MZ['z1']), (V['x0'], MZ['z1']), (V['x0'], V['z0']), (E['up']['x0'] - 0.02, V['z0'])], L1, led=B['gold'])
+    glass_rail(acc, glow, [(E['down']['x1'] + 0.02, V['z0']), (V['x1'], V['z0']), (V['x1'], MZ['z1']), (x1, MZ['z1'])], L1, led=B['gold'])
     lights_grid(lit, acc, glow, x0 + 1.5, z0 + 1.2, x1 - 1.5, MZ['z1'] - 1.0, L1 - 0.32, 3.0, lin('#ffd8a8'), 1.6, 6)   # under the mezzanine
     # ceiling feature: three concentric light rings ("rounds") over the brand ring, recessed coves with warm light
     for R0, yy in ((9.0, H - 0.02), (6.5, H - 0.32), (4.0, H - 0.62)):
@@ -309,8 +312,11 @@ def build_spine(S):
     C = {k: lin(v) for k, v in S['PALETTE']['spine'].items()}
     acc, glow = Acc(), Glow(); lit = Lights([x0, z0, x1, z1], H)
     slab(acc, x0, z0 - 0.4, x1, z1, 0.0, 0.3, MAT['stone'], C['white'])
-    slab(acc, x0, z0 - 0.4, x1, z1, H + 0.15, 0.15, MAT['paint'], C['white'])
-    acc.wall((x1, z0 - 0.2), (x0, z0 - 0.2), -0.3, H + 0.15, 0.4, MAT['slats'], C['oak'])   # far end
+    # ceiling: low (H) under the bridge and the pantry, high (H2) south of zHi where the raised halls' exits open; a soffit closes the step
+    zH, H2 = SP['zHi'], SP['ceilHi']; hz = lambda z: H2 if z < zH else H
+    slab(acc, x0, zH, x1, z1, H + 0.15, 0.15, MAT['paint'], C['white']); slab(acc, x0, z0 - 0.4, x1, zH, H2 + 0.15, 0.15, MAT['paint'], C['white'])
+    acc.box(x0, H, zH - 0.15, x1, H2 + 0.15, zH, MAT['paint'], C['white'])
+    acc.wall((x1, z0 - 0.2), (x0, z0 - 0.2), -0.3, H2 + 0.15, 0.4, MAT['slats'], C['oak'])   # far end
     acc.wall((x0, z1 - 0.03), (x1, z1 - 0.03), 0.0, H, 0.06, MAT['slats'], C['oak'], openings=[(x1 - 1.6, x1 + 1.6, 3.0, 0.0)])   # lobby end, around the exit door
     # side walls are the halls' screen walls (built by the halls); here: oak slat lining on them, between the exit doors
     exits = [d for d in S['DOORS'] if d.get('hall') and 'Out' in d['id']]
@@ -318,10 +324,12 @@ def build_spine(S):
         inner = sx + (0.03 if sx == x0 else -0.03); ds = sorted([d for d in exits if (d['x'] < 0) == (sx < 0)], key=lambda d: d['z'])
         cuts = [(d['z'] - d['w'] / 2 - 0.15, d['z'] + d['w'] / 2 + 0.15, d['y'] + d['h'] + 0.15) for d in ds]
         zc = z0
+        def lining(za, zb, ya):   # split at the ceiling step so no lining rises into the bridge above
+            for (p, q) in ((za, min(zb, zH)), (max(za, zH), zb)):
+                if q - p > 0.01 and hz((p + q) / 2) - ya > 0.01: acc.box(min(sx, inner), ya, p, max(sx, inner), hz((p + q) / 2), q, MAT['slats'], C['oak'])
         for c0, c1, ch in cuts + [(z1, z1, 0)]:
-            if c0 > zc + 0.1:
-                acc.box(min(sx, inner), 0.0, zc, max(sx, inner), H, c0, MAT['slats'], C['oak'])
-            if c1 > c0: acc.box(min(sx, inner), ch, c0, max(sx, inner), H, c1, MAT['slats'], C['oak'])
+            if c0 > zc + 0.1: lining(zc, c0, 0.0)
+            if c1 > c0: lining(c0, c1, ch)
             zc = max(zc, c1)
         for d in ds:   # exit door frame and an EXIT sign over it (green, fixed light)
             fx = sx + (0.035 if sx == x0 else -0.035)
@@ -348,8 +356,9 @@ def build_spine(S):
         lit.line((xs, 0.2, TR['z0']), (xs, 0.2, TR['z1']), lin('#e8fff2'), 0.05, 2.0, 'f')
     # ceiling: three continuous light lines along the spine (bright and simple: the way out feels quick)
     for xx in (-2.6, 0.0, 2.6):
-        glow.quad((xx - 0.06, H - 0.005, z0 + 0.5), (xx + 0.06, H - 0.005, z0 + 0.5), (xx + 0.06, H - 0.005, z1 - 0.5), (xx - 0.06, H - 0.005, z1 - 0.5), lin('#fff4e6'), 2.4)
-        lit.line((xx, H - 0.05, z0 + 0.5), (xx, H - 0.05, z1 - 0.5), lin('#fff4e6'), 1.1, 6.0, 'h', (0, -1, 0))
+        for (za, zb, hh) in ((z0 + 0.5, zH - 0.3, H2), (zH + 0.3, z1 - 0.5, H)):
+            glow.quad((xx - 0.06, hh - 0.005, za), (xx + 0.06, hh - 0.005, za), (xx + 0.06, hh - 0.005, zb), (xx - 0.06, hh - 0.005, zb), lin('#fff4e6'), 2.4)
+            lit.line((xx, hh - 0.05, za), (xx, hh - 0.05, zb), lin('#fff4e6'), 1.1 if hh == H else 1.5, 8.0, 'h', (0, -1, 0))
     lit.ambient(lin('#fff6ea'), lin('#bfb2a0'), 0.25, 'h')
     # green EXIT -> arrows on the floor towards the lobby (inlaid strips)
     for zz in range(int(z0) + 6, int(z1) - 2, 6):

@@ -70,4 +70,7 @@ export const UR = {
   'panel9.book': "ابھی بک کریں", 'panel9.showtimes': "آج رات", 'panel9.popcorn': "پاپ کارن", 'panel9.drinks': "مشروبات", 'panel9.more': "اسنیکس",
   'set9.haptics': "بڑے سین پر سیٹ کی تھرتھراہٹ", 'set9.fx': "بڑے سین پر چنگاریاں",
   'menu9.stubs': "آپ کی شامیں", 'toast9.stub': "ٹکٹ کا حصہ سنبھال لیا۔ آپ کی شامیں مینو میں ہیں۔",
+  'toast9.liftTicket': "لفٹ ٹکٹ والوں کے لیے ہے: پہلے اَشر کو ٹکٹ دکھائیے۔",
+  'tab9.order': "آرڈر", 'tab9.ordered': "{item} آپ کی سیٹ پر آ رہا ہے۔", 'tab9.bin': "خالی والا لے جائیے",
+  'help9.diag': "تشخیص", 'help9.server': "ایپ سرور", 'help9.decoders': "ہارڈ ویئر ویڈیو ڈی کوڈر",
 };

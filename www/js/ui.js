@@ -41,7 +41,7 @@ export class UI {
   modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk', '#tablet', '#atm', '#tutAsk', '#layoutEd'].some((s) => $(s) && !$(s).hidden) || !$('#menu').hidden; }
   // ---------------- ticket ----------------
   showTicket(tk, quick) {
-    $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = tk.row; $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = `${tk.hallName} · ${t('kind.' + tk.kind)}`;
+    $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = tk.row; $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = `${tk.hallName} · ${t('kind.' + tk.kind)}`;
     $('#tkHint').textContent = quick ? t('tk.hintQuick') : t('tk.hintStory', { n: Math.round(tk.delay / 60) }); $('#tkJump').hidden = !quick; $('#ticket').hidden = false; this.hooks.onModal(true);
   }
   // ---------------- settings / language / info / pause ----------------

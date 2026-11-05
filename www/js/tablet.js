@@ -19,7 +19,7 @@ export class Tablet {
     this.shows = shows; this.sound = sound; this.wallet = wallet; this.settings = settings; this.hooks = hooks; this.tab = 'remote'; this.server = false; this.onLocal = null;
     this.q = ''; this.sort = 'recent'; this.album = null; this.view = 'all'; this.fav = new Set(store.get('fav', [])); this.cols = store.get('cols', {}); this.items = null; this._raf = 0;
     const root = $('#tablet'); root.innerHTML = `<div class="tab-dev"><div class="tab-scr">
-      <header class="tb-head"><div class="tb-title"><small>LUMIÈRE</small><b id="tbTitle"></b></div><nav class="tb-tabs" id="tbTabs"><button data-t="remote">${t('tab.remote')}</button><button data-t="films">${t('tab.films')}</button><button data-t="mine">${t('tab.mine')}</button></nav><button class="btn secondary sm" id="tbClose"></button></header>
+      <header class="tb-head"><div class="tb-title"><small>LUMIÈRE</small><b id="tbTitle"></b></div><nav class="tb-tabs" id="tbTabs"><button data-t="remote">${t('tab.remote')}</button><button data-t="films">${t('tab.films')}</button><button data-t="mine">${t('tab.mine')}</button><button data-t="order">${t('tab9.order')}</button></nav><button class="btn secondary sm" id="tbClose"></button></header>
       <div class="tb-body" id="tbBody"></div></div></div>`;
     root.addEventListener('click', (e) => { if (e.target === root) this.close(); });
     $('#tbClose').addEventListener('click', (e) => { e.stopPropagation(); this.close(); });
@@ -33,7 +33,7 @@ export class Tablet {
   refresh() { if (this.isOpen()) this.show(this.tab); }
   show(tab) {
     this.tab = tab; for (const b of document.querySelectorAll('#tbTabs button')) b.classList.toggle('on', b.dataset.t === tab); cancelAnimationFrame(this._raf);
-    const B = $('#tbBody'); B.innerHTML = ''; B.className = 'tb-body ' + tab; if (tab === 'remote') this.remote(B); else if (tab === 'films') this.films(B); else this.mine(B);
+    const B = $('#tbBody'); B.innerHTML = ''; B.className = 'tb-body ' + tab; if (tab === 'remote') this.remote(B); else if (tab === 'films') this.films(B); else if (tab === 'order') this.order(B); else this.mine(B);
   }
   // ---------------- remote ----------------
   remote(B) {
@@ -74,6 +74,14 @@ export class Tablet {
       grid.appendChild(c); }
     B.appendChild(grid);
     window.__lumiereDownload = (name, done, total, state) => { const d = this._dl && this._dl[name]; if (!d) return; d.textContent = state === 'done' ? t('tab9.saved') : String(state).startsWith('error') ? t('tab9.failed') : total > 0 ? Math.floor(done * 100 / total) + ' %' : Math.round(done / 1048576) + ' MB'; if (state === 'done') d.classList.add('done'); };
+  }
+  // ---------------- v9: order to your seat (the armrest tablet): it goes on your bill; the server brings it, or the counter sends it up
+  order(B) {
+    $('#tbTitle').textContent = t('tab9.order'); const grid = el('div', 'tb-order'), items = [['salted', 'opt9.salted'], ['caramel', 'opt9.caramel'], ['cheese', 'opt9.cheese'], ['nachos', 'opt9.nachos'], ['cola', 'opt9.drink'], ['coffee', 'opt9.coffee'], ['water', 'item.water'], ['combo', 'opt9.combo']];
+    for (const [k, lab] of items) { const c = el('button', 'tb-item'); c.appendChild(el('b', null, t(lab))); c.appendChild(el('small', null, this.hooks.quick() && this.wallet.unlimited ? t('book9.tabletQuick') : this.wallet.fmt(this.wallet.itemPrice(k))));
+      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.order && this.hooks.order(k)) { this.hooks.toast(t('tab9.ordered', { item: t(lab) }), 2600); } }); grid.appendChild(c); }
+    B.appendChild(grid);
+    if (this.hooks.canBin && this.hooks.canBin()) { const b = el('button', 'btn secondary', t('tab9.bin')); b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.hooks.bin && this.hooks.bin(); this.show('order'); }); B.appendChild(b); }
   }
   // ---------------- my videos ----------------
   mine(B) {
