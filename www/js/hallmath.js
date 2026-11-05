@@ -27,19 +27,19 @@ export const CLASSES = {
 // groups run from the screen to the rear: rows of single seats (n odd) or two-seat sofas (pairs, gap between the sofas).
 export const HALLS = [
   { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -35.4, width: 26.0, aspect: 1.9, W: 22.8, hB: 0.95, sag: 0.025, D1: 12.6, c: 0.2,
-    aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.0, rowK: 34, curtain: false, frame: 0.5,
+    aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.6, rowK: 34, curtain: false, frame: 0.5,
     groups: [{ seat: 'rocker', rows: 11, n: 29, pitch: 1.32, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
-      { seat: 'pod', rows: 2, pairs: 7, gap: 0.62, pitch: 2.25, lift: 0.55, cls: () => 'pod' }] },
+      { seat: 'pod', rows: 2, pairs: 7, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },
   { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -61.4, width: 22.4, aspect: 2.39, W: 18.0, hB: 1.05, sag: 0.11, D1: 10.9, c: 0.2,
-    aisleW: 1.4, cross: null, rear: 1.9, rowK: 9, curtain: true, frame: 0.4,
+    aisleW: 1.4, cross: null, rear: 2.6, rowK: 9, curtain: true, frame: 0.4,
     groups: [{ seat: 'recliner', rows: 6, n: 15, pitch: 1.92, cls: (r) => (r >= 2 && r <= 4 ? 'reclPlus' : 'recl') },
       { seat: 'sofa', rows: 1, pairs: 6, gap: 0.5, pitch: 2.0, cls: () => 'love' }] },
   { id: 'CLASSIC', no: 3, key: 'hallClassic', name: 'LUMIERE CLASSIC', format: 'classic', side: 1, zc: -31.0, width: 17.4, aspect: 1.85, W: 12.6, hB: 1.0, sag: 0, D1: 8.0, c: 0.2,
-    aisleW: 1.25, cross: null, rear: 1.8, rowK: 0, curtain: true, frame: 0.35,
+    aisleW: 1.25, cross: null, rear: 2.6, rowK: 0, curtain: true, frame: 0.35,
     groups: [{ seat: 'rocker', rows: 10, n: 21, pitch: 1.3, cls: (r) => (r >= 6 ? 'prime' : 'std') },
       { seat: 'sofa', rows: 1, pairs: 7, gap: 0.42, pitch: 1.75, cls: () => 'sofa' }] },
   { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE 270', format: 'x270', side: 1, zc: -51.4, width: 19.2, aspect: 1.9, W: 13.6, hB: 1.25, sag: 0, D1: 8.6, c: 0.2,
-    aisleW: 1.3, cross: null, rear: 1.8, rowK: 0, curtain: false, frame: 0.3, panels: true,
+    aisleW: 1.3, cross: null, rear: 2.6, rowK: 0, curtain: false, frame: 0.3, panels: true,
     groups: [{ seat: 'rocker', rows: 10, n: 19, pitch: 1.3, cls: (r) => (r >= 4 && r <= 7 ? 'x270p' : 'x270') }] },
 ];
 // placement (docs/V9-DESIGN.md section 4): the screen wall stands on the exit spine; the picture plane is SCREEN_GAP in front of it
@@ -63,6 +63,8 @@ export function makeHall(s) {
   for (const row of rows) row.dHip = row.X + 0.06;
   for (const row of rows) row.pf = row.r === 0 ? -Infinity : rows[row.r - 1].dHip + rows[row.r - 1].sd.bk + 0.1;
   for (const row of rows) { row.lane = [row.r === 0 ? row.dHip - row.sd.fr - 1.4 : row.pf, row.dHip - row.sd.fr]; row.clear = Math.round((row.lane[1] - row.lane[0]) * 100) / 100; }
+  // aisle step depth: 0.30 m, shortened when a tall riser's steps would not fit on the platform below (they never spill into the row before)
+  for (const row of rows) { const below = row.r <= 1 ? 9 : row.pf - rows[row.r - 1].pf - 0.12; row.tread = row.steps > 1 ? Math.min(TREAD, below / (row.steps - 1)) : TREAD; }
   const last = rows[rows.length - 1], rearD = last.dHip + last.sd.bk + 0.1, depthIn = rearD + s.rear;
   // places across a row (arc length from the centre line)
   for (const row of rows) {
@@ -89,7 +91,7 @@ export function makeHall(s) {
   // entrance: the rear corner on the lobby side (+z for every hall: the bridge is north of them); exits: both front corners
   h.entryU = f * (s.width / 2 - 1.3);
   h.exits = [-1, 1].map((sg) => ({ u: sg * (s.width / 2 - 0.85), d: -SCREEN_GAP + 0.2 }));
-  h.y0 = 0;   // front floor on the ground floor (the exit is level); the rear aisle sits at h.total + the rear step
+  h.y0 = 0;   // building.js lifts the smaller halls so every rear aisle is level with the first-floor corridor (y0 = L1 - total)
   return h;
 }
 export function hallSeats(h) {
@@ -107,8 +109,8 @@ export function hallFloor(h, u, d) {
   const { a, e } = h.toRow(u, d), rows = h.rows, aa = Math.abs(a), inAisle = aa >= h.aisle[0] - 0.05;
   let r = 0; while (r < rows.length - 1 && e >= rows[r + 1].pf) r++;
   const y = rows[r].y; if (!inAisle || r === rows.length - 1) return y;
-  const nx = rows[r + 1], t = nx.pf - e; if (!nx.steps || t >= (nx.steps - 1) * TREAD) return y;
-  return y + (nx.steps - 1 - Math.floor(t / TREAD)) * nx.riser / nx.steps;
+  const nx = rows[r + 1], t = nx.pf - e; if (!nx.steps || t >= (nx.steps - 1) * nx.tread) return y;
+  return y + (nx.steps - 1 - Math.floor(t / nx.tread)) * nx.riser / nx.steps;
 }
 // walker route from the entrance to a seat: rear aisle -> nearest side aisle -> down to the row -> along the row's lane -> the seat front
 export function seatRoute(h, seat) {

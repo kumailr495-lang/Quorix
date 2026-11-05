@@ -31,7 +31,7 @@
   ],
   "rise": 5.012,
   "minLaneClear": 0.54,
-  "depth": 34.68,
+  "depth": 35.28,
   "ceil": 14.6
  },
  {
@@ -60,7 +60,7 @@
   ],
   "rise": 1.831,
   "minLaneClear": 0.84,
-  "depth": 25.04,
+  "depth": 25.74,
   "ceil": 10.2
  },
  {
@@ -93,7 +93,7 @@
   ],
   "rise": 3.82,
   "minLaneClear": 0.52,
-  "depth": 23.89,
+  "depth": 24.69,
   "ceil": 9.4
  },
  {
@@ -125,7 +125,7 @@
   ],
   "rise": 2.728,
   "minLaneClear": 0.52,
-  "depth": 22.62,
+  "depth": 23.42,
   "ceil": 10
  }
 ]

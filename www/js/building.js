@@ -7,13 +7,14 @@
 // inwards, exit doors only outwards, and nothing on L1 leads into the spine.
 import { HALLS, makeHall } from './hallmath.js';
 export const HALL = Object.fromEntries(HALLS.map((s) => [s.id, makeHall(s)]));
-export const L1 = Math.round(HALL.MAX.total * 100) / 100;   // the first floor = the MAX hall's rear aisle (its rake top)
+export const L1 = HALL.MAX.total;   // the first floor = the MAX hall's rear aisle (its rake top)
 export const FACADE = 18, LOBBY = { x0: -22, x1: 22, z0: -14, z1: FACADE, ceil: 9.6 }, MEZZ = { z0: -14, z1: -9.4 };
 export const SPINE = { x0: -4.2, x1: 4.2, z0: -72.6, z1: -14, ceil: 4.5 };
-export const BRIDGE = { x0: -47, x1: 36.2, z0: -22, z1: -14, ceil: 4.2 };
-export const FLANK_W = { x0: -47, x1: -40.93, z0: -50.2, z1: -22 }, LINK_W = { x0: -47, x1: -31.29, z0: -56.4, z1: -50.2 };
+const RO = (h) => h.xRear - 0.4 * h.dir;   // a hall's rear wall, outer face
+export const BRIDGE = { x0: RO(HALL.MAX) - 6, x1: RO(HALL.CLASSIC) + 6, z0: -22, z1: -14, ceil: 4.2 };
+export const FLANK_W = { x0: BRIDGE.x0, x1: RO(HALL.MAX), z0: -50.2, z1: -22 }, LINK_W = { x0: BRIDGE.x0, x1: RO(HALL.CURVE), z0: -56.4, z1: -50.2 };
 export const PANTRY = { x0: -3.6, x1: 3.6, z0: -26.6, z1: -22 };
-export const FLANK_E = { x0: 30.14, x1: 36.2, z0: -46.6, z1: -22 }, LINK_E = { x0: 28.87, x1: 30.14, z0: -45.0, z1: -41.2 };
+export const FLANK_E = { x0: RO(HALL.CLASSIC), x1: BRIDGE.x1, z0: -46.6, z1: -22 }, LINK_E = { x0: RO(HALL.X270), x1: RO(HALL.CLASSIC), z0: -45.0, z1: -41.2 };
 export const WC = { x0: 22, x1: 32, z0: -14, z1: 6, ceil: 3.4 };
 export const STREET = { x0: -48, x1: 44, z0: FACADE, z1: 48, kerb: 26, road: [29.6, 36.6], far: 40 };
 // moving things
@@ -37,26 +38,35 @@ export const DOORS = [
   { id: 'spineOut', rooms: ['spine', 'lobby'], kind: 'pair', axis: 'x', x: 0, z: -14, w: 3.2, h: 3.0, y: 0, oneWay: 'spine' },
   { id: 'mezzPortal', rooms: ['lobby', 'corridor'], kind: 'open', axis: 'x', x: 10.2, z: -14, w: 5.6, h: 3.4, y: L1 },
 ];
-// every hall: the rear entry door at L1 (in only) and two exit doors in the screen wall at the front corners (out only)
+// every hall: the front floor is lifted so its rear aisle is level with L1 (no stairs on the way in); the rear entry door at L1 (in only);
+// two exit doors in the screen wall at the front corners (out only), each onto a landing in the spine with a stair down to G along the
+// spine wall, running towards the hall's centre line so it never passes another hall's door
+export const EXIT_STAIRS = [];
 for (const h of Object.values(HALL)) {
+  h.y0 = Math.round((L1 - h.total) * 1000) / 1000;
   const e = h.toWorld(h.entryU, h.depthIn);
-  DOORS.push({ id: h.id + 'In', rooms: ['corridor', h.key], kind: 'pair', axis: 'z', x: h.xRear + h.dir * -0.2, z: e.z, w: 1.9, h: 2.5, y: L1, oneWay: 'corridor', hall: h.id });
-  h.exits.forEach((x, i) => { const w = h.toWorld(x.u, 0); DOORS.push({ id: h.id + 'Out' + i, rooms: [h.key, 'spine'], kind: 'push', axis: 'z', x: h.xScreenWall + 0.2 * h.dir, z: w.z, w: 1.8, h: 2.4, y: 0, oneWay: h.key, hall: h.id }); });
-  // the entry stair inside the hall: from the door landing at L1 down along the rear wall to the rear aisle
-  const drop = L1 - h.total, n = drop > 0.02 ? Math.ceil(drop / 0.175 - 1e-6) : 0;
-  h.entryStair = { n, rise: n ? drop / n : 0, tread: 0.3, landing: 1.6, width: 1.5 };
+  DOORS.push({ id: h.id + 'In', rooms: ['corridor', h.key], kind: 'pair', axis: 'z', x: h.xRear - 0.2 * h.dir, z: e.z, w: 1.9, h: 2.5, y: L1, oneWay: 'corridor', hall: h.id });
+  h.exits.forEach((x, i) => {
+    const w = h.toWorld(x.u, 0), id = h.id + 'Out' + i;
+    DOORS.push({ id, rooms: [h.key, 'spine'], kind: 'push', axis: 'z', x: h.xScreenWall + 0.2 * h.dir, z: w.z, w: 1.8, h: 2.4, y: h.y0, oneWay: h.key, hall: h.id });
+    if (h.y0 > 0.02) {
+      const n = Math.ceil(h.y0 / 0.172 - 1e-6), toC = Math.sign(h.zc - w.z), wallX = h.side < 0 ? SPINE.x0 : SPINE.x1, inX = -Math.sign(wallX);
+      EXIT_STAIRS.push({ door: id, hall: h.id, x0: wallX, x1: wallX + inX * 1.7, zDoor: w.z, landing: 1.7, dir: toC, n, rise: h.y0 / n, tread: 0.3, y0: h.y0,
+        zTop: w.z + toC * 0.85, zBot: w.z + toC * (0.85 + n * 0.3) });
+    }
+  });
 }
 // rooms: kind drives the Blender builder; level = the lowest floor in it; vis = rooms drawn when you are in it (portal culling)
 export const ROOMS = {
   street: { kind: 'street', level: 0, rect: [STREET.x0, STREET.z0, STREET.x1, STREET.z1], outdoor: true, vis: ['lobby'] },
   lobby: { kind: 'lobby', level: 0, rect: [LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], ceil: LOBBY.ceil, vis: ['street', 'wc', 'corridor', 'spine'] },
   wc: { kind: 'wc', level: 0, rect: [WC.x0, WC.z0, WC.x1, WC.z1], ceil: WC.ceil, vis: ['lobby'] },
-  corridor: { kind: 'corridor', level: L1, rect: [BRIDGE.x0, -56.4, BRIDGE.x1, BRIDGE.z1], ceil: L1 + 4.2, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
+  corridor: { kind: 'corridor', level: L1, rect: [BRIDGE.x0, LINK_W.z0, BRIDGE.x1, BRIDGE.z1], ceil: L1 + 4.2, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
   spine: { kind: 'spine', level: 0, rect: [SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], ceil: SPINE.ceil, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
 };
 for (const h of Object.values(HALL)) {
   const a = h.toWorld(-h.width / 2, -1.25), b = h.toWorld(h.width / 2, h.depthIn);
-  ROOMS[h.key] = { kind: 'hall', hall: h.id, level: 0, rect: [Math.min(a.x, b.x), Math.min(a.z, b.z), Math.max(a.x, b.x), Math.max(a.z, b.z)], ceil: h.ceil, vis: ['corridor', 'spine'] };
+  ROOMS[h.key] = { kind: 'hall', hall: h.id, level: h.y0, rect: [Math.min(a.x, b.x), Math.min(a.z, b.z), Math.max(a.x, b.x), Math.max(a.z, b.z)], ceil: h.ceil, vis: ['corridor', 'spine'] };
 }
 // staff posts and spawn points (world x, y, z, yaw: three.js rotation about +y, 0 = facing -z)
 export const POSTS = {
@@ -82,8 +92,8 @@ export const NAV = {
     wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0],
     gate: [9.7, 0, 4.6], gateIn: [9.7, 0, 2.2], escBot: [9.7, 0, 0.4], escTop: [9.7, L1, -12.6], mezz: [9.7, L1, -11.6],
     downTop: [11.7, L1, -12.6], downBot: [11.7, 0, 0.6], liftG: [14.6, 0, -9.2], liftL1: [14.6, L1, -9.2],
-    portal: [10.2, L1, -15.2], bridgeE: [33.2, L1, -18.0], bridgeW: [-44.0, L1, -18.0], bridgeC: [0, L1, -18.0], pantry: [0, L1, -23.0],
-    flankW1: [-44.0, L1, -24.0], flankW2: [-44.0, L1, -48.0], linkW: [-38.0, L1, -53.2], flankE1: [33.2, L1, -24.0], flankE2: [33.2, L1, -44.0],
+    portal: [10.2, L1, -15.2], bridgeE: [BRIDGE.x1 - 3, L1, -18.0], bridgeW: [BRIDGE.x0 + 3, L1, -18.0], bridgeC: [0, L1, -18.0], pantry: [0, L1, -23.0],
+    flankW1: [BRIDGE.x0 + 3, L1, -24.0], flankW2: [BRIDGE.x0 + 3, L1, -48.0], linkW: [BRIDGE.x0 + 9, L1, -53.2], flankE1: [BRIDGE.x1 - 3, L1, -24.0], flankE2: [BRIDGE.x1 - 3, L1, -43.1],
     spineN: [0, 0, -15.6], spineS: [0, 0, -71.0], lobbyBack: [0, 0, -12.0],
   },
   edges: [['kerb', 'plaza'], ['plaza', 'doorOut'], ['doorOut', 'doorIn'], ['doorIn', 'greet'], ['doorIn', 'foyer'], ['greet', 'foyer'], ['foyer', 'boxQ2'], ['boxQ2', 'boxQ'],
