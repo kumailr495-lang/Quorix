@@ -1,5 +1,5 @@
 // Renders the v9 world in headless Chromium (SwiftShader: a CPU renderer, not the phone's GPU) from posed cameras.
-// usage: node tools/dev/shoot9.mjs <out-dir> <shots.json>   shots: { page?: 'v9.html', query?, list: [{ name, cam: [x, y, z, yawDeg, pitchDeg], eval?, wait? }] }
+// usage: node tools/dev/shoot9.mjs <out-dir> <shots.json>   shots: { page?: 'index.html', query?, list: [{ name, cam: [x, y, z, yawDeg, pitchDeg], eval?, wait? }] }
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
 const [,, OUT, SHOTS] = process.argv; const WWW = path.resolve('www'); fs.mkdirSync(OUT, { recursive: true });
 let pwPath = process.env.PW_PATH; if (!pwPath) for (const p of ['/opt/node-tools/node_modules/playwright/index.mjs', '/opt/npm-tools/node_modules/playwright/index.mjs']) if (fs.existsSync(p)) { pwPath = p; break; }
@@ -12,7 +12,7 @@ const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-un
 const VP = (process.env.VIEWPORT || '960x432').split('x').map(Number); const ctx = await b.newContext({ viewport: { width: VP[0], height: VP[1] }, deviceScaleFactor: +(process.env.DPR || 1) });
 await ctx.addInitScript((extra) => { try { localStorage.setItem('lumiere.settings.v5', JSON.stringify({ lang: 'en', graphics: 'medium', tutorialAsked: true, ...JSON.parse(localStorage.getItem('lumiere.settings.v5') || '{}'), ...extra })); } catch (e) {} }, spec.settings || {});
 const p = await ctx.newPage(); const log = []; p.on('console', (m) => log.push(`[${m.type()}] ${m.text()}`)); p.on('pageerror', (e) => log.push(`[pageerror] ${e.message}`));
-const t0 = Date.now(); await p.goto(`http://127.0.0.1:${port}/${spec.page || 'v9.html'}${spec.query || ''}`);
+const t0 = Date.now(); await p.goto(`http://127.0.0.1:${port}/${spec.page || 'index.html'}${spec.query || ''}`);
 try { await p.waitForFunction(() => window.__lumiere && window.__lumiere.ready, null, { timeout: 240000 }); } catch (e) { console.log('BOOT TIMEOUT'); console.log(log.slice(-40).join('\n')); await b.close(); srv.close(); process.exit(1); }
 console.log('boot ms', Date.now() - t0, 'build ms', await p.evaluate(() => Math.round(window.__lumiere.buildMs)));
 for (const s of spec.list) {

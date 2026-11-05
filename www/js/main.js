@@ -1,284 +1,308 @@
-// LUMIERE v8 - boot, game flow (loader -> menu -> Story or Quick -> pause), interaction rules and the frame loop.
-// Story: you arrive outside, buy a ticket at the box office (money is limited; the ATM tops it up), show the ticket to the guide, who walks
-// you to your own seat (the only seat you can take); the bell by your seat calls a server with the tablet. Quick: unlimited money, you start
-// in your seat with the tablet in hand. Every film plays through the phone's own video layer (videolayer.js).
+// LUMIERE v9 - boot, the night out, interaction rules and the frame loop (docs/V9-DESIGN.md section 8).
+// Flow mode (v8's Story): the taxi drops you at the kerb; the host greets you; the box office sells your ticket (film or your own video,
+// format, time, seat, the armrest tablet add-on); popcorn at the counter; the usher checks the ticket at the gate (the gate opens, the
+// first time he walks you all the way to your row); up the escalator or the lift, along the dim corridor, in at the top of your hall;
+// the countdown, the lights go down, the film. Out at the bottom beside the screen, down the bright spine, back into the lobby.
+// Quick play: you start in the lobby with the tablet; sit in any free seat of any hall; order, change the film, swap or jump to a seat.
 import * as THREE from 'three';
 import { Engine } from './engine.js';
 import { Materials, G } from './materials.js';
-const FOG_OUT = new THREE.Color(0x111724), FOG_IN = new THREE.Color(0x0b0b0e);
-import { buildWorld } from './world.js';
+import { buildWorld } from './world9.js';
 import { texturesReady } from './library.js';
-import { loadAssets, ASSET_LIST, ASSETS } from './assets.js';
+import { loadAssets, ASSET_LIST } from './assets.js';
 import { loadBakes } from './lightmap.js';
-import { makeRain } from './rain.js';
+import { loadPeople } from './people.js';
 import { Player } from './player.js';
-import { Sound } from './sound.js';
-import { Shows } from './film.js';
-import { Director } from './react.js';
+import { Sound9 } from './sound9.js';
+import { Voice } from './voice.js';
+import { Talk } from './talk.js';
 import { UI } from './ui.js';
-import { Booking } from './booking.js';
-import { Wallet } from './wallet.js';
+import { Booking9 } from './booking9.js';
 import { Tablet } from './tablet.js';
-import { Atm } from './atm.js';
 import { Tutorial } from './tutorial.js';
 import { LayoutEditor, applyLayout } from './layoutedit.js';
-import { Crowd } from './npc.js';
-import { Talk } from './talk.js';
-import { Voice } from './voice.js';
-import { Intro, ARRIVAL } from './intro.js';
-import { treeFor } from './dialogue.js';
+import { Crowd } from './npc9.js';
+import { Shows } from './film9.js';
+import { Director } from './react.js';
+import { Intro, ARRIVAL } from './intro9.js';
+import { treeFor } from './dialogue9.js';
 import { makeHeld, setHeldMaterial } from './held.js';
-import { loadPeople } from './people.js';
 import { cleanTitle } from './films.js';
+import { ledWall, showtimes, menuBoard } from './panels9.js';
+import { makeRain } from './rain.js';
 import { loadSettings, saveSettings, presetFor } from './settings.js';
 import { setLang, t, pick, fmtTime } from './i18n.js';
-import { hallById, hallByKey, HALL_DOORS, roomAt, GAL, PLAYER_START } from './layout.js';
-import { makeLedWall } from './ledwall.js';
-const $ = (s) => document.querySelector(s), clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
-const BITES = { popcorn: 9, drink: 8, coffee: 6 };
+import { SPAWN, GATE, LIFT, ESC, COUNTERS, HALL, L1 } from './building.js';
+import { SEAT, CLASSES } from './hallmath.js';
+const $ = (s) => document.querySelector(s), clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const BITES = { popcorn: 9, drink: 8, coffee: 6, nachos: 7 }, DENS = { off: 'off', few: 'low', normal: 'medium', many: 'high' };
+// the bill (v8 feedback: "remove the money" and "make the prices realistic"): Indian multiplex prices, paid by card, never refused
+const PRICES = { salted: 290, caramel: 340, cheese: 340, combo: 460, nachos: 260, cola: 180, coffee: 220, water: 60, tablet: 99, replay: 0 };
+class Bill {
+  constructor() { this.P = { replay: 0, sym: '₹' }; this.unlimited = false; this.reset(); this.onChange = null; }
+  reset() { this.lines = []; this.total = 0; this.cash = Infinity; this._emit(); }
+  _emit() { this.onChange && this.onChange(this); }
+  fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+  ticketPrice(cls) { return (CLASSES[cls] || CLASSES.std).price; }
+  itemPrice(kind) { return PRICES[kind] ?? 200; }
+  can() { return true; }
+  pay(n, what) { if (this.unlimited || !n) return true; this.lines.push({ what, n }); this.total += n; this._emit(); return true; }
+}
 async function boot() {
   const settings = loadSettings(), Q = new URLSearchParams(location.search), nav = (navigator.language || 'en').slice(0, 2);
   setLang(settings.lang || (['hi', 'ur', 'es'].includes(nav) ? nav : 'en'));
   const portrait = () => $('#rotate').classList.toggle('need', innerHeight > innerWidth * 1.1); portrait(); addEventListener('resize', portrait);
   const prog = (p) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; };
-  try { await Promise.race([Promise.all([document.fonts.load('600 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) {}
-  const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low', mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', texSize: lowG ? 256 : 512 }); engine.applySettings(settings);
-  // Cycles light maps (lightmap.js, the baked shadows) unless Low or "Shadows: off"; ?nobake=1 builds without them (tools/bake/export.mjs)
-  mats.lightMaps = !lowG && settings.shadows !== 'off' && !Q.get('nobake');
-  const t0 = performance.now(); await Promise.all([loadAssets(ASSET_LIST), mats.lightMaps ? loadBakes() : null, loadPeople().catch((e) => console.warn('[lumiere] people models failed, using the v5 characters', e))]); const world = await buildWorld(engine, mats, prog); await texturesReady();
-  prog(0.97); await new Promise((r) => requestAnimationFrame(r));
-  const rain = makeRain(world.rooms.street, { count: lowG ? 1800 : 4000 }); world.rooms.street.U.uWet.value = 1;   // night rain and wet paving outside
-  const sound = new Sound(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
-  const wallet = new Wallet(settings.lang);
-  let ticket = null, room = 'street', talk = null, ui = null, shows = null, crowd = null, mode = 'menu', game = null, modal = false, held = null, markerPulse = 0, paused = false;
-  const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(PLAYER_START.x, PLAYER_START.z, PLAYER_START.yaw, PLAYER_START.pitch);
-  player.onStep = (s) => sound.step(s, /hall|pass/.test(room));
-  const dist = (n) => Math.hypot(n.x - player.x, n.z - player.z), hallOf = (tk) => world.hallById(tk.hall), seatOf = (tk) => hallOf(tk).seats.find((s) => s.id === tk.seat);
-  // ---------- hall audibility: continuous, from where you stand (in the hall, at its padded doors in the gallery, in the tunnel to the IMAX) ----------
-  const doorOf = (key) => world.doors.find((d) => d.key === key);
-  function audibility(hallKey) {
-    if (!hallKey) return { g: 0, lp: 400 }; const H = hallByKey(hallKey); if (room === hallKey) return { g: player.seated ? 1 : 0.92, lp: 18000 };
-    let best = { g: room === 'lobby' ? 0.004 : 0, lp: 400 };
-    for (const d of HALL_DOORS) { if (d.hall !== H.id) continue; const dd = Math.hypot(player.x - d.x, player.z - d.z); let g = 0, lp = 400;
-      if (room === d.room && d.open) { const k = smooth(9, 0.6, dd); g = 0.06 + 0.55 * k; lp = 1200 + 9000 * k * k; }
-      else if (room === d.room) { const door = doorOf(d.hall + ':' + d.kind), open = door ? door.open : 0; g = (0.01 + 0.22 * open) * smooth(14, 1, dd) + 0.003; lp = 500 + 3500 * open; }
-      else if (room === 'gal' && d.room === 'tunnel') { g = 0.035 * smooth(22, 2, Math.hypot(player.x, player.z - GAL.z0)); lp = 700; }
-      if (g > best.g) best = { g, lp }; }
-    return best;
-  }
-  // ---------- people ----------
-  // voices: every spoken line plays its recorded clip; with no clip (or voices off) the old murmur blip stands in near you
-  const voice = new Voice(sound, settings); voice.prepare();
-  const speak = (n, ln) => { const blip = () => { const d = dist(n); if (d < 6) sound.blip((typeof ln === 'string' ? ln : ln.text).length + (n.name || '').length, 1 - d / 6); };
-    if (typeof ln === 'object' && ln.key) voice.speak(n, ln).then((ms) => { if (!ms && voice.on && !voice.man) blip(); }); else if (voice.on) blip(); };
-  crowd = new Crowd(world, mats, engine, {
-    bubble: (n, ln, dur) => { if (settings.bubbles && talk) talk.bubble(n, ln, dur); speak(n, ln); },
-    serveFx: (n) => { if (dist(n) < 8) sound.pour(); },
-    crowdSound: (hallId, type, n, k, x, z) => { const a = audibility(hallById(hallId).key); if (a.g > 0.05) sound.crowd(type, n, k * Math.min(1, a.g * 1.3), x, z); },
-    guideDone: () => { if (ticket) ui.toast(t('book.selected', { row: ticket.row, seat: ticket.col }), 3200); markerPulse = 6; tut.event('escorted'); },
-    nearViewer: (vs) => { let best = null, bd = 4.5; for (const v of vs) { if (!v.agent) continue; const d = Math.hypot(v.seat.x - player.x, v.seat.z - player.z); if (d < bd) { bd = d; best = v; } } return best; },
+  try { await Promise.race([Promise.all([document.fonts.load('600 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* fonts later */ }
+  const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low';
+  const mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', texSize: lowG ? 256 : 512 }); engine.applySettings(settings);
+  mats.lightMaps = settings.shadows !== 'off' && !Q.get('nobake');
+  const t0 = performance.now(); let done = 0; const tick = () => prog(0.05 + 0.4 * (++done / 3));
+  await Promise.all([loadAssets(ASSET_LIST).then(tick), loadBakes().then(tick), loadPeople().then(tick).catch((e) => console.warn('[lumiere] people models failed', e))]);
+  const world = await buildWorld(engine, mats, (p) => prog(0.45 + 0.5 * p)); await texturesReady(); prog(0.97);
+  const sound = new Sound9(); sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
+  const bill = new Bill();
+  let ticket = null, room = 'street', mode = 'menu', game = null, modal = false, held = null, visits = 0, sitRelease = null, fading = false;
+  const player = new Player(engine, world, settings); player.attach($('#gl'), $('#stick'), $('#knob'), $('#sprint')); player.place(SPAWN.quick.x, SPAWN.quick.z, SPAWN.quick.yaw, 0, 0);
+  player.onStep = (s) => sound.step(s, /hall|corridor/.test(room));
+  const dist = (n) => Math.hypot(n.x - player.x, n.z - player.z), seatOf = (tk) => { const h = tk && world.hallById(tk.hall); return h ? h.seats.find((s) => s.id === tk.seat) : null; };
+  // ---------- people and voices: only lines near you are heard (v8: "talking from far away") ----------
+  const voice = new Voice(sound, settings); voice.voiceOf = (a) => a.voice || (a.rec && a.rec.kind === 'f' ? 'guestF' : 'guestM'); voice.rate = (a) => (a.role === 'guest' || a.role === 'aud' ? 0.96 + ((a.rec && a.rec.seed) % 9) / 100 : 1);
+  { const sp = voice.speak.bind(voice); voice.speak = (a, line, o = {}) => (!o.full && a && Math.hypot(a.x - player.x, a.z - player.z) > 7 ? Promise.resolve(0) : sp(a, line, o)); }
+  voice.prepare();
+  const speak = (n, ln) => { if (typeof ln === 'object' && ln.key) voice.speak(n, ln).then((ms) => { if (!ms && dist(n) < 5) sound.blip((ln.text || '').length, 1 - dist(n) / 5); }); };
+  const crowd = new Crowd(world, mats, engine, {
+    bubble: (n, ln, dur) => { if (dist(n) > 9) return; if (settings.bubbles) talk.bubble(n, ln, dur); speak(n, ln); },
+    crowdSound: (hallId, type, n, k, x, z) => { const h = world.hallById(hallId); if (!h || !world.vis.has(h.key)) return; sound.crowd(type, n, room === h.key ? k : k * 0.3, x, z); },
+    guideDone: () => { ui.toast(t('toast9.atRow', { seat: ticket ? ticket.seat : '' }), 3200); tut.event('escorted'); },
   });
-  crowd.init(); crowd.setDensity(settings.npcs); player.onBump = (a) => crowd.bumped(a);
-  const director = new Director((id, ev) => crowd.onFilmEvent(id, ev));
-  shows = new Shows(world, sound, crowd, director, engine, {
+  crowd.init(); crowd.setDensity(DENS[settings.npcs] || settings.npcs || 'medium'); player.onBump = (a) => crowd.bumped(a);
+  // ---------- shows, director, effects on the best scenes ----------
+  const director = new Director((id, ev) => { crowd.onFilmEvent(id, ev); bigScene(id, ev); });
+  const shows = new Shows(world, sound, crowd, director, engine, {
     onBegin: (id) => { if (ticket && ticket.hall === id) ui.toast(room === ticket.hallKey ? t('toast.lightsDown') : t('toast.starting', { screen: ticket.hallName }), 3200); },
-    onEnd: (id, applause) => { if (ticket && ticket.hall === id) { if (applause) ui.toast(t('toast.end'), 3600); endTicket(); } },
-    onError: (src) => ui.toast(t(src === 'user' ? 'toast.videoError' : 'toast.streamError'), 5200, 'error'), silenceText: () => t('pre.silence'),
+    onEnd: (id, applause) => { if (ticket && ticket.hall === id) { if (applause) { ui.toast(t('toast.end'), 3600); stubs.add({ title: ticket.title, hall: ticket.hallName.replace('LUMIERE ', ''), seat: ticket.seat, date: new Date().toLocaleDateString() }); setTimeout(() => ui.toast(t('toast9.stub'), 3200), 4000); } ticket.watched = true; } },
+    onError: (k) => ui.toast(t(k === 'film' ? 'toast9.filmError' : 'toast.videoError'), 5200, 'error'),
   });
-  talk = new Talk(sound, { action: (a, npc, tk) => action(a, npc, tk), distance: dist, speak: (n, ln, o) => voice.speak(n, ln, o), speaking: (n) => voice.speaking(n), closed: (npc) => { crowd.endTalk(npc); if (npc && npc.role === 'server' && !tablet.isOpen()) crowd.serverLeave(); modal = ui.modalOpen(); player.locked = modal || mode !== 'play'; } }, settings);
-  const onModal = (m) => { modal = m || talk.open || ui.modalOpen(); player.locked = modal || mode !== 'play'; };
-  ui = new UI(world, shows, sound, settings, {
-    onModal, ticketInfo: () => ticket && ui.showTicket(ticket, game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(),
+  // ---------- conversation, interface, booking, tablet, tutorial, layout ----------
+  const talk = new Talk(sound, { action: (a, npc, tk) => action(a, npc, tk), distance: dist, speak: (n, ln, o) => voice.speak(n, ln, o), speaking: (n) => voice.speaking(n),
+    closed: (npc) => { crowd.endTalk(npc); if (npc && npc.role === 'server' && npc.state === 'serving' && !tablet.isOpen()) crowd.serverLeave(); onModal(); } }, settings);
+  function onModal(m) { modal = !!m || talk.open || ui.modalOpen(); player.locked = modal || mode !== 'play' || intro.active; }
+  const ui = new UI(world, shows, sound, settings, {
+    onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(),
     onSettings: (gfx) => applySettings(gfx), onPreset: (g) => Object.assign(settings, presetFor(g)),
-    onPlay: (m) => enterPlay(m), onQuit: () => toMenu(), onPause: (p) => { paused = p; }, onHide: () => {}, onLangPicked: () => { voice.prepare(); maybeAskTutorial(); }, onLangChanged: () => voice.prepare(),
+    onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); },
     openRemote: () => tablet.open('remote'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
-  const booking = new Booking(world, shows, sound, wallet, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), onTicket: (tk) => bought(tk), pickOwn: () => pickOwn(), useLink: (u) => useLink(u) });
-  const tablet = new Tablet(shows, sound, wallet, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' });
-  const atm = new Atm(wallet, sound, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k) });
+  const booking = new Booking9(world, shows, sound, bill, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), onTicket: (tk) => bought(tk), pickOwn: () => pickOwn(), useLink: (u) => useLink(u) });
+  // a few things nobody asked for: rain on the street (wet paving, the drops stop under the canopy), your film on the marquee once you
+  // have a ticket, and a stub for every film you watch to the end (the menu keeps your last nights)
+  const rain = makeRain(world.rooms.street, { count: lowG ? 1500 : 3500 }); rain.mesh.material.uniforms.uBoxMin.value.z = 25.4; world.rooms.street.U.uWet.value = 1;
+  const marquee = (title) => { const P = world.panels.marquee; if (!P) return; const { g, canvas: c, tex } = P, W = c.width, H = c.height; g.fillStyle = '#0a0a0d'; g.fillRect(0, 0, W, H); g.textBaseline = 'middle'; g.textAlign = 'center';
+    g.fillStyle = '#f2ebdd'; g.font = `500 ${H * 0.5}px Cormorant, Georgia, serif`; if ('letterSpacing' in g) g.letterSpacing = `${H * 0.18}px`; g.fillText(title ? 'LUMIÈRE  ·  ' + title.toUpperCase() : 'LUMIÈRE', W / 2, H * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; tex.needsUpdate = true; };
+  const stubs = { get() { try { return JSON.parse(localStorage.getItem('lumiere.stubs') || '[]'); } catch (e) { return []; } }, add(x) { try { const a = this.get(); a.unshift(x); localStorage.setItem('lumiere.stubs', JSON.stringify(a.slice(0, 20))); } catch (e) { /* private mode */ } } };
+  { const ns = ui.nowShowing.bind(ui); ui.nowShowing = () => { ns(); const a = stubs.get(); if (!a.length) return; const L = $('#nowList'), h = document.createElement('div'); h.className = 'now-h'; h.textContent = t('menu9.stubs'); L.appendChild(h);
+    for (const x of a.slice(0, 3)) { const row = document.createElement('div'); row.className = 'now stub'; const tx = document.createElement('div'), b = document.createElement('b'), sm = document.createElement('small'); b.textContent = x.title; sm.textContent = `${x.hall} · ${x.seat} · ${x.date}`; tx.append(b, sm); row.appendChild(tx); L.appendChild(row); } }; }
+  const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
+  const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet) });
+  tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
   const layoutEd = new LayoutEditor(settings, sound, { onModal, save: () => { saveSettings(settings); applyLayout(settings); } });
-  // Story arrival: the taxi pulls in at the carpet, you step out (intro.js); the first one can't be skipped
-  const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived() });
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
-  { const pay = wallet.pay.bind(wallet); wallet.pay = (n, what) => { const ok = pay(n, what); if (ok && n > 0 && game === 'story') sound.pay(); return ok; }; }   // a till ding for every payment
-  wallet.onChange = () => ui.setWallet(game === 'story' ? wallet.fmt(wallet.cash) : null);
+  const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived(), driver: (k) => { const ln = pick(k); if (ln) { talk.bubble(driverAgent, ln, 2.6); voice.speak(driverAgent, ln, { full: true }); } } });
+  const driverAgent = { x: 1.6, y: 0, z: 27.9, name: t('role9.driver'), role: 'driver', voice: 'driver', alive: true, ch: { s: { sit: 1 }, scale: 1 }, group: { visible: true }, crowd };
+  // the taxi waits at the kerb: it's solid
+  for (const [ax, az, bx, bz] of [[-0.75, 26.92, 3.95, 26.92], [3.95, 26.92, 3.95, 28.8], [3.95, 28.8, -0.75, 28.8], [-0.75, 28.8, -0.75, 26.92]]) world.walls.add(ax, az, bx, bz, -0.2, 1.6);
+  bill.onChange = () => ui.setWallet(game === 'flow' && bill.total ? t('hud9.bill', { total: bill.fmt(bill.total) }) : null);
   function applySettings(gfx) {
-    saveSettings(settings); engine.applySettings(settings); mats.setReflections && mats.setReflections(settings.reflections !== 'off' && settings.graphics !== 'low'); crowd.setDensity(settings.npcs);
+    saveSettings(settings); engine.applySettings(settings); mats.setReflections && mats.setReflections(settings.reflections !== 'off' && settings.graphics !== 'low'); crowd.setDensity(DENS[settings.npcs] || 'medium');
     sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd }); talk.setOptions(settings); voice.setOptions(settings); applyLayout(settings);
-    if (gfx && (settings.shadows === 'off') !== !mats.lightMaps) ui.toast(t('set.restartNote'), 3600);
+    if (gfx && (settings.shadows === 'off') === mats.lightMaps) ui.toast(t('set.restartNote'), 3600);
   }
   applyLayout(settings);
-  // ---------- your own video: the tablet's gallery (Android media bridge) or the system picker; links play like the films ----------
-  function pickOwn() { if (window.LumiereMedia) { tablet.open('gallery'); return; } $('#file').click(); }
-  $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const label = cleanTitle(f.name || 'Video'); shows.loadFile(f, label); ui.toast(t('toast.ownReady'), 3000); if (booking.isOpen()) booking.build(); tablet.refresh(); e.target.value = ''; });
-  tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 3000); if (booking.isOpen()) booking.build(); };
-  function useLink(u) { shows.loadURL(u, cleanTitle(decodeURIComponent(u.split('/').pop().split('?')[0]) || 'Link')); ui.toast(t('toast.ownReady'), 3000); booking.build(); }
+  // ---------- your own video and links ----------
+  function pickOwn() { if (window.LumiereMedia) { tablet.open('mine'); return; } $('#file').click(); }
+  $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; shows.loadFile(f, cleanTitle(f.name || 'Video')); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); tablet.refresh(); e.target.value = ''; });
+  function useLink(u) { const own = shows.loadURL(u, cleanTitle(decodeURIComponent(u.split('/').pop().split('?')[0]) || 'Link')); ui.toast(t(own.kind === 'youtube' ? 'toast9.youtube' : 'toast.ownReady'), 2600); booking.build(); }
   // ---------- conversations ----------
   function action(a, npc, tk) {
     const [verb, arg] = a.split(':');
-    if (verb === 'reserve') { setTimeout(() => booking.open({ quick: game === 'quick' }), 50); return false; }
-    if (verb === 'guide') { if (!ticket) { tk.line(pick('ush.noTicket'), [['opt.thanks', 'end']]); return true; } showTicketTo(npc); return false; }
-    if (verb === 'buy') { const kind = arg; if (held) { tk.line(pick(held.left > 0 ? 'ven.full' : 'ven.binFirst'), [['opt.thanks', 'end']]); return true; } const price = wallet.itemPrice(kind);
-      if (!wallet.pay(price, kind)) { tk.line(pick('ven.short'), [['opt.thanks', 'end']]); ui.toast(t('book.short'), 2600, 'error'); return true; }
-      if (npc.role === 'server') { npc.say(pick('srv.order'), 2.2); npc.gesture('give', 1.2, 'smile'); setTimeout(() => { takeItem(kind); crowd.serverLeave(); }, 1300); } else crowd.serve(npc, kind, () => takeItem(kind)); if (game === 'story') ui.toast(t('toast.paid', { price: wallet.fmt(price) }), 2000); return false; }
-    if (verb === 'tablet') { npc.say(pick('srv.tablet'), 3.6); npc.gesture('give', 1.2, 'smile'); setTimeout(() => tablet.open('remote', { server: true }), 600); return false; }
-    // the receptionist lends you the tablet with your own videos (Android media bridge; the system picker elsewhere)
-    if (verb === 'ownTablet') { tk.line(pick('rec.tablet'), [['opt.thanks', 'act:ownOpen']]); npc.gesture('give', 1.4, 'smile'); return true; }
-    if (verb === 'ownOpen') { setTimeout(() => pickOwn(), 80); return false; }
+    if (verb === 'book' || verb === 'bookOwn') { setTimeout(() => { booking.open({ quick: game === 'quick', own: verb === 'bookOwn' }); if (verb === 'bookOwn') pickOwn(); }, 60); return false; }
+    if (verb === 'buy') { if (held) { tk.line(pick('bar.bye') || t('ven.full'), [['opt.thanks', 'end']]); ui.toast(t('toast9.handsFull'), 2400); return true; }
+      bill.pay(bill.itemPrice(arg), arg); if (game === 'flow') sound.pay();
+      if (npc.role === 'server') { npc.say(pick('srv.order')); npc.gesture('give', 1.2); setTimeout(() => { takeItem(arg); npc.say(pick('srv.hand')); }, 1400); tk.line(pick('srv.back'), [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]); return true; }
+      npc.gesture(/cola|coffee|water/.test(arg) ? 'pour' : 'scoop', 2.2); sound.pour(); setTimeout(() => { npc.gesture('give', 1.2); takeItem(arg); npc.say(pick('bar.ready')); }, 2300); return false; }
+    if (verb === 'ticket') { if (!ticket) { tk.line(pick('ush.noTicket'), [['opt.thanks', 'end']]); return true; } checkTicket(npc); return false; }
+    if (verb === 'escort') { escort(npc); return false; }
+    if (verb === 'ownWay') { world.gate.pass(); npc.say(pick('ush.enjoy')); highlightSeat(); return false; }
+    if (verb === 'tablet') { npc.gesture('give', 1.2); npc.say(pick('srv.tablet')); setTimeout(() => tablet.open('remote', { server: true }), 700); return false; }
+    if (verb === 'trash') { if (held && held.left <= 0) { binItem(); npc.say(pick('srv.trash')); } else npc.say(pick('srv.bye')); return false; }
+    if (verb === 'serverBye') { npc.say(pick('srv.bye')); setTimeout(() => crowd.serverLeave(), 600); return false; }
     return false;
   }
-  function startTalk(npc) { crowd.startTalk(npc); talk.start(npc, treeFor(npc, { ticket, game, wallet, held })); modal = true; player.locked = true; tut.event('talked'); }
-  // the guide reads your ticket, then walks you to your seat (your pace: he waits when you fall behind and never makes you wait)
-  function showTicketTo(npc) {
-    ticket.shown = true; ui.ticketHandoff && ui.ticketHandoff(ticket); crowd.readTicket && crowd.readTicket(npc, ticket);
-    setTimeout(() => { const h = hallOf(ticket), s = seatOf(ticket); if (crowd.guide(npc, h, s)) { ui.toast(t('toast.followUsher', { name: npc.name }), 2600); tut.event('showed'); } else npc.say(pick('ush.blocked'), 2.6); }, 1700);
+  function startTalk(npc) { crowd.startTalk(npc); talk.start(npc, treeFor(npc, { ticket, game, visits, serverBack: npc.role === 'server' && npc._served })); onModal(true); tut.event('talked'); }
+  // the usher reads your ticket and tears the stub; the gate opens. The first time he walks you in; later he asks.
+  function checkTicket(npc) {
+    ticket.shown = true; npc.gesture('read', 1.6); ui.ticketHandoff && ui.ticketHandoff(ticket); sound.ticket();
+    setTimeout(() => { npc.say(pick('ush.check.' + ticket.hall)); npc.gesture('give', 1.0); }, 1500);
+    setTimeout(() => { npc.say(pick('ush.tear')); ticket.checked = true; tut.event('showed'); world.gate.pass(12000); if (!settings.seen || !settings.seen.escort) escort(npc); else ui.toast(t('toast9.gateOpen'), 2600); }, 3400);
   }
-  // ---------- held item (view model, drawn over everything: engine.vm) ----------
-  const itemU = { uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKeyDir: { value: new THREE.Vector3(-0.35, 0.8, 0.45).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, itemLight = { amb: itemU.uAmb.value, key: itemU.uKey.value, dir: new THREE.Vector3(), screen: itemU.uScreenL.value };
-  const itemMat = mats.propMat(itemU); let itemMesh = null, itemAnim = 0, itemIn = 0;
+  function escort(npc) { const h = world.hallById(ticket.hall), s = seatOf(ticket); world.gate.pass(20000); if (crowd.guide(npc, h, s, player)) { npc.say(pick('ush.lead')); ui.toast(t('toast.followUsher', { name: npc.name }), 2600); settings.seen = { ...(settings.seen || {}), escort: true }; saveSettings(settings); } }
+  // "locate my seat" (no red arrow, v8 feedback): your seat's reading light glows for a few seconds
+  let glowSeat = null, glowT = 0; function highlightSeat() { const s = seatOf(ticket); if (!s) return; glowSeat = s; glowT = 8; }
+  // ---------- what you hold ----------
+  const itemU = { uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKeyDir: { value: new THREE.Vector3(-0.35, 0.8, 0.45).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, itemLight = { amb: itemU.uAmb.value, key: itemU.uKey.value, dir: itemU.uKeyDir.value, screen: itemU.uScreenL.value };
+  const itemMat = mats.propMat(itemU); let itemMesh = null, itemAnim = 0, itemIn = 0, lightT = 0;
   function takeItem(kind) {
-    const k = /cola|mocktail|water/.test(kind) ? 'drink' : kind === 'coffee' ? 'coffee' : 'popcorn'; held = { kind: k, left: BITES[k], max: BITES[k], name: kind };
-    if (itemMesh) engine.vm.remove(itemMesh); itemMesh = makeHeld(k); setHeldMaterial(itemMesh, itemMat); itemMesh.userData.setLevel(1); engine.vm.add(itemMesh); itemIn = 0;
-    ui.setItem(k, held.left, held.max); sound.pop(); ui.toast(t('toast.gotPopcorn', { item: t('item.' + kind) }), 2600); tut.event('item');
+    const k = /cola|water/.test(kind) ? 'drink' : kind === 'coffee' ? 'coffee' : kind === 'nachos' ? 'popcorn' : 'popcorn'; held = { kind: k, left: BITES[k], max: BITES[k], name: kind };
+    if (itemMesh) engine.vm.remove(itemMesh); itemMesh = makeHeld(k === 'coffee' ? 'coffee' : k); setHeldMaterial(itemMesh, itemMat); itemMesh.userData.setLevel(1); engine.vm.add(itemMesh); itemIn = 0;
+    ui.setItem(k, held.left, held.max); sound.pop(); ui.toast(t('toast.gotPopcorn', { item: t('item.' + kind) }), 2400); tut.event('item');
   }
-  function useItem() {
-    if (!held || itemAnim > 0) return; if (held.left <= 0) { ui.toast(t('toast.findBin'), 2400); return; }
-    itemAnim = 1; held.left--; if (held.kind === 'popcorn') sound.crunch(); else sound.sip(held.left === 0);
-    itemMesh.userData.setLevel(held.left / held.max); ui.setItem(held.kind, held.left, held.max); if (held.left === 0) setTimeout(() => ui.toast(t(held.kind === 'popcorn' ? 'toast.emptyPop' : 'toast.emptyCup'), 2600), 600);
-  }
+  function useItem() { if (!held || itemAnim > 0) return; if (held.left <= 0) { ui.toast(t('toast.findBin'), 2400); return; } itemAnim = 1; held.left--; if (held.kind === 'popcorn') sound.crunch(); else sound.sip(held.left === 0); itemMesh.userData.setLevel(held.left / held.max); ui.setItem(held.kind, held.left, held.max); }
   function binItem() { if (!held) return; sound.bin(); engine.vm.remove(itemMesh); itemMesh = null; held = null; ui.setItem(null); ui.toast(t('toast.binned'), 1800); tut.event('binned'); }
-  const nearBin = () => world.bins.find((b) => Math.hypot(b.x - player.x, b.z - player.z) < 1.3);
-  // ---------- restrooms (v8): wash and dry your hands, use a cubicle or a urinal (fade out, a flush, back) ----------
-  let washed = false, water = null;
+  const nearBin = () => world.bins.find((b) => Math.hypot(b.x - player.x, b.z - player.z) < 1.3 && Math.abs((b.y || 0) - player.y) < 1);
+  // ---------- restrooms ----------
+  let washed = false;
   function useFixture(u) {
-    const hold = (ms, done) => { player.locked = true; setTimeout(() => { player.locked = modal || mode !== 'play'; done && done(); }, ms); };
-    if (u.kind === 'basin') { sound.water(2.4); if (!water) { water = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.011, 0.16, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.6, depthWrite: false })); water.renderOrder = 5; }
-      water.position.set(u.spout[0], u.spout[1] - 0.08, u.spout[2]); engine.scene.add(water); hold(2700, () => { engine.scene.remove(water); washed = true; ui.toast(t('toast.washed'), 2200); }); return; }
-    if (u.kind === 'dryer') { sound.dryer(2.2); hold(2500, () => { ui.toast(t(washed ? 'toast.dried' : 'toast.dryFirst'), 2200); washed = false; }); return; }
-    // cubicle or urinal: the screen goes dark (the door locks), a flush, and you're back, facing the room (yaw 0 looks along -z, so
-    // atan2(dx, dz) towards the fixture faces away from it)
-    player.locked = true; ui.fade(1, 0.4); setTimeout(() => { if (u.kind === 'stall') sound.lock(); }, 450); setTimeout(() => sound.flush(), u.kind === 'stall' ? 1500 : 900);
-    setTimeout(() => { if (u.kind === 'stall') sound.lock(); player.place(u.x, u.z, Math.atan2(u.tx - u.x, u.tz - u.z), 0); ui.fade(0, 0.6); player.locked = modal || mode !== 'play'; ui.toast(t('toast.fresh'), 2000); }, u.kind === 'stall' ? 3300 : 2400);
+    const hold = (ms, f) => { player.locked = true; setTimeout(() => { onModal(); f && f(); }, ms); };
+    if (u.kind === 'basin') { sound.water(2.4); hold(2600, () => { washed = true; ui.toast(t('toast.washed'), 2000); }); return; }
+    if (u.kind === 'dryer') { sound.dryer(2.2); hold(2500, () => { ui.toast(t(washed ? 'toast.dried' : 'toast.dryFirst'), 2000); washed = false; }); return; }
+    player.locked = true; ui.fade(1, 0.4); setTimeout(() => sound.lock(), 450); setTimeout(() => sound.flush(), 1300);
+    setTimeout(() => { sound.lock(); ui.fade(0, 0.6); onModal(); ui.toast(t('toast.fresh'), 2000); }, 3200);
   }
-  // ---------- tickets: bought at the box office, read by the guide, your seat marked in the hall ----------
-  const marker = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#ff4d5a'; g.beginPath(); g.moveTo(32, 58); g.lineTo(10, 26); g.lineTo(24, 26); g.lineTo(24, 6); g.lineTo(40, 6); g.lineTo(40, 26); g.lineTo(54, 26); g.closePath(); g.fill(); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, depthTest: false, toneMapped: false })); s.scale.set(0.32, 0.32, 1); s.visible = false; s.renderOrder = 20; engine.scene.add(s); return s; })();
+  // ---------- tickets ----------
+  const ticketView = (tk) => ({ ...tk, hall: String(HALL[tk.hall].no) });
   function bought(tk) {
-    if (ticket) { const ps = seatOf(ticket); if (ps) { ps.player = false; ps.taken = false; } }
-    ticket = tk; const s = seatOf(tk); s.player = true; s.taken = true; shows.book(tk.hall, tk.own ? 'own' : 'film', tk.film, tk.delay * 1000, tk.seat, tk.title);
-    ui.showTicket(tk, game === 'quick'); sound.ticket(); tut.event('ticket');
-    if (game === 'story') crowd.staff.eloise && setTimeout(() => crowd.staff.eloise.say(pick('rec.booked'), 4.2), 600);
+    const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; }
+    ticket = tk; const s = seatOf(tk); s.player = true; s.taken = true; shows.book(tk.hall, tk.src, tk.delay * 1000, tk.seat); marquee(tk.title);
+    ui.showTicket(ticketView(tk), game === 'quick'); sound.ticket(); tut.event('ticket');
+    if (game === 'flow') { const b = crowd.staff.box1; if (b) setTimeout(() => b.say(pick('box.ticket')), 500); }
   }
-  function endTicket() { if (!ticket) return; const s = seatOf(ticket); if (s) { s.player = false; s.taken = false; } ticket = null; marker.visible = false; }
-  let fading = false;
   function fadeTo(dur, cb) { if (fading) return; fading = true; ui.fade(1, dur); setTimeout(() => { try { cb(); } finally { setTimeout(() => { ui.fade(0, 0.7); fading = false; }, 200); } }, dur * 1000 + 40); }
-  function seatPose(h, s) { const H = h.cfg, eye = H.seat.eye; return { x: s.x - Math.sin(s.yaw) * 0.04, y: s.y + eye, z: s.z - Math.cos(s.yaw) * 0.04, yaw: s.yaw }; }
-  function jumpToSeat() { if (!ticket) return; const h = hallOf(ticket), s = seatOf(ticket); fadeTo(0.45, () => { if (sitRelease) { sitRelease(); sitRelease = null; } player.placeSeated(seatPose(h, s), crowd.laneStand({ seat: s, hall: h })); sitRelease = () => { if (s.npc === 'player') s.npc = null; }; s.npc = s.npc || 'player'; sound.setVolumes({}); }); }
-  // ---------- the tablet: remote in Quick mode, the server's tablet in Story ----------
-  function remotePlay(o) {   // play another film / your video from the tablet: Quick books it in your current hall and seat, Story charges for it
-    const hk = room.startsWith('hall') ? room : ticket ? ticket.hallKey : 'hallII', h = world.hallByKey(hk), s = ticket && ticket.hallKey === hk ? seatOf(ticket) : h.seats.find((q) => q.player) || h.seats[Math.floor(h.seats.length / 2)];
-    if (game === 'story' && !wallet.pay(wallet.P.replay, 'replay')) { ui.toast(t('book.short'), 3000, 'error'); return false; }
-    const tk = { hall: h.cfg.id, hallKey: h.cfg.key, hallName: h.cfg.name, kind: h.cfg.kind, film: o.own ? null : o.film, own: !!o.own, title: o.own ? (shows.own ? shows.own.label : '') : o.title, seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, delay: 0, price: 0, shown: true };
-    if (ticket) { const ps = seatOf(ticket); if (ps && ps !== s) { ps.player = false; ps.taken = false; } } ticket = tk; s.player = true; s.taken = true; shows.book(tk.hall, tk.own ? 'own' : 'film', tk.film, 0, tk.seat, tk.title); return true;
+  const seatPose = (s) => ({ x: s.x - Math.sin(s.yaw) * 0.04, y: s.y + SEAT[s.kind].eye, z: s.z - Math.cos(s.yaw) * 0.04, yaw: s.yaw });
+  function claim(s) { if (sitRelease) sitRelease(); s.npc = s.npc || 'player'; sitRelease = () => { if (s.npc === 'player') s.npc = null; sitRelease = null; }; }
+  function jumpToSeat(seat) { const s = seat || seatOf(ticket); if (!s) return; fadeTo(0.45, () => { claim(s); player.placeSeated(seatPose(s), crowd.laneStand(s)); player.y = s.y; tut.event('seated'); }); }
+  function sitSeat(s) { if (s.npc && s.npc !== 'player') return; claim(s); player.sit(seatPose(s), crowd.laneStand(s), () => { sound.thud(); tut.event('seated'); if (ticket && ticket.tablet && game === 'flow') ui.toast(t('toast9.tabletArm'), 3000); }); }
+  function sitSpot(sp) { sp.taken = 'player'; if (sitRelease) sitRelease(); sitRelease = () => { if (sp.taken === 'player') sp.taken = null; sitRelease = null; }; player.sit({ x: sp.x, y: sp.y + 0.72, z: sp.z, yaw: sp.face }, sp.stand, () => sound.thud()); }
+  function stand() { if (player.standUp(() => { if (sitRelease) sitRelease(); })) sound.thud(); }
+  // Quick play: the tablet plays in the hall you are in (or your ticket's), on the seat you sit in
+  function remotePlay(o) {
+    const hk = room && room.startsWith('hall') ? room : ticket ? ticket.hallKey : 'hallMax', h = world.hallByKey(hk);
+    const best = Math.round(h.cfg.rows.length * 0.58), s = (player.seated && h.seats.find((q) => q.npc === 'player')) || (ticket && ticket.hallKey === hk && seatOf(ticket)) || h.seats.filter((q) => !q.taken && !q.npc).sort((p, q) => (Math.abs(p.row - best) * 2 + Math.abs(p.a) * 0.8) - (Math.abs(q.row - best) * 2 + Math.abs(q.a) * 0.8))[0] || h.seats[0];
+    const src = o.own ? shows.own : { kind: 'film', filmId: o.film }; if (!src) return false;
+    const prev = seatOf(ticket); if (prev && prev !== s) { prev.player = false; prev.taken = false; }
+    ticket = { hall: h.id, hallKey: hk, hallName: h.name, seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, src, title: src.title || '', delay: 0, shown: true, checked: true, tablet: true, quick: game === 'quick' };
+    s.player = true; s.taken = true; const st = shows.get(h.id); if (st.state === 'ended' && st.src && !o.own && st.src.filmId === o.film) shows.replay(h.id); else shows.book(h.id, src, 0, s.id, { replay: st.state === 'playing' || st.state === 'ended' }); return true;
   }
-  function ringBell() { if (!player.seated || game !== 'story') return; sound.bell(); if (!crowd.callServer || !crowd.callServer(player, (npc) => { modal = true; player.locked = true; crowd.startTalk(npc); talk.start(npc, treeFor(npc, { ticket, game, wallet, held, server: true })); })) ui.toast(t('srv.busy'), 2400); tut.event('bell'); }
-  function handBack() { crowd.serverLeave && crowd.serverLeave('srv.handBack'); sound.click(); }
-  // ---------- sitting: only your own seat (phone feedback), sofas and benches anywhere ----------
-  let sitRelease = null;
-  function sitSeat(h, s) { if (s.npc && s.npc !== 'player') return; s.npc = 'player'; sitRelease = () => { if (s.npc === 'player') s.npc = null; }; player.sit(seatPose(h, s), crowd.laneStand({ seat: s, hall: h }), () => { sound.thud(); tut.event('seated'); }); }
-  function sitSpot(sp) { sp.taken = 'player'; sitRelease = () => { if (sp.taken === 'player') sp.taken = null; }; player.sit({ x: sp.x, y: sp.y + 0.72, z: sp.z, yaw: sp.face + Math.PI }, sp.stand, () => sound.thud()); }
-  function stand() { if (player.standUp(() => { if (sitRelease) { sitRelease(); sitRelease = null; } })) sound.thud(); }
-  world.onDoor = (open, door) => { const d = Math.hypot(door.x - player.x, door.z - player.z); if (d < 12) sound.door(open, 1 - d / 12); };
+  // the seat bell: the server comes with his cart (Flow mode, when you didn't buy the armrest tablet)
+  function ringBell() { if (!player.seated || game !== 'flow') return; const s = player.seated && seatOf(ticket); sound.bell(); tut.event('bell');
+    if (!s || !crowd.callServer(s, (npc) => { npc._served = true; if (dist(npc) < 3.5) startTalk(npc); })) ui.toast(t('srv.busy'), 2400); else ui.toast(t('toast9.serverComing'), 2400); }
+  function handBack() { const s = crowd.staff.server; if (s && s.state === 'serving') { s.say(pick('srv.back')); setTimeout(() => crowd.serverLeave(), 2500); } sound.click(); }
+  // the best scenes (strong cues only): a seat rumble and a few sparks before the screen, each with its own switch
+  const sparks = makeSparks(engine); function bigScene(id, ev) {
+    if (!ticket || ticket.hall !== id || room !== ticket.hallKey || !player.seated) return; const strong = (ev.type === 'climax' || ev.type === 'scare') && (ev.k ?? 1) > 0.7; if (!strong) return;
+    if (settings.haptics !== false) { try { if (window.LumiereMedia && window.LumiereMedia.vibrate) window.LumiereMedia.vibrate(JSON.stringify([0, 70, 40, 120, 60, 60]), JSON.stringify([0, 140, 0, 220, 0, 120])); else navigator.vibrate && navigator.vibrate([70, 40, 120]); } catch (e) { /* no vibrator */ } }
+    if (settings.particles !== false) sparks.burst(world.hallById(id), shows.avg);
+  }
+  world.onDoor = (open, door) => { const d = Math.hypot(door.x - player.x, door.z - player.z); if (d < 12 && Math.abs(door.y - player.y) < 3) sound.door(open, 1 - d / 12); };
+  world.onLift = (ev) => { if (Math.hypot(LIFT.x0 - player.x, LIFT.z0 - player.z) < 8) { if (ev === 'move') sound.liftHum(); else sound.ding(); } };
   addEventListener('pointerdown', () => sound.unlock(), { capture: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } });
-  // ---------- flow: menu (live flythrough) <-> play. A new Story or Quick game resets money, ticket and item ----------
+  window.__lumiereLifecycle = (s) => { if (s === 'pause') { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } };
+  window.__lumiereInsets = (l, r, tp, b) => { const s = document.documentElement.style; s.setProperty('--safe-l', l + 'px'); s.setProperty('--safe-r', r + 'px'); s.setProperty('--safe-t', tp + 'px'); s.setProperty('--safe-b', b + 'px'); };
+  // ---------- modes ----------
   function newGame(m) {
-    game = m; wallet.unlimited = m === 'quick'; wallet.reset(); endTicket(); if (held) binItem(); if (sitRelease) { sitRelease(); sitRelease = null; }
-    for (const h of world.halls) if (shows.get(h.id).state !== 'idle') shows._abort(h.id);
+    game = m; bill.unlimited = m === 'quick'; bill.reset(); if (ticket) { const s = seatOf(ticket); if (s) { s.player = false; s.taken = false; } } ticket = null; if (held) binItem(); if (sitRelease) sitRelease();
+    for (const h of world.halls) if (shows.get(h.id).state !== 'idle') shows._abort(h.id); visits++;
     ui.setButton('#bRemote', m === 'quick');
-    if (m === 'story') { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch); if (!intro.start({ skippable: !!(settings.seen && settings.seen.intro) })) ui.toast(t('toast.welcome'), 2600); }
-    else { const h = world.hallByKey('hallII'); booking.sel.hall = h.cfg.id; booking.pickSeat(); const s = h.seats.find((q) => q.id === booking.sel.seat) || h.seats[0];
-      player.placeSeated(seatPose(h, s), crowd.laneStand({ seat: s, hall: h })); s.npc = 'player'; s.player = true; s.taken = true; sitRelease = () => { if (s.npc === 'player') s.npc = null; };
-      ticket = { hall: h.cfg.id, hallKey: h.cfg.key, hallName: h.cfg.name, kind: h.cfg.kind, film: null, own: false, title: '', seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, delay: 0, price: 0, shown: true, quick: true };
-      setTimeout(() => tablet.open('remote'), 700); }
+    if (m === 'flow') { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); if (!intro.start({ skippable: !!(settings.seen && settings.seen.intro) })) arrived(); }
+    else { const s = SPAWN.quick; player.place(s.x, s.z, s.yaw, 0, 0); setTimeout(() => ui.toast(t('toast9.quick'), 3600), 900); }
   }
-  function arrived() { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch); settings.seen = { ...(settings.seen || {}), intro: true }; saveSettings(settings); player.locked = modal || mode !== 'play'; ui.toast(t('toast.welcome'), 2600); maybeAskTutorial(); }
+  function arrived() { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); settings.seen = { ...(settings.seen || {}), intro: true }; saveSettings(settings); onModal(); ui.toast(t('toast.welcome'), 2600); maybeAskTutorial(); }
   function enterPlay(m) {
     if (mode === 'play') return; ui.fade(1, 0.35);
-    setTimeout(() => { if (m || !game) newGame(m || 'story'); mode = 'play'; ui.showMenu(false); player.locked = false; wallet.onChange(); ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) {} if (intro.active) player.locked = true; else maybeAskTutorial(); }, 380);
+    setTimeout(() => { if (m || !game) newGame(m || 'flow'); mode = 'play'; ui.showMenu(false); onModal(); bill.onChange(); ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } if (!intro.active) maybeAskTutorial(); }, 380);
   }
-  function toMenu() { if (intro.active) intro.finish(); mode = 'menu'; player.locked = true; ui.showMenu(true, !!game); talk.close(); tut.stop(); }
-  function maybeAskTutorial() { if (mode === 'play' && game === 'story' && !settings.tutorialAsked && !settings.tutorialDone && settings.lang) setTimeout(() => ui.askTutorial(), 1200); }
-  function startTutorial(fromAsk) { settings.tutorialAsked = true; saveSettings(settings); if (mode !== 'play' || game !== 'story') enterPlay('story'); setTimeout(() => tut.start(), fromAsk ? 200 : 900); }
-  addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (booking.isOpen()) booking.close(); else if (tablet.isOpen()) tablet.close(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) {} } });
-  // ---------- frame loop ----------
-  const fwd = new THREE.Vector3(); let last = performance.now(), slowT = 0, lightT = 0, errT = -1e9, audT = 0, curFilmHall = null;
-  const actors = [player]; let dbgCam = null;
+  function toMenu() { if (intro.active) intro.finish(); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); }
+  function maybeAskTutorial() { if (mode === 'play' && game === 'flow' && !settings.tutorialAsked && !settings.tutorialDone && settings.lang) setTimeout(() => ui.askTutorial(), 1400); }
+  function startTutorial(fromAsk) { settings.tutorialAsked = true; saveSettings(settings); if (mode !== 'play' || game !== 'flow') enterPlay('flow'); setTimeout(() => tut.start(), fromAsk ? 200 : 900); }
+  addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (booking.isOpen()) booking.close(); else if (tablet.isOpen()) tablet.close(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } } });
+  // ---------- frame ----------
+  const fwd = new THREE.Vector3(); let last = performance.now(), slowT = 0, errT = -1e9, audT = 0, curFilm = null, dbg = null; const actors = [];
   function frame(now) {
     requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now; G.uTime.value = now / 1000; const c0 = performance.now();
     try { step(dt, now); } catch (e) { if (now - errT > 5000) { errT = now; console.error('[lumiere] frame update failed (rendering anyway):', e); } }
     engine.stats.cpu = engine.stats.cpu * 0.92 + (performance.now() - c0) * 0.08; engine.governor(dt, now);
-    shows.frame(engine.camera, innerWidth, innerHeight); engine.render();
+    shows.frame(engine.camera, engine.renderer); engine.render();
   }
-  function menuCam(now) { const k = now / 1000 * 0.045, cam = engine.camera; cam.position.set(Math.sin(k) * 6.5, 2.3 + Math.sin(k * 2.1) * 0.25, 10.5 + Math.cos(k) * 6); cam.lookAt(Math.sin(k + 1.2) * 2, 1.7, 7.5); player.x = cam.position.x; player.z = cam.position.z; }
+  function menuCam(now) { const k = now / 1000 * 0.04, cam = engine.camera; cam.position.set(Math.sin(k) * 7, 2.6 + Math.sin(k * 2.1) * 0.3, 6 + Math.cos(k) * 5); cam.lookAt(Math.sin(k + 1.4) * 3, 2.2, 0); player.x = cam.position.x; player.z = cam.position.z; player.y = 0; }
   function step(dt, now) {
-    if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear ? crowd.bodiesNear(player.x, player.z, 2.5) : null; player.update(dt); }
+    if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
+    else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); player.update(dt); }
     intro.update(dt, player);
-    if (dbgCam) { engine.camera.position.set(...dbgCam.p); engine.camera.lookAt(...dbgCam.t); }   // test tools only (window.__lumiere.debugCam)
-    engine.setZoom(mode === 'play' && player.seated && !player.busy && room.startsWith('hall') ? 0.74 : 1, dt);
-    document.body.classList.toggle('watching', mode === 'play' && !!player.seated && room.startsWith('hall') && shows.isOn(world.hallByKey(room).id));
-    const r = mode === 'menu' ? 'lobby' : roomAt(player.x, player.z); room = r; world.setVisibility(r, player.x, player.z);
-    // distance fog: outside, a night rain haze softens the street (and hides the end of the render distance); indoors it stays far away
-    { const out = r === 'street', k = 1 - Math.exp(-dt * 1.5), far = Math.min(engine.viewFar - 4, out ? 70 : 150); G.uFogNear.value += ((out ? Math.min(9, far * 0.15) : Math.min(45, far * 0.4)) - G.uFogNear.value) * k; G.uFogFar.value += (far - G.uFogFar.value) * k; G.uFogColor.value.lerp(out ? FOG_OUT : FOG_IN, k); }
-    actors.length = 1; for (const a of crowd.agents) if (a.path || a.sideTo) actors.push(a);
-    world.update(dt, actors, now); if (rain && world.rooms.street.group.visible) rain.update(now / 1000, engine.camera);
-    for (const h of world.halls) if (world.rooms[h.key].group.visible) h.updateLOD(engine.camera, false, engine.preset.seatLod * engine.lodK);
-    crowd.update(dt, now, player, world.vis);
-    shows.update(dt, now, r, world.vis);
-    director.update(dt, now, sound.level(), shows.lum);
-    // film audio follows you: route the film of the hall you can hear
-    audT -= dt; if (audT <= 0) { audT = 0.3; let want = null; for (const h of world.halls) { if (!shows.isOn(h.id)) continue; const a = audibility(h.key); if (a.g > 0.01 && (!want || a.g > want.g)) want = { g: a.g, h }; }
-      const key = want ? want.h.key : null; if (key !== curFilmHall) { curFilmHall = key; if (!key) sound.stopFilm(); else sound.startFilm(key, shows.audioSource(want.h.id)); } }
-    const fa = audibility(curFilmHall), hk = r.startsWith('hall') ? r : null, darkHall = hk && world.hallByKey(hk).room.U.uHouse.value < 0.5;
-    sound.setListener({ room: r, x: player.x, z: player.z, yaw: player.yaw, filmAud: fa.g, filmLP: fa.lp, crowdLP: hk ? 18000 : r === 'gal' || r === 'tunnel' ? 2500 : 900, verb: hk ? 0.5 : r === 'tunnel' ? 0.3 : r === 'gal' || r.startsWith('wc') ? 0.2 : 0.08, dark: darkHall, people: Math.min(1, crowd.agents.filter((a) => a.group.visible && dist(a) < 12).length / 10), popcornDist: Math.hypot(player.x - 13.4, player.z - 10), seated: !!player.seated });
-    // held item: light it like the room, lift to the mouth when eating, slide in when received
+    const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } room = r;
+    const cam = engine.camera; world.setVisibility(r, cam.position.x, cam.position.y, cam.position.z);
+    const watching = mode === 'play' && !!player.seated && r.startsWith('hall') && shows.isOn(world.hallByKey(r).id);
+    engine.setZoom(watching ? 0.8 : 1, dt); document.body.classList.toggle('watching', watching); engine.showMode && engine.showMode(watching);
+    actors.length = 0; actors.push(player); for (const a of crowd.agents) if (a.path) actors.push(a);
+    world.update(dt, actors, now);
+    for (const h of world.halls) if (h.room.group.visible) h.updateLOD(cam, false, engine.preset.seatLod * (engine.lodK || 1));
+    crowd.update(dt, now, player, world.vis); shows.update(dt, now, r, world.vis);
+    const lvl = sound.level(); shows.spread += (clamp(((lvl ?? -60) + 30) / 18) - shows.spread) * Math.min(1, dt * 2); director.update(dt, now, lvl, shows.lum);
+    sparks.update(dt); if (world.rooms.street.group.visible) rain.update(now / 1000, cam);
+    // the film follows you: through the hall's doors, quieter and duller outside
+    audT -= dt; if (audT <= 0) { audT = 0.25; let want = null; for (const h of world.halls) if (shows.isOn(h.id) && shows.get(h.id).pic) { const a = h.key === r ? 1 : world.vis.has(h.key) ? 0.22 : 0; if (a > 0 && (!want || a > want.a)) want = { a, h }; }
+      const key = want ? want.h.key : null; if (key !== curFilm) { curFilm = key; if (!key) sound.stopFilm(); } curFilm && (sound._aud = want.a); }
+    const hk = r.startsWith('hall') ? r : null, dark = hk && world.hallByKey(hk).room.U.uHouse.value < 0.5;
+    sound.setListener({ room: r, x: player.x, z: player.z, yaw: player.yaw, filmAud: curFilm ? sound._aud || 0 : 0, filmLP: curFilm === hk ? 18000 : 1200, crowdLP: hk ? 18000 : 2500, verb: hk ? 0.45 : r === 'corridor' ? 0.25 : 0.12, dark,
+      people: Math.min(1, crowd.agents.filter((a) => a.ch && a.ch.group.visible && dist(a) < 12).length / 10), popcornDist: Math.hypot(player.x - (COUNTERS.concessions.x0 - 1), player.z + 5), escDist: Math.hypot(player.x - 10.7, player.z - (ESC.up.zBot - 4)), seated: !!player.seated });
+    sound.setHead(cam.position.x, cam.position.y, cam.position.z, player.yaw, player.pitch);
+    // held item
     if (itemMesh) { lightT -= dt; if (lightT <= 0) { lightT = 0.3; crowd.lightAt(player.x, player.y + 1.3, player.z, itemLight); } itemIn = Math.min(1, itemIn + dt * 3); itemAnim = Math.max(0, itemAnim - dt * 1.6); const e = Math.sin(itemAnim * Math.PI);
       itemMesh.position.set(0.27 - e * 0.1, -0.3 - (1 - itemIn) * 0.3 + e * 0.17, -0.55 + e * 0.2); itemMesh.rotation.set(0.22 + e * 0.75, -0.35, e * 0.15); itemMesh.scale.setScalar(1.25); }
-    // what can I do here?
-    if (mode !== 'play' || talk.open || modal || intro.active) { ui.setPrompt(null); }
-    else if (player.seated) { ui.setPrompt(player.busy ? null : t('hud.stand'), () => stand()); }
-    else if (!player.busy) {
-      engine.camera.getWorldDirection(fwd); const fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl; let done = false;
-      const npc = crowd.talkTarget(player.x, player.z, fx, fz); if (npc && dist(npc) < 2.4) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); done = true; }
-      if (!done && held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); done = true; }
-      if (!done && world.atm && game === 'story' && Math.hypot(world.atm.x - player.x, world.atm.z - player.z) < 1.4) { ui.setPrompt(t('hud.atm'), () => atm.open()); done = true; }
-      if (!done && r.startsWith('wc') && world.uses) { const u = world.uses.find((q) => q.room === r && Math.hypot(q.x - player.x, q.z - player.z) < 0.95 && ((q.tx - player.x) * fx + (q.tz - player.z) * fz) / (Math.hypot(q.tx - player.x, q.tz - player.z) || 1) > 0.3); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); done = true; } }
-      if (!done && hk && ticket && ticket.hallKey === hk) { const h = world.hallByKey(hk), s = seatOf(ticket); const dx = s.x - player.x, dz = s.z - player.z, d = Math.hypot(dx, dz);
-        if (d < 1.5 && Math.abs(s.y - player.y) < 0.5 && (dx * fx + dz * fz) / (d || 1) > 0.2) { ui.setPrompt(t('hud.yourSeat', { seat: s.id }), () => sitSeat(h, s)); done = true; } }
-      if (!done) { let bsp = null, bd = 1.4; for (const sp of world.sitSpots) { if (sp.taken) continue; const dx = sp.x - player.x, dz = sp.z - player.z, d = Math.hypot(dx, dz); if (d < bd && (dx * fx + dz * fz) / (d || 1) > 0.2) { bsp = sp; bd = d; } } if (bsp) { ui.setPrompt(t('hud.sit'), () => sitSpot(bsp)); done = true; } }
-      if (!done) ui.setPrompt(null);
-    } else ui.setPrompt(null);
-    ui.setButton('#bBell', mode === 'play' && game === 'story' && !!player.seated && !!hk && !modal);
-    talk.update(dt, engine.camera, innerWidth, innerHeight); voice.update(); if (world.vis.has('lobby')) led(now); tut.update(dt);
-    if (ticket && ticket.title && hk === ticket.hallKey && !player.seated) { const s = seatOf(ticket); marker.visible = true; markerPulse = Math.max(0, markerPulse - dt); marker.material.opacity = 0.55 + 0.45 * Math.sin(now * 0.006) * (markerPulse > 0 ? 1 : 0.4); marker.position.set(s.x, s.y + 1.45 + Math.sin(now * 0.004) * 0.06, s.z); } else marker.visible = false;
+    if (glowSeat) { glowT -= dt; if (glowT <= 0) glowSeat = null; }
+    prompts(r, hk);
+    ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
+    ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet)));
+    talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt); if (world.vis.has('lobby')) { led(now); board(now); }
     slowT -= dt; if (slowT <= 0) { slowT = 0.5;
-      const S = (id) => shows.get(id), status = (id) => { const s = S(id); return s.state === 'pending' ? t('show.pending', { time: fmtTime(shows.countdown(id)) }) : s.state === 'preshow' ? t('show.preshow') : (s.state === 'playing' || s.state === 'dimming') ? (shows.buffering ? t('show.buffering') : t('show.playing')) : s.state === 'ending' || s.state === 'ended' ? t('show.ended') : t('show.idle'); };
-      if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.cfg.name, S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room.' + r), '');
-      if (ticket && ticket.title) { const s = S(ticket.hall); ui.setTicketChip(t('ticket.chip', { screen: ticket.hallName, row: ticket.row, seat: ticket.col }) + (s.state === 'pending' ? ' · ' + fmtTime(shows.countdown(ticket.hall)) : '')); } else ui.setTicketChip(null);
+      const S = (id) => shows.get(id), status = (id) => { const s = S(id); return s.state === 'pending' ? t('show.pending', { time: fmtTime(shows.countdown(id) - 10) }) : s.state === 'countdown' ? t('show9.countdown') : s.state === 'playing' ? (shows.buffering ? t('show.buffering') : t('show.playing')) : s.state === 'ended' ? t('show.ended') : t('show.idle'); };
+      if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.name, S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room9.' + r), '');
+      if (ticket && ticket.title) { const s = S(ticket.hall); ui.setTicketChip(t('ticket9.chip', { screen: ticket.hallName.replace('LUMIERE ', ''), seat: ticket.seat }) + (s.state === 'pending' ? ' · ' + fmtTime(shows.countdown(ticket.hall) - 10) : '')); } else ui.setTicketChip(null);
       ui.setFps(`${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`); }
   }
-  // v8 (phone feedback: "chunk loading transition sucks"): compile every room's shaders and upload their textures while the loader is up,
-  // so walking into a room for the first time doesn't hitch
-  { const shown = Object.values(world.rooms).map((rm) => [rm, rm.group.visible]); for (const [rm] of shown) rm.group.visible = true; const R = engine.renderer, seen = new Set();
+  // what can I do here? (the crosshair in the middle picks what you look at)
+  function prompts(r, hk) {
+    if (mode !== 'play' || talk.open || modal || intro.active) { ui.setPrompt(null); return; }
+    if (player.seated) { ui.setPrompt(player.busy ? null : t('hud.stand'), () => stand()); return; }
+    if (player.busy) { ui.setPrompt(null); return; }
+    engine.camera.getWorldDirection(fwd); const fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl, ahead = (x, z, k = 0.3) => { const dx = x - player.x, dz = z - player.z, d = Math.hypot(dx, dz) || 1; return (dx * fx + dz * fz) / d > k; };
+    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
+    if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
+    if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
+    const L = world.lift; if (r === 'lobby') { if (L.inside(player.x, player.z)) { const to = L.level ? 0 : 1; ui.setPrompt(t(to ? 'hud9.liftUp' : 'hud9.liftDown'), () => { L.call(to); sound.click(); }); return; }
+      for (const k of [0, 1]) if (L.atDoor(player.x, player.y, player.z, k) && (L.level !== k || L.state !== 'idle')) { ui.setPrompt(t('hud9.liftCall'), () => { L.call(k); sound.click(); }); return; } }
+    if (hk) { const h = world.hallByKey(hk); let best = null, bd = 1.5;
+      for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.6 || !ahead(s.x, s.z, 0.2)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
+      if (best) { const mine = ticket && ticket.seat === best.id && ticket.hall === h.id; ui.setPrompt(mine ? t('hud.yourSeat', { seat: best.id }) : t('hud9.sitHere', { seat: best.id }), () => { if (!mine) { const tk = { hall: h.id, hallKey: hk, hallName: h.name, seat: best.id, row: best.id.replace(/\d+/, ''), col: best.col, src: ticket && ticket.src, title: ticket ? ticket.title : '', delay: 0, shown: true, checked: true, tablet: true, quick: true }; const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; } ticket = tk; best.player = true; best.taken = true; } sitSeat(best); }); return; } }
+    ui.setPrompt(null);
+  }
+  // warm every room's shaders and textures while the loader is up (no hitch when you walk into a room for the first time)
+  { const R = engine.renderer, seen = new Set(), shown = Object.values(world.rooms).map((rm) => [rm, rm.group.visible]); for (const [rm] of shown) rm.group.visible = true;
     try { R.compile(engine.scene, engine.camera); engine.scene.traverse((o) => { for (const m of [].concat(o.material || [])) for (const u of Object.values(m.uniforms || {})) { const v = u && u.value; if (v && v.isTexture && !seen.has(v)) { seen.add(v); R.initTexture(v); } } }); } catch (e) { console.warn('warm-up skipped', e); }
     for (const [rm, v] of shown) rm.group.visible = v; }
-  const led = makeLedWall(world.ledWall, shows, t, fmtTime);
-  for (const h of world.halls) h.updateLOD(engine.camera, true, engine.preset.seatLod * engine.lodK);
-  // first frame: drop the loader (after the "LUMIÈRE PRESENTS" card has been seen), show the menu (or the language picker on the very first launch)
-  prog(1); const shownFor = performance.now() - t0, hold = Math.max(0, 3200 - shownFor);
-  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); player.locked = true; } if (!settings.lang) { ui.openLang(); } setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
-  if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'story'), 300);
-  if (Q.get('bakeExport')) import('./bake-export.js').then((m) => { window.__lumiere.exportRoom = (k) => m.exportRoom(world, k); window.__lumiere.bakeReady = true; });   // tools/bake/export.mjs
-  window.__lumiereAssets = ASSETS; window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, talk, mats, director, settings, wallet, booking, tablet, buildMs: performance.now() - t0, get ticket() { return ticket; }, get game() { return game; }, book: (tk) => bought(tk), jumpToSeat, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, get mode() { return mode; }, debugCam: (c) => { dbgCam = c; }, ready: true };
+  prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
+  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
+  if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
+  window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
+    get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
+    pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
+}
+// sparks: a burst of warm points before the screen on the strongest scenes (Settings > Sound > Effects)
+function makeSparks(engine) {
+  const N = 160, g = new THREE.BufferGeometry(), P = new Float32Array(N * 3), V = new Float32Array(N * 3), life = new Float32Array(N); g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+  const m = new THREE.PointsMaterial({ size: 0.06, color: 0xffc070, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.visible = false; engine.scene.add(pts);
+  let on = 0;
+  return { burst(h, col) { const H = h.cfg; m.color.copy(col || m.color).multiplyScalar(1.6).lerp(new THREE.Color(1, 0.75, 0.4), 0.5); for (let i = 0; i < N; i++) { const u = (Math.random() - 0.5) * H.W * 0.9, w = H.toWorld(u, 1.5 + Math.random() * 4); P[i * 3] = w.x; P[i * 3 + 1] = H.y0 + 0.2 + Math.random() * 2; P[i * 3 + 2] = w.z; V[i * 3] = (Math.random() - 0.5) * 0.6; V[i * 3 + 1] = 0.8 + Math.random() * 1.6; V[i * 3 + 2] = (Math.random() - 0.5) * 0.6; life[i] = 1 + Math.random() * 1.2; } on = 2.4; pts.visible = true; },
+    update(dt) { if (!on) return; on = Math.max(0, on - dt); for (let i = 0; i < N; i++) { life[i] -= dt; if (life[i] <= 0) { P[i * 3 + 1] = -99; continue; } V[i * 3 + 1] -= dt * 0.9; P[i * 3] += V[i * 3] * dt; P[i * 3 + 1] += V[i * 3 + 1] * dt; P[i * 3 + 2] += V[i * 3 + 2] * dt; } g.attributes.position.needsUpdate = true; m.opacity = Math.min(1, on); if (!on) pts.visible = false; } };
 }
 boot().catch((e) => { console.error(e); const l = $('#loader'); if (l) { const p = document.createElement('p'); p.className = 'ld-err'; p.textContent = 'Error: ' + (e && e.message ? e.message : e); l.appendChild(p); } });

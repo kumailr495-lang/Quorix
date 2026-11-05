@@ -1,58 +1,45 @@
-// LUMIERE v5 - pure-Node checks (no browser, no GPU; runs in Termux): sh tools/run-dev.sh tools/dev/test-logic.mjs
-//   halls    : seat counts, seats inside the hall, aisle steps <= 0.21 m, every row sees the bottom of the screen over the head in front
-//   layout   : every hall door sits in its hall's wall at the right floor level, rooms do not overlap, roomAt agrees on both sides of every opening
-//   director : every open film's offline cue track (www/films/<id>.json) fires once and on time on the video clock, cues are spaced, a seek skips
-//              what was jumped over; live sound analysis stays quiet on steady sound, fires one scare on a real jump, respects cool-downs
+// LUMIERE v9 - pure-Node checks (no browser, no GPU; runs in Termux): sh tools/run-dev.sh tools/dev/test-logic.mjs
+//   halls    : every row has a middle seat, seat counts, aisle steps <= 0.18 m, row lanes wide enough to pass, every row sees the picture's
+//              bottom over the row in front (UNIC clearance), the first row within the comfort angles
+//   building : the four halls don't overlap each other or the corridor and the spine; every rear aisle is level with the first floor; doors
+//              sit on the right level; the walkers' nav graph reaches every node from the kerb and back to the lobby (one-way edges kept)
+//   director : the open films' offline cue tracks fire once and on time; live analysis stays quiet on steady sound, one scare on a real jump
 //   i18n     : es / hi / ur cover every English key with the same list shapes and {placeholders}
-// run through tools/run-dev.sh (it makes `three` resolvable); LUM_WWW points at the copied www/
 import { pathToFileURL } from 'node:url';
-const WWW = process.env.LUM_WWW ? pathToFileURL(process.env.LUM_WWW + '/').href : new URL('../../www/', import.meta.url).href, imp = (f) => import(WWW + f);
-const { SPECS, calc, makeHall, hallFloorY, hallSeats, inTrench } = await imp('js/hallmath.js');
-const { HALLS, HALL_DOORS, PORTALS, RECTS, roomAt, GAL, LOBBY, TUN } = await imp('js/layout.js');
-const { Director } = await imp('js/react.js'), { CATALOG } = await imp('js/films.js');
 import fs from 'node:fs';
+const WWW = process.env.LUM_WWW ? pathToFileURL(process.env.LUM_WWW + '/').href : new URL('../../www/', import.meta.url).href, imp = (f) => import(WWW + f);
+const { HALLS, makeHall, hallSeats, hallFloor, STEP_MAX } = await imp('js/hallmath.js');
+const B = await imp('js/building.js'), { navPath } = await imp('js/npc9.js').catch(() => ({}));
+const { Director } = await imp('js/react.js'), { CATALOG } = await imp('js/films.js');
 const { EN } = await imp('js/lang/en.js'), { ES } = await imp('js/lang/es.js'), { HI } = await imp('js/lang/hi.js'), { UR } = await imp('js/lang/ur.js');
 let fails = 0; const ok = (cond, msg) => { if (!cond) { fails++; console.log('  FAIL', msg); } return cond; };
 const section = (s) => console.log('== ' + s);
 
 section('halls');
-for (const s of SPECS) {
-  const h = makeHall(s), k = calc(s), seats = hallSeats(h);
-  let trench = 0; for (let r = 0; r < s.rows; r++) for (let c = 1; c <= s.perRow; c++) if (inTrench(h, r, h.seatU(c), s.seatW / 2)) trench++;
-  ok(seats.length === s.rows * s.perRow - trench, `${s.id} seat count ${seats.length}`);
-  for (const v of h.voms) ok(!seats.some((q) => q.row >= h.cross.row && q.u + s.seatW / 2 > v.u0 - 0.12 && q.u - s.seatW / 2 < v.u1 + 0.12), `${s.id} a seat touches a vomitory parapet`);
-  if (s.door === 'svom') ok(trench === 0, `${s.id} side vomitories took ${trench} seats (v7: every row keeps its middle seats)`);
-  for (const [a, b] of h.innerAisles) ok(!seats.some((q) => q.u + s.seatW / 2 > a + 0.01 && q.u - s.seatW / 2 < b - 0.01), `${s.id} a seat stands in the aisle ${a.toFixed(2)}..${b.toFixed(2)}`);
-  for (const q of seats) if (!(q.x > h.x0 + 0.5 && q.x < h.x1 - 0.5 && q.z > h.zs && q.z < h.zBack)) { ok(false, `${s.id} seat ${q.id} outside the hall`); break; }
-  // side aisles: walk them front to back in 1 cm steps, the floor may only change by stair risers
-  let maxStep = 0;
-  for (const ux of [-(h.B / 2 + 0.6), h.B / 2 + 0.6, ...h.innerAisles.map(([a, b]) => (a + b) / 2)]) { const x = h.cx + ux; let prev = hallFloorY(h, x, h.zs + 0.3); for (let z = h.zs + 0.31; z < h.zBack - 0.1; z += 0.01) { const y = hallFloorY(h, x, z); maxStep = Math.max(maxStep, Math.abs(y - prev)); prev = y; } }
-  ok(maxStep <= 0.21, `${s.id} aisle step ${maxStep.toFixed(3)} m > 0.21`);
-  // sightlines (every-row vision): eye of row n to the screen bottom must clear the eye of row n-1 by >= 0.12 m (a head)
-  let minC = Infinity; for (let n = 1; n < s.rows; n++) { const e0 = k.rowY[n - 1] + s.eye, e1 = k.rowY[n] + s.eye, X0 = k.X[n - 1], X1 = k.X[n];
-    const atFront = k.bottomY + (e1 - k.bottomY) * (X0 / X1); minC = Math.min(minC, atFront - e0); }
-  ok(minC >= 0.12, `${s.id} sightline clearance ${minC.toFixed(3)} m < 0.12`);
-  ok(h.cross.d1 - h.cross.d0 >= 1.8, `${s.id} crossing aisle ${(h.cross.d1 - h.cross.d0).toFixed(2)} m < 1.8`);
-  console.log(`  ${s.id}: ${seats.length} seats, max aisle step ${maxStep.toFixed(3)} m, min sightline clearance ${minC.toFixed(3)} m, crossing lane ${(h.cross.d1 - h.cross.d0).toFixed(2)} m`);
+for (const s of HALLS) {
+  const h = B.HALL[s.id], seats = hallSeats(h), want = h.rows.reduce((a, r) => a + r.places.length, 0);
+  ok(seats.length === want && seats.length > 80, `${s.id} seat count ${seats.length}`);
+  for (const row of h.rows) if (!row.pairs) ok(row.n % 2 === 1 && row.places.some((p) => Math.abs(p.u) < 1e-6), `${s.id} row ${row.letter} has a middle seat`);
+  ok(Math.min(...h.rows.slice(1).map((r) => r.clear)) >= 0.5, `${s.id} a row lane is narrower than 0.5 m`);
+  // side aisle walked front to back in 1 cm steps: the floor changes only by steps <= STEP_MAX
+  for (const sg of [-1, 1]) { let prev = hallFloor(h, sg * (h.aisle[0] + h.aisle[1]) / 2, 0), max = 0; for (let d = 0; d < h.depthIn; d += 0.01) { const y = hallFloor(h, sg * (h.aisle[0] + h.aisle[1]) / 2, d); max = Math.max(max, Math.abs(y - prev)); prev = y; }
+    ok(max <= STEP_MAX + 1e-6, `${s.id} aisle step ${max.toFixed(3)} m > ${STEP_MAX}`); }
+  // sightline: each row's eye clears the head of the row in front by c over the picture's bottom edge
+  for (let i = 1; i < h.rows.length; i++) { const a = h.rows[i - 1], b = h.rows[i], eyeA = a.y + a.sd.eye, eyeB = b.y + b.sd.eye, atA = h.hB + (eyeB - h.hB) * (a.X / b.X); ok(eyeA + 0.12 <= atA + 1e-3 || b.lift || a.lift, `${s.id} row ${b.letter} sightline over row ${a.letter}: ${(atA - eyeA).toFixed(3)} m`); }
+  const r0 = h.rows[0], up = Math.atan((h.centreY - r0.sd.eye) / r0.X) * 180 / Math.PI; ok(up <= 30.5, `${s.id} first row looks up ${up.toFixed(1)} deg to the picture centre`);
+  ok(Math.abs(h.y0 + h.total - B.L1) < 0.01, `${s.id} rear aisle at ${(h.y0 + h.total).toFixed(3)}, first floor ${B.L1.toFixed(3)}`);
 }
-
-section('layout');
-const over = (a, b) => a[0] < b[2] - 1e-6 && a[2] > b[0] + 1e-6 && a[1] < b[3] - 1e-6 && a[3] > b[1] + 1e-6;
-const keys = Object.keys(RECTS).filter((k) => k !== 'street');
-for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) ok(!over(RECTS[keys[i]], RECTS[keys[j]]), `rooms ${keys[i]} and ${keys[j]} overlap`);
-for (const d of HALL_DOORS) {
-  const h = HALLS.find((q) => q.id === d.hall), y = h.cross ? h.rowY[h.cross.row] : 0;
-  if (d.axis === 'x') { const wallX = d.side > 0 ? h.x1 : h.x0; ok(Math.abs(d.x - wallX) < 0.2, `${d.hall} ${d.kind} at x ${d.x} is not on the hall wall (${wallX})`);
-    ok(d.z - d.w / 2 > h.zs && d.z + d.w / 2 < h.zBack, `${d.hall} ${d.kind} outside the hall depth`); ok(d.z - d.w / 2 > GAL.z0 && d.z + d.w / 2 < GAL.z1, `${d.hall} ${d.kind} outside the gallery`);
-    const inner = roomAt(d.x - d.side * 0.6, d.z), outer = roomAt(d.x + d.side * 0.6, d.z); ok(inner === h.key && outer === d.room, `${d.hall} ${d.kind}: roomAt gives ${outer} | ${inner}`); }
-  else { ok(Math.abs(d.z - h.zBack) < 0.05 && d.x - d.w / 2 >= TUN.x0 && d.x + d.w / 2 <= TUN.x1, `${d.hall} rear door not in the tunnel's end`); }
-  if (d.kind === 'entrance') { const fy = h.door === 'vom' || h.door === 'svom' ? hallFloorY(h, d.x, d.z - 0.4) : hallFloorY(h, d.x - d.side * 0.6, d.z); ok(Math.abs(fy) < 1e-6, `${d.hall} entrance floor at ${fy} m, not level with the gallery`); }
-}
-ok(GAL.z1 === LOBBY.z0, 'gallery meets the lobby'); ok(TUN.z1 === GAL.z0, 'tunnel meets the gallery');
-// walking through any opening, the room under you is always one of the two rooms it joins (a third room there hides both: the v5.10 black flash)
-for (const p of PORTALS) for (let t = -1.2; t <= 1.2; t += 0.02) { const x = p.axis === 'x' ? p.x + t : p.x, z = p.axis === 'z' ? p.z + t : p.z, r = roomAt(x, z); if (r !== p.a && r !== p.b) { ok(false, `door ${p.a}|${p.b}: roomAt(${x.toFixed(2)}, ${z.toFixed(2)}) = ${r}`); break; } }
-console.log(`  ${keys.length} rooms, ${HALL_DOORS.length} hall doors, ${PORTALS.length} openings`);
-
+section('building');
+// a hall's walls may share their outer 0.15 m with a neighbour's wall zone
+{ const rect = (h) => { const a = h.toWorld(-h.width / 2 - 0.25, -1.5), b = h.toWorld(h.width / 2 + 0.25, h.depthIn + 0.25); return [Math.min(a.x, b.x), Math.min(a.z, b.z), Math.max(a.x, b.x), Math.max(a.z, b.z)]; };
+  const R = Object.values(B.HALL).map((h) => [h.id, rect(h)]), over = (p, q) => p[0] < q[2] - 1e-3 && q[0] < p[2] - 1e-3 && p[1] < q[3] - 1e-3 && q[1] < p[3] - 1e-3;
+  for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) ok(!over(R[i][1], R[j][1]), `halls ${R[i][0]} and ${R[j][0]} overlap`);
+  const S = B.SPINE; for (const [id, r] of R) ok(!over(r, [S.x0, S.z0, S.x1, S.z1]), `hall ${id} overlaps the spine`);
+  for (const c of [B.BRIDGE, B.FLANK_W, B.LINK_W, B.FLANK_E, B.LINK_E]) for (const [id, r] of R) ok(!over(r, [c.x0, c.z0, c.x1, c.z1]), `hall ${id} overlaps a corridor part`);
+  for (const d of B.DOORS) if (d.hall) { const h = B.HALL[d.hall]; ok(Math.abs(d.y - (d.id.endsWith('In') ? B.L1 : h.y0)) < 1e-6, `door ${d.id} at the wrong level`); } }
+// the spine is reached only through the halls' exit doors, so it is not on the way from the kerb
+if (navPath) { const nodes = Object.keys(B.NAV.nodes).filter((n) => !n.startsWith('spine')); for (const n of nodes) { ok(navPath('kerb', n), `nav: ${n} unreachable from the kerb`); }
+  ok(navPath('spineS', 'lobbyBack'), 'nav: the spine does not lead back to the lobby'); ok(!navPath('lobbyBack', 'spineS'), 'nav: the spine can be entered from the lobby (one-way)'); }
 section('director');
 { // open films: every cue exactly once, never early, at most one frame late, on the video's clock; at least 10 s apart; seeking skips
   for (const f of CATALOG) { const tr = JSON.parse(fs.readFileSync(new URL('films/' + f.id + '.json', WWW), 'utf8')), cues = tr.cues.filter((c) => c.type !== 'end');

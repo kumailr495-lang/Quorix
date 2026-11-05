@@ -10,16 +10,9 @@ export const ASSETS = {};
 // (v5.20: the hall seats are the Blender families below; the v5.1 Kiln seats seat_standard, arm_standard, recliner, console_recliner and
 // seat_giant stay in tools/kiln and www/models but are no longer loaded; v7 retired the v5 lobby set: column_fluted(_5), chandelier_ring,
 // banquette_round, torchere_deco, back_bar, pendant_dish, which also stay in the repo)
-export const ASSET_LIST = ['counter_module', 'popcorn_machine', 'bar_stool', 'armchair_deco', 'side_table',
-  'seat_club', 'arm_club', 'seat_rocker', 'arm_rocker', 'seat_classic', 'arm_classic', 'sconce_deco', 'downlight', 'speaker_array', 'urinal', 'basin_vessel', 'tap_brass', 'mirror_round', 'stanchion', 'rope_velvet', 'poster_case', 'planter_tall',
-  'facade_bay', 'shopfront', 'lamp_post', 'car_sedan', 'car_taxi', 'drinks_fountain', 'candy_wall', 'kiosk', 'pos_terminal', 'bench_velvet', 'bin_brass', 'usher_podium', 'door_padded',
-  // v7 (docs/V7-DESIGN.md): Kiln hero props and Blender signage letters
-  'chandelier_cascade', 'sofa_curve', 'table_lounge', 'pendant_ring', 'back_bar_onyx', 'bar_counter', 'poster_totem', 'number_totem', 'planter_hedge', 'bollard_light',
-  'letters_lumiere_lit', 'letters_lumiere', 'letters_cinemas', 'letters_imax', 'restroom_set',
-  // v8 (docs/V8-PLAN.md)
-  'atm',
-  // v9
-  'planter_tree'];
+// v9: only what the v9 rooms use (world9.js DRESS and the hall seat families, intro9.js's taxi); the v7/v8 props stay in www/models
+export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club', 'seat_classic', 'arm_classic', 'sofa_curve', 'table_lounge', 'planter_tall', 'planter_hedge', 'planter_tree',
+  'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;

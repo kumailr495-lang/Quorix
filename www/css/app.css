@@ -325,3 +325,7 @@ body.aim #xhair{transform:scale(1.8);background:#e3b25f}
 .tb-film{position:relative}
 .tb-dl{position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:10px;font-size:10px;background:rgba(10,10,14,.75);color:#f2ebdd;border:1px solid rgba(227,178,95,.5)}
 .tb-dl.done{border-color:#2bb673;color:#bff3d6}
+#nowList .now-h{margin:10px 0 4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#e3b25f;opacity:.9}
+#nowList .now.stub{padding-left:10px;border-left:2px solid rgba(227,178,95,.6)}
+.tb-body.films{display:block;overflow-y:auto}
+.tb-body.films .tb-grid{width:100%}

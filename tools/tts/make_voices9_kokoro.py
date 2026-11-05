@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """LUMIERE v9 - the spoken lines of one language straight from Kokoro (Apache-2.0 synthetic voices, kokoro-onnx MIT), for a language
-the Chatterbox batch (make_voices9.py) doesn't cover in this release (Spanish). Each role keeps the voice and pitch it has in
+the Chatterbox batch (make_voices9.py) doesn't cover in this release (Spanish, Hindi; Urdu plays the Hindi clips). Each role keeps the voice and pitch it has in
 make_refs9.py, so a character sounds the same in every line. Same output as make_voices9.py: www/voice/<lang>/<voice>/<stem>.ogg (mono
 Opus 32 kb/s, levelled) and index.json (v2: length and a 25 Hz mouth envelope per clip). Unchanged clips are skipped (tools/tts/.cache9k).
 usage: (venv with kokoro-onnx) python tools/tts/make_voices9_kokoro.py MODEL.onnx VOICES.bin [--lang es]"""
@@ -14,9 +14,12 @@ ENV_HZ, B64 = 25, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678
 G2 = ['guestM', 'guestF']
 WHO = [('host.', ['host']), ('box.', ['box']), ('bar.', ['barM', 'barF']), ('ush.', ['usher']), ('srv.', ['server']), ('drv.', ['driver']), ('pa.', ['pa']), ('guest.', G2), ('aud.', G2), ('chat', None)]
 VOICES = {'es': {'host': ('ef_dora', 1.0), 'box': ('ef_dora', 1.07), 'barM': ('em_alex', 1.0), 'barF': ('ef_dora', 0.95), 'usher': ('em_santa', 1.0), 'server': ('em_alex', 0.94),
-                 'guestM': ('em_alex', 1.05), 'guestM2': ('em_santa', 0.93), 'guestF': ('ef_dora', 1.12), 'guestF2': ('ef_dora', 0.9), 'driver': ('em_santa', 0.88), 'pa': ('ef_dora', 1.03)}}
-G2P = {'es': 'es'}
-SAY = {'es': [('Lumière', 'Lumier'), ('270', 'dos setenta'), ('MAX', 'Max'), ('CURVE', 'Curv'), ('CLASSIC', 'Clásic'), ('Fila F', 'Fila efe')]}
+                 'guestM': ('em_alex', 1.05), 'guestM2': ('em_santa', 0.93), 'guestF': ('ef_dora', 1.12), 'guestF2': ('ef_dora', 0.9), 'driver': ('em_santa', 0.88), 'pa': ('ef_dora', 1.03)},
+          'hi': {'host': ('hf_alpha', 1.0), 'box': ('hf_beta', 1.0), 'barM': ('hm_omega', 1.0), 'barF': ('hf_beta', 1.08), 'usher': ('hm_psi', 1.0), 'server': ('hm_omega', 0.94),
+                 'guestM': ('hm_psi', 1.06), 'guestM2': ('hm_omega', 1.07), 'guestF': ('hf_alpha', 1.08), 'guestF2': ('hf_beta', 0.92), 'driver': ('hm_psi', 0.9), 'pa': ('hf_alpha', 0.96)}}
+G2P = {'es': 'es', 'hi': 'hi'}
+SAY = {'es': [('Lumière', 'Lumier'), ('270', 'dos setenta'), ('MAX', 'Max'), ('CURVE', 'Curv'), ('CLASSIC', 'Clásic'), ('Fila F', 'Fila efe')],
+       'hi': [('Lumière', 'लूमियर'), ('270', 'टू सेवेंटी'), ('MAX', 'मैक्स'), ('CURVE', 'कर्व'), ('CLASSIC', 'क्लासिक'), ('F लाइन', 'एफ़ लाइन'), ('F अच्छी', 'एफ़ अच्छी')]}
 
 def speakers(key):
     for p, v in sorted(WHO, key=lambda x: -len(x[0])):
