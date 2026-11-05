@@ -19,6 +19,8 @@ const b64f = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let 
 const HALLS = Object.values(HALL), HALL_BY_KEY = Object.fromEntries(HALLS.map((h) => [h.key, h])), CORR = [BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E];
 export const STEP_UP = 0.4, HEAD = 1.75;
 // target average light level per room with its house lights up (docs/V9-DESIGN.md section 5: bright spine, dim Dolby corridor)
+// ambient fill on top of the light map (dims with the house lights): the dim corridor's dark walls stay readable, the night street too
+const FILL = { corridor: 0.3, street: 0.03 };
 export const LEVEL = { hallMax: 0.5, hallCurve: 0.5, hallClassic: 0.55, hall270: 0.5, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.25 };
 function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 14) { A[i + 3] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 4] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 5] *= A[i + 7] ? Math.min(k, 10) : k; }
   for (const ch of ['h', 'f']) for (const s of ['up', 'down']) L.amb[ch][s] = L.amb[ch][s].map((v) => v * (ch === 'h' ? k : Math.min(k, 10))); }   // a face lower than STEP_UP above your feet is a step you walk over; above HEAD it is overhead
@@ -356,7 +358,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     onProgress(0.05 + 0.5 * i++ / keys.length, key); await frame();
     const x = X[key], def = ROOMS[key], U = roomUniforms(), group = new THREE.Group(); group.name = key; engine.scene.add(group);
     const lights = new Lights({ ceil: def.ceil || 4, rect: def.rect }); if (x) { lights.L = x.lights.L; lights.shapes = x.lights.shapes; lights.amb = x.lights.amb; }
-    const room = { key, def, U, group, lights, x, gain: 1 }; world.rooms[key] = room;
+    const room = { key, def, U, group, lights, x, gain: 1 }; world.rooms[key] = room; U.uFill.value = FILL[key] || 0;
     // spill (materials.js LM_SPILL): a hall samples a small blurred copy of its picture by where a surface is, across and up the screen
     if (def.kind === 'hall') { const h = HALL[def.hall]; U.uSpill = { value: null }; U.uSpillP = { value: new THREE.Vector4(h.zc, h.dir / h.W, h.y0 + h.hB, 1 / h.H) }; U.uSpillA = { value: 0.85 }; }
     const bk = BAKES[key];

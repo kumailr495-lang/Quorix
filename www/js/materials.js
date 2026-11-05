@@ -110,7 +110,7 @@ const LIT_FRAG = COMMON_FRAG + `
 uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn; uniform float uReflK; uniform float uWet; uniform sampler2D uNoise;
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
 #ifdef USE_LIGHTMAP
-uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; uniform vec3 uScreenD; uniform vec2 uScreenX; varying vec2 vLm;
+uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform float uFill; varying vec2 vLm;
 #endif
 #ifdef LM_SPILL
 uniform sampler2D uSpill; uniform vec4 uSpillP; uniform float uSpillA;
@@ -130,7 +130,7 @@ void main() {
   vec3 Ng = normalize(vN); vec3 V = normalize(cameraPosition - vWP); vec3 uvl = vec3(vUv, floor(vLay + 0.5));
   vec3 Lt = vLight;
 #ifdef USE_LIGHTMAP
-  Lt = texture(uLmH, vLm).rgb * (uLmK.x * uHouse);
+  Lt = texture(uLmH, vLm).rgb * (uLmK.x * uHouse) + vec3(uFill * uHouse);
 #ifdef LM_HALL
 #ifdef LM_SPILL
   Lt += texture(uLmF, vLm).rgb * (uLmK.y * uFix) + texture(uLmS, vLm).r * uLmK.z * uScreen * spillAt(vWP);
@@ -318,7 +318,7 @@ void main() { vec3 V = normalize(cameraPosition - vWP); float f = pow(1.0 - abs(
 }`;
 // one set of per-room uniforms: house light level (1 = full), screen light colour, fixed lights multiplier, environment tint for sheen
 // uWet: rain on up-facing surfaces (the street): darker, glossier paving with puddles
-export function roomUniforms() { return { uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
+export function roomUniforms() { return { uFill: { value: 0 }, uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
 export class Materials {
   constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; this._lit = new WeakMap(); }
   // one library material per room (and one for its instanced props): every material id draws in the same call (texture arrays)

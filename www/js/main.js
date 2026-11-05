@@ -57,7 +57,8 @@ async function boot() {
   try { await Promise.race([Promise.all([document.fonts.load('600 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* fonts later */ }
   const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low';
   const mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', texSize: lowG ? 256 : 512 }); engine.applySettings(settings);
-  mats.lightMaps = settings.shadows !== 'off' && !Q.get('nobake');
+  // v9: every room is a baked model; its light maps are its look on every device (the vertex-light fallback stays for ?nobake=1 only)
+  mats.lightMaps = !Q.get('nobake');
   const t0 = performance.now(); let done = 0; const tick = () => prog(0.05 + 0.4 * (++done / 3));
   await Promise.all([loadAssets(ASSET_LIST).then(tick), loadBakes().then(tick), loadPeople().then(tick).catch((e) => console.warn('[lumiere] people models failed', e))]);
   const world = await buildWorld(engine, mats, (p) => prog(0.45 + 0.5 * p)); await texturesReady(); prog(0.97);
@@ -121,7 +122,6 @@ async function boot() {
     saveSettings(settings); engine.applySettings(settings); mats.setReflections && mats.setReflections(settings.reflections !== 'off' && settings.graphics !== 'low'); crowd.setDensity(DENS[settings.npcs] || 'medium');
     if (settings.npcs === 'off') for (const h of world.halls) crowd.clearAudience(h.id);   // off means an empty hall, now
     sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd }); talk.setOptions(settings); voice.setOptions(settings); applyLayout(settings);
-    if (gfx && (settings.shadows === 'off') === mats.lightMaps) ui.toast(t('set.restartNote'), 3600);
   }
   applyLayout(settings);
   { const oi = ui.openInfo.bind(ui); ui.openInfo = (kind) => { oi(kind); const M = window.LumiereMedia; if (kind !== 'help' || !M) return; try { const I = JSON.parse(M.info() || '{}'), C = JSON.parse(M.codecs() || '[]'), hw = C.filter((c) => c.hw).map((c) => c.type.replace('video/', '')).filter((v, i, a) => a.indexOf(v) === i);
@@ -308,7 +308,7 @@ async function boot() {
     try { R.compile(engine.scene, engine.camera); engine.scene.traverse((o) => { for (const m of [].concat(o.material || [])) for (const u of Object.values(m.uniforms || {})) { const v = u && u.value; if (v && v.isTexture && !seen.has(v)) { seen.add(v); R.initTexture(v); } } }); } catch (e) { console.warn('warm-up skipped', e); }
     for (const [rm, v] of shown) rm.group.visible = v; }
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
-  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { $('#loader').classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
+  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
   window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
