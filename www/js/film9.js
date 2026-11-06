@@ -119,9 +119,10 @@ export class Shows {
   _slideWaiting(s) { const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; u.uGain.value = 0.8; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; s.pic = false; }
   _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) s.pic = false; }
   _fit(s, aspect) { const A = s.hall.cfg.aspect, u = s.hall.picMat.uniforms, b = u.uBox.value, pan = !!s.hall.cfg.panels, split = pan && aspect >= 2.8, wrap = pan && !split && aspect >= 1.6;
-    // a panoramic film: the front shows its middle third; an ordinary film in the 270 hall: the front shows the middle 80 % (cropped top and
-    // bottom to keep its shape) and the side screens the rest, so the whole frame wraps round the three walls
-    let src = [0, 0, 1, 1], a = aspect; if (split) { src = [1 / 3, 0, 1 / 3, 1]; a = aspect / 3; } else if (wrap) { const wf = Math.min(0.8, A / aspect), hf = Math.min(1, wf * aspect / A); src = [(1 - wf) / 2, (1 - hf) / 2, wf, hf]; a = wf * aspect / hf; }
+    // a panoramic film: the front shows the middle at full height (it fills the front screen) and each side screen one outer band; an
+    // ordinary film in the 270 hall: the front shows the middle 80 % (cropped top and bottom to keep its shape) and the side screens the
+    // rest, so the whole frame wraps round the three walls
+    let src = [0, 0, 1, 1], a = aspect; if (split) { const wf = Math.min(1, A / aspect); src = [(1 - wf) / 2, 0, wf, 1]; a = wf * aspect; } else if (wrap) { const wf = Math.min(0.8, A / aspect), hf = Math.min(1, wf * aspect / A); src = [(1 - wf) / 2, (1 - hf) / 2, wf, hf]; a = wf * aspect / hf; }
     if (u.uSrc) u.uSrc.value.set(src[0], src[1], src[2], src[3]);
     if (a > A) { const hh = A / a; b.set(0, (1 - hh) / 2, 1, hh); } else { const ww = a / A; b.set((1 - ww) / 2, 0, ww, 1); } this.spillMat.uniforms.uBox.value.copy(b);
     if (this.walls && pan) for (const m of this.walls) { const U = m.material.uniforms; U.uMode.value = split ? 1 : 0; U.uBox.value.copy(b); U.uSrc.value.set(src[0], src[1], src[2], src[3]); } s.split = split; s.wrap = wrap; }
@@ -160,7 +161,8 @@ export class Shows {
       // screen light gain: the picture's own colour comes from the spill copy
       const g = s.state === 'playing' && s.pic ? 6.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
-      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic && !this._yt && (s.split || s.wrap) ? 0.85 : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
+      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic && !this._yt && (s.split || s.wrap) ? 0.6 : 0;   // side screens a little dimmer than the front, as in ScreenX halls
+      for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
     }
   }
   // ---------------------------------------------------------- per frame (GPU): the spill copy, the average, YouTube placement

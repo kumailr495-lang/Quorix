@@ -21,10 +21,13 @@ await p.waitForTimeout(1500);
 // lift, [x, z, 'until-lift:1'] stand until it has arrived with its doors open
 await p.evaluate(() => {
   window.__auto = (pts, label) => new Promise((done) => {
-    const L = window.__lumiere, P = L.player, path_ = []; let i = 0, t0 = performance.now(), lastMove = performance.now(), lx = P.x, lz = P.z, maxDy = 0, prevY = P.y;
+    const L = window.__lumiere, P = L.player, path_ = []; let i = 0, t0 = performance.now(), lastMove = performance.now(), lx = P.x, lz = P.z, maxDy = 0, prevY = P.y, px = P.x, pz = P.z, tele = 0;
     const step = () => {
+      // v9.2 fast exit: stepping from a hall into the spine fades and puts you at the spine's mouth in the lobby; the walk then heads for its last waypoint
+      if (Math.hypot(P.x - px, P.z - pz) > 3) { tele++; path_.push(`teleport:${P.x.toFixed(1)},${P.y.toFixed(2)},${P.z.toFixed(1)} ${L.world.roomAt(P.x, P.y, P.z)}`); i = Math.max(i, pts.length - 1); prevY = P.y; lx = P.x; lz = P.z; lastMove = performance.now(); }
+      px = P.x; pz = P.z;
       const dy = Math.abs(P.y - prevY); prevY = P.y; maxDy = Math.max(maxDy, dy);
-      if (i >= pts.length) { P.keys.KeyW = false; done({ ok: true, label, path: path_, end: [+P.x.toFixed(2), +P.y.toFixed(2), +P.z.toFixed(2), L.world.roomAt(P.x, P.y, P.z)], maxDy: +maxDy.toFixed(2) }); return; }
+      if (i >= pts.length) { P.keys.KeyW = false; done({ ok: true, label, tele, path: path_, end: [+P.x.toFixed(2), +P.y.toFixed(2), +P.z.toFixed(2), L.world.roomAt(P.x, P.y, P.z)], maxDy: +maxDy.toFixed(2) }); return; }
       const w = pts[i], [x, z, act] = w, dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz);
       if (typeof act === 'string' && act.startsWith('until-lift:')) {   // stand still until the lift has arrived at that floor with its doors open (game time, not wall time)
         P.keys.KeyW = false; const f = L.world.lift, k = +act.slice(11); if (!w.t) w.t = performance.now();
@@ -64,7 +67,7 @@ const walks = await p.evaluate(async () => {
     if (st) { const xs = (st.x0 + st.x1) / 2; pts.push([xs, st.zDoor], [xs, st.zTop + st.dir * 0.2], [xs, st.zBot + st.dir * 0.6], [c.x < 0 ? -1.6 : 1.6, st.zBot + st.dir * 0.6]); }
     else pts.push([c.x < 0 ? -1.6 : 1.6, c.z]);
     pts.push([c.x < 0 ? -1.6 : 1.6, -15.2], [0, -15.2], [0, -12.6], [0, -10]);
-    out.push({ label: `${h.id}: front of the hall, exit door, ${st ? 'exit stairs, ' : ''}spine, lobby`, start: [a.x, h.y0, a.z], pts, room: 'lobby', y: 0 });
+    out.push({ label: `${h.id}: front of the hall, exit door, ${st ? 'exit stairs, ' : ''}spine (fast exit), lobby`, start: [a.x, h.y0, a.z], pts, room: 'lobby', y: 0, tele: 1 });
   }
   return out;
 });
@@ -85,10 +88,10 @@ console.log(navHits.length ? `NAV edges blocked: ${navHits.length}\n` + navHits.
 let pass = 0; const results = [], only = process.argv.indexOf('--only') > 0 ? process.argv[process.argv.indexOf('--only') + 1] : null;
 for (const w of walks.filter((x) => !only || x.label.includes(only))) {
   const r = await p.evaluate(async (w) => { const L = window.__lumiere; L.player.place(w.start[0], w.start[2], 0, 0, w.start[1]); await new Promise((q) => setTimeout(q, 300)); const res = await window.__auto(w.pts, w.label); return res; }, w);
-  const okEnd = r.ok && r.end[3] === w.room && Math.abs(r.end[1] - w.y) < 0.3; if (okEnd) pass++;
+  const okEnd = r.ok && r.end[3] === w.room && Math.abs(r.end[1] - w.y) < 0.3 && r.tele === (w.tele || 0); if (okEnd) pass++;
   if (!okEnd && process.argv.includes('--debug')) console.log(JSON.stringify(r.path), await p.evaluate(() => { const f = window.__lumiere.world.lift; return JSON.stringify({ y: f.y, level: f.level, state: f.state, doors: f.doors }); }));
   results.push({ ...r, want: [w.room, w.y], okEnd });
-  console.log(`${okEnd ? 'PASS' : 'FAIL'}  ${w.label}${r.ok ? `  end ${r.end.join(' ')}` : `  stuck at waypoint ${r.stuckAt} ${JSON.stringify(r.pos)} -> ${JSON.stringify(r.target)}`}${r.ok && !okEnd ? `  (wanted ${w.room} at ${w.y.toFixed(2)})` : ''}`);
+  console.log(`${okEnd ? 'PASS' : 'FAIL'}  ${w.label}${r.ok ? `  end ${r.end.join(' ')}` : `  stuck at waypoint ${r.stuckAt} ${JSON.stringify(r.pos)} -> ${JSON.stringify(r.target)}`}${r.ok && !okEnd ? `  (wanted ${w.room} at ${w.y.toFixed(2)}, ${w.tele || 0} fast exit(s); got ${r.tele})` : ''}`);
 }
 console.log(`walks: ${pass}/${results.length} passed`); if (log.length) console.log(log.slice(0, 10).join('\n'));
 if (OUT) fs.writeFileSync(path.join(OUT, 'walks.json'), JSON.stringify(results, null, 1));

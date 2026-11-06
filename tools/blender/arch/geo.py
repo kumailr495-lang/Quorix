@@ -252,7 +252,7 @@ def export_room(key, acc, lights, out_json, glow=None, occ=None, screen=None, pr
     if screen is not None and len(screen.P):
         SP, _, _, _, _ = screen.arrays(); D['screen'] = {'pos': b64(SP), 'idx': b64(np.arange(len(SP), dtype=np.uint32))}
     if probes: D['probes'] = {'pts': b64(np.asarray(probes, np.float32).ravel()), 'nSeat': len(probes), 'nArm': 0}
-    json.dump(D, open(out_json, 'w'))
+    if out_json: json.dump(D, open(out_json, 'w'))
     x = {'v': 9, 'key': key, 'hash': D['solid']['hash'], 'lights': {'L': list(map(float, lights.L)), 'shapes': lights.shapes, 'amb': lights.amb, 'rect': lights.rect, 'ceil': lights.ceil}}
     if glow is not None and len(glow.P):
         GP = np.asarray(glow.P, np.float32); GC = np.asarray(glow.C, np.float32); x['glow'] = {'pos': b64(GP), 'col': b64(GC)}

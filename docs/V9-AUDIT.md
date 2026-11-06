@@ -274,3 +274,20 @@ frames, draw calls and triangles, with a short code to paste back. The exact com
     basins and brass taps, urinals, hand dryers and closed cubicle doors (v9 had only interaction points); facade poster cases,
     stone uplighting, brand letters over the canopy, more trees.
   - *Light.* Reflections softer (0.32 from 0.45), screen light on the walls stronger (6.5 from 5.5); house lights in a film stay at 2 %.
+- **2026-11-06, v9.2 halls (after the user rejected v9.1b: "did not change anything", then "fix it rather than revert").** v9.1b
+  (bigger pictures, exits in the screen wall, ScreenX modes, watch zoom) is the base again (ac344af). Then:
+  - *Seats.* Four new models in `tools/blender/seats.py` (stadium rocker + armrest, club recliner + console) built from subdivided
+    pillow forms (`lbl.py` `pillow`, `grid_box`, `subd`): crowned cushions, piped welts, stitched back channels, wings and lumbar, a
+    moulded shell, cup holders with a glow ring; LOD1 cages for far rows. Per-hall upholstery (world9.js `SEAT_SWAP`): MAX navy-black,
+    X-270 deep red, CURVE espresso; CLASSIC keeps its seats.
+  - *Seat light.* The instanced seats took screen light with a fixed screen direction (-z); the halls face +-x, so seats facing their
+    screen got almost none. Each hall now passes its own direction (`uScreenN`, materials.js).
+  - *ScreenX (X-270).* An ordinary film wraps the three walls: the front shows its middle 80 %, each side screen the outer band at the
+    front's vertical scale, softening towards the back. A panoramic film (2.8:1 and wider) fills the front screen at full height and each
+    side screen carries one outer band (it was a pillar-boxed middle third). A YouTube video keeps the walls dark (no frame access).
+  - *Fast exit.* Stepping from a hall into the spine fades out and puts you at the spine's mouth in the lobby (main.js `fastExit`).
+  - *Tests.* MAX row A may look up 35 degrees (IMAX-shaped picture). walk.mjs expects exactly one fast exit on the exit walks and none
+    elsewhere. The corridor was stale: X-270 and CLASSIC grew 0.9 and 0.8 m deeper in v9.1b and their entrance doors moved, but the
+    corridor was never rebuilt, so its old door jambs stood inside both halls (walkers stuck at the X-270 entrance). Rebuilt and
+    re-baked; new check `build.py --check` (in run-tests.sh) builds every room from the current spec in memory and fails when one
+    differs from its bake.

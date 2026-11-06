@@ -117,6 +117,18 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v9.2 halls (2026-11-06; the last entry of docs/V9-AUDIT.md "Development record")
+- The user rejected v9.1b's look as "no change", then said fix it rather than revert. Don't ask them questions mid-fix; act and show
+  renders. v9.1b (bigger pictures, exits in the screen wall behind portals in the masking, watch zoom) is the base.
+- Seats: `tools/blender/seats.py` seat_rocker/arm_rocker/seat_club/arm_club use `lbl.py` `pillow()` (subdivided cage: crown, creases,
+  shape callback; `levels=0` gives the LOD1 cage). Per-hall colour swaps: world9.js `SEAT_SWAP` -> `assetGeometry(..., over)`.
+- Instanced seats take screen light along `uScreenN` (set per hall in buildHall); never hard-code a screen direction.
+- ScreenX (film9.js `_fit`): wrap (ordinary film: front = middle 80 %, walls = outer bands), split (>= 2.8:1: front filled at full height,
+  walls = outer bands), YouTube = walls off. Check with `node tools/dev/showshot.mjs OUT X270 960x540` and `... X270 1440x480`.
+- Fast exit: main.js `fastExit()` (hall -> spine = fade + place at the spine mouth in the lobby). walk.mjs counts these (`tele`).
+- **After changing hallmath.js or building.js, rebuild and re-bake every room whose geometry changed**: `python3 tools/blender/arch/build.py
+  --check` lists them (run-tests.sh runs it); then `sh tools/bake/bake9.sh <room ...>`. v9.1b grew two halls and left the corridor stale.
+
 ## v9.1 realism pass (2026-11-06, Phase 1 continued; see the last entry of docs/V9-AUDIT.md "Development record")
 - The user's complaints this pass: empty spaces, flat one-colour textures, unrealistic lighting, exits that make no sense, theatres too
   small ("no one would see it"), no ScreenX, sofas placed the wrong way. Their numbered photos and inspiration photos are in the
