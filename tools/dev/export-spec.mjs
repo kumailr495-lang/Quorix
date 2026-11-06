@@ -5,7 +5,7 @@ import * as B from '../../www/js/building.js';
 import { hallSeats, SEAT, TREAD, STEP_MAX } from '../../www/js/hallmath.js';
 const halls = Object.values(B.HALL).map((h) => {
   const keep = ['id', 'no', 'key', 'name', 'format', 'side', 'dir', 'zc', 'width', 'aspect', 'W', 'H', 'hB', 'sagD', 'R', 'rowK', 'ceil', 'y0', 'total', 'depthIn', 'rearD', 'rear',
-    'xPic', 'xScreenWall', 'xRear', 'entryU', 'exits', 'aisle', 'blockHalf', 'frame', 'curtain', 'panels', 'topY', 'centreY', 'aisleW', 'cross', 'entryStair'];
+    'xPic', 'xScreenWall', 'xRear', 'entryU', 'exits', 'aisle', 'blockHalf', 'frame', 'curtain', 'panels', 'topY', 'centreY', 'aisleW', 'cross', 'entryStair', 'bay', 'sideScreen'];
   const o = Object.fromEntries(keep.map((k) => [k, h[k] === Infinity ? null : h[k]]));
   o.rows = h.rows.map((r) => ({ r: r.r, letter: r.letter, seat: r.seat, sd: r.sd, X: r.X, dHip: r.dHip, pf: Number.isFinite(r.pf) ? r.pf : null, y: r.y, riser: r.riser, steps: r.steps,
     lane: r.lane, tread: r.tread, pairs: r.pairs, gap: r.gap, lift: r.lift, span: r.span, places: r.places.map((p) => p.u), cls: r.cls }));

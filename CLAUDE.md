@@ -117,6 +117,23 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v9.1 realism pass (2026-11-06, Phase 1 continued; see the last entry of docs/V9-AUDIT.md "Development record")
+- The user's complaints this pass: empty spaces, flat one-colour textures, unrealistic lighting, exits that make no sense, theatres too
+  small ("no one would see it"), no ScreenX, sofas placed the wrong way. Their numbered photos and inspiration photos are in the
+  transcript (recover them to the scratchpad if needed); keep working from them.
+- Halls: pictures nearly wall to wall (hallmath.js HALLS; `BAY` = 2.3 m exit bay at each front corner, `h.bay`, exits at the bay's
+  centre). Hall widths changed, so building.js now derives FLANK/LINK/SPINE/TRAVELATOR and the NAV nodes behind the halls from them.
+  X-270 has `h.sideScreen` (side projection surfaces) read by halls.py and film9.js.
+- Materials: library.js LIB ids 41-47 (travertine, oak, neroGold, wcWall, wcFloor, microcement, lobbyMarble); per id `macro` (tone and
+  gloss blotches, materials.js USE_MACRO, medium+high) and `detile` (1: random offsets for organic scans, USE_DETILE, high; 2: tile
+  shuffle for a 2 x 2 designed tile layout). Roughness maps `<tex>_r.jpg` ride in the albedo array's alpha (library.js ROUGH). New scans
+  come from tools/textures/fetch_cc0.py (it merges rows into SOURCES.md when run on named slots).
+- Panels: `exitsign_*`, `wayfind_<screens|wc|tickets|food>`, `noentry_*`, `poster_<film>[_n]` (world9.js PANEL_DRAW). Restroom fittings
+  are placed from the builder's fixture points in dressRooms.
+- Tests: walk.mjs also fails when a NAV edge passes within 0.25 m of a wall or prop (props collide with axis-aligned boxes: keep rotated
+  furniture square to the axes or off the paths). tools/dev/showshot.mjs plays a generated test film in a hall and photographs it (the
+  only way to see screen light and the 270 side screens). tools/dev/views.mjs = the fixed hero views for before/after renders.
+
 ## Earlier state (2026-11-05, v9.00)
 - v9 on branch `ccr-7bb5aa6a-upup1u`: design and calculations `docs/V9-DESIGN.md` (+ `docs/v9/` drawings), per-ask status `docs/V9-CHECKLIST.md`,
   release notes `docs/V9-RELEASE-NOTES.md`, licences `docs/LICENSES.md`. Not yet seen on the phone.

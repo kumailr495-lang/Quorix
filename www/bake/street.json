@@ -2,17 +2,17 @@
  "room": "street",
  "res": 2048,
  "hall": false,
- "hash": "v9.aa69ce330b43",
+ "hash": "v9.cb170d5cba52",
  "maps": [
   "street_h.png"
  ],
  "scale": [
-  0.5888399530026691,
+  0.6370382965630451,
   0.0,
   0.0
  ],
- "avg": 0.006656365160892464,
+ "avg": 0.015396397381886315,
  "glb": "street.glb",
- "verts": 3768,
- "tris": 1256
+ "verts": 4740,
+ "tris": 1580
 }

@@ -7,54 +7,63 @@
 import * as THREE from 'three';
 export const MAT = { paint: 0, fabric: 1, wood: 2, terrazzo: 3, metal: 4, carpet: 5, plaster: 6, tile: 7, leather: 8, acoustic: 9, glass: 10, granite: 11, marble: 12, rubber: 13, chrome: 14, lacquer: 15, hallCarpet: 16, slats: 17, concrete: 18, screen: 19,
   chevron: 20, geotile: 21, deco: 22, fluted: 23, brass: 24, powder: 25, asphalt: 26, paving: 27, brick: 28, porcelain: 29, walltile: 30, calacatta: 31, emit: 32,
-  nero: 33, rosso: 34, onyx: 35, stone: 36, dolby: 37, tblack: 38, plaza: 39, perf: 40, velvet: 1 };
+  nero: 33, rosso: 34, onyx: 35, stone: 36, dolby: 37, tblack: 38, plaza: 39, perf: 40, velvet: 1, travertine: 41, oak: 42, neroGold: 43, wcWall: 44, wcFloor: 45, microcement: 46, lobbyMarble: 47 };
 // id -> texture set and surface response. mpt = metres per texture tile; rough/metal scalars; nstr = normal strength; sheen = velvet rim light;
 // spec = how strongly the room reflection shows (glossy floors, glass); relief = how much the normal map shades the baked light
 export const LIB = {
-  0: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.75, metal: 0, nstr: 0.4 },
-  1: { tex: 'velvet', mode: 'rel', mpt: 0.28, rough: 0.9, metal: 0, nstr: 0.8, sheen: 0.55 },
-  2: { tex: 'walnut', mode: 'rel', mpt: 1.8, rough: 0.42, metal: 0, nstr: 0.6 },
-  3: { tex: 'terrazzo', mode: 'abs', mpt: 2.0, rough: 0.2, metal: 0, nstr: 0.3, spec: 1.2 },
-  4: { tex: 'brushed', mode: 'rel', mpt: 0.5, rough: 0.35, metal: 1, nstr: 0.4 },
-  5: { tex: 'carpet_hall', mode: 'rel', mpt: 0.5, rough: 1, metal: 0, nstr: 0.6 },
-  6: { tex: 'plaster', mode: 'rel', mpt: 2.0, rough: 0.85, metal: 0, nstr: 0.5 },
-  7: { tex: 'squaretile', mode: 'rel', mpt: 3.0, rough: 0.3, metal: 0, nstr: 1, spec: 1 },
-  8: { tex: 'leather', mode: 'rel', mpt: 0.3, rough: 0.45, metal: 0, nstr: 1, sheen: 0.15 },
-  9: { tex: 'woven', mode: 'rel', mpt: 0.27, rough: 0.95, metal: 0, nstr: 0.8 },
-  10: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.04, metal: 0, nstr: 0, spec: 2.2 },
-  11: { tex: 'granite', mode: 'rel', mpt: 0.8, rough: 0.28, metal: 0, nstr: 0.3, spec: 1.1 },
-  12: { tex: 'marble', mode: 'abs', mpt: 1.6, rough: 0.12, metal: 0, nstr: 0.2, spec: 1.3 },
-  13: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.9, metal: 0, nstr: 0.3 },
-  14: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.08, metal: 1, nstr: 0 },
-  15: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.16, metal: 0, nstr: 0, spec: 1.2 },
-  16: { tex: 'carpet_hall', mode: 'rel', mpt: 0.5, rough: 1, metal: 0, nstr: 0.6 },
-  17: { tex: 'slats', mode: 'rel', mpt: 0.4, rough: 0.45, metal: 0, nstr: 1, relief: 0.6 },
-  18: { tex: 'concrete', mode: 'rel', mpt: 2.0, rough: 0.85, metal: 0, nstr: 0.8 },
-  19: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.95, metal: 0, nstr: 0 },
-  20: { tex: 'chevron', mode: 'abs', mpt: 3.4, rough: 0.32, metal: 0, nstr: 0.8, spec: 1.1, relief: 0.4 },
-  21: { tex: 'geotile', mode: 'abs', mpt: 1.2, rough: 0.22, metal: 0, nstr: 0.8, spec: 1.1 },
-  22: { tex: 'carpet_deco', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6 },
-  23: { tex: 'fluted', mode: 'rel', mpt: 0.4, rough: 0.5, metal: 0, nstr: 1, relief: 0.8 },
-  24: { tex: 'brushed', mode: 'rel', mpt: 0.5, rough: 0.28, metal: 1, nstr: 0.3 },
-  25: { tex: 'powder', mode: 'rel', mpt: 0.5, rough: 0.5, metal: 0.6, nstr: 0.3 },
-  26: { tex: 'asphalt', mode: 'rel', mpt: 2.35, rough: 0.9, metal: 0, nstr: 0.6 },
-  27: { tex: 'paving', mode: 'rel', mpt: 1.8, rough: 0.8, metal: 0, nstr: 0.8 },
-  28: { tex: 'brick', mode: 'abs', mpt: 1.6, rough: 0.9, metal: 0, nstr: 1, relief: 0.5 },
-  29: { tex: 'porcelain', mode: 'abs', mpt: 1.9, rough: 0.18, metal: 0, nstr: 0.5, spec: 1.1 },
-  30: { tex: 'walltile', mode: 'rel', mpt: 1.27, rough: 0.12, metal: 0, nstr: 0.8, spec: 1.2 },
-  31: { tex: 'calacatta', mode: 'abs', mpt: 1.6, rough: 0.1, metal: 0, nstr: 0.2, spec: 1.3 },
+  // macro = strength of the large soft tone and gloss blotches (materials.js USE_MACRO); detile = 1: random offsets per region of tiles
+  // (USE_DETILE, organic scans only), 2: tile shuffle (a 2 x 2 designed tile layout, each cell a random tile, joints aligned)
+  0: { tex: 'paintwall', mode: 'rel', mpt: 2.5, rough: 0.8, metal: 0, nstr: 0.25, macro: 0.18, detile: 1 },
+  1: { tex: 'velvet', mode: 'rel', mpt: 0.28, rough: 0.9, metal: 0, nstr: 0.8, sheen: 0.55, macro: 0.1, detile: 1 },
+  2: { tex: 'walnut', mode: 'rel', mpt: 1.8, rough: 0.42, metal: 0, nstr: 0.6, macro: 0.12, detile: 1 },
+  3: { tex: 'terrazzo', mode: 'abs', mpt: 2.0, rough: 0.2, metal: 0, nstr: 0.3, spec: 1.2, macro: 0.15, detile: 1 },
+  4: { tex: 'brushed', mode: 'rel', mpt: 0.5, rough: 0.35, metal: 1, nstr: 0.4, macro: 0.06, detile: 1 },
+  5: { tex: 'carpet_hall', mode: 'rel', mpt: 0.5, rough: 1, metal: 0, nstr: 0.6, macro: 0.2, detile: 1 },
+  6: { tex: 'plaster', mode: 'rel', mpt: 2.0, rough: 0.85, metal: 0, nstr: 0.5, macro: 0.18, detile: 1 },
+  7: { tex: 'wc_wall', mode: 'abs', mpt: 1.8, rough: 0.12, metal: 0, nstr: 0.6, spec: 1.2, macro: 0.04 },
+  8: { tex: 'leather', mode: 'rel', mpt: 0.3, rough: 0.45, metal: 0, nstr: 1, sheen: 0.15, macro: 0.1, detile: 1 },
+  9: { tex: 'woven', mode: 'rel', mpt: 0.27, rough: 0.95, metal: 0, nstr: 0.8, macro: 0.12, detile: 1 },
+  10: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.04, metal: 0, nstr: 0, spec: 2.2, macro: 0 },
+  11: { tex: 'granite', mode: 'rel', mpt: 0.8, rough: 0.28, metal: 0, nstr: 0.3, spec: 1.1, macro: 0.12 },
+  12: { tex: 'marble', mode: 'abs', mpt: 1.6, rough: 0.12, metal: 0, nstr: 0.2, spec: 1.3, macro: 0.08, detile: 1 },
+  13: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.9, metal: 0, nstr: 0.3, macro: 0.05 },
+  14: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.08, metal: 1, nstr: 0, macro: 0 },
+  15: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.16, metal: 0, nstr: 0, spec: 1.2, macro: 0.04 },
+  16: { tex: 'carpet_hall', mode: 'rel', mpt: 0.5, rough: 1, metal: 0, nstr: 0.6, macro: 0.22, detile: 1 },
+  17: { tex: 'slats', mode: 'rel', mpt: 0.4, rough: 0.45, metal: 0, nstr: 1, relief: 0.6, macro: 0.08 },
+  18: { tex: 'concrete', mode: 'rel', mpt: 2.0, rough: 0.85, metal: 0, nstr: 0.8, macro: 0.2, detile: 1 },
+  19: { tex: 'paintwall', mode: 'rel', mpt: 2.5, rough: 0.9, metal: 0, nstr: 0.15, macro: 0.12, detile: 1 },
+  20: { tex: 'oak', mode: 'rel', mpt: 1.83, rough: 0.4, metal: 0, nstr: 0.6, macro: 0.1, detile: 1 },
+  21: { tex: 'travertine', mode: 'abs', mpt: 1.2, rough: 0.35, metal: 0, nstr: 0.5, spec: 0.9, macro: 0.1, detile: 1 },
+  22: { tex: 'carpet_deco', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6, macro: 0.15 },
+  23: { tex: 'fluted', mode: 'rel', mpt: 0.4, rough: 0.5, metal: 0, nstr: 1, relief: 0.8, macro: 0.08 },
+  24: { tex: 'brushed', mode: 'rel', mpt: 0.5, rough: 0.28, metal: 1, nstr: 0.3, macro: 0.05, detile: 1 },
+  25: { tex: 'powder', mode: 'rel', mpt: 0.8, rough: 0.5, metal: 0.6, nstr: 0.3, macro: 0.08, detile: 1 },
+  26: { tex: 'asphalt', mode: 'rel', mpt: 2.35, rough: 0.9, metal: 0, nstr: 0.6, macro: 0.25, detile: 1 },
+  27: { tex: 'paving', mode: 'rel', mpt: 1.8, rough: 0.8, metal: 0, nstr: 0.8, macro: 0.2 },
+  28: { tex: 'brick', mode: 'abs', mpt: 1.6, rough: 0.9, metal: 0, nstr: 1, relief: 0.5, macro: 0.15 },
+  29: { tex: 'porcelain', mode: 'abs', mpt: 1.9, rough: 0.18, metal: 0, nstr: 0.5, spec: 1.1, macro: 0.08 },
+  30: { tex: 'walltile', mode: 'rel', mpt: 1.27, rough: 0.12, metal: 0, nstr: 0.8, spec: 1.2, macro: 0.05 },
+  31: { tex: 'calacatta', mode: 'abs', mpt: 1.6, rough: 0.1, metal: 0, nstr: 0.2, spec: 1.3, macro: 0.06, detile: 1 },
   // light emitters inside instanced props (seat under-glow, cup-holder rings): the tint is the light colour, drawn at full strength
-  32: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 1, metal: 0, nstr: 0, spec: 0, emit: 1 },
-  // v7 (docs/V7-DESIGN.md): polished Nero Marquina and Rosso Levanto (lobby), backlit honey onyx (bar), honed limestone and the blue-grey
-  // carpet (Dolby-style corridor), polished black terrazzo (IMAX gateway), granite pavers (plaza), backlit perforated facade panels
-  33: { tex: 'nero', mode: 'abs', mpt: 1.6, rough: 0.07, metal: 0, nstr: 0.15, spec: 1.5 },
-  34: { tex: 'rosso', mode: 'abs', mpt: 1.6, rough: 0.09, metal: 0, nstr: 0.15, spec: 1.3 },
-  35: { tex: 'onyx', mode: 'abs', mpt: 1.0, rough: 0.12, metal: 0, nstr: 0.1, spec: 0.8, emit: 0.9 },
-  36: { tex: 'stone_light', mode: 'rel', mpt: 1.2, rough: 0.55, metal: 0, nstr: 0.5, spec: 0.5 },
-  37: { tex: 'carpet_dolby', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6 },
-  38: { tex: 'terrazzo_black', mode: 'abs', mpt: 1.2, rough: 0.1, metal: 0, nstr: 0.2, spec: 1.4 },
-  39: { tex: 'plaza', mode: 'abs', mpt: 1.8, rough: 0.55, metal: 0, nstr: 0.7, spec: 0.9 },
-  40: { tex: 'perforated', mode: 'abs', mpt: 1.0, rough: 0.4, metal: 0.4, nstr: 0.6, spec: 0.4, emit: 1.2 },
+  32: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 1, metal: 0, nstr: 0, spec: 0, emit: 1, macro: 0 },
+  // v7 (docs/V7-DESIGN.md): polished Nero Marquina (lobby), honed limestone and the corridor carpet, polished black terrazzo, granite pavers
+  33: { tex: 'nero', mode: 'abs', mpt: 1.6, rough: 0.07, metal: 0, nstr: 0.15, spec: 1.5, macro: 0.06, detile: 1 },
+  34: { tex: 'nero_gold', mode: 'abs', mpt: 1.6, rough: 0.08, metal: 0, nstr: 0.15, spec: 1.4, macro: 0.06, detile: 1 },
+  35: { tex: 'travertine', mode: 'abs', mpt: 1.2, rough: 0.3, metal: 0, nstr: 0.1, spec: 0.8, emit: 0.9, macro: 0 },
+  36: { tex: 'stone_rel', mode: 'rel', mpt: 1.2, rough: 0.5, metal: 0, nstr: 0.5, spec: 0.6, macro: 0.15, detile: 1 },
+  37: { tex: 'carpet_dolby', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6, macro: 0.18 },
+  38: { tex: 'terrazzo_black', mode: 'abs', mpt: 1.2, rough: 0.1, metal: 0, nstr: 0.2, spec: 1.4, macro: 0.08, detile: 1 },
+  39: { tex: 'plaza', mode: 'abs', mpt: 1.8, rough: 0.55, metal: 0, nstr: 0.7, spec: 0.9, macro: 0.2 },
+  40: { tex: 'powder', mode: 'rel', mpt: 0.8, rough: 0.4, metal: 0.4, nstr: 0.6, spec: 0.4, emit: 1.2, macro: 0 },
+  // v9.1 (the user: "use good textures, not one colour pasted everywhere"): CC0 scans with roughness maps (tools/textures/SOURCES.md)
+  41: { tex: 'travertine', mode: 'abs', mpt: 1.2, rough: 0.35, metal: 0, nstr: 0.5, spec: 0.9, macro: 0.12, detile: 1 },
+  42: { tex: 'oak', mode: 'rel', mpt: 1.83, rough: 0.45, metal: 0, nstr: 0.6, macro: 0.12, detile: 1 },
+  43: { tex: 'nero_gold', mode: 'abs', mpt: 1.6, rough: 0.08, metal: 0, nstr: 0.15, spec: 1.4, macro: 0.06, detile: 1 },
+  44: { tex: 'wc_wall', mode: 'abs', mpt: 1.8, rough: 0.12, metal: 0, nstr: 0.6, spec: 1.2, macro: 0.04 },
+  45: { tex: 'wc_floor', mode: 'abs', mpt: 3.6, rough: 0.25, metal: 0, nstr: 0.6, spec: 1.0, macro: 0.1 },
+  46: { tex: 'microcement', mode: 'rel', mpt: 2.2, rough: 0.75, metal: 0, nstr: 0.3, macro: 0.2, detile: 1 },
+  47: { tex: 'stone_light', mode: 'abs', mpt: 2.4, rough: 0.1, metal: 0, nstr: 0.6, spec: 1.3, macro: 0.08, detile: 2 },
 };
 export const NUM_IDS = 48;   // uP holds NUM_IDS x 3 vec4 (materials.js uP[144])
 // Kiln assets name their materials; the name picks a library entry and the tint (sRGB hex)
@@ -86,8 +95,10 @@ export function libTextures(id, renderer) {
 // Albedo layers are stored sRGB-encoded (hardware decode, correct filtering); 'rel' detail maps are linear data, so their bytes are
 // encoded on the way in and come back out of the sampler as the same linear values. Layers are resampled to one size.
 export const LAYERS = [...new Set(Object.values(LIB).map((L) => L.tex))];
+// layers that ship <tex>_r.jpg, a roughness map (tools/textures/fetch_cc0.py ROUGH)
+export const ROUGH = new Set(['stone_light', 'paintwall', 'powder', 'travertine', 'oak', 'nero_gold', 'wc_wall', 'wc_floor', 'microcement', 'stone_rel']);
 // per material id, three vec4: (rough, metal, normal strength, sheen), (reflection, relief, abs, 1 / metres per tile), (layer, emission)
-export const PARAMS = (() => { const a = []; for (let id = 0; id < NUM_IDS; id++) { const L = LIB[id] || LIB[0]; a.push(new THREE.Vector4(L.rough, L.metal, L.nstr ?? 0.6, L.sheen || 0), new THREE.Vector4(L.spec ?? 0.8, L.relief ?? 0.25, L.mode === 'abs' ? 1 : 0, 1 / L.mpt), new THREE.Vector4(LAYERS.indexOf(L.tex), L.emit || 0, 0, 0)); } return a; })();
+export const PARAMS = (() => { const a = []; for (let id = 0; id < NUM_IDS; id++) { const L = LIB[id] || LIB[0]; a.push(new THREE.Vector4(L.rough, L.metal, L.nstr ?? 0.6, L.sheen || 0), new THREE.Vector4(L.spec ?? 0.8, L.relief ?? 0.25, L.mode === 'abs' ? 1 : 0, 1 / L.mpt), new THREE.Vector4(LAYERS.indexOf(L.tex), L.emit || 0, L.macro ?? (L.emit ? 0 : 0.15), L.detile || 0)); } return a; })();
 let arrays = null;
 export function libArrays(renderer, size = 512, normals = true) {
   if (arrays) return arrays;
@@ -95,12 +106,15 @@ export function libArrays(renderer, size = 512, normals = true) {
   const mk = (srgb, fill) => { const d = new Uint8Array(size * size * 4 * n); for (let i = 0; i < d.length; i += 4) d.set(fill, i); const t = new THREE.DataArrayTexture(d, size, size, n);
     t.format = THREE.RGBAFormat; t.type = THREE.UnsignedByteType; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.anisotropy = an; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.needsUpdate = true; return t; };
   const enc = new Uint8Array(256); for (let i = 0; i < 256; i++) { const v = i / 255; enc[i] = Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); }
-  arrays = { a: mk(true, [enc[128], enc[128], enc[128], 255]), n: normals ? mk(false, [128, 128, 255, 255]) : null, size };
+  arrays = { a: mk(true, [enc[128], enc[128], enc[128], 128]), n: normals ? mk(false, [128, 128, 255, 255]) : null, size };
   const rel = new Set(Object.values(LIB).filter((L) => L.mode === 'rel').map((L) => L.tex)), c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high';
   const load = (url) => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('texture ' + url)); im.src = url; });
   arrays.ready = Promise.all(LAYERS.flatMap((name, i) => [['a', arrays.a], ['n', arrays.n]].filter(([, T]) => T).map(async ([kind, T]) => {
-    try { const im = await load(base + name + '_' + kind + '.jpg'); g.clearRect(0, 0, size, size); g.drawImage(im, 0, 0, size, size); const px = g.getImageData(0, 0, size, size).data;
+    try { const im = await load(base + name + '_' + kind + '.jpg'), rim = kind === 'a' && ROUGH.has(name) ? await load(base + name + '_r.jpg').catch(() => null) : null;
+      let rp = null; if (rim) { g.clearRect(0, 0, size, size); g.drawImage(rim, 0, 0, size, size); rp = g.getImageData(0, 0, size, size).data; }
+      g.clearRect(0, 0, size, size); g.drawImage(im, 0, 0, size, size); const px = g.getImageData(0, 0, size, size).data;
       if (kind === 'a' && rel.has(name)) for (let k = 0; k < px.length; k += 4) { px[k] = enc[px[k]]; px[k + 1] = enc[px[k + 1]]; px[k + 2] = enc[px[k + 2]]; }
+      if (kind === 'a') for (let k = 3; k < px.length; k += 4) px[k] = rp ? rp[k - 3] : 128;
       T.image.data.set(px, i * size * size * 4); } catch (e) { console.warn(e.message); } }))).then(() => { arrays.a.needsUpdate = true; if (arrays.n) arrays.n.needsUpdate = true; });
   return arrays;
 }

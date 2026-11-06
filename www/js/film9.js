@@ -48,11 +48,13 @@ function slides(aspect) {
 const QUAD_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 const SPILL_FRAG = `uniform sampler2D map; uniform vec4 uBox; varying vec2 vUv;
 void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0); vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb * inside; gl_FragColor = vec4(c, 1.0); }`;
-const AVG_FRAG = `uniform sampler2D map; varying vec2 vUv; void main() { gl_FragColor = vec4(textureLod(map, vec2(0.25 + vUv.x * 0.5, 0.5), 6.0).rgb, 1.0); }`;
+const AVG_FRAG = `uniform sampler2D map; varying vec2 vUv; void main() { gl_FragColor = vec4(textureLod(map, vec2(0.25 + vUv.x * 0.5, 0.5), 8.0).rgb, 1.0); }`;
 const WALL_VERT = `varying vec2 vUv; varying float vDist; void main() { vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
 const WALL_FRAG = `uniform sampler2D uSpill; uniform float uSide; uniform float uAmt; varying vec2 vUv;
-void main() { float d = vUv.x; float u = uSide < 0.0 ? 0.02 + d * 0.06 : 0.98 - d * 0.06; vec3 c = textureLod(uSpill, vec2(u, vUv.y), 0.5 + d * 2.5).rgb;
-  float fade = (1.0 - smoothstep(0.35, 1.0, d)) * smoothstep(0.0, 0.06, vUv.y) * smoothstep(1.0, 0.94, vUv.y); gl_FragColor = vec4(c * uAmt * fade * 0.9, 1.0);
+// the 270 hall's side screens extend the picture (v9.1): the band at the picture's edge is mirrored along the wall, sharp next to the
+// screen and softer and dimmer towards the back (peripheral vision), from a 256 x 128 copy of the picture with mipmaps
+void main() { float t = vUv.x; float x = uSide > 0.0 ? 1.0 - 0.24 * t : 0.24 * t; vec3 c = textureLod(uSpill, vec2(x, vUv.y), 0.6 + t * 2.4).rgb;
+  float fade = (1.0 - 0.55 * smoothstep(0.35, 1.0, t)) * smoothstep(0.0, 0.04, vUv.y) * smoothstep(1.0, 0.96, vUv.y) * smoothstep(1.0, 0.92, t); c = c * c * 1.4; gl_FragColor = vec4(c * uAmt * fade, 1.0);
   #include <colorspace_fragment>
 }`;
 export class Shows {
@@ -66,7 +68,7 @@ export class Shows {
     this.s = {};
     for (const h of world.halls) { const id = h.id; this.s[id] = { id, hall: h, state: 'idle', src: null, startAt: 0, phaseAt: 0, light: 1, lightFrom: 1, lightAt: 0, lightWant: 1, track: null, credits: false, slides: slides(h.cfg.aspect), curtainKeep: false }; }
     // the spill copy (64 x 32, mip-mapped; the rooms read it blurred), and a 2 x 1 average for people and seats (read back without a stall)
-    this.spillRT = new THREE.WebGLRenderTarget(64, 32, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, colorSpace: THREE.LinearSRGBColorSpace });
+    this.spillRT = new THREE.WebGLRenderTarget(256, 128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, colorSpace: THREE.LinearSRGBColorSpace });
     this.avgRT = new THREE.WebGLRenderTarget(2, 1, { generateMipmaps: false }); this.avgBuf = new Uint8Array(8); this._avgT = 0;
     const quad = new THREE.PlaneGeometry(2, 2); this.qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.spillMat = new THREE.ShaderMaterial({ vertexShader: QUAD_VERT, fragmentShader: SPILL_FRAG, uniforms: { map: { value: null }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } }, depthTest: false, depthWrite: false });
@@ -74,12 +76,15 @@ export class Shows {
     this.spillScene = new THREE.Scene(); this.spillScene.add(new THREE.Mesh(quad, this.spillMat)); this.avgScene = new THREE.Scene(); this.avgScene.add(new THREE.Mesh(quad, this.avgMat));
     for (const h of world.halls) { h.room.U.uSpill.value = this.spillRT.texture; h.room.U.uScreen.value.setRGB(0.25, 0.25, 0.25); }
     this.avg = new THREE.Color(0.2, 0.2, 0.2);
-    // 270: the side walls' projection surfaces (hallmath + tools/blender/arch/halls.py: 0.4 m to 72 % of the depth, 1.4 m up to 0.9 m under the ceiling)
-    const X = world.hallById('X270'); if (X) { const H = X.cfg; this.walls = [-1, 1].map((sg) => { const d0 = 0.4, d1 = H.depthIn * 0.72, y0 = H.y0 + 1.4, y1 = H.y0 + H.ceil - 0.9, u = sg * (H.width / 2 - 0.056);
-      const a = H.toWorld(u, d0), b = H.toWorld(u, d1), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([a.x, y0, a.z, b.x, y0, b.z, b.x, y1, b.z, a.x, y1, a.z], 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
-      g.setIndex(sg * H.dir > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]); const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uSide: { value: sg }, uAmt: { value: 0 } }, side: THREE.DoubleSide,
+    // 270: the side screens (hallmath.js sideScreen; tools/blender/arch/halls.py builds the surfaces): a strip of columns over each one,
+    // the bottom edge rising with the rake, 5 mm in front of the surface
+    const X = world.hallById('X270'); if (X && X.cfg.sideScreen) { const H = X.cfg, SS = H.sideScreen, N = 8; this.walls = [-1, 1].map((sg) => { const u = sg * (H.width / 2 - 0.05), P = [], UV = [], I = [];
+      for (let i = 0; i <= N; i++) { const t = i / N, d = SS.d0 + (SS.d1 - SS.d0) * t, w = H.toWorld(u, d), yb = H.y0 + SS.yb0 + (SS.yb1 - SS.yb0) * t; P.push(w.x, yb, w.z, w.x, H.y0 + SS.yt, w.z); UV.push(t, 0, t, 1);
+        if (i) { const a = 2 * i - 2; I.push(a, a + 2, a + 3, a, a + 3, a + 1); } }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I);
+      const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uSide: { value: sg }, uAmt: { value: 0 } }, side: THREE.DoubleSide,
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
-      m.renderOrder = 2; m.visible = false; X.room.group.add(m); return m; }); }   // light added onto the panels (it was an opaque layer: black panels with no film)
+      m.renderOrder = 2; m.visible = false; m.name = 'x270-side-' + sg; X.room.group.add(m); return m; }); }   // light added onto the light grey surfaces
     this._yt = null;
   }
   cur() { return this.active && this.s[this.active]; }
@@ -140,9 +145,9 @@ export class Shows {
       const dur = s.state === 'countdown' ? 9500 : s.state === 'playing' ? 2000 : 5000, u = clamp((now - s.lightAt) / dur); s.light = s.lightFrom + (want - s.lightFrom) * ss(u);
       h.room.U.uHouse.value = s.light; h.room.U.uGlow.value = 0.35 + 0.65 * Math.min(1, s.light * 2.5);
       // screen light gain: the picture's own colour comes from the spill copy
-      const g = s.state === 'playing' && s.pic ? 5.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
+      const g = s.state === 'playing' && s.pic ? 6.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
-      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic ? 0.25 + 0.75 * this.spread : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
+      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic ? 0.5 + 0.25 * this.spread : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
     }
   }
   // ---------------------------------------------------------- per frame (GPU): the spill copy, the average, YouTube placement

@@ -4,15 +4,15 @@ towards the rear; geo.frame_y places it. Everything is a closed solid: walls wit
 the masking wall that wraps the screen to both side walls (no empty sides, photo 3), exit portals at the front corners, a light-lock
 baffle at the entrance, and lights only where nothing crosses a seat: step nosings in the aisles, the walls and the ceiling."""
 import math, random
-from geo import Acc, Glow, Lights, MAT, lin, mix, frame_y
+from geo import Acc, Glow, Lights, MAT, lin, mix, frame_y, cross, sub
 
 WALL, GAP = 0.4, 1.25   # wall thickness; picture plane -> screen wall
 
 THEME = {
-  'max': dict(wall='#121826', wall2='#0b0d12', ceil='#07080b', carpet='#1a2030', riser='#141824', accent='#2f7cff', warm='#ffb46b', wood='#5b3a24', mask='#050608', trim='#2a3140', step='#4d8dff'),
-  'curve': dict(wall='#141b33', wall2='#0d1224', ceil='#0a0e1c', carpet='#232a44', riser='#1a2038', accent='#c9a86a', warm='#ffd59e', wood='#6a4428', mask='#06070c', trim='#c9a86a', step='#ffcf8a'),
-  'classic': dict(wall='#5a1a24', wall2='#3a1118', ceil='#1c1c21', carpet='#3b1a20', riser='#2a1216', accent='#b08d57', warm='#ffd2a0', wood='#4a2a1a', mask='#080506', trim='#b08d57', step='#ffcf8a', cream='#e6d9c2'),
-  'x270': dict(wall='#1f2227', wall2='#16181c', ceil='#0d0f12', carpet='#26292e', riser='#1c1e22', accent='#1f8a8a', warm='#ffe2bf', wood='#3a3a3a', mask='#06070a', trim='#1f8a8a', step='#5fe0d8', panel='#9a9da3'),
+  'max': dict(wall='#121826', wall2='#0b0d12', ceil='#07080b', carpet='#1a2030', riser='#141824', accent='#2f7cff', warm='#ffb46b', wood='#5b3a24', mask='#050608', trim='#2a3140', step='#4d8dff', bay='#3d4556', frame='#8a8f99'),
+  'curve': dict(wall='#141b33', wall2='#0d1224', ceil='#0a0e1c', carpet='#232a44', riser='#1a2038', accent='#c9a86a', warm='#ffd59e', wood='#6a4428', mask='#06070c', trim='#c9a86a', step='#ffcf8a', bay='#4b4660', frame='#c9a86a'),
+  'classic': dict(wall='#5a1a24', wall2='#3a1118', ceil='#1c1c21', carpet='#3b1a20', riser='#2a1216', accent='#b08d57', warm='#ffd2a0', wood='#4a2a1a', mask='#080506', trim='#b08d57', step='#ffcf8a', cream='#e6d9c2', bay='#c7b597', frame='#b08d57'),
+  'x270': dict(wall='#1f2227', wall2='#16181c', ceil='#0d0f12', carpet='#26292e', riser='#1c1e22', accent='#1f8a8a', warm='#ffe2bf', wood='#3a3a3a', mask='#06070a', trim='#1f8a8a', step='#5fe0d8', panel='#9a9da3', bay='#5d636c', frame='#9aa0a8', screen='#c9ccd1'),
 }
 
 def up_quad(g, a, b, z0, z1, y, col, k):
@@ -82,7 +82,7 @@ def build_hall(h, L1):
     # ---------------------------------------------------------------- structure (closed solids)
     acc.box(-W2 - WALL, -0.35, Dw - WALL, W2 + WALL, 0.0, depth + WALL, MAT['hallCarpet'], carpet)
     acc.box(-W2 - WALL, ceil, Dw - WALL, W2 + WALL, ceil + 0.36, depth + WALL, MAT['paint'], th['ceil'])
-    exitU, ent = W2 - 0.85, h['entryU']
+    exitU, ent = abs(h['exits'][0]['u']), h['entryU']
     acc.wall((W2 + WALL, Dw - WALL / 2), (-W2 - WALL, Dw - WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'],
              openings=[(WALL + W2 - exitU - 0.9, WALL + W2 - exitU + 0.9, 2.4, -0.35), (WALL + W2 + exitU - 0.9, WALL + W2 + exitU + 0.9, 2.4, -0.35)])   # the floor is the threshold
     acc.wall((-W2 - WALL, depth + WALL / 2), (W2 + WALL, depth + WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'],
@@ -148,32 +148,38 @@ def build_hall(h, L1):
                 g0, g1 = (q, p) if sg > 0 else (p, q)   # runs towards -u: the strip faces the screen (-d)
                 glow.quad((g0[0], yb + 0.06, g0[1]), (g1[0], yb + 0.06, g1[1]), (g1[0], yb + 0.1, g1[1]), (g0[0], yb + 0.1, g0[1]), th['warm'], 1.3)
                 lit.line((p[0], yb + 0.1, p[1] - 0.1), (q[0], yb + 0.1, q[1] - 0.1), th['warm'], 0.35, 3.5, 'f')
-    # ---------------------------------------------------------------- masking wall: wraps the screen to both side walls (photo 3)
+    # ---------------------------------------------------------------- the front (v9.1). The user: "one theatre is so small no one would
+    # see it", "the exit is total nonsense". The picture now runs nearly wall to wall; beside it, at each front corner, an open exit bay
+    # (BAY_H high): lined in a light finish and lit (an egress light stays on through the film), the exit door in the screen wall at its
+    # back, a lit EXIT sign over its mouth that every seat can read. v9 hid the door in a black slot behind the masking.
     Wp, hB, Hp, Rs = h['W'] / 2, h['hB'], h['H'], h['R']
     def sd(u): return (Rs - math.sqrt(max(0.0, Rs * Rs - u * u))) if Rs else 0.0
+    def sd1(u): return (u / math.sqrt(max(1e-6, Rs * Rs - u * u))) if Rs else 0.0   # slope of the curve, d(sd)/du
     md = lambda u: sd(u) + 0.04
-    PU = W2 - 1.75   # exit portals: |u| > PU, below 2.55 m
-    us = sorted(set([-W2 - 0.05, W2 + 0.05, -Wp, Wp, -PU, PU] + [(-Wp + 2 * Wp * i / 24) for i in range(25)] + [-W2 + (W2 - Wp) * i / 8 for i in range(9)] + [Wp + (W2 - Wp) * i / 8 for i in range(9)]))
+    PU, BAY_H = h['bay'][0], 3.0
+    us = sorted(set([-W2 - 0.05, W2 + 0.05, -Wp, Wp, -PU, PU] + [(-Wp + 2 * Wp * i / 24) for i in range(25)]
+                    + [sg * (Wp + (PU - Wp) * i / 4) for i in range(5) for sg in (-1, 1)] + [sg * (PU + (W2 - PU) * i / 6) for i in range(7) for sg in (-1, 1)]))
     us = [u for u in us if -W2 - 0.06 <= u <= W2 + 0.06]
-    ys = sorted(set([0.0, 2.55, hB, hB + Hp, ceil]))
+    ys = sorted(set([0.0, BAY_H, hB, hB + Hp, ceil]))
     for i in range(len(us) - 1):
         ua, ub = us[i], us[i + 1]; um = (ua + ub) / 2; da, db = md(ua), md(ub)
+        if ub - ua < 1e-4: continue
         for j in range(len(ys) - 1):
             ya, yb = ys[j], ys[j + 1]; ym = (ya + yb) / 2
             if abs(um) < Wp and hB <= ym <= hB + Hp: continue
-            if abs(um) > PU and ym < 2.55: continue
+            if abs(um) > PU and ym < BAY_H: continue
             acc.quad((ub, ya, db), (ub, yb, db), (ua, yb, da), (ua, ya, da), MAT['velvet'], th['mask'])
             acc.quad((ua, ya, da - 0.06), (ua, yb, da - 0.06), (ub, yb, db - 0.06), (ub, ya, db - 0.06), MAT['velvet'], th['mask'])
         if abs(um) < Wp:   # picture sill (faces up) and head (faces down)
             acc.quad((ua, hB, da), (ub, hB, db), (ub, hB, db - 0.06), (ua, hB, da - 0.06), MAT['velvet'], th['mask'])
             acc.quad((ua, hB + Hp, da - 0.06), (ub, hB + Hp, db - 0.06), (ub, hB + Hp, db), (ua, hB + Hp, da), MAT['velvet'], th['mask'])
-        if abs(um) > PU:   # portal head (faces down)
-            acc.quad((ua, 2.55, da - 0.06), (ub, 2.55, db - 0.06), (ub, 2.55, db), (ua, 2.55, da), MAT['velvet'], th['mask'])
+        if abs(um) > PU:   # the bay mouth's head (faces down)
+            acc.quad((ua, BAY_H, da - 0.06), (ub, BAY_H, db - 0.06), (ub, BAY_H, db), (ua, BAY_H, da), MAT['velvet'], th['mask'])
     def jamb(u, ya, yb, face):   # vertical reveal at u facing +u (face 1) or -u (face -1)
         d = md(u)
         if face > 0: acc.quad((u, ya, d - 0.06), (u, yb, d - 0.06), (u, yb, d), (u, ya, d), MAT['velvet'], th['mask'])
         else: acc.quad((u, ya, d), (u, yb, d), (u, yb, d - 0.06), (u, ya, d - 0.06), MAT['velvet'], th['mask'])
-    jamb(-Wp, hB, hB + Hp, 1); jamb(Wp, hB, hB + Hp, -1); jamb(-PU, 0, 2.55, -1); jamb(PU, 0, 2.55, 1)
+    jamb(-Wp, hB, hB + Hp, 1); jamb(Wp, hB, hB + Hp, -1); jamb(-PU, 0, BAY_H, -1); jamb(PU, 0, BAY_H, 1)
     for i in range(24):   # brass line under and over the picture ("a little more defined")
         ua, ub = -Wp + 2 * Wp * i / 24, -Wp + 2 * Wp * (i + 1) / 24; da, db = md(ua) + 0.01, md(ub) + 0.01   # 1 cm proud (4 mm z-fought at a distance)
         for yy in (hB - 0.05, hB + Hp + 0.01):
@@ -185,37 +191,110 @@ def build_hall(h, L1):
             pa, pb = (ua, md(ua) + 0.45), (ub, md(ub) + 0.45)
             acc.prism([(ua, md(ua) + 0.05), (ub, md(ub) + 0.05), (ub, md(ub) + 0.5), (ua, md(ua) + 0.5)], hB + Hp + 0.12, hB + Hp + 0.62, MAT['velvet'], th['mask'])
             acc.quad((ub, hB + Hp + 0.5, pb[1] + 0.051), (ub, hB + Hp + 0.54, pb[1] + 0.051), (ua, hB + Hp + 0.54, pa[1] + 0.051), (ua, hB + Hp + 0.5, pa[1] + 0.051), MAT['brass'], th['trim'])
-    for sg in (-1, 1):   # exit signs over the portals, a light in each backstage passage
-        u0, u1 = sorted((sg * PU, sg * W2)); dm = md(sg * (W2 - 0.9)) + 0.012
-        glow.quad((u0 + 0.35, 2.68, dm), (u1 - 0.35, 2.68, dm), (u1 - 0.35, 2.92, dm), (u0 + 0.35, 2.92, dm), lin('#20d070'), 2.2)
-        lit.point((sg * (W2 - 0.9), 2.8, dm + 0.3), lin('#3dff86'), 0.25, 3.0, 'f')
-        lit.point((sg * (W2 - 0.9), 2.3, (Dw + md(sg * (W2 - 0.9))) / 2), lin('#ffd2a0'), 0.35, 3.0, 'h')
-    # ---------------------------------------------------------------- walls: fabric panels, sconces, speakers, all above the local floor
-    rnd = random.Random(h['no']); step, dd = 2.4, 0.6
+    # ---- the exit bays
+    yaw0 = -f * math.pi / 2   # three.js yaw of something in the hall that faces the audience (+d)
+    def gq(a, b, c, d_, want, col, k):   # a glow quad facing `want` whatever its corner order
+        n = cross(sub(b, a), sub(c, a)); glow.quad(*((a, b, c, d_) if n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 else (d_, c, b, a)), col, k)
+    def sign_on_mask(uc, yc, w_, h_, pid):
+        """an EXIT box on the masking's face (tangent to it where the screen is curved) and its lit face (an engine panel)"""
+        k_ = sd1(uc); L_ = math.hypot(1.0, k_); tu, td = 1.0 / L_, k_ / L_; nu, nd = -td, tu; c = (uc, md(uc))
+        pts = [(c[0] + s1 * tu * w_ / 2 + o * nu, c[1] + s1 * td * w_ / 2 + o * nd) for s1, o in ((-1, -0.01), (1, -0.01), (1, 0.035), (-1, 0.035))]
+        acc.prism(pts, yc - h_ / 2 - 0.03, yc + h_ / 2 + 0.03, MAT['powder'], lin('#16181b'))
+        p = T((c[0] + nu * 0.04, yc, c[1] + nd * 0.04)); panels.append({'id': pid, 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0 + math.atan2(nu, nd), 'w': w_, 'h': h_, 'emit': 1})
+        lit.point((c[0] + nu * 0.35, yc, c[1] + nd * 0.35), lin('#2bd07a'), 0.3, 3.5, 'f')
+    panels = []
+    for sg in (-1, 1):
+        u_in, u_out, uc = sg * PU, sg * W2, sg * (PU + W2) / 2
+        fr = lambda u: md(u) - 0.07   # 1 cm behind the masking's back face
+        cheek = sorted((u_in, u_in - sg * 0.12))   # the wall between the bay and the dark space behind the masking
+        acc.box(cheek[0], 0.0, Dw, cheek[1], BAY_H, fr(u_in), MAT['paint'], th['bay'])
+        s0, s1 = sorted((u_in - sg * 0.12, u_out)); edge = [s0 + (s1 - s0) * i / 8 for i in range(9)]
+        acc.prism([(s0, Dw), (s1, Dw)] + [(u, fr(u)) for u in reversed(edge)], BAY_H, BAY_H + 0.12, MAT['paint'], th['bay'])   # soffit
+        l0, l1 = sorted((u_out, u_out - sg * 0.02))
+        acc.box(l0, 0.0, Dw, l1, BAY_H, fr(u_out), MAT['paint'], th['bay'])                       # lining on the side wall
+        de0, de1 = sorted((sg * (exitU - 0.9), sg * (exitU + 0.9)))                                 # the door opening (u)
+        for qa, qb, y_a, y_b in ((u_in, de0 if sg > 0 else de1, 0.0, BAY_H), (de1 if sg > 0 else de0, u_out - sg * 0.02, 0.0, BAY_H), (de0, de1, 2.4, BAY_H)):
+            q0, q1 = sorted((qa, qb)); acc.box(q0, y_a, Dw, q1, y_b, Dw + 0.02, MAT['paint'], th['bay'])   # lining on the screen wall
+        for ux in (de0, de1): acc.box(ux - 0.045, 0.0, Dw + 0.02, ux + 0.045, 2.46, Dw + 0.05, MAT['metal'], th['frame'])   # architrave
+        acc.box(de0 - 0.045, 2.4, Dw + 0.02, de1 + 0.045, 2.46, Dw + 0.05, MAT['metal'], th['frame'])
+        dm = (Dw + fr(uc)) / 2   # a downlight in the soffit: house light, plus a dim egress light that stays on through the film
+        lit.spot((uc, BAY_H - 0.03, dm), th['warm'], 1.1, 5, 'h', (0, -1, 0), 30, 70)
+        lit.spot((uc, BAY_H - 0.03, dm), th['warm'], 0.22, 4, 'f', (0, -1, 0), 30, 70)
+        gq((uc - 0.09, BAY_H - 0.004, dm - 0.09), (uc + 0.09, BAY_H - 0.004, dm - 0.09), (uc + 0.09, BAY_H - 0.004, dm + 0.09), (uc - 0.09, BAY_H - 0.004, dm + 0.09), (0, -1, 0), th['warm'], 2.0)
+        i_ = 0 if sg < 0 else 1
+        sign_on_mask(uc, BAY_H + 0.42, 0.9, 0.32, f"exitsign_{h['id']}_{i_}")
+        p = T((sg * exitU, 2.72, Dw + 0.055)); panels.append({'id': f"exitsign_{h['id']}_{2 + i_}", 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0, 'w': 0.6, 'h': 0.22, 'emit': 1})
+        acc.box(sg * exitU - 0.33, 2.58, Dw + 0.02, sg * exitU + 0.33, 2.86, Dw + 0.05, MAT['powder'], lin('#16181b'))
+        # a light line along the floor at the cheek's foot leads into the bay (fixed: on through the film)
+        e_a, e_b = (Dw + 0.1, fr(u_in) - 0.05); xs_ = u_in + sg * 0.004
+        gq((xs_, 0.03, e_a), (xs_, 0.03, e_b), (xs_, 0.06, e_b), (xs_, 0.06, e_a), (sg, 0, 0), th['step'], 1.4)
+    # ---------------------------------------------------------------- side walls: each hall's own wall system, above the local floor
+    rnd = random.Random(h['no']); fmt = h['format']; step = 2.4
+    SS = h.get('sideScreen'); x_end = SS['d1'] if SS else -1.0
+    d_start = max(0.6, md(W2) + 0.2)
+    def on_wall(sg, off0, off1, y_a, y_b, d_a, d_b, mat, col):
+        """a box standing on a side wall's face, from off0 to off1 metres in from it"""
+        a, b = sorted((sg * (W2 - off0), sg * (W2 - off1))); acc.box(a, y_a, d_a, b, y_b, d_b, mat, col)
+    def wall_glow(sg, y_a, y_b, d_a, d_b, col, k, off=0.006):   # a light strip on a side wall's face (or on a box off metres in)
+        xs_ = sg * (W2 - off); gq((xs_, y_a, d_a), (xs_, y_b, d_a), (xs_, y_b, d_b), (xs_, y_a, d_b), (-sg, 0, 0), col, k)
+    dd = d_start
     while dd < depth - 1.4:
+        d1 = min(dd + step, depth - 0.25)
         for sg in (-1, 1):
-            u_in = sg * W2; fy = max(floor_at(sg * (W2 - 0.3), dd), floor_at(sg * (W2 - 0.3), min(depth - 0.1, dd + step)))
-            panel_zone = not (h['format'] == 'x270' and dd < depth * 0.72)
-            if panel_zone and ceil - 0.7 - (fy + 0.35) > 1.0:
-                x0, x1 = (u_in - 0.03, u_in) if sg > 0 else (u_in, u_in + 0.03)
-                acc.box(x0, fy + 0.35, dd + 0.02, x1, ceil - 0.7, dd + step - 0.02, MAT['acoustic'], mix(th['wall'], th['wall2'], 0.35 * rnd.random()))
-            ys_ = fy + 2.35; xs = u_in - sg * 0.035
-            if sg > 0: glow.quad((xs, ys_, dd + 0.02), (xs, ys_ + 0.5, dd + 0.02), (xs, ys_ + 0.5, dd), (xs, ys_, dd), th['warm'], 1.2)
-            else: glow.quad((xs, ys_, dd), (xs, ys_ + 0.5, dd), (xs, ys_ + 0.5, dd + 0.02), (xs, ys_, dd + 0.02), th['warm'], 1.2)
-            lit.spot((u_in - sg * 0.25, ys_ + 0.5, dd), th['warm'], 0.7, 4.5, 'h', (-sg * 0.3, 1, 0), 25, 70)
-            lit.spot((u_in - sg * 0.25, ys_ - 0.05, dd), th['warm'], 0.5, 3.5, 'h', (-sg * 0.3, -1, 0), 25, 70)
-            x0, x1 = (u_in - 0.36, u_in - 0.03) if sg > 0 else (u_in + 0.03, u_in + 0.36)
-            if ys_ + 1.5 < ceil - 0.6: acc.box(x0, ys_ + 0.9, dd - 0.28, x1, ys_ + 1.5, dd + 0.28, MAT['fabric'], lin('#0c0c0e'))
-            if h['format'] == 'max':   # vertical blue light lines (inspiration photo 1)
-                xg, D1 = u_in - sg * 0.035, dd + step - 0.01
-                if sg > 0: glow.quad((xg, fy + 0.3, D1), (xg, ceil - 0.8, D1), (xg, ceil - 0.8, D1 - 0.02), (xg, fy + 0.3, D1 - 0.02), th['accent'], 1.4)
-                else: glow.quad((xg, fy + 0.3, D1 - 0.02), (xg, ceil - 0.8, D1 - 0.02), (xg, ceil - 0.8, D1), (xg, fy + 0.3, D1), th['accent'], 1.4)
+            fy = max(floor_at(sg * (W2 - 0.3), dd), floor_at(sg * (W2 - 0.3), d1 - 0.01))
+            if dd < x_end or ceil - 0.7 - fy < 2.2: continue
+            da, db = dd + 0.03, d1 - 0.03; wtop = ceil - 0.7
+            if fmt == 'max':      # walnut wainscot with a brass cap, dark fabric above, a blue light line in every joint
+                on_wall(sg, 0.0, 0.04, fy, fy + 1.1, da, db, MAT['wood'], th['wood'])
+                on_wall(sg, 0.0, 0.055, fy + 1.1, fy + 1.14, da - 0.01, db + 0.01, MAT['brass'], lin('#b58a4c'))
+                on_wall(sg, 0.0, 0.03, fy + 1.2, wtop, da, db, MAT['acoustic'], mix(th['wall'], th['wall2'], 0.3 * rnd.random()))
+                wall_glow(sg, fy + 1.25, wtop - 0.1, dd - 0.012, dd + 0.012, th['accent'], 1.4)
+            elif fmt == 'curve':  # cognac leather wainscot, navy fabric panels between slim champagne pilasters, warm up-lights
+                on_wall(sg, 0.0, 0.05, fy, fy + 1.15, da, db, MAT['leather'], th['wood'])
+                on_wall(sg, 0.0, 0.06, fy + 1.15, fy + 1.19, da - 0.01, db + 0.01, MAT['brass'], th['trim'])
+                on_wall(sg, 0.0, 0.03, fy + 1.3, wtop, da + 0.04, db - 0.04, MAT['acoustic'], mix(th['wall'], th['wall2'], 0.3 * rnd.random()))
+                on_wall(sg, 0.0, 0.05, fy + 1.19, wtop, dd - 0.035, dd + 0.035, MAT['brass'], th['trim'])
+                wall_glow(sg, fy + 1.21, fy + 1.27, da + 0.05, db - 0.05, th['warm'], 1.2, off=0.007)
+                lit.line((sg * (W2 - 0.12), fy + 1.3, da + 0.1), (sg * (W2 - 0.12), fy + 1.3, db - 0.1), th['warm'], 0.25, 3.5, 'h', (0, 1, 0))
+            elif fmt == 'classic':  # charcoal dado and brass rail, burgundy fabric panels in cream mouldings, brass sconces
+                on_wall(sg, 0.0, 0.03, fy, fy + 0.95, da, db, MAT['paint'], th['ceil'])
+                on_wall(sg, 0.0, 0.06, fy + 0.95, fy + 1.01, da - 0.01, db + 0.01, MAT['brass'], th['trim'])
+                ptop = wtop - 0.1
+                on_wall(sg, 0.0, 0.03, fy + 1.2, ptop, da + 0.12, db - 0.12, MAT['acoustic'], mix(th['wall'], th['wall2'], 0.25 * rnd.random()))
+                for (y_a, y_b, e_a, e_b) in ((fy + 1.12, fy + 1.2, da + 0.04, db - 0.04), (ptop, ptop + 0.08, da + 0.04, db - 0.04), (fy + 1.2, ptop, da + 0.04, da + 0.12), (fy + 1.2, ptop, db - 0.12, db - 0.04)):
+                    on_wall(sg, 0.0, 0.05, y_a, y_b, e_a, e_b, MAT['paint'], th['cream'])
+            else:                 # 270, behind its side screens: graphite panels, a teal line at the base
+                on_wall(sg, 0.0, 0.03, fy + 0.4, wtop, da, db, MAT['acoustic'], mix(th['wall'], th['wall2'], 0.3 * rnd.random()))
+                wall_glow(sg, fy + 0.3, fy + 0.34, da, db, th['accent'], 1.3)
+            # wall washer: a ceiling spot near the wall grazing the panel (house light), scallops of light down the wall
+            lit.spot((sg * (W2 - 0.55), ceil - 0.15, (dd + d1) / 2), th['warm'], 1.0, ceil + 2, 'h', (sg * 0.2, -1, 0), 18, 42)
+            # in the joint: a sconce (classic), a surround speaker every other joint (all)
+            if fmt == 'classic':
+                ys_ = fy + 2.5; on_wall(sg, 0.0, 0.03, ys_ - 0.3, ys_ + 0.3, dd - 0.07, dd + 0.07, MAT['brass'], th['trim'])
+                on_wall(sg, 0.03, 0.17, ys_ - 0.12, ys_ + 0.18, dd - 0.09, dd + 0.09, MAT['matte'], lin('#f3e2c0'))
+                wall_glow(sg, ys_ - 0.1, ys_ + 0.16, dd - 0.07, dd + 0.07, th['warm'], 1.8, off=0.172)
+                lit.spot((sg * (W2 - 0.25), ys_ + 0.2, dd), th['warm'], 0.7, 4.5, 'h', (-sg * 0.25, 1, 0), 25, 70)
+                lit.spot((sg * (W2 - 0.25), ys_ - 0.15, dd), th['warm'], 0.45, 3.5, 'h', (-sg * 0.25, -1, 0), 25, 70)
+            if int(round((dd - d_start) / step)) % 2 == 1 and fy + 4.4 < ceil - 0.8:
+                on_wall(sg, 0.0, 0.32, fy + 3.7, fy + 4.3, dd - 0.27, dd + 0.27, MAT['fabric'], lin('#0c0c0e'))
         dd += step
-    if h['format'] == 'x270':   # the two side projection panels (light matte; the engine projects the picture's edges onto them)
+    # ---------------------------------------------------------------- the 270 hall's side screens (ScreenX-style) and their projectors
+    if SS:
+        d0s, d1s, yb0, yb1, yt = SS['d0'], SS['d1'], SS['yb0'], SS['yb1'], SS['yt']
         for sg in (-1, 1):
-            u_in = sg * W2; x0, x1 = (u_in - 0.05, u_in) if sg > 0 else (u_in, u_in + 0.05); d1 = depth * 0.72
-            acc.box(x0, 1.4, 0.4, x1, ceil - 0.9, d1, MAT['paint'], th['panel'])
-            acc.box(x0 - 0.01, 1.32, 0.35, x1 + 0.01, 1.4, d1 + 0.05, MAT['metal'], th['trim'])
+            xa, xb = sorted((sg * (W2 - 0.03), sg * W2)); acc.prism_x([(d0s - 0.1, yb0 - 0.1), (d1s + 0.1, yb1 - 0.1), (d1s + 0.1, yt + 0.1), (d0s - 0.1, yt + 0.1)], xa, xb, MAT['velvet'], th['mask'])   # black border
+            xa, xb = sorted((sg * (W2 - 0.045), sg * (W2 - 0.03))); acc.prism_x([(d0s, yb0), (d1s, yb1), (d1s, yt), (d0s, yt)], xa, xb, MAT['matte'], th['screen'])        # the projection surface
+            xa, xb = sorted((sg * (W2 - 0.02), sg * W2)); acc.prism_x([(d0s - 0.1, -0.3), (d1s + 0.1, -0.3), (d1s + 0.1, yb1 - 0.12), (d0s - 0.1, yb0 - 0.12)], xa, xb, MAT['acoustic'], th['wall2'])   # wainscot
+            xs_ = sg * (W2 - 0.026); gq((xs_, yb0 - 0.16, d0s), (xs_, yb1 - 0.16, d1s), (xs_, yb1 - 0.13, d1s), (xs_, yb0 - 0.13, d0s), (-sg, 0, 0), th['accent'], 1.6)
+            for i in range(4):   # projectors hung under the ceiling near this wall, each throwing onto the opposite wall
+                pd = d0s + (d1s - d0s) * (i + 0.5) / 4; pu = sg * (W2 - 1.3)
+                acc.box(pu - 0.36, ceil - 0.95, pd - 0.3, pu + 0.36, ceil - 0.55, pd + 0.3, MAT['powder'], lin('#1a1c20'))
+                acc.box(pu - 0.03, ceil - 0.55, pd - 0.03, pu + 0.03, ceil, pd + 0.03, MAT['metal'], lin('#30333a'))
+                lx = pu - sg * 0.362; gq((lx, ceil - 0.83, pd - 0.07), (lx, ceil - 0.69, pd - 0.07), (lx, ceil - 0.69, pd + 0.07), (lx, ceil - 0.83, pd + 0.07), (-sg, 0, 0), lin('#bcd8ff'), 2.2)
+    # ---------------------------------------------------------------- the projection port in the rear wall, over the rear aisle
+    py_ = min(top + 3.4, ceil - 0.6)
+    acc.box(-0.7, py_ - 0.45, depth - 0.02, 0.7, py_ + 0.05, depth, MAT['glass'], lin('#0a0f16'))
+    gq((-0.62, py_ - 0.38, depth - 0.025), (0.62, py_ - 0.38, depth - 0.025), (0.62, py_ - 0.02, depth - 0.025), (-0.62, py_ - 0.02, depth - 0.025), (0, 0, -1), lin('#9fc2ff'), 0.5)
     # ---------------------------------------------------------------- ceilings and house lights
     cy = ceil - 0.01
     if h['format'] == 'max':
@@ -245,10 +324,11 @@ def build_hall(h, L1):
     else:
         for u in (-W2 * 0.5, 0.0, W2 * 0.5):
             glow.quad((u - 0.03, cy, 2.0), (u + 0.03, cy, 2.0), (u + 0.03, cy, depth - 1.5), (u - 0.03, cy, depth - 1.5), th['accent'], 1.0)
-    nu = max(1, int(round((2 * W2 - 4.4) / 4.4)))
-    for u in [(-W2 + 2.2) + i * (2 * W2 - 4.4) / nu for i in range(nu + 1)]:
-        for d in [2.5 + j * 4.5 for j in range(int((depth - 3) / 4.5) + 1)]:
-            lit.spot((u, ceil - 0.05, d), th['warm'], 2.2 if h['format'] == 'max' else 2.6, ceil + 3, 'h', (0, -1, 0), 25, 60)
+    # downlights over the seats only (the walls have their washers): fewer and softer than v9's grid
+    nu = max(1, int(round((2 * h['blockHalf']) / 4.4)))
+    for u in [-h['blockHalf'] + 1.0 + i * (2 * h['blockHalf'] - 2.0) / nu for i in range(nu + 1)]:
+        for d in [h['rows'][0]['X'] + j * 4.5 for j in range(int((depth - h['rows'][0]['X'] - 1.0) / 4.5) + 1)]:
+            lit.spot((u, ceil - 0.05, d), th['warm'], 1.6 if h['format'] == 'max' else 1.9, ceil + 3, 'h', (0, -1, 0), 25, 60)
             acc.cyl(u, d, 0.09, ceil - 0.025, ceil - 0.002, MAT['metal'], lin('#2a2a2e'), n=12)
             glow.quad((u - 0.06, ceil - 0.027, d - 0.06), (u + 0.06, ceil - 0.027, d - 0.06), (u + 0.06, ceil - 0.027, d + 0.06), (u - 0.06, ceil - 0.027, d + 0.06), th['warm'], 2.0)
     for sg in (-1, 1):   # aisle step light as light (fixed layer)
@@ -272,4 +352,4 @@ def build_hall(h, L1):
         probes.append((s['x'] + sn * bk, s['y'] + ht + 0.04, s['z'] + cs * bk, 0.7 * sn, 0.7, 0.7 * cs, -0.96 * sn, 0.29, -0.96 * cs))
     c = [T((-W2, 0, Dw)), T((W2, 0, depth))]
     lit.rect = [min(c[0][0], c[1][0]), min(c[0][2], c[1][2]), max(c[0][0], c[1][0]), max(c[0][2], c[1][2])]
-    return acc, glow, lit, occ, scr, probes
+    return acc, glow, lit, occ, scr, probes, panels

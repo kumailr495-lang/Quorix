@@ -10,12 +10,14 @@ export const HALL = Object.fromEntries(HALLS.map((s) => [s.id, makeHall(s)]));
 export const L1 = HALL.MAX.total;   // the first floor = the MAX hall's rear aisle (its rake top)
 export const FACADE = 18, LOBBY = { x0: -22, x1: 22, z0: -14, z1: FACADE, ceil: 9.6 }, MEZZ = { z0: -14, z1: -7.4, void: { x0: 8.6, x1: 12.8, z0: -9.8, z1: -7.4 } };
 // the spine is 4.5 m high under the bridge and the pantry (they are its roof) and 6.4 m south of zHi, where the raised halls' exit doors open
-export const SPINE = { x0: -4.2, x1: 4.2, z0: -72.6, z1: -14, ceil: 4.5, zHi: -27.0, ceilHi: 6.4 };
+export const SPINE = { x0: -4.2, x1: 4.2, z0: Math.min(HALL.CURVE.zc - HALL.CURVE.width / 2, HALL.X270.zc - HALL.X270.width / 2) - 0.4, z1: -14, ceil: 4.5, zHi: -27.0, ceilHi: 6.4 };
 const RO = (h) => h.xRear - 0.4 * h.dir;   // a hall's rear wall, outer face
 export const BRIDGE = { x0: RO(HALL.MAX) - 6, x1: RO(HALL.CLASSIC) + 6, z0: -22, z1: -14, ceil: 4.2 };
-export const FLANK_W = { x0: BRIDGE.x0, x1: RO(HALL.MAX), z0: -50.2, z1: -22 }, LINK_W = { x0: BRIDGE.x0, x1: RO(HALL.CURVE), z0: -56.4, z1: -50.2 };
+// the flank corridors run behind the front halls' rear walls; a link leads from each to the rear hall's entrance (v9.1: from the halls' sizes)
+const ENTRY_Z = (h) => h.zc + h.width / 2 - 1.3;
+export const FLANK_W = { x0: BRIDGE.x0, x1: RO(HALL.MAX), z0: HALL.CURVE.zc + HALL.CURVE.width / 2, z1: -22 }, LINK_W = { x0: BRIDGE.x0, x1: RO(HALL.CURVE), z0: HALL.CURVE.zc + HALL.CURVE.width / 2 - 6.2, z1: HALL.CURVE.zc + HALL.CURVE.width / 2 };
 export const PANTRY = { x0: -3.6, x1: 3.6, z0: -26.6, z1: -22 };
-export const FLANK_E = { x0: RO(HALL.CLASSIC), x1: BRIDGE.x1, z0: -46.6, z1: -22 }, LINK_E = { x0: RO(HALL.X270), x1: RO(HALL.CLASSIC), z0: -45.0, z1: -41.2 };
+export const FLANK_E = { x0: RO(HALL.CLASSIC), x1: BRIDGE.x1, z0: ENTRY_Z(HALL.X270) - 3.5, z1: -22 }, LINK_E = { x0: RO(HALL.X270), x1: RO(HALL.CLASSIC), z0: ENTRY_Z(HALL.X270) - 1.9, z1: ENTRY_Z(HALL.X270) + 1.9 };
 export const WC = { x0: 22, x1: 32, z0: -14, z1: 6, ceil: 3.4 };
 export const STREET = { x0: -48, x1: 44, z0: FACADE, z1: 48, kerb: 26, road: [29.6, 36.6], far: 40 };
 // moving things
@@ -29,7 +31,7 @@ export function escProfile(e) {
   return { plateBot: [a, a - 1.2], flatBot: [a - 1.2, b], incline: [b, c], flatTop: [c, c - 0.8], plateTop: [c - 0.8, d], zTop: d, run };
 }
 export const LIFT = { x0: 13.4, x1: 15.8, z0: -12.6, z1: -10.2, doorZ: -10.2, stops: [0, L1], speed: 1.0, doorW: 1.1 };
-export const TRAVELATOR = { x0: -0.8, x1: 0.8, z0: -70.5, z1: -16.5, speed: 0.75 };   // carries you north (+z), towards the lobby
+export const TRAVELATOR = { x0: -0.8, x1: 0.8, z0: SPINE.z0 + 2.1, z1: -16.5, speed: 0.75 };   // carries you north (+z), towards the lobby
 // ticket gate at the foot of the up escalator: glass panels, one gate leaf, the usher's podium
 export const GATE = { z: 3.2, x0: 7.4, x1: 10.7, gate: [8.9, 10.5], podium: { x: 7.0, z: 3.9 }, sides: [[8.7, 1.4], [10.7, 1.4]] };   // the down escalator lands outside the gate
 // doors. oneWay: the side you can pass from. kind: slide (auto glass), pair (heavy double doors), push (exit doors with push bars)
@@ -89,23 +91,29 @@ export const COUNTERS = {
 // nav graph for walkers: named nodes (world), edges walked straight; halls add their own seat routes (hallmath.seatRoute)
 export const NAV = {
   nodes: {
-    kerb: [-4.0, 0, 25.0], plaza: [0, 0, 21.0], doorOut: [0, 0, 19.4], doorIn: [0, 0, 16.6], greet: [2.2, 0, 13.0], foyer: [0, 0, 9.0],
-    boxQ: [-12.6, 0, 9.0], boxQ2: [-10.6, 0, 9.0], conQ: [-12.8, 0, -4.0], conQ2: [-10.8, 0, -4.0], lounge: [-3.0, 0, 2.0], lounge2: [3.6, 0, -1.0],
-    wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0],
+    kerb: [-2.0, 0, 25.65], plaza: [0, 0, 21.0], doorOut: [0, 0, 19.4], doorIn: [0, 0, 16.6], greet: [2.2, 0, 13.0], foyer: [0, 0, 9.0],
+    boxQ: [-12.6, 0, 9.0], boxQ2: [-10.6, 0, 9.0], conQ: [-12.8, 0, -4.0], conQ2: [-10.8, 0, -4.0],
+    // v9.1: four nodes round the lounge's sofa ring (centre -1, 1; its sofas reach 3.2 m out): walkers go round it, never through it
+    lounge: [-7.0, 0, 1.0], loungeN: [-1.0, 0, 7.0], lounge2: [5.0, 0, 1.0], loungeS: [-1.0, 0, -5.0],
+    wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0], wcMa: [23.3, 0, -5.9], wcMg: [24.6, 0, -5.9], wcFg: [24.6, 0, -2.1],
+    // v9.1 (walk.mjs NAV check): walkers cross the lobby in front of the escalator gate (the escalators block z < 3.2), not through them;
+    // the lift on L1 is left by its east side, round the shaft
+    gateW: [6.6, 0, 5.6], downOut: [11.7, 0, 4.4], east: [14.5, 0, 3.8], liftE: [16.6, L1, -9.2], liftS: [16.6, L1, -13.2], liftP: [12.0, L1, -13.2], flankW3: [BRIDGE.x0 + 3, L1, -56.5],
     gate: [9.7, 0, 4.6], gateIn: [9.7, 0, 2.2], escBot: [9.7, 0, 0.4], escTop: [9.7, L1, -12.6], mezz: [9.7, L1, -11.6],
     downTop: [11.7, L1, -12.6], downBot: [11.7, 0, 0.6], liftG: [14.6, 0, -9.2], liftL1: [14.6, L1, -9.2],
     portal: [10.2, L1, -15.2], bridgeE: [BRIDGE.x1 - 3, L1, -18.0], bridgeW: [BRIDGE.x0 + 3, L1, -18.0], bridgeC: [0, L1, -18.0], pantry: [0, L1, -23.0],
-    flankW1: [BRIDGE.x0 + 3, L1, -24.0], flankW2: [BRIDGE.x0 + 3, L1, -48.0], linkW: [BRIDGE.x0 + 9, L1, -53.2], flankE1: [BRIDGE.x1 - 3, L1, -24.0], flankE2: [BRIDGE.x1 - 3, L1, -43.1],
-    spineN: [0, 0, -15.6], spineS: [0, 0, -71.0], lobbyBack: [0, 0, -12.0],
+    flankW1: [BRIDGE.x0 + 3, L1, -24.0], flankW2: [BRIDGE.x0 + 3, L1, FLANK_W.z0 + 2.2], linkW: [BRIDGE.x0 + 9, L1, (LINK_W.z0 + LINK_W.z1) / 2], flankE1: [BRIDGE.x1 - 3, L1, -24.0], flankE2: [BRIDGE.x1 - 3, L1, ENTRY_Z(HALL.X270)],
+    spineN: [0, 0, -15.6], spineS: [0, 0, SPINE.z0 + 1.6], lobbyBack: [0, 0, -12.0],
   },
   edges: [['kerb', 'plaza'], ['plaza', 'doorOut'], ['doorOut', 'doorIn'], ['doorIn', 'greet'], ['doorIn', 'foyer'], ['greet', 'foyer'], ['foyer', 'boxQ2'], ['boxQ2', 'boxQ'],
-    ['foyer', 'lounge'], ['lounge', 'lounge2'], ['lounge', 'conQ2'], ['conQ2', 'conQ'], ['lounge2', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcIn', 'wcM'], ['wcIn', 'wcF'],
-    ['lounge2', 'gate'], ['foyer', 'gate'], ['gate', 'gateIn'], ['gateIn', 'escBot'], ['escBot', 'escTop'], ['escTop', 'mezz'], ['mezz', 'portal'], ['mezz', 'downTop'],
-    ['downTop', 'downBot'], ['downBot', 'lounge2'], ['lounge2', 'liftG'], ['liftG', 'liftL1'], ['liftL1', 'mezz'], ['portal', 'bridgeC'], ['portal', 'bridgeE'],
-    ['bridgeC', 'pantry'], ['bridgeC', 'bridgeW'], ['bridgeW', 'flankW1'], ['flankW1', 'flankW2'], ['flankW2', 'linkW'], ['bridgeE', 'flankE1'], ['flankE1', 'flankE2'],
-    ['lobbyBack', 'lounge'], ['lobbyBack', 'lounge2'], ['spineN', 'lobbyBack'], ['spineS', 'spineN']],
+    ['foyer', 'loungeN'], ['loungeN', 'lounge'], ['loungeN', 'lounge2'], ['lounge', 'loungeS'], ['loungeS', 'lounge2'], ['lounge', 'conQ2'], ['conQ2', 'conQ'], ['east', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcIn', 'wcMa'], ['wcMa', 'wcMg'], ['wcMg', 'wcM'], ['wcIn', 'wcFg'], ['wcFg', 'wcF'],
+    ['lounge2', 'gateW'], ['gateW', 'gate'], ['foyer', 'gate'], ['gate', 'gateIn'], ['gateIn', 'escBot'], ['escBot', 'escTop'], ['escTop', 'mezz'], ['mezz', 'portal'], ['mezz', 'downTop'],
+    ['downTop', 'downBot'], ['downBot', 'downOut'], ['downOut', 'gate'], ['downOut', 'east'], ['gate', 'east'], ['east', 'liftG'], ['liftG', 'liftL1'],
+    ['liftL1', 'liftE'], ['liftE', 'liftS'], ['liftS', 'liftP'], ['liftP', 'mezz'], ['liftP', 'portal'], ['portal', 'bridgeC'], ['portal', 'bridgeE'],
+    ['bridgeC', 'pantry'], ['bridgeC', 'bridgeW'], ['bridgeW', 'flankW1'], ['flankW1', 'flankW2'], ['flankW2', 'flankW3'], ['flankW3', 'linkW'], ['bridgeE', 'flankE1'], ['flankE1', 'flankE2'],
+    ['lobbyBack', 'loungeS'], ['spineN', 'lobbyBack'], ['spineS', 'spineN']],
   // directed edges (one-way): walkers may only use them in this direction
-  oneWay: [['escBot', 'escTop'], ['downTop', 'downBot'], ['spineN', 'lobbyBack'], ['spineS', 'spineN'], ['gate', 'gateIn']],
+  oneWay: [['escBot', 'escTop'], ['downTop', 'downBot'], ['downBot', 'downOut'], ['spineN', 'lobbyBack'], ['spineS', 'spineN'], ['gate', 'gateIn']],
 };
 // palettes (3-4 colours each, with their dim variants; docs/V9-DESIGN.md section 5). Linear-ish hex as authored in sRGB.
 export const PALETTE = {

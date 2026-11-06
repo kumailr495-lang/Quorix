@@ -85,9 +85,9 @@ attribute vec2 lmuv; varying vec2 vLm;
 attribute vec3 lh; attribute vec3 lf; attribute float ls;
 #endif
 uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[144]; uniform vec3 uScreenD; uniform vec2 uScreenX;
-varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
+varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm; varying vec2 vVar;
 void main() {
-  int k = int(matid + 0.5) * 3; vPA = uP[k]; vPB = uP[k + 1]; vLay = uP[k + 2].x; vEm = uP[k + 2].y;
+  int k = int(matid + 0.5) * 3; vPA = uP[k]; vPB = uP[k + 1]; vLay = uP[k + 2].x; vEm = uP[k + 2].y; vVar = uP[k + 2].zw;
   vAlb = color; vUv = uv * vPB.w;
 #ifdef USE_INSTANCING
   vec3 n = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
@@ -108,13 +108,13 @@ void main() {
 // material parameters come per vertex from uP (library.js PARAMS): vPA = rough, metal, normal strength, sheen; vPB = reflection, relief, abs, tiling
 const LIT_FRAG = COMMON_FRAG + `
 uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn; uniform float uReflK; uniform float uWet; uniform sampler2D uNoise;
-varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm;
+varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm; varying vec2 vVar;
 #ifdef USE_LIGHTMAP
 uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform float uFill; varying vec2 vLm;
 #endif
 #ifdef LM_SPILL
 uniform sampler2D uSpill; uniform vec4 uSpillP; uniform float uSpillA;
-vec3 spillAt(vec3 p) { vec2 st = clamp(vec2(0.5 + (p.z - uSpillP.x) * uSpillP.y, (p.y - uSpillP.z) * uSpillP.w), 0.02, 0.98); return mix(textureLod(uSpill, vec2(0.5), 6.0).rgb, textureLod(uSpill, st, 1.5).rgb, uSpillA); }
+vec3 spillAt(vec3 p) { vec2 st = clamp(vec2(0.5 + (p.z - uSpillP.x) * uSpillP.y, (p.y - uSpillP.z) * uSpillP.w), 0.02, 0.98); return mix(textureLod(uSpill, vec2(0.5), 8.0).rgb, textureLod(uSpill, st, 3.5).rgb, uSpillA); }
 #endif
 vec3 perturb(vec3 p, vec3 n, vec3 m) {
   vec3 q0 = dFdx(p); vec3 q1 = dFdy(p); vec2 st0 = dFdx(vUv); vec2 st1 = dFdy(vUv);
@@ -140,14 +140,55 @@ void main() {
 #endif
 #endif
   float uMetal = vPA.y; float uSheen = vPA.w; float uSpec = vPB.x; float uRelief = vPB.y;
-  vec4 t = texture(uMaps, uvl);
+  // v9.1 de-tiling (the user: "don't make it feel repetitive"; high preset): a low-frequency noise picks one of eight random offsets per
+  // region of tiles and two lookups blend across the regions' borders (I. Quilez, "texture repetition", technique 3). Materials with a
+  // designed layout (tiles, slats, carpets with a pattern) keep vVar.y = 0.
+  vec4 t; vec3 mapN = vec3(0.0, 0.0, 1.0); vec2 gx = dFdx(vUv), gy = dFdy(vUv);
+#if defined(USE_DETILE) || defined(USE_MACRO)
+  if (vVar.y > 1.5) {
+    // tile shuffle (medium, high): a designed 2 x 2 tile layout; each cell of the floor takes one of the four tiles at random, so the joints
+    // stay aligned and the stone never repeats in a grid (the gradients are the continuous ones: no seams at the cells)
+    vec2 cell = floor(vUv * 2.0); vec2 hh = fract(sin(vec2(dot(cell, vec2(127.1, 311.7)), dot(cell, vec2(269.5, 183.3)))) * 43758.5453);
+    vec2 us = vUv + floor(hh * 2.0) * 0.5; t = textureGrad(uMaps, vec3(us, uvl.z), gx, gy);
+#ifdef USE_NMAP
+    mapN = textureGrad(uNmaps, vec3(us, uvl.z), gx, gy).xyz * 2.0 - 1.0;
+#endif
+  } else
+#endif
+#ifdef USE_DETILE
+  if (vVar.y > 0.5) {
+    // de-tiling (high): a low-frequency noise picks one of eight random offsets per region of tiles and two lookups blend across the
+    // regions' borders (I. Quilez, "texture repetition", technique 3); organic scans only
+    float nk = texture2D(uNoise, vUv * 0.0625).r * 8.0; float fi = floor(nk); float ff = fract(nk);
+    vec2 oa = sin(vec2(3.0, 7.0) * fi), ob = sin(vec2(3.0, 7.0) * (fi + 1.0));
+    vec4 ca = textureGrad(uMaps, vec3(vUv + oa, uvl.z), gx, gy), cb = textureGrad(uMaps, vec3(vUv + ob, uvl.z), gx, gy);
+    float bm = smoothstep(0.2, 0.8, ff - 0.1 * dot(ca.rgb - cb.rgb, vec3(1.0))); t = mix(ca, cb, bm);
+#ifdef USE_NMAP
+    mapN = mix(textureGrad(uNmaps, vec3(vUv + oa, uvl.z), gx, gy).xyz, textureGrad(uNmaps, vec3(vUv + ob, uvl.z), gx, gy).xyz, bm) * 2.0 - 1.0;
+#endif
+  } else
+#endif
+  {
+    t = texture(uMaps, uvl);
+#ifdef USE_NMAP
+    mapN = texture(uNmaps, uvl).xyz * 2.0 - 1.0;
+#endif
+  }
   vec3 alb = vPB.z > 0.5 ? t.rgb * vAlb : vAlb * t.rgb * 2.0;
   vec3 N = Ng;
 #ifdef USE_NMAP
-  vec3 mapN = texture(uNmaps, uvl).xyz * 2.0 - 1.0; mapN.xy *= vPA.z; N = perturb(vWP, Ng, normalize(mapN));
+  mapN.xy *= vPA.z; N = perturb(vWP, Ng, normalize(mapN));
 #endif
   float NoV = clamp(dot(N, V), 0.02, 1.0);
-  float rough = clamp(vPA.x + (0.5 - dot(t.rgb, vec3(0.33))) * 0.25, 0.03, 1.0);
+  // roughness: the scan's own roughness map rides in the albedo's alpha (mean 0.5 = the material's value), plus a little from its tone
+  float rough = clamp(vPA.x * t.a * 2.0 + (0.5 - dot(t.rgb, vec3(0.33))) * 0.12, 0.03, 1.0);
+#ifdef USE_MACRO
+  // v9.1 macro variation: large soft blotches (4-30 m) of tone and gloss, projected on the surface's own plane, so a wall or a floor never
+  // reads as one flat colour pasted everywhere (strength per material: vVar.x)
+  vec2 np = abs(Ng.y) > 0.7 ? vWP.xz : (abs(Ng.x) > abs(Ng.z) ? vWP.zy : vWP.xy);
+  vec4 nz = texture2D(uNoise, np * 0.031); float mv = nz.g * 0.6 + nz.b * 0.4 - 0.5;
+  alb *= 1.0 + mv * vVar.x; rough = clamp(rough + mv * vVar.x * 0.6, 0.03, 1.0);
+#endif
   float wet = uWet * smoothstep(0.7, 0.95, Ng.y);
   if (wet > 0.0) { float pud = smoothstep(0.46, 0.64, texture2D(uNoise, vWP.xz * 0.11).g * 0.7 + texture2D(uNoise, vWP.xz * 0.37).b * 0.3);
     alb *= mix(1.0, 0.5, wet); rough = mix(rough, mix(0.22, 0.03, pud), wet); uSpec = mix(uSpec, 1.8, wet); N = normalize(mix(N, Ng, wet * pud)); }
@@ -320,7 +361,7 @@ void main() { vec3 V = normalize(cameraPosition - vWP); float f = pow(1.0 - abs(
 // uWet: rain on up-facing surfaces (the street): darker, glossier paving with puddles
 export function roomUniforms() { return { uFill: { value: 0 }, uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
 export class Materials {
-  constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; this._lit = new WeakMap(); }
+  constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; if (opts.macro) this.defines.USE_MACRO = ''; if (opts.detile) this.defines.USE_DETILE = ''; this._lit = new WeakMap(); }
   // one library material per room (and one for its instanced props): every material id draws in the same call (texture arrays)
   // bake (lightmap.js): the room's solid mesh reads its light from Cycles light maps (house; halls add fixed and screen layers)
   litRoom(U, inst = false, bake = null) {

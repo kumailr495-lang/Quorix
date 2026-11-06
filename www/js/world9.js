@@ -13,6 +13,7 @@ import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady } from './library.js';
 import { makeCanvas, SANS, SERIF } from './textures.js';
+import { posterURL } from './films.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), IN = (r, x, z, m = 0) => x >= r.x0 - m && x <= r.x1 + m && z >= r.z0 - m && z <= r.z1 + m;
 const b64f = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new Float32Array(u.buffer); };
@@ -219,7 +220,7 @@ class Lift {
 }
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
 function panelTexture(id, w, h, hooks) {
-  const px = Math.min(2048, Math.round(w * 128)), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
+  const px = Math.min(2048, Math.max(256, Math.round(w * 128))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
   const draw = hooks[id.split('_')[0]]; if (draw) draw(g, px, py, id); else { g.fillStyle = '#111'; g.fillRect(0, 0, px, py); }
   return { tex: tx, canvas: c, g };
 }
@@ -228,19 +229,40 @@ const NUDGE = { showtimes: 0.22, menu: 0.22 };
 export const PANEL_DRAW = {
   sign: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#07080c'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.5}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     if ('letterSpacing' in g) g.letterSpacing = `${h * 0.08}px`; g.fillText(H_ ? H_.name.replace('LUMIERE ', '') : id, w / 2, h * 0.52); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.fillRect(w * 0.3, h * 0.86, w * 0.4, h * 0.03); },
+  // an illuminated exit sign (ISO 7010 E002 look: a white running figure through a door on safety green, then EXIT)
+  exitsign: (g, w, h) => { g.fillStyle = '#0a7a3d'; g.fillRect(0, 0, w, h); g.fillStyle = '#f4fff8'; g.strokeStyle = '#f4fff8'; g.lineCap = 'round'; g.lineJoin = 'round';
+    const s = h * 0.8, x0 = h * 0.12, y0 = h * 0.1, P = (px, py) => [x0 + px * s, y0 + py * s];
+    g.lineWidth = s * 0.07; g.strokeRect(x0 + s * 0.6, y0 + s * 0.04, s * 0.38, s * 0.92);
+    g.lineWidth = s * 0.13; g.beginPath(); g.arc(...P(0.47, 0.13), s * 0.095, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(...P(0.42, 0.3)); g.lineTo(...P(0.33, 0.58)); g.stroke();
+    g.beginPath(); g.moveTo(...P(0.16, 0.42)); g.lineTo(...P(0.33, 0.33)); g.lineTo(...P(0.56, 0.44)); g.stroke();
+    g.beginPath(); g.moveTo(...P(0.1, 0.88)); g.lineTo(...P(0.23, 0.71)); g.lineTo(...P(0.33, 0.58)); g.lineTo(...P(0.52, 0.72)); g.lineTo(...P(0.5, 0.95)); g.stroke();
+    g.font = `700 ${h * 0.5}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.04}px`;
+    const xa = x0 + s * 1.1; g.fillText('EXIT', xa + (w - xa) / 2, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
+  // v9.1 wayfinding: ink ground, gold rule, white caps, an arrow; RESTROOMS gets the two figures
+  wayfind: (g, w, h, id) => { const k = id.split('_')[1], T = { screens: ['SCREENS 1 – 4', '↑', 'MAX  ·  CURVE  ·  CLASSIC  ·  X·270'], wc: ['RESTROOMS', '', ''], tickets: ['TICKETS', '', 'BOX OFFICE'], food: ['FOOD & DRINKS', '', 'POPCORN  ·  NACHOS  ·  COFFEE'] }[k] || [k.toUpperCase(), '', ''];
+    g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.fillRect(0, h * 0.92, w, h * 0.08); g.fillStyle = '#f4efe6'; g.textBaseline = 'middle';
+    let x = h * 0.35; if (k === 'wc') { const fig = (cx, dress) => { g.beginPath(); g.arc(cx, h * 0.24, h * 0.09, 0, Math.PI * 2); g.fill(); if (dress) { g.beginPath(); g.moveTo(cx - h * 0.15, h * 0.72); g.lineTo(cx + h * 0.15, h * 0.72); g.lineTo(cx, h * 0.36); g.fill(); g.fillRect(cx - h * 0.06, h * 0.7, h * 0.04, h * 0.14); g.fillRect(cx + h * 0.02, h * 0.7, h * 0.04, h * 0.14); } else { g.fillRect(cx - h * 0.09, h * 0.36, h * 0.18, h * 0.3); g.fillRect(cx - h * 0.09, h * 0.62, h * 0.07, h * 0.24); g.fillRect(cx + h * 0.02, h * 0.62, h * 0.07, h * 0.24); } };
+      fig(x + h * 0.1, false); fig(x + h * 0.55, true); g.fillRect(x + h * 0.32, h * 0.2, h * 0.02, h * 0.62); x += h * 0.95; }
+    g.textAlign = 'left'; g.font = `600 ${h * (T[2] ? 0.36 : 0.46)}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.06}px`; g.fillText(T[0], x, h * (T[2] ? 0.36 : 0.48));
+    if (T[2]) { g.font = `400 ${h * 0.17}px ${SANS}`; g.fillStyle = 'rgba(244,239,230,.75)'; g.fillText(T[2], x, h * 0.72); } if ('letterSpacing' in g) g.letterSpacing = '0px';
+    if (T[1]) { g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.62}px ${SANS}`; g.textAlign = 'right'; g.fillText(T[1], w - h * 0.35, h * 0.5); } },
+  noentry: (g, w, h) => { g.fillStyle = '#5c1018'; g.fillRect(0, 0, w, h); g.fillStyle = '#f7ece6'; g.font = `600 ${h * 0.4}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.06}px`; g.fillText('EXIT ONLY  ·  NO ENTRY', w / 2, h * 0.53); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
+  // a lit poster case: the house film's one-sheet (www/films, CC BY), drawn when its image arrives
+  poster: (g, w, h, id) => { g.fillStyle = '#0b0b0d'; g.fillRect(0, 0, w, h); const im = new Image(); im.onload = () => { const s_ = Math.max(w / im.width, h / im.height), iw = im.width * s_, ih = im.height * s_; g.drawImage(im, (w - iw) / 2, (h - ih) / 2, iw, ih); if (g.canvas.__tex) g.canvas.__tex.needsUpdate = true; }; im.src = posterURL(id.split('_')[1]); },   // poster_<film>[_<n>]: several cases may show one film
   exitwall: (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#0f3a28'); gr.addColorStop(1, '#14523a'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     g.fillStyle = '#eafff3'; g.font = `600 ${h * 0.22}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('THANK YOU FOR WATCHING', w / 2, h * 0.38); g.font = `400 ${h * 0.12}px ${SANS}`; g.fillText('EXIT  ·  LOBBY  ·  RESTROOMS  →', w / 2, h * 0.68); },
   marquee: (g, w, h) => { g.fillStyle = '#0a0a0d'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2ebdd'; g.font = `500 ${h * 0.56}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.3}px`; g.fillText('LUMIÈRE', w / 2, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   arrival: (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#120d24'); gr.addColorStop(1, '#2a1640'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.14}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SCREENS 1 – 4', w / 2, h * 0.42); g.fillStyle = 'rgba(242,235,221,.8)'; g.font = `400 ${h * 0.07}px ${SANS}`; g.fillText('MAX  ·  CURVE  ←      CLASSIC  ·  270  →', w / 2, h * 0.62); },
 };
 // ---------------------------------------------------------------- props: the furniture of each room (Kiln / Blender assets), lit per vertex
-const RAD = Math.PI / 180, DRESS = (() => {
+const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   const L = [], add = (room, name, x, y, z, yaw = 0, o = {}) => L.push({ room, name, x, y, z, yaw, o });
   // the lounge: four curved sofas round the table, each one's concave seat side facing it (sofa_curve sits facing local +z, its arc's centre
   // 2.0 m in front of its origin); yaw -r - 90 deg turns +z towards the table (v9 had them radial, at -r + 180 deg)
-  for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 2.4 * Math.cos(r), 0, 1 + 2.4 * Math.sin(r), -r - Math.PI / 2); }
+  for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 2.4 * Math.cos(r), 0, 1 + 2.4 * Math.sin(r), -r - Math.PI / 2); }   // square to the axes: their collision boxes stay tight
   add('lobby', 'table_lounge', -1, 0, 1); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
-  add('lobby', 'poster_totem', -5.2, 0, 14.2, 0.35); add('lobby', 'poster_totem', 5.2, 0, 14.2, -0.35); add('lobby', 'poster_totem', 3.6, 0, 6.5, -0.9);
+  add('lobby', 'poster_totem', -5.2, 0, 14.2, 0.35); add('lobby', 'poster_totem', 5.2, 0, 14.2, -0.35); add('lobby', 'poster_totem', 5.0, 0, 7.6, 0.3);
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
   for (const x of [-14.4, -13.0]) for (let z = 5.6; z < 12.5; z += 1.75) add('lobby', 'rope_velvet', x, 0, z + 0.875, Math.PI / 2, { collide: 0.02 });
@@ -248,6 +270,15 @@ const RAD = Math.PI / 180, DRESS = (() => {
   add('lobby', 'candy_wall', -21.7, 0, 0.0, Math.PI / 2);
   for (const [x, z] of [[-14.8, -10.3], [6.0, 2.4], [-2.4, -12.6], [19.8, -2.6], [-14.8, 2.6]]) add('lobby', 'bin_brass', x, 0, z);
   add('lobby', 'bench_velvet', 21.25, 0, 5.0, Math.PI / 2); add('lobby', 'bench_velvet', 21.25, 0, -6.5, Math.PI / 2);
+  // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
+  // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
+  // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
+  for (const [cx, cz] of [[11.5, 12.6], [16.5, 12.6], [-9.5, 15.2]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
+  add('lobby', 'chandelier_cascade', 0, 8.55, 4.0, 0, { collide: false, ground: false });
+  add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
+  add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.42, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, on the stone band
+  for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
+  for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
   for (let x = -40; x <= 40; x += 10) add('street', 'lamp_post', x, 0, 25.55, Math.PI / 2, { collide: 0.05 });
   for (let x = -14; x <= 14; x += 2.8) if (Math.abs(x) > 2.5) add('street', 'bollard_light', x, 0, 25.6);
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
@@ -259,6 +290,11 @@ const RAD = Math.PI / 180, DRESS = (() => {
 })();
 function dressRooms(world) {
   const byRoom = {}; for (const p of DRESS) (byRoom[p.room] || (byRoom[p.room] = [])).push(p);
+  // v9.1: the restrooms' fittings at their interaction points (tools/blender/arch/rooms.py fixtures; they were points with no mesh):
+  // a vessel basin and a brass tap at each basin, a urinal at each urinal
+  for (const u of world.uses) { const L = byRoom[u.room] || (byRoom[u.room] = []);
+    if (u.kind === 'basin') { L.push({ room: u.room, name: 'basin_vessel', x: u.x + 0.02, y: u.y, z: u.z, yaw: 0, o: { collide: false, ground: false } }); L.push({ room: u.room, name: 'tap_brass', x: u.x - 0.2, y: u.y, z: u.z, yaw: Math.PI / 2, o: { collide: false, ground: false } }); }
+    if (u.kind === 'urinal') L.push({ room: u.room, name: 'urinal', x: u.x, y: 0, z: u.z - 0.245, yaw: 0, o: { collide: 0.05, ground: false } }); }
   for (const key in byRoom) {
     const room = world.rooms[key]; if (!room) continue; const host = { pacc: new Acc(), gacc: new Acc(), bins: [], col: (x0, z0, x1, z1, y0, y1) => { for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) world.walls.add(ax, az, bx, bz, y0, y1); } };
     for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y; placeAsset(host, p.name, p.x, p.y + lift, p.z, p.yaw, p.o); }

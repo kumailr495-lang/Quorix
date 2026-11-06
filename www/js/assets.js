@@ -12,7 +12,8 @@ export const ASSETS = {};
 // banquette_round, torchere_deco, back_bar, pendant_dish, which also stay in the repo)
 // v9: only what the v9 rooms use (world9.js DRESS and the hall seat families, intro9.js's taxi); the v7/v8 props stay in www/models
 export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club', 'seat_classic', 'arm_classic', 'sofa_curve', 'table_lounge', 'planter_tall', 'planter_hedge', 'planter_tree',
-  'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi'];
+  'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi',
+  'armchair_deco', 'side_table', 'torchere_deco', 'chandelier_cascade', 'letters_lumiere_lit', 'sconce_deco', 'mirror_round', 'basin_vessel', 'tap_brass', 'urinal', 'restroom_set'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;

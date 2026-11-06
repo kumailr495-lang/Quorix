@@ -243,3 +243,34 @@ frames, draw calls and triangles, with a short code to paste back. The exact com
   overhangs, wall corners, thresholds, facade slots, the drop-off bay, rail posts, lift shaft corners, EXIT sign direction. Fixed in
   the engine: door astragal, screen back, two-sided curtains, lift floor, escalator underside, 270 projection layer, glow depth offset,
   prop winding and open parts. Re-bake of all nine rooms started (Cycles, about 30 minutes a room on this machine).
+- **2026-11-06, later (v9.1 realism pass, after the user's message on empty spaces, textures, lighting, exits, theatre size and
+  ScreenX).** Rollback point committed first (87ac84e, walks 16/16). Then:
+  - *Theatre size.* Every picture is now nearly wall to wall; the halls grew to keep their seats (hallmath.js HALLS: MAX 29.2 m wide,
+    24.0 x 12.6 m picture, 443 seats; CURVE 25.2 m, 20.0 x 10.0 m at 2.0:1, curve deepened to 13 %; CLASSIC 20.8 m, 15.6 x 8.4 m;
+    X-270 21.2 m, 16.0 x 8.4 m). Middle row, horizontal angle of the picture: MAX 56.7 degrees (was 54.4), CURVE 61.9 (a 16:9 film 56.2, was 43.7), CLASSIC
+    54.6 (was 47.0), X-270 54.6 (was 48.5). UNIC row-1 top angle stays under 45 degrees (42.5-44.5).
+  - *Exits.* An open, lit bay at each front corner, beside the picture, with the push-bar door in the screen wall at its back, a light
+    lining, a downlight plus a dim egress light that stays on through the film, a floor light line leading in, and an illuminated EXIT
+    sign (ISO 7010-style running figure) over the bay's mouth and over the door. v9 hid the door in a black slot behind the masking.
+    The corridor and spine extents follow the new hall sizes (building.js derives them now).
+  - *ScreenX-style hall (X-270).* Plain light grey projection surfaces on both side walls from the bay to 74 % of the depth (bottom edge
+    following the rake), four ceiling-hung projectors per side, a teal line under each surface; during a show the film's edge bands are
+    mirrored onto them from a 256 x 128 copy of the picture (sharp near the screen, softer towards the back). Checked playing a test
+    film (tools/dev/showshot.mjs): both walls carry the picture.
+  - *Hall walls.* Per hall: MAX walnut wainscot, dark fabric, blue light joints; CURVE cognac leather wainscot, navy fabric between
+    champagne pilasters, warm up-light; CLASSIC charcoal dado, brass rail, burgundy fabric in cream mouldings, brass sconces; 270 graphite
+    behind its side screens. Wall washers on every panel, surround speakers every other joint, a projection port in the rear wall.
+  - *Textures.* Ten new CC0 scans with roughness maps (ambientCG, Poly Haven; tools/textures/SOURCES.md, docs/LICENSES.md): painted
+    plaster on every painted surface (was a flat colour), travertine, oak, black-and-gold marble, microcement, powder-coated metal,
+    restroom wall and floor tiles, light stone; composites: the lobby floor in crema marble tiles cut from different parts of the scan,
+    the corridor carpet's diamond lattice. Unused layers dropped (35 layers, net +2). Shader: roughness from the scan, large-scale tone and
+    gloss variation (medium, high), de-tiling of organic scans (high) and tile shuffle for designed tile layouts (medium, high).
+  - *Lobby.* Marble floor with a black-and-gold border, travertine poster wall with five lit poster cases, marble columns, a teal lounge
+    rug, wayfinding (screens, restrooms, tickets, food), "exit only" over the spine door, waiting areas with tub chairs, side tables
+    and torcheres, the ribbon chandelier, LUMIERE letters over the counters; lounge sofas now face their table (they stood radially).
+    NPC paths go round the lounge (four nodes), and walk.mjs now fails if any NAV edge passes within 0.25 m of a wall or a prop.
+  - *Corridor, spine, restrooms, street.* Patterned corridor carpet, grazing wash on the diamond walls, a "coming soon" poster gallery;
+    spine in light terrazzo with a poster gallery between the exit doors; restrooms with large-format tiles, walnut vanities, vessel
+    basins and brass taps, urinals, hand dryers and closed cubicle doors (v9 had only interaction points); facade poster cases,
+    stone uplighting, brand letters over the canopy, more trees.
+  - *Light.* Reflections softer (0.32 from 0.45), screen light on the walls stronger (6.5 from 5.5); house lights in a film stay at 2 %.

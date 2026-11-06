@@ -15,9 +15,9 @@ def main():
     for key in want:
         t0 = time.time(); hall = next((h for h in S['halls'] if h['key'] == key), None)
         if hall:
-            acc, glow, lit, occ, scr, probes = halls.build_hall(hall, S['L1'])
+            acc, glow, lit, occ, scr, probes, panels = halls.build_hall(hall, S['L1'])
             D, X, n = export_room(key, acc, lit, os.path.join(work, key + '.json'), glow=glow, occ=occ, screen=scr, probes=probes, is_hall=True,
-                                  extra={'hall': hall['id'], 'y0': hall['y0']})
+                                  extra={'hall': hall['id'], 'y0': hall['y0'], 'panels': panels})
         else:
             acc, glow, lit, extra = rooms.build(key, S)
             D, X, n = export_room(key, acc, lit, os.path.join(work, key + '.json'), glow=glow, extra=extra)

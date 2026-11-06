@@ -68,6 +68,20 @@ const walks = await p.evaluate(async () => {
   }
   return out;
 });
+// v9.1 (advisor): walkers follow the NAV graph, not the collision grid, so furniture on a NAV edge gets walked through. Every level edge must
+// keep 0.25 m (a walker's radius) from every collision segment in the band a walker would hit (0.4 to 1.75 m over the edge's floor).
+const navHits = await p.evaluate(() => {
+  const L = window.__lumiere, W = L.world, B = L.B, S = W.walls.S, out = [], N = B.NAV.nodes;
+  const segDist = (ax, az, bx, bz, cx, cz, dx, dz) => { const cr = (px, pz, qx, qz, rx, rz) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+    const o1 = cr(ax, az, bx, bz, cx, cz), o2 = cr(ax, az, bx, bz, dx, dz), o3 = cr(cx, cz, dx, dz, ax, az), o4 = cr(cx, cz, dx, dz, bx, bz); if (o1 * o2 < 0 && o3 * o4 < 0) return 0;
+    const pd = (px, pz, x0, z0, x1, z1) => { const vx = x1 - x0, vz = z1 - z0, l = vx * vx + vz * vz, t = l > 0 ? Math.max(0, Math.min(1, ((px - x0) * vx + (pz - z0) * vz) / l)) : 0; return Math.hypot(px - x0 - vx * t, pz - z0 - vz * t); };
+    return Math.min(pd(ax, az, cx, cz, dx, dz), pd(bx, bz, cx, cz, dx, dz), pd(cx, cz, ax, az, bx, bz), pd(dx, dz, ax, az, bx, bz)); };
+  for (const [a, b] of B.NAV.edges) { const A = N[a], Bn = N[b]; if (!A || !Bn || Math.abs(A[1] - Bn[1]) > 0.05) continue;
+    const y = A[1]; let worst = 9, at = null;
+    for (let i = 0; i < S.length; i += 6) { if (S[i + 5] <= y + 0.4 || S[i + 4] >= y + 1.75) continue; const d = segDist(A[0], A[2], Bn[0], Bn[2], S[i], S[i + 1], S[i + 2], S[i + 3]); if (d < worst) { worst = d; at = [S[i], S[i + 1], S[i + 2], S[i + 3]].map((v) => +v.toFixed(2)); } }
+    if (worst < 0.25) out.push({ edge: a + '-' + b, clearance: +worst.toFixed(2), wall: at }); }
+  return out; });
+console.log(navHits.length ? `NAV edges blocked: ${navHits.length}\n` + navHits.map((h) => `  ${h.edge}  clearance ${h.clearance} m  wall ${JSON.stringify(h.wall)}`).join('\n') : 'NAV edges clear of walls and furniture');
 let pass = 0; const results = [], only = process.argv.indexOf('--only') > 0 ? process.argv[process.argv.indexOf('--only') + 1] : null;
 for (const w of walks.filter((x) => !only || x.label.includes(only))) {
   const r = await p.evaluate(async (w) => { const L = window.__lumiere; L.player.place(w.start[0], w.start[2], 0, 0, w.start[1]); await new Promise((q) => setTimeout(q, 300)); const res = await window.__auto(w.pts, w.label); return res; }, w);
@@ -78,4 +92,4 @@ for (const w of walks.filter((x) => !only || x.label.includes(only))) {
 }
 console.log(`walks: ${pass}/${results.length} passed`); if (log.length) console.log(log.slice(0, 10).join('\n'));
 if (OUT) fs.writeFileSync(path.join(OUT, 'walks.json'), JSON.stringify(results, null, 1));
-await b.close(); srv.close(); process.exit(pass === results.length ? 0 : 1);
+await b.close(); srv.close(); process.exit(pass === results.length && !navHits.length ? 0 : 1);

@@ -16,7 +16,8 @@ non-commercial clause, and no real person's voice or likeness.
 | Devanagari and Urdu text | system fonts of the phone | Android (Noto) | not shipped |
 | Rooms (geometry and light maps) | `www/bake/` | built by `tools/blender/arch` and baked in Blender Cycles for this project | the project's own (Blender's GPL does not apply to its output) |
 | Material scans | `www/tex/` | Poly Haven and ambientCG, list in `tools/textures/SOURCES.md` | CC0 1.0 |
-| Generated textures | `www/tex/` (brick, flat, powder, granite, stone_light, carpet_dolby, perforated) | `tools/textures/gen.py` | the project's own |
+| Generated textures | `www/tex/` (brick, flat, granite, perforated; the patterns of slats, fluted, carpet_deco, geotile, rosso, stone_light tiles, carpet_dolby lattice) | `tools/textures/gen.py`, `fetch_cc0.py` composites over CC0 scans | the project's own (the scans under them: CC0 1.0) |
+| v9.1 scans | `www/tex/` paintwall, travertine, oak, nero_gold, microcement, powder, wc_wall, wc_floor, stone_rel, stone_light, carpet_dolby (+ `_r.jpg` roughness maps) | ambientCG Plaster001, Travertine009, Marble013, Marble014, Concrete034, Metal029, Tiles107, Tiles052, Carpet012; Poly Haven oak_veneer_01 | CC0 1.0 (checked 2026-11-06: ambientCG and Poly Haven publish every asset under CC0) |
 | Props (seats, arms, sofas, planters, stanchions, machines, bins, lamps, taxi) | `www/models/*.glb` | Kiln sources in `tools/kiln/`, Blender scripts in `tools/blender/` | the project's own (Kiln: MIT tool) |
 | People bodies, faces, hair | `www/models/people_*.glb`, `www/models/people/` | Quaternius, Universal Base Characters | CC0 1.0 |
 | People animation | `www/models/anims.glb` | Quaternius, Universal Animation Library | CC0 1.0 |

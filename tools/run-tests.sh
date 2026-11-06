@@ -13,3 +13,4 @@ echo "== logic"; sh "$ROOT/tools/run-dev.sh" tools/dev/test-logic.mjs
 for f in "$ROOT"/www/js/*.js "$ROOT"/www/js/lang/*.js; do node --check "$f"; done; echo "== syntax ok"
 echo "== bakes"; node "$ROOT/tools/dev/check-bakes.mjs" "$ROOT/www"
 echo "== lint-comments"; cd "$ROOT" && node tools/dev/lint-comments.mjs www/js/*.js tools/kiln/build.mjs tools/dev/*.mjs
+python3 "$ROOT/tools/dev/lint_comments_py.py"

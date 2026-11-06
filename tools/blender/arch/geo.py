@@ -11,7 +11,7 @@ import numpy as np
 MAT = dict(paint=0, fabric=1, velvet=1, wood=2, terrazzo=3, metal=4, carpet=5, plaster=6, tile=7, leather=8, acoustic=9, glass=10, granite=11, marble=12,
            rubber=13, chrome=14, lacquer=15, hallCarpet=16, slats=17, concrete=18, matte=19, chevron=20, geotile=21, deco=22, fluted=23, brass=24, powder=25,
            asphalt=26, paving=27, brick=28, porcelain=29, walltile=30, calacatta=31, emit=32, nero=33, rosso=34, onyx=35, stone=36, dolby=37, tblack=38,
-           plaza=39, perf=40)
+           plaza=39, perf=40, travertine=41, oak=42, neroGold=43, wcWall=44, wcFloor=45, microcement=46, lobbyMarble=47)
 
 def lin(hexs, k=1.0):
     """sRGB hex (#rrggbb) -> linear rgb, times k"""

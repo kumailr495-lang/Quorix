@@ -56,7 +56,7 @@ async function boot() {
   const prog = (p) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; };
   try { await Promise.race([Promise.all([document.fonts.load('600 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* fonts later */ }
   const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low';
-  const mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', texSize: lowG ? 256 : 512 }); engine.applySettings(settings);
+  const mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', texSize: lowG ? 256 : 512, macro: !lowG, detile: settings.graphics === 'high' }); engine.applySettings(settings);
   // v9: every room is a baked model; its light maps are its look on every device (the vertex-light fallback stays for ?nobake=1 only)
   mats.lightMaps = !Q.get('nobake');
   const t0 = performance.now(); let done = 0; const tick = () => prog(0.05 + 0.4 * (++done / 3));

@@ -13,6 +13,11 @@ add('lobby-lounge', 4.5, 0, 6.5, yawTo(-5.5, -5.5), -0.08);
 add('lobby-escalators', 2, 0, 8, yawTo(8, -8), 0.12);
 add('lobby-restroom-side', 12, 0, 6, yawTo(10, -4), 0.02);
 add('mezzanine', -6, L1, -9.6, yawTo(3, 10), -0.22);
+add('lobby-waiting', 7.5, 0, 9.0, yawTo(8, 4), 0.0);
+add('lobby-waiting-west', -4.5, 0, 11.5, yawTo(-5, 4), 0.0);
+add('street-facade', 12, 0, 32.5, yawTo(-12, -14.5), 0.3);
+add('restrooms-men', 26.5, 0, -3.2, yawTo(0, -10), -0.05);
+add('restrooms-vanity', 28.5, 0, 1.0, yawTo(-10, 0.5), -0.05);
 add('lift-door-G', (LIFT.x0 + LIFT.x1) / 2, 0, LIFT.z1 + 3.2, 0, 0);
 add('corridor-bridge', 6, L1, -18, yawTo(-10, 0), 0.02);
 add('corridor-west', BRIDGE.x0 + 3, L1, -23.5, 0, 0);
@@ -27,7 +32,7 @@ for (const h of Object.values(HALL)) {
   const r0 = h.rows[0], aw = (h.aisle[0] + h.aisle[1]) / 2, ex = h.exits.find((e) => e.u > 0) || h.exits[0];
   const p = h.toWorld(aw, r0.dHip - 0.2), q = h.toWorld(ex.u, ex.d);
   add(h.key + '-exit', p.x, h.y0 + r0.y, p.z, yawTo(q.x - p.x, q.z - p.z), 0.05);
-  const e = h.toWorld(h.entryU, h.depthIn - 1.0), c = h.toWorld(0, 0);
+  const e = h.toWorld(h.entryU - Math.sign(h.entryU) * 2.4, h.depthIn - 0.7), c = h.toWorld(0, 0);
   add(h.key + '-entry', e.x, h.y0 + h.total, e.z, yawTo(c.x - e.x, c.z - e.z), -0.12);
 }
 add('spawn-quick', SPAWN.quick.x, 0, SPAWN.quick.z, SPAWN.quick.yaw, 0.02);

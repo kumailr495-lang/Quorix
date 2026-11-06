@@ -29,7 +29,7 @@ export class Engine {
     if (!this.fixed) this.scale = this.maxScale; this.auto = s.autoRes !== false; G.uDetail.value = P.detail; G.uBright.value = s.brightness ?? 1;
     // v8 switches: LOD distances, render distance, reflection strength (Off also drops the reflection lookup: Materials.setReflections)
     this.lodK = { aggressive: 0.65, normal: 1, far: 1.45 }[s.lod] || 1; this.viewFar = { near: 95, medium: 120, far: 170 }[s.viewDist] || 120;   // near >= the 84 m bridge: at 70 m its far end was cut off this.camera.far = this.viewFar;
-    G.uReflK.value = { off: 0, soft: 0.45, full: 1 }[s.reflections] ?? 0.45; this.resize();
+    G.uReflK.value = { off: 0, soft: 0.32, full: 0.8 }[s.reflections] ?? 0.32; this.resize();
   }
   resize() {
     const w = innerWidth, h = innerHeight; this.renderer.setPixelRatio(this.scale); this.renderer.setSize(w, h, false);

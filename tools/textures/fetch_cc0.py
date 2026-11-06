@@ -50,7 +50,20 @@ SLOTS = {
     'onyx':        dict(src='acg', id='Onyx007', mode='abs', gain=1.0, mpt=1.0),
     'terrazzo_black': dict(src='acg', id='Terrazzo003', mode='abs', gain=0.9, mpt=1.2),
     'plaza':       dict(src='ph', id='granite_tile_03', mode='rebalance', color='#86837f', mpt=1.8),
+    # v9.1 (the user, 2026-11-06: "use good textures from online, not one colour pasted everywhere"): every generated slot the rooms use
+    # becomes a scan, and the rooms get stone, wood, tile and plaster of their own
+    'paintwall':   dict(src='acg', id='Plaster001', mode='rel', spread=0.9, mpt=2.5),      # painted plaster: every painted wall and ceiling
+    'powder':      dict(src='acg', id='Metal029', mode='rel', spread=0.35, mpt=0.8),        # powder-coated steel (mullions, frames, shafts)
+    'travertine':  dict(src='acg', id='Travertine009', mode='abs', gain=1.0, mpt=1.2),     # honed travertine (lobby walls, columns)
+    'oak':         dict(src='ph', id='oak_veneer_01', mode='rel', spread=1.1, mpt=1.83),   # light oak veneer panels (exit spine)
+    'nero_gold':   dict(src='acg', id='Marble013', mode='abs', gain=0.95, mpt=1.6),       # black marble with gold veins (Allu-style accents)
+    'wc_wall':     dict(src='acg', id='Tiles107', mode='abs', gain=1.0, mpt=1.8),          # large white wall tiles with grout (restrooms)
+    'wc_floor':    dict(src='acg', id='Tiles052', mode='abs', gain=1.0, mpt=3.6),          # dark porcelain floor tiles (restrooms)
+    'microcement': dict(src='acg', id='Concrete034', mode='rel', spread=0.85, mpt=2.2),    # smooth microcement (soffits, back-of-house)
+    'stone_rel':   dict(src='acg', id='Travertine009', mode='rel', spread=0.8, mpt=1.2),   # light stone detail, tinted (spine floor, stairs, facade)
 }
+# slots that also ship a roughness map (<slot>_r.jpg; library.js ROUGH)
+ROUGH = {'stone_rel', 'stone_light', 'paintwall', 'powder', 'travertine', 'oak', 'nero_gold', 'wc_wall', 'wc_floor', 'spine_floor', 'microcement', 'marble', 'calacatta', 'nero', 'terrazzo', 'terrazzo_black', 'walnut', 'leather', 'plaza'}
 # composites: a designed layout over a scanned surface
 COMPOSITES = {
     'slats':       dict(src='ph', id='black_walnut_veneer_02', mpt=0.4),
@@ -58,6 +71,9 @@ COMPOSITES = {
     'carpet_deco': dict(src='acg', id='Carpet012', mpt=2.4),
     'geotile':     dict(src='ph', id='marble_01', mpt=1.2),
     'rosso':       dict(src='acg', id='Marble016', mpt=1.6),   # v7: the black marble's veins on a deep red ground (Rosso Levanto look) for the lobby columns
+    # v9.1: the lobby floor in polished crema marble tiles, every tile cut from another part of the scan; the corridor's carpet pattern
+    'stone_light': dict(src='acg', id='Marble014', mpt=2.4),
+    'carpet_dolby': dict(src='acg', id='Carpet012', mpt=2.4),
 }
 
 
@@ -76,11 +92,14 @@ def fetch(src, aid):
         meta = json.load(open(meta_path))
         du = meta['Diffuse']['1k']['jpg']['url']; nu = meta['nor_gl']['1k']['jpg']['url']
         a = Image.open(curl(du, os.path.join(CACHE, f'ph_{aid}_diff.jpg'))); n = Image.open(curl(nu, os.path.join(CACHE, f'ph_{aid}_nor.jpg')))
+        r = Image.open(curl(meta['Rough']['1k']['jpg']['url'], os.path.join(CACHE, f'ph_{aid}_rough.jpg'))) if 'Rough' in meta else None
+        fetch.rough = r
         return a, n, f'https://polyhaven.com/a/{aid}'
     zp = curl(f'https://ambientcg.com/get?file={aid}_1K-JPG.zip', os.path.join(CACHE, f'acg_{aid}_1K-JPG.zip'))
     z = zipfile.ZipFile(zp); names = z.namelist()
     pick = lambda key: next(x for x in names if key in x and x.lower().endswith('.jpg'))
     a = Image.open(io.BytesIO(z.read(pick('_Color')))); n = Image.open(io.BytesIO(z.read(pick('_NormalGL'))))
+    fetch.rough = Image.open(io.BytesIO(z.read(pick('_Roughness')))) if any('_Roughness' in x for x in names) else None
     return a, n, f'https://ambientcg.com/view?id={aid}'
 
 
@@ -125,7 +144,15 @@ def build_slot(slot, s):
     if s['mode'] == 'rel': out = rel_from(A, s.get('spread', 1.0))
     elif s['mode'] == 'rebalance': m = A.reshape(-1, 3).mean(0); out = to_s(A / np.maximum(m, 1e-6) * gen.lin(s['color']))
     else: out = to_s(A * s.get('gain', 1.0))
-    save_pair(slot, out, Nm); return url
+    save_pair(slot, out, Nm); save_rough(slot); return url
+
+
+def save_rough(slot, R=None):
+    """<slot>_r.jpg: the scan's roughness, divided by its mean and halved (0.5 = the material's own roughness in www/js/library.js)"""
+    R = R if R is not None else getattr(fetch, 'rough', None)
+    if R is None or slot not in ROUGH: return
+    g = resample(R.convert('RGB'))[..., 0]; g = np.clip(0.5 * g / max(g.mean(), 1e-6), 0, 1)
+    Image.fromarray((g * 255 + 0.5).astype(np.uint8), 'L').save(os.path.join(OUT, f'{slot}_r.jpg'), quality=90, optimize=True)
 
 
 def composite(slot, s):
@@ -156,6 +183,25 @@ def composite(slot, s):
         x, y = gen.grid(N); cloud = gen.spectral(N, 2.2, 1, 8, 731)[..., None]
         ground = gen.mix(gen.lin('#3a0b10'), gen.lin('#6e1a1c'), np.clip(L / (med * 1.6), 0, 1)) * (0.85 + 0.3 * cloud)
         save_pair(slot, to_s(gen.mix(ground, gen.lin('#e6d6cc'), vein * 0.9)), Nm); return url
+    if slot == 'stone_light':   # 1.2 m tiles, 2 x 2 per texture, each from a different (sometimes mirrored) part of the seamless scan, a slight
+        # tone change from tile to tile, 2 mm grout; polished: the normal comes from the joints only
+        rng = np.random.default_rng(91); out = np.zeros_like(A); T_ = N // 2
+        for ti in range(2):
+            for tj in range(2):
+                dy, dx = rng.integers(0, N, 2); R_ = np.roll(np.roll(A, int(dy), 0), int(dx), 1)
+                if rng.random() < 0.5: R_ = R_[:, ::-1]
+                out[ti * T_:(ti + 1) * T_, tj * T_:(tj + 1) * T_] = R_[ti * T_:(ti + 1) * T_, tj * T_:(tj + 1) * T_] * rng.uniform(0.95, 1.05)
+        gx = np.minimum(x % T_, T_ - (x % T_)); gy = np.minimum(y % T_, T_ - (y % T_)); groove = gen.smooth(0.0, 1.4, np.minimum(gx, gy))
+        out = out * (0.5 + 0.5 * groove)[..., None]; rough = 0.5 * (1.6 - 0.6 * groove)   # the joints are matte
+        save_pair(slot, to_s(out), gen.normal_from_height(groove, 1.2)); save_rough(slot, Image.fromarray((np.clip(rough / 1.0, 0, 1) * 255).astype(np.uint8)).convert('RGB')); return url
+    if slot == 'carpet_dolby':  # deep indigo cut pile, a tone-on-tone diamond lattice (the corridor's diamond walls) and a thin gold line on
+        # every other lattice row, carried on a real carpet's pile
+        u, v = x / N, y / N; k = 4; a_, b_ = (u * k + v * k) % 1.0, (u * k - v * k) % 1.0
+        line = np.minimum(np.minimum(a_, 1 - a_), np.minimum(b_, 1 - b_)); lat = gen.smooth(0.0, 0.035, line)
+        cell = (np.floor(u * k + v * k) + np.floor(u * k - v * k)) % 2
+        base = gen.mix(gen.lin('#141834'), gen.lin('#1d2247'), cell[..., None]); col = gen.mix(gen.lin('#0c0e20'), base, lat[..., None])
+        gold = (1 - gen.smooth(0.0, 0.012, np.abs(a_ - 0.5))) * (np.floor(u * k + v * k) % 2 == 0); col = gen.mix(col, gen.lin('#a8834a'), (gold * 0.85)[..., None])
+        pile = np.clip(Lr, 0.6, 1.5)[..., None]; save_pair(slot, to_s(col * (0.76 + 0.24 * pile)), Nm); return url
     raise ValueError(slot)
 
 
@@ -168,6 +214,9 @@ if __name__ == '__main__':
     for slot, s in COMPOSITES.items():
         if only and slot not in only: continue
         url = composite(slot, s); rows.append((slot, s['id'], url, s['mpt'], 'composite')); print('composite', slot, '<-', s['id'])
+    if only:   # merge: keep the other rows of the table as they are
+        path = os.path.join(HERE, 'SOURCES.md'); lines = open(path).read().splitlines(); keep = [l for l in lines if not (l.startswith('| ') and l.split('|')[1].strip() in [r[0] for r in rows])]
+        open(path, 'w').write('\n'.join(keep + [f'| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} |' for r in rows]) + '\n')
     if not only:
         with open(os.path.join(HERE, 'SOURCES.md'), 'w') as f:
             f.write('# Texture sources\n\nScanned PBR textures, all **CC0 1.0** (public domain, no attribution required), converted by `fetch_cc0.py`.\n'
