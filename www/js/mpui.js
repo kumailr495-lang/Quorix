@@ -4,7 +4,7 @@
 // host's shows started on every phone at the same moment. mp.js carries the messages.
 import * as THREE from 'three';
 import { Multi, newCode, cleanCode } from './mp.js';
-import { RB } from './people.js';
+import { RB, Person, LOOK, cleanLook, applyLook } from './people.js';
 import { filmById } from './films.js';
 import { t } from './i18n.js';
 
@@ -27,7 +27,12 @@ const CSS = `
 #mpTags{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
 #mpTags b{position:absolute;transform:translate(-50%,-100%);padding:3px 8px;border-radius:var(--pill);background:rgba(10,8,10,.62);color:#f5ede3;font:600 11px var(--font);white-space:nowrap;letter-spacing:.03em}
 #mpTags b.host::before{content:'★ ';color:#e3bf7f}
-#mpList{font-size:13px;line-height:1.7;color:var(--fg)}`;
+#mpList{font-size:13px;line-height:1.7;color:var(--fg)}
+#mpPanel .mpTop{display:flex;gap:12px;align-items:flex-start}#mpPanel .mpEdit{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+#mpPrev{width:120px;height:170px;border-radius:12px;background:#141418;border:1px solid var(--line-2);flex:none}
+#mpPanel .mpSw{display:flex;flex-wrap:wrap;gap:6px}#mpPanel .mpSw button{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.18);padding:0;cursor:pointer}
+#mpPanel .mpSw button.on{border-color:#e3bf7f;box-shadow:var(--sh-gold)}#mpPanel .mpSw button.orig{background:conic-gradient(#d9c7a6 0 25%,#3a3a40 0 50%,#d9c7a6 0 75%,#3a3a40 0)}
+#mpPanel input[type=range]{padding:0;accent-color:#e3bf7f}`;
 const el = (tag, attrs = {}, kids = []) => { const e = document.createElement(tag); for (const k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'cls') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); } for (const c of kids) e.appendChild(c); return e; };
 // a show another phone sends is checked here before it reaches the screen: a house film by id, a YouTube video by its 11-character id,
 // or an https link; anything else is dropped (a link through this phone's own media server is never sent: orig is the web address)
@@ -60,22 +65,55 @@ export class Together {
     if (this.panel) this.panel.remove(); const S = this.c.settings, guests = RB.ready ? Object.keys(RB.avatars).filter((n) => !/^Business_/.test(n)) : [];
     if (!S.mpAvatar || !guests.includes(S.mpAvatar)) S.mpAvatar = guests[0] || '';
     const name = el('input', { id: 'mpName', maxlength: '18', autocomplete: 'off', value: S.mpName || '' }), code = el('input', { id: 'mpCode', maxlength: '6', autocomplete: 'off', placeholder: 'ABC123' }), grid = el('div', { id: 'mpAv' });
+    S.mpLook = cleanLook(S.mpLook); const look = S.mpLook;
     for (const n of guests) { const b = el('button', { cls: n === S.mpAvatar ? 'on' : '', 'aria-label': n.replace(/_/g, ' ') }, [el('img', { src: 'models/rb/portraits/' + n + '.webp', alt: '' })]);
-      b.addEventListener('click', () => { S.mpAvatar = n; for (const x of grid.children) x.classList.toggle('on', x === b); }); grid.appendChild(b); }
+      b.addEventListener('click', () => { S.mpAvatar = n; for (const x of grid.children) x.classList.toggle('on', x === b); this.previewSet(); this.c.save(); }); grid.appendChild(b); }
+    // the look: outfit and hair colour swatches (the first keeps the photo's own colours) and a height slider, shown live on the preview
+    const swatches = (id, list, key) => { const row = el('div', { cls: 'mpSw', id });
+      list.forEach((hex, i) => { const b = el('button', { cls: (i === look[key] ? 'on ' : '') + (hex ? '' : 'orig'), 'aria-label': hex ? hex : t('mp.asPhoto') }); if (hex) b.style.background = hex;
+        b.addEventListener('click', () => { look[key] = i; for (const x of row.children) x.classList.toggle('on', x === b); this.previewSet(); this.c.save(); }); row.appendChild(b); });
+      return row; };
+    const size = el('input', { id: 'mpSize', type: 'range', min: '0', max: String(LOOK.height.length - 1), step: '1', value: String(look.s) });
+    const fill = () => size.style.setProperty('--p', (look.s / (LOOK.height.length - 1) * 100).toFixed(1) + '%'); fill();
+    size.addEventListener('input', () => { look.s = +size.value; fill(); this.previewSet(); }); size.addEventListener('change', () => this.c.save());
+    const prev = el('canvas', { id: 'mpPrev', width: '240', height: '340' });
+    const top = el('div', { cls: 'mpTop' }, [prev, el('div', { cls: 'mpEdit' }, [el('label', { text: t('mp.name') }), name, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'),
+      el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size])]);
     const status = el('div', { id: 'mpStatus' }), hostB = el('button', { cls: 'btn primary', id: 'mpHost', text: t('mp.host') }), joinB = el('button', { cls: 'btn secondary', id: 'mpJoin', text: t('mp.join') }), close = el('button', { cls: 'btn ghost', id: 'mpClose', text: t('book.back') });
     const leaveB = el('button', { cls: 'btn ghost', id: 'mpLeave', text: t('mp.leave') }); leaveB.hidden = !this.active;
     const list = el('div', { id: 'mpList' });
-    const d = el('div', { cls: 'dialog' }, [el('h2', { text: t('mp.title') }), el('label', { text: t('mp.name') }), name, el('label', { text: t('mp.pick') }), grid, hostB,
+    const d = el('div', { cls: 'dialog' }, [el('h2', { text: t('mp.title') }), top, el('label', { text: t('mp.pick') }), grid, hostB,
       el('label', { text: t('mp.code') }), el('div', { cls: 'row' }, [code, joinB]), status, list, el('div', { cls: 'note', text: t('mp.privacy') }), leaveB, close]);
     this.panel = el('div', { id: 'mpPanel', cls: 'scrim center' }, [d]); document.body.appendChild(this.panel); this.c.onModal(true); this.list();
-    const profile = () => { S.mpName = (name.value || '').trim().slice(0, 18) || 'Guest'; this.c.save(); return { name: S.mpName, avatar: S.mpAvatar }; };
+    this.pv = { canvas: prev, ctx: prev.getContext('2d'), scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(30, 120 / 170, 0.1, 20), p: null, av: null, yaw: 0.5,
+      light: { amb: new THREE.Color(0.62, 0.58, 0.55), key: new THREE.Color(0.7, 0.66, 0.6), dir: new THREE.Vector3(0.45, 0.75, 0.5).normalize(), screen: new THREE.Color(0, 0, 0) } };
+    this.pv.cam.position.set(0, 1.05, 3.6); this.pv.cam.lookAt(0, 0.92, 0); this.previewSet();
+    const profile = () => { S.mpName = (name.value || '').trim().slice(0, 18) || 'Guest'; this.c.save(); return { name: S.mpName, avatar: S.mpAvatar, look: { ...S.mpLook } }; };
     hostB.addEventListener('click', () => { const k = newCode(); this.go(k, profile(), true, status); });
     joinB.addEventListener('click', () => { const k = cleanCode(code.value); if (k.length !== 6) { status.textContent = t('mp.badCode'); return; } this.go(k, profile(), false, status); });
     code.addEventListener('input', () => { code.value = cleanCode(code.value); });
     leaveB.addEventListener('click', () => { this.leave(); this.close(); });
     close.addEventListener('click', () => this.close());
   }
-  close() { if (this.panel) { this.panel.remove(); this.panel = null; } this.c.onModal(false); }
+  close() { if (this.panel) { this.panel.remove(); this.panel = null; } if (this.pv) { if (this.pv.p) this.pv.p.dispose(); this.pv = null; } this.c.onModal(false); }
+  // the preview: the chosen person with the chosen look, turning slowly; drawn by the game's own renderer (no second GPU context) into the
+  // part of the screen under the panel's preview box, then copied into that box in the same frame
+  previewSet() {
+    const v = this.pv, S = this.c.settings; if (!v || !RB.ready) return; const av = S.mpAvatar;
+    if (v.av !== av) { if (v.p) { v.scene.remove(v.p.group); v.p.dispose(); } v.p = null; v.av = av; const A = RB.avatars[av];
+      if (A) { v.p = new Person({ kind: A.kind, seed: 7, rb: av, height: 1 }, { idle: 'Idle_Loop' }); v.scene.add(v.p.group); } }
+    if (v.p) applyLook(v.p, S.mpLook);
+  }
+  preview(R, dt) {
+    const v = this.pv; if (!v || !v.p || !this.panel) return; const r = v.canvas.getBoundingClientRect(), sz = R.getSize(this._sz || (this._sz = new THREE.Vector2()));
+    if (r.width < 8 || r.bottom <= 0 || r.top >= sz.y || r.right <= 0 || r.left >= sz.x || r.left < 0 || r.right > sz.x || r.top < 0 || r.bottom > sz.y) return;
+    v.yaw += dt * 0.45; v.p.group.rotation.y = 0.35 * Math.sin(v.yaw); v.scene.updateMatrixWorld(); v.p.update(dt, v.light);
+    const vp = R.getViewport(this._vp || (this._vp = new THREE.Vector4())).clone(), sc = R.getScissor(this._sc || (this._sc = new THREE.Vector4())).clone(), st = R.getScissorTest(), cc = R.getClearColor(this._cc || (this._cc = new THREE.Color())).clone(), ca = R.getClearAlpha(), rt = R.getRenderTarget();
+    const x = r.left, y = sz.y - r.bottom; R.setRenderTarget(null); R.setViewport(x, y, r.width, r.height); R.setScissor(x, y, r.width, r.height); R.setScissorTest(true); R.setClearColor(0x16161b, 1); R.clear(true, true, false);
+    v.cam.aspect = r.width / r.height; v.cam.updateProjectionMatrix(); R.render(v.scene, v.cam);
+    const pr = R.domElement.width / sz.x; try { v.ctx.drawImage(R.domElement, r.left * pr, r.top * pr, r.width * pr, r.height * pr, 0, 0, v.canvas.width, v.canvas.height); } catch (e) { /* canvas busy */ }
+    R.setViewport(vp); R.setScissor(sc); R.setScissorTest(st); R.setClearColor(cc, ca); R.setRenderTarget(rt);
+  }
   isOpen() { return !!this.panel; }
   list() { const L = this.panel && this.panel.querySelector('#mpList'); if (!L) return; L.textContent = ''; if (!this.active) return;
     L.appendChild(el('div', { text: `${t('mp.players')} · ${t('mp.badge', { code: this.mp.code, n: this.mp.count })}` }));
@@ -111,7 +149,7 @@ export class Together {
   chat_(p, m) { if (!m) return; this.c.toast(`${p.name}: ${m}`, 3200); const a = this.remotes.get(p.id); if (a) a.say({ text: m }, Math.max(2.5, m.length * 0.07)); }
   join_(p) {
     const av = RB.avatars[p.avatar] ? p.avatar : null, kind = av ? RB.avatars[av].kind : 'm';
-    const a = this.c.crowd.spawn({ id: 'mp_' + p.id, rec: { kind, seed: hashSeed(p.id), rb: av, height: 1 }, role: 'remote', name: p.name, x: 0, y: 0, z: 14, yaw: 0, state: 'remote' });
+    const a = this.c.crowd.spawn({ id: 'mp_' + p.id, rec: { kind, seed: hashSeed(p.id), rb: av, height: 1, look: cleanLook(p.look) }, role: 'remote', name: p.name, x: 0, y: 0, z: 14, yaw: 0, state: 'remote' });
     a.hidden = true; this.remotes.set(p.id, a); this.c.toast(t('mp.joined', { name: p.name }), 2200);
     const tag = el('b', { text: p.name }); this.tagLayer.appendChild(tag); this.tags.set(p.id, tag);
   }

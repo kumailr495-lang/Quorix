@@ -22,13 +22,23 @@ export const DATA = { ready: false, kinds: {}, clips: {}, tex: null };
 // the same bone names as the v8 rig, so the IK, look, jaw, eye and hand-prop code works unchanged. Without www/models/rb the v8 people stay.
 export const RB = { ready: false, avatars: {}, names: { m: [], f: [] }, guests: { m: [], f: [] }, clips: { m: {}, f: {} }, meta: null, refPelvis: { m: 1, f: 1 } };
 const RB_ALIAS = { Walk_Formal_Loop: 'Walk_Loop', Walk_Carry_Loop: 'Walk_Loop', Jog_Fwd_Loop: 'Walk_Loop', Sitting_Talking_Loop: 'Sitting_Idle_Loop', Idle_Talking_Loop: 'Idle_Loop', Idle_TalkingPhone_Loop: 'Idle_Loop', Idle_FoldArms_Loop: 'Idle_Loop' };
+// this person's skin tone (gamma luma, Cb, Cr, the way FRAG_RB measures it), sampled on the cheeks and nose of the face texture: the
+// outfit dye leaves texels of that tone alone (hands, arms, neck), so beige or khaki clothes still take the colour
+function skinOf(img) {
+  try { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, 64, 64);
+    const px = g.getImageData(0, 0, 64, 64).data, lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }, Ys = [], Bs = [], Rs = [];
+    for (const [u, v] of [[0.70, 0.67], [0.80, 0.67], [0.75, 0.64], [0.72, 0.62], [0.78, 0.62]]) { const i = (Math.floor(v * 64) * 64 + Math.floor(u * 64)) * 4;
+      const r = Math.sqrt(lin(px[i])), gg = Math.sqrt(lin(px[i + 1])), b = Math.sqrt(lin(px[i + 2])), Y = 0.299 * r + 0.587 * gg + 0.114 * b; Ys.push(Y); Bs.push((b - Y) * 0.564); Rs.push((r - Y) * 0.713); }
+    const med = (a) => a.sort((x, y) => x - y)[a.length >> 1]; const Y = med(Ys), cb = med(Bs), cr = med(Rs);
+    return cr > 0.0 && cb < 0.02 && Y > 0.15 ? [Y, cb, cr] : null; } catch (e) { return null; }
+}
 async function loadRB(base, ld) {
   const meta = await fetch(base + 'rb/rb.json').then((r) => (r.ok ? r.json() : null)).catch(() => null); if (!meta) return;
   const names = Object.keys(meta.avatars), tl = new THREE.TextureLoader();
   const [am, af, ...gl] = await Promise.all([ld.loadAsync(base + 'rb/rb_anims_m.glb'), ld.loadAsync(base + 'rb/rb_anims_f.glb'), ...names.map((n) => ld.loadAsync(base + 'rb/rb_' + n + '.glb'))]);
   for (const [g, a] of [['m', am], ['f', af]]) { for (const c of a.animations) RB.clips[g][c.name] = c; RB.refPelvis[g] = boneY(a.scene, 'pelvis'); }
   names.forEach((n, i) => { const sc = gl[i].scene, A = meta.avatars[n]; dequantize(sc);
-    const tex = tl.load(base + 'rb/' + n + '.webp'); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 2;
+    const tex = tl.load(base + 'rb/' + n + '.webp', (t) => { const av = RB.avatars[n]; if (av) av.skinYCC = skinOf(t.image); }); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 2;
     const lods = {}; sc.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; const m = o.name.match(/L(\d)$/); if (m) lods['L' + m[1]] = o; } });
     RB.avatars[n] = { name: n, kind: A.kind, scene: sc, tex, lods, pelvisY: boneY(sc, 'pelvis'), clips: null }; RB.names[A.kind].push(n); if (!/^Business_/.test(n)) RB.guests[A.kind].push(n); });
   RB.meta = meta; RB.ready = names.length > 0;
@@ -182,16 +192,23 @@ void main() {
   vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv;
 }`;
 const FRAG_RB = COMMON_FRAG + `
-uniform sampler2D uMap; varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+uniform sampler2D uMap; uniform vec4 uDye; uniform vec4 uHairDye; uniform vec3 uSkinYCC; varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+bool skinLike(vec3 c) { vec3 g = sqrt(c); float Y = dot(g, vec3(0.299, 0.587, 0.114)), cb = (g.b - Y) * 0.564, cr = (g.r - Y) * 0.713;
+  if (uSkinYCC.x > 0.0) return abs(cb - uSkinYCC.y) < 0.045 && abs(cr - uSkinYCC.z) < 0.05 && Y > uSkinYCC.x * 0.35 && Y < uSkinYCC.x * 1.5;
+  return cb > -0.2 && cb < 0.0 && cr > 0.02 && cr < 0.18; }
+vec3 dye(vec3 c, vec3 to) { float y = dot(c, vec3(0.2126, 0.7152, 0.0722)); return to * clamp(pow(y / 0.2, 0.7), 0.12, 2.2) * 0.9; }
 void main() {
-  vec4 t = texture2D(uMap, vUv); if (t.a < 0.5) discard;
-  vec3 N = normalize(gl_FrontFacing ? vN : -vN); vec3 col = t.rgb * vLight * 1.15 + 0.05 * vLight * pow(max(N.y * 0.5 + 0.5, 0.0), 4.0);
+  vec4 t = texture2D(uMap, vUv); if (t.a < 0.5) discard; vec3 c = t.rgb;
+  if (uDye.a > 0.5 && vUv.x < 0.5 && vUv.y > 0.5 && !skinLike(c)) c = dye(c, uDye.rgb);
+  if (uHairDye.a > 0.5) { bool cards = vUv.x < 0.5 && vUv.y < 0.5, scalp = vUv.x > 0.5 && vUv.y > 0.5 && !(vUv.x < 0.67 && vUv.y > 0.76) && dot(c, vec3(0.2126, 0.7152, 0.0722)) < 0.09 && !skinLike(c);
+    if (cards || scalp) c = dye(c, uHairDye.rgb); }
+  vec3 N = normalize(gl_FrontFacing ? vN : -vN); vec3 col = c * vLight * 1.15 + 0.05 * vLight * pow(max(N.y * 0.5 + 0.5, 0.0), 4.0);
   gl_FragColor = vec4(lumFog(lumTone(col), vDist), 1.0);
   #include <colorspace_fragment>
 }`;
 function rbMaterial(av) {
   return new THREE.ShaderMaterial({ vertexShader: VERT_RB, fragmentShader: FRAG_RB, side: THREE.DoubleSide, uniforms: {
-    uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uMap: { value: av.tex },
+    uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uMap: { value: av.tex }, uDye: { value: new THREE.Vector4(1, 1, 1, 0) }, uHairDye: { value: new THREE.Vector4(1, 1, 1, 0) }, uSkinYCC: { value: new THREE.Vector3(...(av.skinYCC || [0, 0, 0])) },
     uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } } });
 }
 const lin = (hex) => new THREE.Color(hex);
@@ -273,6 +290,17 @@ function poseLayers(rig, frame, g, gt, w, face) {
   if (B.eye_l && (face.eyeYaw || face.eyePitch)) { const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(face.eyePitch || 0, face.eyeYaw || 0, 0, 'YXZ')); _m.extractRotation(frame); const qf = new THREE.Quaternion().setFromRotationMatrix(_m), qw = qf.clone().multiply(q).multiply(qf.clone().invert()); rotWorld(B.eye_l, qw); rotWorld(B.eye_r, qw); }
 }
 // ------------------------------------------------------------------ a skinned person (same interface as the v5 Character)
+// a player's own look (Play together): outfit colour, hair colour and height, each an index into these lists (0 = as photographed).
+// The dye keeps the photographed shading: non-skin texels of the body take the colour at their own brightness; hair cards and the dark
+// painted hair on the head take the hair colour (the eyes and mouth corner of the head texture are left alone)
+export const LOOK = { outfit: [null, '#151518', '#e9e5dd', '#9c1c26', '#1d2c50', '#1f4d31', '#b38b3a', '#4d2b6e', '#c4562a'],
+  hair: [null, '#161210', '#4a2c1a', '#8c3c1f', '#c9a25c', '#a3a3a8', '#2c4fa3', '#b33a6e'], height: [0.93, 0.965, 1.0, 1.035, 1.07] };
+export const cleanLook = (l) => { const i = (v, n, d) => (Number.isInteger(v) && v >= 0 && v < n ? v : d); l = l && typeof l === 'object' ? l : {};
+  return { o: i(l.o, LOOK.outfit.length, 0), h: i(l.h, LOOK.hair.length, 0), s: i(l.s, LOOK.height.length, 2) }; };
+export function applyLook(p, look) {
+  if (!p || !p.av || !p.mat || !p.mat.uniforms.uDye) return; const L = cleanLook(look), u = p.mat.uniforms, set = (U, hex) => { if (hex) { const c = new THREE.Color(hex); U.value.set(c.r, c.g, c.b, 1); } else U.value.w = 0; };
+  set(u.uDye, LOOK.outfit[L.o]); set(u.uHairDye, LOOK.hair[L.h]); if (p.av.skinYCC) u.uSkinYCC.value.set(...p.av.skinYCC); p.scale = LOOK.height[L.s]; p.model.scale.setScalar(p.scale);
+}
 const SIT_H = 0.47;   // seat height the library's sitting clips were made for
 export class Person {
   constructor(r, opts = {}) {
@@ -286,6 +314,7 @@ export class Person {
     this.s = { sit: 0, drop: 0, recline: 0.1, lookYaw: 0, lookPitch: 0, lookAmt: 0, t: Math.random() * 100 };
     this.walkT = 0; this.gestT = null; this.snap = true; this.expr = 'neutral'; this.talking = false; this.items = {}; this.staff = !!opts.staff;
     this._g = null; this._gw = 0; this._gt = 0; this.face = { jaw: 0, lookYaw: 0, lookPitch: 0, lookAmt: 0, eyeYaw: 0, eyePitch: 0 }; this._sacc = 0; this._sitDir = 0; this.idleKind = opts.idle || 'Idle_Loop';
+    if (r.look) applyLook(this, r.look);
   }
   action(name) { let a = this.actions[name]; if (!a) { const c = this.K.clips[name]; if (!c) return null; a = this.actions[name] = this.mixer.clipAction(c); } return a; }
   play(name, fade = 0.3, scrub = null) {

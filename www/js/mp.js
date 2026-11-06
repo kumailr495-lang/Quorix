@@ -12,22 +12,23 @@ export const newCode = () => { let s = ''; const r = crypto.getRandomValues(new 
 export const cleanCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 const clip = (v, a, b) => Math.max(a, Math.min(b, v));
 const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
+const small = (l) => (l && typeof l === 'object' ? { o: clip(Math.round(num(l.o)), 0, 15), h: clip(Math.round(num(l.h)), 0, 15), s: clip(Math.round(num(l.s, 2)), 0, 15) } : null);
 
 export class Multi {
   constructor(hooks = {}) { this.hooks = hooks; this.room = null; this.peers = new Map(); this.code = null; this.host = false; this.me = null; this.lastShow = null; this.offset = 0; this.t = 0; }
   get active() { return !!this.room; }
   get count() { return this.room ? this.peers.size + 1 : 0; }
-  // profile: { name, avatar } (avatar: a Rocketbox person's name, people.js RB)
+  // profile: { name, avatar, look } (avatar: a Rocketbox person's name, people.js RB; look: outfit, hair and height indices, people.js LOOK)
   start(code, profile, asHost) {
     this.leave(); this.code = cleanCode(code); if (this.code.length < 4) throw new Error('bad code');
-    this.host = !!asHost; this.me = { name: String(profile.name || 'Guest').slice(0, 18), avatar: String(profile.avatar || '').slice(0, 40) }; this.since = Date.now();
+    this.host = !!asHost; this.me = { name: String(profile.name || 'Guest').slice(0, 18), avatar: String(profile.avatar || '').slice(0, 40), look: small(profile.look) }; this.since = Date.now();
     const room = this.room = joinRoom({ appId: APP }, this.code);
     // Trystero 0.26: makeAction gives an object with send and an onMessage callback that gets the peer id; peer join and leave are properties
     const act = (n, on) => { const a = room.makeAction(n, { onMessage: (d, c) => { try { on(d, c && c.peerId); } catch (e) { console.warn('[mp]', n, e); } } }); return (d, to) => a.send(d, to ? { target: to } : undefined).catch(() => {}); };
     const sHello = act('hello', (h, id) => {
       if (!h || typeof h !== 'object' || !id) return; let p = this.peers.get(id); const fresh = !p;
       if (!p) { p = { id, st: null, at: 0 }; this.peers.set(id, p); }
-      Object.assign(p, { name: String(h.name || 'Guest').slice(0, 18), avatar: String(h.avatar || '').slice(0, 40), host: !!h.host, since: num(h.since, Date.now()) });
+      Object.assign(p, { name: String(h.name || 'Guest').slice(0, 18), avatar: String(h.avatar || '').slice(0, 40), look: small(h.look), host: !!h.host, since: num(h.since, Date.now()) });
       if (p.host && this.host && p.since < this.since) { this.host = false; this.hooks.onHost && this.hooks.onHost(false); }   // two hosts (both opened it): the earlier one keeps it
       if (p.host && h.now) this.offset = num(h.now) - Date.now();   // the host's clock, to start shows together (good to a fraction of a second)
       if (fresh && this.hooks.onJoin) this.hooks.onJoin(p);
@@ -47,7 +48,7 @@ export class Multi {
     this.hooks.onCount && this.hooks.onCount(this.count);
   }
   takeShow(s, p) { if (!p.host) return; this.lastShow = s; this.hooks.onShow && this.hooks.onShow(s, p); }
-  hello() { return { name: this.me.name, avatar: this.me.avatar, host: this.host, since: this.since, now: this.host ? Date.now() : 0 }; }
+  hello() { return { name: this.me.name, avatar: this.me.avatar, look: this.me.look, host: this.host, since: this.since, now: this.host ? Date.now() : 0 }; }
   // the host left: the one who has been in the room longest takes over (every phone reaches the same answer from the same list)
   elect() {
     if (!this.room || this.host || [...this.peers.values()].some((p) => p.host)) return;

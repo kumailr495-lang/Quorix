@@ -187,6 +187,9 @@ directly. Nothing in the app is a secret: there is no key to leak.
 - *Sharing the load.* Each phone sends only its own player, ten times a second (position, facing, walking speed, seat, room). The host
   keeps the shows in step; when the host leaves, the player who has been in the room longest takes over (every phone reaches the same
   answer from the same list), and keeps the show going for anyone who joins later.
+- *Your look.* Besides the person, an outfit colour (8 + as photographed), a hair colour (7 + as photographed) and a height (5 steps),
+  shown on a live turning preview in the panel (drawn by the game's own renderer: no second GPU context). The dye keeps the photo's
+  shading and leaves skin alone (each person's skin tone is sampled from their face texture). Others see your look.
 - *Other players* are drawn by the people renderer with their AI switched off: they walk, sit in the seat their phone reports, wave,
   clap, cheer, and their chat appears as a toast and a speech bubble. Names float over their heads.
 - *Shows together.* When the host books a house film, a YouTube video or a web link, every phone books the same hall and starts at the
