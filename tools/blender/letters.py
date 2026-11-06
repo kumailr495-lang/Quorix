@@ -19,6 +19,15 @@ WORDS = {
     'letters_lumiere': ('LUMIÈRE', 'CormorantGaramond-SemiBold.ttf', 'brass', 'brass', 0.06, 0.006, 1.08),          # lobby feature wall: solid brass
     'letters_cinemas': ('CINEMAS', 'Inter-SemiBold.ttf', 'brass', 'brass', 0.03, 0.003, 1.9),
     'letters_imax': ('IMAX', 'Inter-ExtraBold.ttf', 'glow_ice', 'blackmetal', 0.14, 0.008, 1.05),
+    # v9.3 hall entrances (the user's photo of a ScreenX entrance): face-lit letters over each portal and the screen's number beside it
+    'letters_max': ('MAX', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.08, 0.006, 1.06),
+    'letters_curve': ('CURVE', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.08, 0.006, 1.06),
+    'letters_classic': ('CLASSIC', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.08, 0.006, 1.06),
+    'letters_x270': ('X·270', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.08, 0.006, 1.06),
+    'num_1': ('1', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.1, 0.008, 1.0),
+    'num_2': ('2', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.1, 0.008, 1.0),
+    'num_3': ('3', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.1, 0.008, 1.0),
+    'num_4': ('4', 'Inter-ExtraBold.ttf', 'glow_white', 'blackmetal', 0.1, 0.008, 1.0),
 }
 ROT = Matrix(((0, 0, 1, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))   # text X -> +Y, text Y -> +Z, text Z (towards the reader) -> +X
 

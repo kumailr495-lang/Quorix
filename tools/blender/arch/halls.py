@@ -151,11 +151,11 @@ def build_hall(h, L1):
     # ---------------------------------------------------------------- the front (v9.1b). The picture runs nearly wall to wall (the user: "the
     # screens are so small"); the masking wraps it to both side walls, with an exit portal at each front corner beside the picture (the
     # user preferred these older exits to v9.1's open bays): a lit EXIT sign over the portal, the push-bar door in the screen wall behind it
-    Wp, hB, Hp, Rs = h['W'] / 2, h['hB'], h['H'], h['R']
+    Wp, hB, Hp, Rs = h['W'] / 2, h['hB'], h['H'], h['R']; fmt0 = h['format']
     def sd(u): return (Rs - math.sqrt(max(0.0, Rs * Rs - u * u))) if Rs else 0.0
     def sd1(u): return (u / math.sqrt(max(1e-6, Rs * Rs - u * u))) if Rs else 0.0   # slope of the curve, d(sd)/du
     md = lambda u: sd(u) + 0.04
-    PU, BAY_H = h['bay'][0], 2.55   # v9.1b (the user preferred the older exits): a portal in the masking beside the picture, the door behind it
+    PU, BAY_H = h['bay'][0], (2.45 if h.get('panels') else 2.55)   # v9.1b: a portal in the masking beside the picture, the door behind it (v9.3 X-270: under its raised picture)
     us = sorted(set([-W2 - 0.05, W2 + 0.05, -Wp, Wp, -PU, PU] + [(-Wp + 2 * Wp * i / 24) for i in range(25)]
                     + [sg * (Wp + (PU - Wp) * i / 4) for i in range(5) for sg in (-1, 1)] + [sg * (PU + (W2 - PU) * i / 6) for i in range(7) for sg in (-1, 1)]))
     us = [u for u in us if -W2 - 0.06 <= u <= W2 + 0.06]
@@ -204,11 +204,16 @@ def build_hall(h, L1):
     panels = []
     for sg in (-1, 1):   # over each portal: a lit EXIT sign on the masking; in the passage behind: a dim light (it stays on in the film)
         uc = sg * (PU + W2) / 2; i_ = 0 if sg < 0 else 1
-        sign_on_mask(uc, BAY_H + 0.3, 0.72, 0.26, f"exitsign_{h['id']}_{i_}")
+        sign_on_mask(uc, BAY_H + (0.17 if h.get('panels') else 0.3), 0.72, 0.26, f"exitsign_{h['id']}_{i_}")
         lit.point((sg * (W2 - 0.9), 2.3, (Dw + md(sg * (W2 - 0.9))) / 2), lin('#ffd2a0'), 0.35, 3.0, 'h')
         lit.point((sg * (W2 - 0.9), 2.0, (Dw + md(sg * (W2 - 0.9))) / 2), lin('#ffd2a0'), 0.1, 2.5, 'f')
         p = T((sg * exitU, 2.62, Dw + 0.055)); panels.append({'id': f"exitsign_{h['id']}_{2 + i_}", 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0, 'w': 0.6, 'h': 0.22, 'emit': 1})
         acc.box(sg * exitU - 0.33, 2.48, Dw, sg * exitU + 0.33, 2.76, Dw + 0.05, MAT['powder'], lin('#16181b'))
+    if fmt0 == 'curve':   # v9.3 (the user's photo of a curved hall): a lit line along the screen's foot that draws the curve in the dark
+        for i in range(48):
+            ua, ub = -Wp + 2 * Wp * i / 48, -Wp + 2 * Wp * (i + 1) / 48; da, db = md(ua) + 0.03, md(ub) + 0.03
+            gq((ua, hB - 0.16, da), (ub, hB - 0.16, db), (ub, hB - 0.12, db), (ua, hB - 0.12, da), (0, 0, 1), lin('#e8ecff'), 1.6)
+        lit.line((-Wp, hB - 0.2, md(0) + 0.3), (Wp, hB - 0.2, md(0) + 0.3), lin('#e8ecff'), 0.25, 4.0, 'f')
     # ---------------------------------------------------------------- side walls: each hall's own wall system, above the local floor
     rnd = random.Random(h['no']); fmt = h['format']; step = 2.4
     SS = h.get('sideScreen'); x_end = SS['d1'] if SS else -1.0

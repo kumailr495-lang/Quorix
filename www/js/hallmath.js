@@ -35,7 +35,7 @@ export const HALLS = [
     aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.6, rowK: 34, curtain: false, frame: 0.25,
     groups: [{ seat: 'rocker', rows: 11, n: 37, pitch: 1.32, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
       { seat: 'pod', rows: 2, pairs: 9, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },
-  { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -66.0, width: 25.2, aspect: 2.0, W: 21.4, hB: 1.05, sag: 0.14, D1: 10.9, c: 0.2,
+  { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -66.0, width: 25.2, aspect: 2.0, W: 21.4, hB: 1.05, sag: 0.18, D1: 10.9, c: 0.2,
     aisleW: 1.4, cross: null, rear: 2.6, rowK: 9, curtain: true, frame: 0.25,
     groups: [{ seat: 'recliner', rows: 6, n: 19, pitch: 1.92, cls: (r) => (r >= 2 && r <= 4 ? 'reclPlus' : 'recl') },
       { seat: 'sofa', rows: 1, pairs: 8, gap: 0.5, pitch: 2.0, cls: () => 'love' }] },
@@ -43,7 +43,9 @@ export const HALLS = [
     aisleW: 1.25, cross: null, rear: 2.6, rowK: 0, curtain: true, frame: 0.25,
     groups: [{ seat: 'rocker', rows: 10, n: 25, pitch: 1.3, cls: (r) => (r >= 6 ? 'prime' : 'std') },
       { seat: 'sofa', rows: 1, pairs: 8, gap: 0.42, pitch: 1.75, cls: () => 'sofa' }] },
-  { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE X·270', format: 'x270', side: 1, zc: -55.5, width: 21.2, aspect: 1.778, W: 17.4, hB: 1.25, sag: 0, D1: 9.9, c: 0.2,
+  // v9.3 (the user, photo of a real ScreenX hall: "it's connected"): the front screen runs corner to corner and the side screens start at
+  // the corners with the same top and bottom, one band round three walls; the front is raised over the exit doors (they open under it)
+  { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE X·270', format: 'x270', side: 1, zc: -55.5, width: 21.2, aspect: 2.0, W: 21.1, hB: 2.8, rakeHB: 1.25, sag: 0, D1: 9.9, c: 0.2,
     aisleW: 1.3, cross: null, rear: 2.6, rowK: 0, curtain: false, frame: 0.25, panels: true,
     groups: [{ seat: 'rocker', rows: 10, n: 25, pitch: 1.3, cls: (r) => (r >= 4 && r <= 7 ? 'x270p' : 'x270') }] },
 ];
@@ -60,8 +62,10 @@ export function makeHall(s) {
   }
   // risers (UNIC 4.7): Y_n = X_n (Y_1 / X_1 + c sum 1/X_m) - c, Y = eye over the picture's bottom edge. A lifted group (the pod tier with
   // its parapet) adds its lift once, which only adds clearance for the rows behind it.
-  let sum = 0, extra = 0; const Y1 = rows[0].sd.eye - s.hB;
-  for (const row of rows) { sum += 1 / row.X; extra += row.lift; const Y = row.r === 0 ? Y1 : row.X * (Y1 / rows[0].X + s.c * sum) - s.c; row.y = Math.max(0, Math.round((Y + s.hB - row.sd.eye + extra) * 1000) / 1000); }
+  // rakeHB: the bottom edge the rake is designed for (X-270 raised its screen over the exit doors in v9.3 and keeps its v9.2 rake)
+  const rB = s.rakeHB != null ? s.rakeHB : s.hB;
+  let sum = 0, extra = 0; const Y1 = rows[0].sd.eye - rB;
+  for (const row of rows) { sum += 1 / row.X; extra += row.lift; const Y = row.r === 0 ? Y1 : row.X * (Y1 / rows[0].X + s.c * sum) - s.c; row.y = Math.max(0, Math.round((Y + rB - row.sd.eye + extra) * 1000) / 1000); }
   for (let i = 1; i < rows.length; i++) rows[i].y = Math.max(rows[i].y, rows[i - 1].y);
   for (const row of rows) { const prev = row.r ? rows[row.r - 1].y : 0; row.riser = Math.round((row.y - prev) * 1000) / 1000; row.steps = row.riser > 0.005 ? Math.ceil(row.riser / STEP_MAX - 1e-6) : 0; }
   // hip (seat cushion centre) and the platform each row stands on: it starts just behind the backrests of the row in front
@@ -99,11 +103,11 @@ export function makeHall(s) {
   h.bay = [s.width / 2 - BAY, s.width / 2];
   h.exits = [-1, 1].map((sg) => ({ u: sg * (s.width / 2 - 0.85), d: -SCREEN_GAP + 0.2 }));
   h.y0 = 0;   // building.js lifts the smaller halls so every rear aisle is level with the first-floor corridor (y0 = L1 - total)
-  // the 270 hall's side screens (ScreenX-style, the user: "where is the Screen-X"): one projection surface on each side wall from just in
-  // front of the exit bay to 74 % of the depth, its bottom edge 1.3 m over the rake (a straight line over a convex rake stays above it),
-  // its top 0.8 m under the ceiling. Local y (above the front floor); the builder and film9.js both read this.
-  if (s.panels) { const d0 = Math.max(0.6, h.screenD(s.width / 2) + 0.25), d1 = depthIn * 0.74, W2 = s.width / 2 - 0.3;
-    h.sideScreen = { d0, d1, yb0: hallFloor(h, W2, d0) + 1.3, yb1: hallFloor(h, W2, d1) + 1.3, yt: h.ceil - 0.8 }; }
+  // the 270 hall's side screens (ScreenX): one projection surface on each side wall from the front corner, where it meets the front
+  // screen's edge, to 74 % of the depth. At the corner its bottom and top are the front screen's; further back the bottom keeps 2.4 m over
+  // the rake (people walking the side aisles stay below the picture). Local y (above the front floor); halls.py and film9.js read this.
+  if (s.panels) { const d0 = Math.max(0, h.screenD(s.width / 2)), d1 = depthIn * 0.74, W2 = s.width / 2 - 0.3;
+    h.sideScreen = { d0, d1, yb0: s.hB, yb1: Math.max(s.hB, hallFloor(h, W2, d1) + 2.4), yt: s.hB + H }; }
   return h;
 }
 export function hallSeats(h) {

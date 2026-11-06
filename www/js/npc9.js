@@ -12,7 +12,7 @@ import { seatRoute, SEAT, SCREEN_GAP } from './hallmath.js';
 import { pick } from './i18n.js';
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), adiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b)), rnd = (a, b) => a + Math.random() * (b - a);
 const HIDDEN = { visible: false }, SEAT_H = { rocker: 0.44, recliner: 0.5, sofa: 0.5, pod: 0.5 }, RECLINE = { rocker: 0.18, recliner: 0.32, sofa: 0.2, pod: 0.26 };
-const DENSITY = { off: 0, low: 6, medium: 12, high: 20 };
+const DENSITY = { off: 0, low: 10, medium: 20, high: 30 };   // v9.3 (the user: "everything feels so empty"): a busy evening lobby
 // ------------------------------------------------------------------ the nav graph: one-way edges only one way; Dijkstra on distance
 const NODES = NAV.nodes, ADJ = {};
 for (const [a, b] of NAV.edges) { const ab = !NAV.oneWay.some(([p, q]) => p === b && q === a), ba = !NAV.oneWay.some(([p, q]) => p === a && q === b); if (ab) (ADJ[a] || (ADJ[a] = [])).push(b); if (ba) (ADJ[b] || (ADJ[b] = [])).push(a); }
@@ -33,7 +33,7 @@ class Agent {
     this.light = { amb: new THREE.Color(0.3, 0.3, 0.3), key: new THREE.Color(0.3, 0.3, 0.3), dir: new THREE.Vector3(0, 1, 0), screen: new THREE.Color(0, 0, 0) }; this.lightT = 0; this.ch = null; this.room = null;
   }
   get group() { return this.ch ? this.ch.group : HIDDEN; }
-  ensure() { if (this.ch || !DATA.ready) return this.ch; this.ch = new Person(this.rec, { staff: this.role !== 'guest' && this.role !== 'aud' }); this.crowd.scene.add(this.ch.group); return this.ch; }
+  ensure() { if (this.ch || !DATA.ready) return this.ch; this.ch = new Person(this.rec, { staff: this.role !== 'guest' && this.role !== 'aud', idle: this.idle || 'Idle_Loop' }); this.crowd.scene.add(this.ch.group); return this.ch; }
   release() { if (!this.ch) return; this.crowd.scene.remove(this.ch.group); this.ch.dispose(); this.ch = null; }
   go(points, onArrive, o = {}) { this.path = points.map((p) => (Array.isArray(p) ? { x: p[0], y: p[1], z: p[2], ride: p[3] } : p)); this.pi = 0; this.onArrive = onArrive || null; if (o.speed) this.speed = o.speed; this.state = o.state || this.state; }
   stop() { this.path = null; this.onArrive = null; }
@@ -70,7 +70,7 @@ export class Crowd {
   }
   newGuest(i) {
     const spots = LOBBY_SPOTS, s = spots[(i + Math.floor(this.seedBase)) % spots.length], rec = randomRecipe(this.seed()), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
-    const a = this.spawn({ rec, role: 'guest', voice, x: s[0] + rnd(-0.4, 0.4), y: 0, z: s[1] + rnd(-0.4, 0.4), yaw: rnd(0, TAU), state: 'mill', talkable: true }); a.spot = s; a.next = this.now + rnd(4000, 14000); return a;
+    const a = this.spawn({ rec, role: 'guest', voice, x: s[0] + rnd(-0.4, 0.4), y: 0, z: s[1] + rnd(-0.4, 0.4), yaw: rnd(0, TAU), state: 'mill', talkable: true }); a.spot = s; a.next = this.now + rnd(4000, 14000); a.idle = IDLES[i % IDLES.length]; return a;
   }
   // ---------------------------------------------------------- light on a person: the room's lights, dimmed with the house lights,
   // plus the screen's light (capped and eased: v8 faces flashed white in bright scenes)
@@ -262,4 +262,6 @@ function makeCart(mats, scene) {
 function nearestOn(pts, a) { let bi = 0, bd = 1e9; pts.forEach((p, i) => { const d = Math.hypot(p.x - a.x, (p.y - a.y) * 2, p.z - a.z); if (d < bd) { bd = d; bi = i; } }); return bi; }
 const HALL_ID = Object.fromEntries(Object.values(HALL).map((h) => [h.key, h.id]));
 // where lobby guests stand, sit or queue (x, z)
-const LOBBY_SPOTS = [[-12.6, 9.0], [-11.0, 9.4], [-12.8, -4.0], [-11.2, -3.6], [-4.6, 3.5], [2.2, -1.8], [-3.4, -2.6], [1.8, 4.0], [-6.5, 11.0], [6.6, 10.5], [4.5, 13.2], [-8.8, 1.2], [16.5, 3.0], [16.0, -4.5], [-8.0, -9.5], [3.0, -9.0], [11.0, 9.0], [-1.0, 8.5]];
+const LOBBY_SPOTS = [[-12.6, 9.0], [-11.0, 9.4], [-12.8, -4.0], [-11.2, -3.6], [-4.6, 3.5], [2.2, -1.8], [-3.4, -2.6], [1.8, 4.0], [-6.5, 11.0], [6.6, 10.5], [4.5, 13.2], [-8.8, 1.2], [16.5, 3.0], [16.0, -4.5], [-8.0, -9.5], [3.0, -9.0], [11.0, 9.0], [-1.0, 8.5],
+  [-13.8, 7.6], [-14.2, -5.2], [19.0, 6.5], [19.2, -0.5], [9.5, -3.0], [-7.0, -4.6], [5.4, 7.0], [-2.6, 12.6], [13.6, 5.2], [-16.0, 12.0], [7.8, -9.6], [-5.2, 15.0]];   // v9.3: queues, poster wall, windows
+const IDLES = ['Idle_Loop', 'Idle_Loop', 'Idle_TalkingPhone_Loop', 'Idle_FoldArms_Loop', 'Idle_Talking_Loop'];   // what a waiting guest does with their hands

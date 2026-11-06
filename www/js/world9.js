@@ -128,13 +128,14 @@ function leafGeo(lw, h, kind, s, astragal = 0) {
     a.add(boxGeo(lw - 2 * fw, fw, t), m(lw / 2, h - fw / 2, 0), fc, { mat: MAT.metal }); a.add(boxGeo(lw - 2 * fw, fw * 1.6, t), m(lw / 2, fw * 0.8, 0), fc, { mat: MAT.metal });   // rails between the stiles
     a.add(boxGeo(fw, h, t), m(fw / 2, h / 2, 0), fc, { mat: MAT.metal }); a.add(boxGeo(fw, h, t), m(lw - fw / 2, h / 2, 0), fc, { mat: MAT.metal });
     a.add(boxGeo(0.03, 0.9, 0.05), m(lw - 0.16, 1.05, t), '#c9a35e', { mat: MAT.brass }); return toGeometry(a); }
-  const exit = kind === 'push', c = exit ? '#2b2e34' : '#4a141c';
-  a.add(boxGeo(lw, h, t), m(lw / 2, h / 2, 0), c, { mat: exit ? MAT.powder : MAT.leather });
-  if (astragal) a.add(boxGeo(0.05, h - 0.02, 0.012), m(lw + 0.01, h / 2, astragal * (t / 2 + 0.006)), exit ? '#3a3d44' : '#c9a061', { mat: exit ? MAT.powder : MAT.brass });
+  // v9.3 (the user's photo of a ScreenX entrance): hall doors in dark graphite with a tall narrow vision panel and a steel pull
+  const exit = kind === 'push', c = exit ? '#2b2e34' : '#26272b';
+  a.add(boxGeo(lw, h, t), m(lw / 2, h / 2, 0), c, { mat: MAT.powder });
+  if (astragal) a.add(boxGeo(0.05, h - 0.02, 0.012), m(lw + 0.01, h / 2, astragal * (t / 2 + 0.006)), exit ? '#3a3d44' : '#1c1d20', { mat: MAT.powder });
   for (const z of [-1, 1]) {
     if (exit) { a.add(boxGeo(lw - 0.3, 0.05, 0.05), m(lw / 2 + 0.05, 1.0, z * (t / 2 + 0.04)), '#c9ccd2', { mat: MAT.chrome }); a.add(boxGeo(0.24, 0.4, 0.006), m(lw / 2, 1.62, z * (t / 2 + 0.002)), '#0a0c0e', { mat: MAT.glass }); }
-    else { for (let r = 0; r < 6; r++) for (let q = 0; q < 3; q++) { const y = 0.45 + r * 0.32 + (q % 2 ? 0.16 : 0), x = lw * (0.22 + q * 0.28); if (y > h - 0.35) continue; a.add(boxGeo(0.022, 0.022, 0.012), m(x, y, z * (t / 2 + 0.004)), '#c9a061', { mat: MAT.brass }); }
-      a.add(boxGeo(0.4, 0.06, 0.03), m(lw - 0.3, 1.06, z * (t / 2 + 0.02)), '#c9a061', { mat: MAT.brass }); a.add(boxGeo(lw - 0.1, 0.18, 0.006), m(lw / 2, 0.12, z * (t / 2 + 0.003)), '#c9a061', { mat: MAT.brass }); } }
+    else { a.add(boxGeo(0.13, 0.78, 0.006), m(lw * 0.62, 1.55, z * (t / 2 + 0.002)), '#0b0d10', { mat: MAT.glass }); a.add(boxGeo(0.17, 0.82, 0.004), m(lw * 0.62, 1.55, z * (t / 2 + 0.001)), '#3c3e44', { mat: MAT.powder });
+      a.add(boxGeo(0.028, 0.42, 0.03), m(lw - 0.14, 1.05, z * (t / 2 + 0.035)), '#c9ccd2', { mat: MAT.chrome }); a.add(boxGeo(lw - 0.1, 0.16, 0.006), m(lw / 2, 0.11, z * (t / 2 + 0.003)), '#8d9097', { mat: MAT.chrome }); } }
   return toGeometry(a);
 }
 // ---------------------------------------------------------------- escalators (EN 115: 30 deg, 0.4 m steps), travelator, lift
@@ -227,8 +228,11 @@ function panelTexture(id, w, h, hooks) {
 // the builder placed the west-wall boards at the wall's centre line (tools/blender/arch/rooms.py: x0 + 0.21); its face is 0.2 m further in
 const NUDGE = { showtimes: 0.22, menu: 0.22 };
 export const PANEL_DRAW = {
-  sign: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#07080c'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.5}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    if ('letterSpacing' in g) g.letterSpacing = `${h * 0.08}px`; g.fillText(H_ ? H_.name.replace('LUMIERE ', '') : id, w / 2, h * 0.52); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.fillRect(w * 0.3, h * 0.86, w * 0.4, h * 0.03); },
+  // v9.3: the showtime header inside each hall portal (the user's corridor photo): a white number cube, then the hall and what is on
+  sign: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#050506'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#f4f4f2'; g.fillRect(h * 0.12, h * 0.12, h * 0.76, h * 0.76); g.fillStyle = '#050506'; g.font = `800 ${h * 0.6}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(H_ ? String(H_.no) : '', h * 0.5, h * 0.54);
+    g.fillStyle = '#f4f4f2'; g.textAlign = 'left'; g.font = `700 ${h * 0.4}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.04}px`;
+    g.fillText((H_ ? H_.name.replace('LUMIERE ', '') : id) + '  ·  NOW SHOWING', h * 1.1, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   // an illuminated exit sign (ISO 7010 E002 look: a white running figure through a door on safety green, then EXIT)
   exitsign: (g, w, h) => { g.fillStyle = '#0a7a3d'; g.fillRect(0, 0, w, h); g.fillStyle = '#f4fff8'; g.strokeStyle = '#f4fff8'; g.lineCap = 'round'; g.lineJoin = 'round';
     const s = h * 0.8, x0 = h * 0.12, y0 = h * 0.1, P = (px, py) => [x0 + px * s, y0 + py * s];
@@ -260,7 +264,10 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   const L = [], add = (room, name, x, y, z, yaw = 0, o = {}) => L.push({ room, name, x, y, z, yaw, o });
   // the lounge: four curved sofas round the table, each one's concave seat side facing it (sofa_curve sits facing local +z, its arc's centre
   // 2.0 m in front of its origin); yaw -r - 90 deg turns +z towards the table (v9 had them radial, at -r + 180 deg)
-  for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 2.4 * Math.cos(r), 0, 1 + 2.4 * Math.sin(r), -r - Math.PI / 2); }   // square to the axes: their collision boxes stay tight
+  // v9.3 (the user's lounge photos): sapphire velvet, white boucle chairs at the rug's edge, palms between them
+  const SAPPHIRE = { velvet_ivory: [MAT.velvet, [0.012, 0.03, 0.17]] }, BOUCLE = { velvet_mustard: [MAT.velvet, [0.72, 0.69, 0.63]] }, EMERALD = { velvet_mustard: [MAT.velvet, [0.012, 0.07, 0.04]] };
+  for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 2.4 * Math.cos(r), 0, 1 + 2.4 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }   // square to the axes: their collision boxes stay tight
+  for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'armchair_deco', -1 + 3.3 * Math.cos(r), 0, 1 + 3.3 * Math.sin(r), Math.round((-r - Math.PI / 2) / (Math.PI / 2)) * Math.PI / 2, { swap: BOUCLE }); add('lobby', 'planter_tall', -1 + 5.6 * Math.cos(r), 0, 1 + 5.6 * Math.sin(r)); }
   add('lobby', 'table_lounge', -1, 0, 1); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   add('lobby', 'poster_totem', -5.2, 0, 14.2, 0.35); add('lobby', 'poster_totem', 5.2, 0, 14.2, -0.35); add('lobby', 'poster_totem', 5.0, 0, 7.6, 0.3);
   // the box-office queue: two rope lines guiding you to the counter
@@ -273,10 +280,10 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
-  for (const [cx, cz] of [[11.5, 12.6], [16.5, 12.6], [-9.5, 15.2]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
+  for (const [cx, cz, sw] of [[11.5, 12.6, EMERALD], [16.5, 12.6, SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null], [-9.5, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
   add('lobby', 'chandelier_cascade', 0, 8.55, 4.0, 0, { collide: false, ground: false });
   add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
-  add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.42, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, on the stone band
+  add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, on the blue diamond wall (v9.3; just proud of the tiles)
   for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
   for (let x = -40; x <= 40; x += 10) add('street', 'lamp_post', x, 0, 25.55, Math.PI / 2, { collide: 0.05 });
@@ -284,6 +291,18 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
   for (const [x, z, yaw] of [[BRIDGE.x0 + 1.0, -30, Math.PI / 2], [BRIDGE.x1 - 1.0, -30, -Math.PI / 2]]) add('corridor', 'bench_velvet', x, L1, z, yaw);
+  // v9.3 hall entrances (the user's ScreenX entrance photo; tools/blender/arch/rooms.py builds the portals): the hall's name in face-lit
+  // letters over each portal, its number beside it, a rope line along the portal's face, a bin; red armchairs along the bridge
+  const WORD = { MAX: 'letters_max', CURVE: 'letters_curve', CLASSIC: 'letters_classic', X270: 'letters_x270' };
+  for (const d of DOORS.filter((q) => q.hall && q.id.endsWith('In'))) {
+    const h = HALL[d.hall], side = -h.dir, xf = d.x + side * 0.5; let xfront = xf + side * 0.8, zc = d.z, zn = zc + 2.15;
+    if (d.hall === 'X270') { xfront = FLANK_E.x0 + 0.3; zc = (LINK_E.z0 + LINK_E.z1) / 2; zn = zc + 2.9; }
+    add('corridor', WORD[d.hall], xfront + side * 0.03, L1 + 3.2, zc, side * Math.PI / 2, { collide: false, ground: false, scale: 0.36 });   // just proud of the diamond panels (2.5 cm deep)
+    add('corridor', 'num_' + h.no, xfront + side * 0.03, L1 + 1.2, zn, side * Math.PI / 2, { collide: false, ground: false, scale: 0.9 });
+    for (const sg of [-1, 1]) if (d.hall !== 'X270' || sg < 0) add('corridor', 'rope_velvet', xfront + side * 0.55, L1, zc + sg * 2.2, Math.PI / 2, { collide: 0.02 });
+    add('corridor', 'bin_brass', xf + side * 0.35, L1, zc - (d.hall === 'X270' ? 3.4 : 3.45));
+  }
+  for (const x of [BRIDGE.x0 + 9, BRIDGE.x0 + 24, BRIDGE.x1 - 24, BRIDGE.x1 - 9]) for (const o of [-0.5, 0.5]) add('corridor', 'armchair_deco', x + o, L1, BRIDGE.z1 - 0.75, Math.PI, { swap: { velvet_mustard: [MAT.velvet, [0.5, 0.018, 0.03]] } });
   // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup)
   for (const h of Object.values(HALL)) { const w = h.toWorld(h.entryU - Math.sign(h.entryU) * 1.4, h.depthIn - 0.5); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z); }
   return L;
@@ -360,7 +379,7 @@ function buildHall(world, h, room) {
       const geo = toGeometry(a);
       const m = new THREE.Mesh(geo, mats.litFor(U, geo)); m.name = 'curtain'; m.rotation.y = -f * Math.PI / 2; const o = h.toWorld(s * cw, dC); m.position.set(o.x, 0, o.z); m.updateMatrixWorld(true);
       geo.applyMatrix4(m.matrixWorld); L.bake(geo); geo.applyMatrix4(m.matrixWorld.clone().invert()); room.group.add(m); ms.push(m); }
-    curtains = { meshes: ms, open: 0, target: 0, base }; }
+    curtains = { meshes: ms, open: 0.999, target: 1, base }; }   // v9.3: open, gathered at the sides (closed, the screen read as a dark wall: "where is the screen")
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9];
   const hall = { cfg: h, id: h.id, key: h.key, name: h.name, room, seats, arms, pic, picMat, slate, patches, curtains, seatLit: lit,
     updateLOD(cam, force, far = 7) {
@@ -388,12 +407,17 @@ export function slateTexture(h) {
 }
 // the picture: shown exactly as graded (no tone curve, no fog); uBox letterboxes it inside the screen
 const PIC_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
-const PIC_FRAG = `uniform sampler2D map; uniform vec4 uBox; uniform vec4 uSrc; uniform float uGain; varying vec2 vUv;
+// uExtOn (the 270 hall in ScreenX mode): beside a narrower frame the screen is not black but carries the frame's edges on, softening
+// with distance (uExt: the blurred spill copy, uExtW: the screen's width in metres), exactly as the side screens continue it
+const PIC_FRAG = `uniform sampler2D map; uniform vec4 uBox; uniform vec4 uSrc; uniform float uGain; uniform sampler2D uExt; uniform float uExtOn; uniform float uExtW; varying vec2 vUv;
 void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0);
-  vec3 c = texture2D(map, uSrc.xy + clamp(q, 0.0, 1.0) * uSrc.zw).rgb; gl_FragColor = vec4(c * uGain * inside, 1.0);
+  vec3 c = texture2D(map, uSrc.xy + clamp(q, 0.0, 1.0) * uSrc.zw).rgb * inside;
+  if (uExtOn > 0.5 && inside < 0.5 && q.y >= 0.0 && q.y <= 1.0) { float xe = clamp(vUv.x, uBox.x + 0.002, uBox.x + uBox.z - 0.002), over = abs(vUv.x - xe) * uExtW;
+    c = textureLod(uExt, vec2(xe, vUv.y), 1.5 + over * 0.45).rgb * (1.0 - 0.45 * smoothstep(0.0, 12.0, over)); }
+  gl_FragColor = vec4(c * uGain, 1.0);
   #include <colorspace_fragment>
 }`;
-export function pictureMat(map = null) { return new THREE.ShaderMaterial({ vertexShader: PIC_VERT, fragmentShader: PIC_FRAG, uniforms: { map: { value: map }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uSrc: { value: new THREE.Vector4(0, 0, 1, 1) }, uGain: { value: 1 } } }); }   // uSrc: the part of the frame shown (the 270 hall's split mode shows the middle third)
+export function pictureMat(map = null) { return new THREE.ShaderMaterial({ vertexShader: PIC_VERT, fragmentShader: PIC_FRAG, uniforms: { map: { value: map }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uSrc: { value: new THREE.Vector4(0, 0, 1, 1) }, uGain: { value: 1 }, uExt: { value: null }, uExtOn: { value: 0 }, uExtW: { value: 10 } } }); }   // uSrc: the part of the frame shown (the 270 hall's split mode shows the middle third)
 // ---------------------------------------------------------------- reflections: one 128 px cube per room
 const PROBE_AT = { lobby: [0, 2.2, 6], street: [0, 2, 24], wc: [27, 1.6, -4], corridor: [0, L1 + 1.6, -18], spine: [0, 1.6, -40] };
 function captureReflections(world, engine) {

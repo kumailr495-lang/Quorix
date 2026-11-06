@@ -46,21 +46,21 @@ function slides(aspect) {
 }
 // ------------------------------------------------------------------ GPU helpers: the spill copy and the 270 walls
 const QUAD_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
-const SPILL_FRAG = `uniform sampler2D map; uniform vec4 uBox; varying vec2 vUv;
-void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0); vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb * inside; gl_FragColor = vec4(c, 1.0); }`;
+const SPILL_FRAG = `uniform sampler2D map; uniform vec4 uBox; uniform float uClampEdge; varying vec2 vUv;
+void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = max(uClampEdge, step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0)); vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb * inside; gl_FragColor = vec4(c, 1.0); }`;
 const AVG_FRAG = `uniform sampler2D map; varying vec2 vUv; void main() { gl_FragColor = vec4(textureLod(map, vec2(0.25 + vUv.x * 0.5, 0.5), 8.0).rgb, 1.0); }`;
 const WALL_VERT = `varying vec2 vUv; varying float vY; void main() { vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vY = w.y; gl_Position = projectionMatrix * viewMatrix * w; }`;
-const WALL_FRAG = `uniform sampler2D uSpill; uniform sampler2D uVid; uniform float uSide; uniform float uAmt; uniform float uMode; uniform vec4 uBox; uniform vec4 uSrc; uniform vec2 uFront; varying vec2 vUv; varying float vY;
-// the 270 hall's side screens (v9.2, the user: "ScreenX doesn't show the same movie on the side walls, it shows the whole movie using all
-// the screen walls"): one picture wrapped round three walls, never a copy. The front shows the part of the frame in uSrc; each wall
-// carries on from the front's edge to the frame's edge, at the front's own vertical scale so a horizon runs straight round the corner.
-// uMode 1, a panoramic film (3:1 and wider, three cameras side by side): each wall shows its own third, sharp.
-// uMode 0, an ordinary film: the front shows the middle 80 % (no squeeze), the walls the outer bands, stretched along the wall and
-// softening towards the back (peripheral vision), the way converted ScreenX scenes carry the frame's edges on
-void main() { float t = vUv.x, x0 = uSide > 0.0 ? uSrc.x + uSrc.z : uSrc.x, x = mix(x0, uSide > 0.0 ? 1.0 : 0.0, t);
-  float y = uSrc.y + uSrc.w * ((vY - uFront.x) / uFront.y - uBox.y) / uBox.w; vec2 q = vec2(x, clamp(y, 0.0, 1.0));
-  vec3 c = texture2D(uVid, q).rgb; if (uMode < 0.5) c = mix(c, textureLod(uSpill, q, 1.0 + 3.0 * t).rgb, smoothstep(0.05, 0.6, t));
-  float fade = smoothstep(1.0, 0.94, t) * smoothstep(-0.01, 0.01, y) * smoothstep(1.01, 0.99, y);
+const WALL_FRAG = `uniform sampler2D uSpill; uniform sampler2D uVid; uniform float uSide; uniform float uAmt; uniform vec4 uBox; uniform vec4 uSrc; uniform vec2 uFront; uniform vec3 uWall; varying vec2 vUv; varying float vY;
+// the 270 hall's side screens (v9.3, the user with a photo of a real ScreenX hall: "it's connected"): the front screen runs corner to
+// corner and each side screen starts at the corner with the front's top and bottom, so the picture is one band round three walls.
+// Each wall goes on from the front's edge at the front's own scale (uWall: where it starts and how long it is along the wall, and the
+// front's width, all in metres): a panoramic film's outer parts land there sharp; past the frame's edge (an ordinary film) the edges
+// carry on, softening and dimming with distance, as the front does beside a narrower frame (world9.js PIC_FRAG), so the corner has no seam.
+void main() { float dist = uWall.x + vUv.x * uWall.y, s = uSrc.z / max(1e-4, uBox.z * uWall.z), gap = (1.0 - uBox.z) * 0.5 * uWall.z;
+  float x = (uSide > 0.0 ? uSrc.x + uSrc.z : uSrc.x) + uSide * (dist + gap) * s, xc = clamp(x, 0.002, 0.998), over = abs(x - xc) / max(s, 1e-4);
+  float y = uSrc.y + uSrc.w * ((vY - uFront.x) / uFront.y - uBox.y) / uBox.w; vec2 q = vec2(xc, clamp(y, 0.0, 1.0));
+  vec3 c = mix(texture2D(uVid, q).rgb, textureLod(uSpill, q, 1.5 + over * 0.45).rgb, smoothstep(0.0, 0.25, over)) * (1.0 - 0.45 * smoothstep(0.0, 12.0, over));
+  float fade = smoothstep(1.0, 0.94, vUv.x) * smoothstep(-0.01, 0.01, y) * smoothstep(1.01, 0.99, y);
   gl_FragColor = vec4(c * uAmt * fade, 1.0);
   #include <colorspace_fragment>
 }`;
@@ -78,10 +78,10 @@ export class Shows {
     this.spillRT = new THREE.WebGLRenderTarget(256, 128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, colorSpace: THREE.LinearSRGBColorSpace });
     this.avgRT = new THREE.WebGLRenderTarget(2, 1, { generateMipmaps: false }); this.avgBuf = new Uint8Array(8); this._avgT = 0;
     const quad = new THREE.PlaneGeometry(2, 2); this.qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    this.spillMat = new THREE.ShaderMaterial({ vertexShader: QUAD_VERT, fragmentShader: SPILL_FRAG, uniforms: { map: { value: null }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } }, depthTest: false, depthWrite: false });
+    this.spillMat = new THREE.ShaderMaterial({ vertexShader: QUAD_VERT, fragmentShader: SPILL_FRAG, uniforms: { map: { value: null }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uClampEdge: { value: 0 } }, depthTest: false, depthWrite: false });
     this.avgMat = new THREE.ShaderMaterial({ vertexShader: QUAD_VERT, fragmentShader: AVG_FRAG, uniforms: { map: { value: this.spillRT.texture } }, depthTest: false, depthWrite: false });
     this.spillScene = new THREE.Scene(); this.spillScene.add(new THREE.Mesh(quad, this.spillMat)); this.avgScene = new THREE.Scene(); this.avgScene.add(new THREE.Mesh(quad, this.avgMat));
-    for (const h of world.halls) { h.room.U.uSpill.value = this.spillRT.texture; h.room.U.uScreen.value.setRGB(0.25, 0.25, 0.25); }
+    for (const h of world.halls) { h.room.U.uSpill.value = this.spillRT.texture; h.room.U.uScreen.value.setRGB(0.25, 0.25, 0.25); if (h.picMat && h.picMat.uniforms.uExt) { h.picMat.uniforms.uExt.value = this.spillRT.texture; h.picMat.uniforms.uExtW.value = h.cfg.W; } }
     this.avg = new THREE.Color(0.2, 0.2, 0.2);
     // 270: the side screens (hallmath.js sideScreen; tools/blender/arch/halls.py builds the surfaces): a strip of columns over each one,
     // the bottom edge rising with the rake, 5 mm in front of the surface
@@ -89,7 +89,7 @@ export class Shows {
       for (let i = 0; i <= N; i++) { const t = i / N, d = SS.d0 + (SS.d1 - SS.d0) * t, w = H.toWorld(u, d), yb = H.y0 + SS.yb0 + (SS.yb1 - SS.yb0) * t; P.push(w.x, yb, w.z, w.x, H.y0 + SS.yt, w.z); UV.push(t, 0, t, 1);
         if (i) { const a = 2 * i - 2; I.push(a, a + 2, a + 3, a, a + 3, a + 1); } }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I);
-      const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uVid: { value: this.vtex }, uSide: { value: sg }, uAmt: { value: 0 }, uMode: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uSrc: { value: new THREE.Vector4(0, 0, 1, 1) }, uFront: { value: new THREE.Vector2(H.y0 + H.hB, H.H) } }, side: THREE.DoubleSide,
+      const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uVid: { value: this.vtex }, uSide: { value: sg }, uAmt: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uSrc: { value: new THREE.Vector4(0, 0, 1, 1) }, uFront: { value: new THREE.Vector2(H.y0 + H.hB, H.H) }, uWall: { value: new THREE.Vector3(SS.d0, SS.d1 - SS.d0, H.W) } }, side: THREE.DoubleSide,
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
       m.renderOrder = 2; m.visible = false; m.name = 'x270-side-' + sg; X.room.group.add(m); return m; }); }   // light added onto the light grey surfaces
     this._yt = null;
@@ -115,19 +115,20 @@ export class Shows {
   }
   replay(id) { const s = this.s[id]; if (!s || !s.src) return false; this.book(id, s.src, 0, null, { replay: true }); return true; }
   _abort(id) { const s = this.s[id]; this._stopPicture(s); if (this.active === id) this.active = null; this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'idle'; s.booked = false; this._idle(s); this.crowd.clearAudience(id); }
-  _idle(s) { const u = s.hall.picMat.uniforms; u.map.value = s.hall.slate; u.uGain.value = 0.55; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; if (s.hall.curtains) s.hall.curtains.target = 0; s.pic = false; }
+  _idle(s) { const u = s.hall.picMat.uniforms; u.map.value = s.hall.slate; u.uGain.value = 0.55; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; if (u.uExtOn) u.uExtOn.value = 0; if (s.hall.curtains) s.hall.curtains.target = 1; s.pic = false; }
   _slideWaiting(s) { const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; u.uGain.value = 0.8; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; s.pic = false; }
   _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) s.pic = false; }
-  _fit(s, aspect) { const A = s.hall.cfg.aspect, u = s.hall.picMat.uniforms, b = u.uBox.value, pan = !!s.hall.cfg.panels, split = pan && aspect >= 2.8, wrap = pan && !split && aspect >= 1.6;
-    // a panoramic film: the front shows the middle at full height (it fills the front screen) and each side screen one outer band; an
-    // ordinary film in the 270 hall: the front shows the middle 80 % (cropped top and bottom to keep its shape) and the side screens the
-    // rest, so the whole frame wraps round the three walls
-    let src = [0, 0, 1, 1], a = aspect; if (split) { const wf = Math.min(1, A / aspect); src = [(1 - wf) / 2, 0, wf, 1]; a = wf * aspect; } else if (wrap) { const wf = Math.min(0.8, A / aspect), hf = Math.min(1, wf * aspect / A); src = [(1 - wf) / 2, (1 - hf) / 2, wf, hf]; a = wf * aspect / hf; }
+  _fit(s, aspect) { const A = s.hall.cfg.aspect, u = s.hall.picMat.uniforms, b = u.uBox.value, pan = !!s.hall.cfg.panels, split = pan && aspect >= 2.8, wrap = pan && !split;
+    // the 270 hall (one band of screen round three walls): a panoramic film fills the front with its middle at full height and its outer
+    // parts run on round the side screens; any other film keeps its whole frame on the front and its edges carry on, softening, beside it
+    // and round the side screens. Elsewhere: letterbox or pillarbox.
+    let src = [0, 0, 1, 1], a = aspect; if (split) { const wf = Math.min(1, A / aspect); src = [(1 - wf) / 2, 0, wf, 1]; a = wf * aspect; }
     if (u.uSrc) u.uSrc.value.set(src[0], src[1], src[2], src[3]);
     if (a > A) { const hh = A / a; b.set(0, (1 - hh) / 2, 1, hh); } else { const ww = a / A; b.set((1 - ww) / 2, 0, ww, 1); } this.spillMat.uniforms.uBox.value.copy(b);
-    if (this.walls && pan) for (const m of this.walls) { const U = m.material.uniforms; U.uMode.value = split ? 1 : 0; U.uBox.value.copy(b); U.uSrc.value.set(src[0], src[1], src[2], src[3]); } s.split = split; s.wrap = wrap; }
+    if (u.uExtOn) u.uExtOn.value = pan ? 1 : 0; this.spillMat.uniforms.uClampEdge.value = pan ? 1 : 0;
+    if (this.walls && pan) for (const m of this.walls) { const U = m.material.uniforms; U.uBox.value.copy(b); U.uSrc.value.set(src[0], src[1], src[2], src[3]); } s.split = split; s.wrap = wrap; }
   _begin(id) {   // the last 10 s: lights down, curtains open, the count
-    const s = this.s[id], h = s.hall; s.state = 'countdown'; s.phaseAt = this.now; if (h.curtains) { h.curtains.target = 1; if (this.sound.listener.room === h.key && !s.curtainKeep) this.sound.curtain(true); }
+    const s = this.s[id], h = s.hall; s.state = 'countdown'; s.phaseAt = this.now; if (h.curtains) { const was = h.curtains.open; h.curtains.target = 1; if (was < 0.99 && this.sound.listener.room === h.key && !s.curtainKeep) this.sound.curtain(true); }
     this.crowd.onShowPhase(id, 'dimming'); this.hooks.onBegin && this.hooks.onBegin(id); const v = this.video; if (s.src.kind !== 'youtube') { try { v.currentTime = 0; } catch (e) { /* not loaded */ } }
   }
   _roll(id) {
@@ -142,7 +143,7 @@ export class Shows {
   _finish(id, applause) {
     const s = this.s[id]; if (s.state !== 'playing') return; this._stopPicture(s); if (applause) this.crowd.onFilmEvent(id, { type: 'end', k: 1 });
     this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'ended'; s.phaseAt = this.now; this._slideWaiting(s); s.slides.text([s.src.title, t('show.ended')]);
-    this.crowd.onShowPhase(id, 'ended'); if (s.hall.curtains) s.hall.curtains.target = 0; this.hooks.onEnd && this.hooks.onEnd(id, applause || s.credits);
+    this.crowd.onShowPhase(id, 'ended'); if (s.hall.curtains) s.hall.curtains.target = 1; this.hooks.onEnd && this.hooks.onEnd(id, applause || s.credits);
   }
   // ---------------------------------------------------------- per frame (logic)
   update(dt, now, room, vis) {
@@ -161,7 +162,7 @@ export class Shows {
       // screen light gain: the picture's own colour comes from the spill copy
       const g = s.state === 'playing' && s.pic ? 6.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
-      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic && !this._yt && (s.split || s.wrap) ? 0.6 : 0;   // side screens a little dimmer than the front, as in ScreenX halls
+      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic && !this._yt && (s.split || s.wrap) ? 1 : 0;   // as bright as the front at the corner (the edge extension dims itself with distance)
       for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
     }
   }

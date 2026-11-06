@@ -26,7 +26,7 @@ for (const s of HALLS) {
     ok(max <= STEP_MAX + 1e-6, `${s.id} aisle step ${max.toFixed(3)} m > ${STEP_MAX}`); }
   // sightline: each row's eye clears the head of the row in front by c over the picture's bottom edge
   for (let i = 1; i < h.rows.length; i++) { const a = h.rows[i - 1], b = h.rows[i], eyeA = a.y + a.sd.eye, eyeB = b.y + b.sd.eye, atA = h.hB + (eyeB - h.hB) * (a.X / b.X); ok(eyeA + 0.12 <= atA + 1e-3 || b.lift || a.lift, `${s.id} row ${b.letter} sightline over row ${a.letter}: ${(atA - eyeA).toFixed(3)} m`); }
-  const r0 = h.rows[0], up = Math.atan((h.centreY - r0.sd.eye) / r0.X) * 180 / Math.PI; const lim = s.format === 'max' ? 35 : 30.5;   // the IMAX-shaped MAX picture (25 x 18 m, the user's 'bigger screens') is meant to fill the view: real large-format front rows look up 35 deg and more
+  const r0 = h.rows[0], up = Math.atan((h.centreY - r0.sd.eye) / r0.X) * 180 / Math.PI; const lim = s.format === 'max' || s.format === 'x270' ? 35 : 30.5;   // the IMAX-shaped MAX picture and the X-270's raised corner-to-corner front are meant to fill the view: real large-format front rows look up 35 deg and more
   ok(up <= lim, `${s.id} first row looks up ${up.toFixed(1)} deg to the picture centre (limit ${lim})`);
   ok(Math.abs(h.y0 + h.total - B.L1) < 0.01, `${s.id} rear aisle at ${(h.y0 + h.total).toFixed(3)}, first floor ${B.L1.toFixed(3)}`);
 }

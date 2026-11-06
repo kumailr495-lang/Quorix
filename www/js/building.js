@@ -119,7 +119,7 @@ export const NAV = {
 export const PALETTE = {
   brand: { ink: '#14162e', gold: '#e3b25f', ivory: '#f2ebdd', ember: '#b8452f' },
   lobby: { stone: '#cdbfa8', charcoal: '#1f1d22', champagne: '#c9a66b', velvet: '#5e1c2a' },
-  corridor: { indigo: '#161a3c', black: '#0b0b12', gold: '#e3b25f', smoke: '#3a3d55' },
+  corridor: { indigo: '#161a3c', black: '#0b0b12', gold: '#e3b25f', smoke: '#3a3d55', red: '#ff1a2e', white: '#f4f6ff', charcoal: '#121214', bronze: '#4a382c', bronze2: '#2a1f18' },
   spine: { oak: '#c49a6c', white: '#ece6dc', green: '#2bb673', concrete: '#7d7a76' },
   MAX: { black: '#0b0d12', blueBlack: '#121826', blue: '#2f7cff', walnut: '#5b3a24' },
   CURVE: { navy: '#141b33', cognac: '#7a3f1d', champagne: '#c9a86a', warm: '#ffd59e' },

@@ -195,6 +195,15 @@ def build_lobby(S):
         for i in range(0, 64, 8):
             lit.spot((pts[i][0] * 0.95, yy - 0.3, 4.0 + (pts[i][1] - 4.0) * 0.95), lin('#ffd9a8'), 6.0, 14, 'h', (0, -1, 0), 35, 75)
     lit.ambient(lin('#ffe6c8'), lin('#5a4030'), 0.05, 'h')
+    # v9.3 (the user's lounge photo, "everything feels so empty"): a fibre-optic star field in the ceiling over the lounge, between the
+    # light rings; tiny points of warm and cool white at a few brightnesses
+    srnd = random.Random(11); nst = 0
+    while nst < 650:
+        sx_, sz_ = srnd.uniform(-9.4, 9.4), srnd.uniform(4.0 - 7.1, 4.0 + 7.1); re = math.hypot(sx_, (sz_ - 4.0) / 0.75)
+        if re > 9.4 or any(abs(re - R0) < 0.55 for R0 in (9.0, 6.5, 4.0)): continue
+        r_ = srnd.choice((0.012, 0.016, 0.02, 0.026)); col_ = lin('#fff4dc') if srnd.random() < 0.7 else lin('#dfe8ff')
+        glow.quad((sx_ - r_, H - 0.004, sz_ - r_), (sx_ + r_, H - 0.004, sz_ - r_), (sx_ + r_, H - 0.004, sz_ + r_), (sx_ - r_, H - 0.004, sz_ + r_), col_, srnd.choice((2.0, 2.8, 3.6)))
+        nst += 1
     # box office (west, front half): fluted champagne base, black marble top, glass screens, back wall with showtime screens (engine)
     bo = S['COUNTERS']['boxOffice']
     acc.box(bo['x1'] - 0.75, 0.0, bo['z0'], bo['x1'], 1.0, bo['z1'], MAT['fluted'], P['champagne'])
@@ -205,6 +214,18 @@ def build_lobby(S):
         lit.spot((bo['x1'] - 0.4, 3.4, zz), lin('#ffd8a8'), 2.0, 5, 'h', (0, -1, 0), 20, 45)
         acc.cyl(bo['x1'] - 0.4, zz, 0.16, 2.6, 2.9, MAT['brass'], P['champagne'], n=16); acc.box(bo['x1'] - 0.41, 2.9, zz - 0.005, bo['x1'] - 0.39, 3.4, zz + 0.005, MAT['metal'], lin('#333'))
         glow.quad((bo['x1'] - 0.54, 2.599, zz - 0.14), (bo['x1'] - 0.26, 2.599, zz - 0.14), (bo['x1'] - 0.26, 2.599, zz + 0.14), (bo['x1'] - 0.54, 2.599, zz + 0.14), lin('#ffd8a8'), 1.6)
+    # v9.3 (the user's reception photo): tall arched mirror panels in brass frames over the showtime screens, one per station, each
+    # washed from below
+    for zz in (bo['z0'] + 2.0, (bo['z0'] + bo['z1']) / 2, bo['z1'] - 2.0):
+        xw = x0 + 0.205; arch = [(zz - 0.9, 3.5), (zz + 0.9, 3.5)] + [(zz + 0.9 * math.cos(math.pi * i / 16), 5.3 + 0.9 * math.sin(math.pi * i / 16)) for i in range(17)]
+        acc.poly([(xw + 0.012, y_, z_) for z_, y_ in reversed(arch)], MAT['chrome'], lin('#c7c9cc'))   # the mirror (polished, it takes the lobby's reflection); wound to face the lobby (+x)
+        frame = [(zz - 0.95, 3.45), (zz + 0.95, 3.45)] + [(zz + 0.95 * math.cos(math.pi * i / 16), 5.3 + 0.95 * math.sin(math.pi * i / 16)) for i in range(17)] + [(zz - 0.95, 3.45)]
+        for i in range(len(frame) - 1):   # the brass frame: a band 5 cm wide, 3 cm proud, segment by segment
+            (za_, ya_), (zb_, yb_) = frame[i], frame[i + 1]; L_ = math.hypot(zb_ - za_, yb_ - ya_)
+            if L_ < 1e-4: continue
+            nz_, ny_ = -(yb_ - ya_) / L_ * 0.025, (zb_ - za_) / L_ * 0.025
+            acc.prism_x([(za_ - nz_, ya_ - ny_), (zb_ - nz_, yb_ - ny_), (zb_ + nz_, yb_ + ny_), (za_ + nz_, ya_ + ny_)], xw, xw + 0.04, MAT['brass'], P['champagne'])
+        lit.spot((xw + 0.5, 3.3, zz), lin('#ffe2b8'), 1.4, 5.0, 'h', (-0.35, 1, 0), 25, 60)
     # concessions (west, back half): burgundy lacquer base, calacatta top, back counter for the machines (props), menu boards (engine)
     co = S['COUNTERS']['concessions']
     acc.box(co['x1'] - 0.8, 0.0, co['z0'], co['x1'], 0.95, co['z1'], MAT['lacquer'], P['velvet'])
@@ -295,7 +316,7 @@ def build_corridor(S):
     floors = [(BR['x0'], BR['z0'], BR['x1'], BR['z1']), (FW['x0'], FW['z0'], FW['x1'], FW['z1']), (LW['x0'], LW['z0'], LW['x1'], LW['z1']),
               (FE['x0'], FE['z0'], FE['x1'], FE['z1']), (LE['x0'], LE['z0'], LE['x1'], LE['z1']), (PT['x0'], PT['z0'], PT['x1'], PT['z1'])]
     for (a, b, c, d) in floors:
-        slab(acc, a, b, c, d, L1, FT, MAT['paint'], C['black'], top=MAT['dolby'], topcol=lin('#e6e6ee'))   # v9.1: the carpet scan carries its own pattern and colour
+        slab(acc, a, b, c, d, L1, FT, MAT['paint'], C['black'], top=MAT['nero'], topcol=lin('#ffffff'))   # v9.3 (the user's corridor photo): polished black stone that mirrors the red light
         slab(acc, a, b, c, d, top + 0.3, 0.3, MAT['paint'], C['black'])
     # walls: (a, b, face) with face = which side the corridor is on (left normal of a->b if +1); diamonds on the long walls
     W_ = []
@@ -333,10 +354,16 @@ def build_corridor(S):
             if all(abs(sp - (o[0] + o[1]) / 2) > 3.2 for o in ops):
                 cx, cz = a[0] + ux * sp, a[1] + uz * sp; pw, ph, pyc = 1.1, 1.65, L1 + 1.75
                 q = [(cx - ux * (pw / 2 + 0.08), cz - uz * (pw / 2 + 0.08)), (cx + ux * (pw / 2 + 0.08), cz + uz * (pw / 2 + 0.08))]
-                acc.prism([q[0], q[1], (q[1][0] + nx * 0.05, q[1][1] + nz * 0.05), (q[0][0] + nx * 0.05, q[0][1] + nz * 0.05)], pyc - ph / 2 - 0.08, pyc + ph / 2 + 0.08, MAT['brass'], C['gold'])
+                acc.prism([q[0], q[1], (q[1][0] + nx * 0.05, q[1][1] + nz * 0.05), (q[0][0] + nx * 0.05, q[0][1] + nz * 0.05)], pyc - ph / 2 - 0.08, pyc + ph / 2 + 0.08, MAT['powder'], C['charcoal'])
+                # v9.3: a red halo round the lightbox (LED tape on the case's back edge washing the black wall), as in the user's photo
+                for (s0_, s1_, ya_, yb_) in ((-pw / 2 - 0.16, pw / 2 + 0.16, pyc + ph / 2 + 0.1, pyc + ph / 2 + 0.16), (-pw / 2 - 0.16, pw / 2 + 0.16, pyc - ph / 2 - 0.16, pyc - ph / 2 - 0.1),
+                                            (-pw / 2 - 0.16, -pw / 2 - 0.1, pyc - ph / 2 - 0.1, pyc + ph / 2 + 0.1), (pw / 2 + 0.1, pw / 2 + 0.16, pyc - ph / 2 - 0.1, pyc + ph / 2 + 0.1)):
+                    pa_, pb_ = (cx + ux * s0_ + nx * 0.01, cz + uz * s0_ + nz * 0.01), (cx + ux * s1_ + nx * 0.01, cz + uz * s1_ + nz * 0.01)
+                    glow_facing(glow, (pa_[0], ya_, pa_[1]), (pb_[0], ya_, pb_[1]), (pb_[0], yb_, pb_[1]), (pa_[0], yb_, pa_[1]), (nx, 0, nz), C['red'], 0.9)
+                lit.area((cx + nx * 0.12, pyc, cz + nz * 0.12), (ux * (pw / 2 + 0.2), 0, uz * (pw / 2 + 0.2)), (0, ph / 2 + 0.2, 0), (-nx, 0, -nz), C['red'], 1.2, 2.2, 'f', 2, 2)
                 fid = films[nposter[0] % len(films)]; nposter[0] += 1
                 cpanels.append({'id': f'poster_{fid}_c{nposter[0]}', 'x': cx + nx * 0.056, 'y': pyc, 'z': cz + nz * 0.056, 'yaw': math.atan2(nx, nz), 'w': pw, 'h': ph, 'emit': 1})
-                lit.spot((cx + nx * 0.9, top - 0.3, cz + nz * 0.9), lin('#ffe6c4'), 1.3, 5.5, 'h', (-nx * 0.45, -1, -nz * 0.45), 18, 40)
+                lit.spot((cx + nx * 0.9, top - 0.3, cz + nz * 0.9), lin('#fff1e0'), 0.7, 5.5, 'h', (-nx * 0.45, -1, -nz * 0.45), 18, 40)
                 out.append((sp - 0.95, sp + 0.95)); sp += 9.0
             else: sp += 0.5
         return out
@@ -346,65 +373,70 @@ def build_corridor(S):
         if L < 2.5: continue
         ux, uz = (b[0] - a[0]) / L, (b[1] - a[1]) / L; nx, nz = -uz * face, ux * face
         sa, sb = a, b
+        # v9.3 (the user's corridor photo): plain black walls carry the lightboxes; the hall entrances carry the texture (portals below)
         pcuts = posters_on(a, b, face, ops, L) if (dia and L > 9.0) else []
-        if dia:   # diamond relief between the openings and the posters
-            cuts = sorted([(o[0] - 0.3, o[1] + 0.3) for o in ops] + pcuts); cur = 0.0
-            for c0, c1 in cuts + [(L, L)]:
-                if c0 - cur > 1.9: diamond_wall(acc, (a[0] + ux * cur, a[1] + uz * cur), (a[0] + ux * c0, a[1] + uz * c0), L1 + 0.6, top - 0.9, face, 0.9, 0.06, MAT['lacquer'], C['indigo'], C['smoke'], rnd)
-                cur = max(cur, c1)
-        for yy, k in ((L1 + 0.32, 1.4), (top - 0.75, 1.0)):
+        for yy, k in ((L1 + 0.05, 1.6),):
             spans, cur = [], 0.0
             for o in (sorted(ops) if yy < L1 + 2.6 else []): spans.append((cur, o[0] - 0.05)); cur = o[1] + 0.05
             spans.append((cur, L))
             for s0_, s1_ in spans:
                 if s1_ - s0_ < 0.05: continue
                 p0, p1 = (a[0] + ux * s0_ + nx * 0.012, a[1] + uz * s0_ + nz * 0.012), (a[0] + ux * s1_ + nx * 0.012, a[1] + uz * s1_ + nz * 0.012)
-                glow_facing(glow, (p0[0], yy, p0[1]), (p1[0], yy, p1[1]), (p1[0], yy + 0.025, p1[1]), (p0[0], yy + 0.025, p0[1]), (nx, 0, nz), C['gold'], k * 1.3)
-        lit.line((sa[0] + nx * 0.2, L1 + 0.4, sa[1] + nz * 0.2), (sb[0] + nx * 0.2, L1 + 0.4, sb[1] + nz * 0.2), C['gold'], 0.18, 3.0, 'f', (nx * 0.5, -0.2, nz * 0.5))
-        # v9.1: a grazing wash from a slot at the top of the wall, so the diamonds' faces catch light and shadow (it was a black tunnel)
-        lit.line((sa[0] + nx * 0.35, top - 0.45, sa[1] + nz * 0.35), (sb[0] + nx * 0.35, top - 0.45, sb[1] + nz * 0.35), lin('#d8d2ff'), 0.32, 4.5, 'h', (-nx * 0.35, -1, -nz * 0.35))
-    # ceiling: a recessed central channel with indirect light along every corridor leg; round light "portals" every 6 m
+                glow_facing(glow, (p0[0], yy, p0[1]), (p1[0], yy, p1[1]), (p1[0], yy + 0.03, p1[1]), (p0[0], yy + 0.03, p0[1]), (nx, 0, nz), C['red'], k * 1.3)
+        lit.line((sa[0] + nx * 0.12, L1 + 0.1, sa[1] + nz * 0.12), (sb[0] + nx * 0.12, L1 + 0.1, sb[1] + nz * 0.12), C['red'], 0.42, 2.6, 'f', (nx * 0.6, 0.35, nz * 0.6))
+        lit.line((sa[0] + nx * 0.35, top - 0.45, sa[1] + nz * 0.35), (sb[0] + nx * 0.35, top - 0.45, sb[1] + nz * 0.35), lin('#ffe9e4'), 0.12, 4.5, 'h', (-nx * 0.35, -1, -nz * 0.35))
+    # ceiling (v9.3, the user's corridor photo): a dark coffer grid, and a square ring of white light every 6 m along each corridor leg
     legs = [((BR['x0'] + 3, (BR['z0'] + BR['z1']) / 2), (BR['x1'] - 3, (BR['z0'] + BR['z1']) / 2)), (((FW['x0'] + FW['x1']) / 2, BR['z0']), ((FW['x0'] + FW['x1']) / 2, LW['z1'])),
             (((FE['x0'] + FE['x1']) / 2, BR['z0']), ((FE['x0'] + FE['x1']) / 2, FE['z0'] + 1.0)), ((BR['x0'] + 3, (LW['z0'] + LW['z1']) / 2), (LW['x1'] - 1.0, (LW['z0'] + LW['z1']) / 2))]
+    for (x0_, z0_, x1_, z1_) in floors[:5]:   # coffer ribs, 1.2 m apart both ways, 8 cm deep, under the ceiling slab
+        xs_ = [x0_ + 0.6 + 1.2 * i for i in range(int((x1_ - x0_ - 0.6) / 1.2) + 1)]; zs_ = [z0_ + 0.6 + 1.2 * i for i in range(int((z1_ - z0_ - 0.6) / 1.2) + 1)]
+        for xx in xs_: acc.box(xx - 0.025, top - 0.08, z0_ + 0.31, xx + 0.025, top, z1_ - 0.31, MAT['paint'], C['charcoal'])
+        for zz in zs_: acc.box(x0_ + 0.31, top - 0.086, zz - 0.025, x1_ - 0.31, top - 0.002, zz + 0.025, MAT['paint'], C['charcoal'])   # 6 mm deeper: crossings never share a face
     for a, b in legs:
         L = math.hypot(b[0] - a[0], b[1] - a[1]); ux, uz = (b[0] - a[0]) / L, (b[1] - a[1]) / L; nx, nz = -uz, ux
-        for side in (-1, 1):
-            p0 = (a[0] + nx * 0.9 * side, a[1] + nz * 0.9 * side); p1 = (b[0] + nx * 0.9 * side, b[1] + nz * 0.9 * side)
-            acc.sweep([p0, p1], [(-0.12, top - 0.02), (-0.12, top - 0.35), (0.12, top - 0.35), (0.12, top - 0.02)], MAT['paint'], C['black'], closed=True)
-            glow.quad((p1[0], top - 0.352, p1[1]), (p0[0], top - 0.352, p0[1]), (p0[0] - nx * side * 0.08, top - 0.352, p0[1] - nz * side * 0.08), (p1[0] - nx * side * 0.08, top - 0.352, p1[1] - nz * side * 0.08), C['gold'], 0.9) if side > 0 else \
-                glow.quad((p0[0], top - 0.352, p0[1]), (p1[0], top - 0.352, p1[1]), (p1[0] - nx * side * 0.08, top - 0.352, p1[1] - nz * side * 0.08), (p0[0] - nx * side * 0.08, top - 0.352, p0[1] - nz * side * 0.08), C['gold'], 0.9)
-        lit.line((a[0], top - 0.4, a[1]), (b[0], top - 0.4, b[1]), lin('#e9c78a'), 0.22, 5.0, 'h', (0, -1, 0))
-        n = int(L / 6.0)
-        for i in range(1, n + 1):   # arch portals: a rounded frame of light spanning the corridor
-            t = i * L / (n + 1); cx, cz = a[0] + ux * t, a[1] + uz * t
-            arc = [(math.cos(math.pi * j / 16), math.sin(math.pi * j / 16)) for j in range(17)]
-            w2, hh = 2.6, 1.0
-            ring = lambda c, s_, g: (cx + nx * (w2 + g) * c, top - 1.25 + (hh + g) * s_, cz + nz * (w2 + g) * c)
-            for j in range(len(arc) - 1):
-                (c0, s0_), (c1, s1_) = arc[j], arc[j + 1]
-                for e in (1, -1):   # a face towards each end of the corridor, 2 cm apart
-                    o = lambda p: (p[0] + ux * 0.02 * e, p[1], p[2] + uz * 0.02 * e)
-                    glow_facing(glow, o(ring(c0, s0_, 0.0)), o(ring(c1, s1_, 0.0)), o(ring(c1, s1_, 0.05)), o(ring(c0, s0_, 0.05)), (ux * e, 0, uz * e), C['gold'], 1.2)
-                for g, sgn in ((0.0, -1), (0.05, 1)):   # and its inner and outer edges, so it is a closed band seen from below too
-                    cm, sm = (c0 + c1) / 2, (s0_ + s1_) / 2; rad = (nx * (w2 + g) * cm / (w2 + g) * sgn, (hh + g) * sm / (hh + g) * sgn, nz * cm * sgn)
-                    a0, a1 = ring(c0, s0_, g), ring(c1, s1_, g)
-                    glow_facing(glow, (a0[0] + ux * 0.02, a0[1], a0[2] + uz * 0.02), (a1[0] + ux * 0.02, a1[1], a1[2] + uz * 0.02), (a1[0] - ux * 0.02, a1[1], a1[2] - uz * 0.02), (a0[0] - ux * 0.02, a0[1], a0[2] - uz * 0.02), (nx * cm * sgn, sm * sgn, nz * cm * sgn), C['gold'], 1.2)
-            lit.point((cx, top - 0.5, cz), lin('#e9c78a'), 0.6, 4.5, 'h')
-    lit.ambient(lin('#4a4f80'), lin('#14162a'), 0.012, 'h')
-    # hall portals: a lit frame around each entry door (the hall's own accent colour), name sign (engine panel) above
-    acc_cols = {'MAX': '#2f7cff', 'CURVE': '#c9a86a', 'CLASSIC': '#b08d57', 'X270': '#1f8a8a'}
+        n = max(1, int(L / 6.0))
+        for i in range(n + 1):
+            t = (i + 0.5) * L / (n + 1); cx, cz = a[0] + ux * t, a[1] + uz * t
+            for half, w_ in ((1.1, 0.07), (0.62, 0.05)):   # two nested squares, a black frame round the outer one
+                for (sa_, sb_, oa, ob) in ((-half, half, half - w_, half), (-half, half, -half, -half + w_), (-half, -half + w_, -half + w_, half - w_), (half - w_, half, -half + w_, half - w_)):
+                    P_ = lambda s_, o_: (cx + ux * s_ + nx * o_, top - 0.1, cz + uz * s_ + nz * o_)
+                    glow_facing(glow, P_(sa_, oa), P_(sb_, oa), P_(sb_, ob), P_(sa_, ob), (0, -1, 0), C['white'], 2.2 if half > 1 else 1.6)
+            acc.box(min(cx - 1.18, cx + 1.18), top - 0.1, min(cz - 1.18, cz + 1.18), max(cx - 1.18, cx + 1.18), top - 0.08, max(cz - 1.18, cz + 1.18), MAT['paint'], C['charcoal'])
+            lit.point((cx, top - 0.4, cz), lin('#f2f4ff'), 0.85, 5.5, 'h')
+    lit.ambient(lin('#5a2026'), lin('#120a0c'), 0.012, 'h')
+    # hall entrances (v9.3, the user's photo of a ScreenX entrance): each door sits at the back of a recessed portal 2.6 m wide, cut into
+    # a block clad in bronze diamond panels; a downlight in the portal's soffit; the hall's name in face-lit letters over the portal and
+    # its number beside it (engine props, world9.js dressRooms) with a soft light behind both; a showtime header inside, over the doors
     panels = []
+    def clad(p0, p1, y0, y1, face):   # bronze diamond panels on a face from p0 to p1 (2D), facing +face of p0->p1
+        if math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.6 and y1 - y0 > 0.5:
+            diamond_wall(acc, p0, p1, y0, y1, face, 0.24, 0.025, MAT['lacquer'], C['bronze'], C['bronze2'], rnd)   # a fine quilt, as in the photo
     for hid, d in doors.items():
-        h = halls[hid]; col = lin(acc_cols[hid]); side = -h['dir']   # the corridor is on the -dir side of the rear wall
+        h = halls[hid]; side = -h['dir']; zc = d['z']; xf = d['x'] + side * 0.5   # xf: the corridor wall's face
+        if hid == 'X270':   # its door is at the back of a short link off the east flank: the link is the portal; clad round its mouth
+            xm, za, zb = FE['x0'] + 0.3, LE['z0'], LE['z1']; zc = (za + zb) / 2
+            acc.box(FE['x0'], L1 + 3.0, za, xm, top, zb, MAT['paint'], C['charcoal'])   # a lintel over the mouth
+            clad((xm + 0.001, za - 2.0), (xm + 0.001, za), L1, top - 0.3, -1); clad((xm + 0.001, zb), (xm + 0.001, zb + 2.0), L1, top - 0.3, -1)
+            clad((xm + 0.001, za), (xm + 0.001, zb), L1 + 3.0, top - 0.3, -1)
+            soffit = (FE['x0'] - 0.75, top, zc); xfront = xm   # the link has no lowered soffit: the downlight sits in its ceiling
+        else:
+            D, Wb, Wo, Ho = 0.8, 3.0, 1.3, 3.0   # block depth, half width, half opening, opening height
+            xb = xf + side * D; xa, xc = min(xf, xb), max(xf, xb)
+            acc.box(xa, L1, zc - Wb, xc, top - 0.3, zc - Wo, MAT['paint'], C['charcoal'])        # piers
+            acc.box(xa, L1, zc + Wo, xc, top - 0.3, zc + Wb, MAT['paint'], C['charcoal'])
+            acc.box(xa, L1 + Ho, zc - Wo, xc, top - 0.3, zc + Wo, MAT['paint'], C['charcoal'])   # lintel
+            fc = 1 if side < 0 else -1   # the clad faces look into the corridor (+side): face sign along +z segments
+            clad((xb + side * 0.001, zc - Wb), (xb + side * 0.001, zc - Wo), L1, top - 0.3, fc); clad((xb + side * 0.001, zc + Wo), (xb + side * 0.001, zc + Wb), L1, top - 0.3, fc)
+            clad((xb + side * 0.001, zc - Wo), (xb + side * 0.001, zc + Wo), L1 + Ho, top - 0.3, fc)
+            soffit = (xf + side * D / 2, L1 + Ho, zc); xfront = xb
         door_reveal(acc, d, d['x'] + side * 0.2, side, 2.0, 2.55, MAT['paint'], C['black'])
-        xf = d['x'] + side * 0.5
-        for (za, zb, ya, yb) in ((d['z'] - 1.2, d['z'] - 1.1, L1, L1 + 2.75), (d['z'] + 1.1, d['z'] + 1.2, L1, L1 + 2.75), (d['z'] - 1.1, d['z'] + 1.1, L1 + 2.65, L1 + 2.75)):
-            acc.box(min(xf, xf + side * 0.08), ya, za, max(xf, xf + side * 0.08), yb, zb, MAT['brass'], C['gold'])
-        xg = xf + side * 0.085
-        q = [(xg, L1 + 2.8, d['z'] - 1.2), (xg, L1 + 2.8, d['z'] + 1.2), (xg, L1 + 2.84, d['z'] + 1.2), (xg, L1 + 2.84, d['z'] - 1.2)]
-        glow_facing(glow, *q, (side, 0, 0), col, 2.0)
-        lit.spot((xf + side * 0.6, top - 0.2, d['z']), col, 1.6, 5, 'h', (side * 0.2, -1, 0), 25, 55)
-        panels.append({'id': 'sign_' + hid, 'x': xf + side * 0.09, 'y': L1 + 3.35, 'z': d['z'], 'yaw': (-math.pi / 2 if side < 0 else math.pi / 2), 'w': 2.4, 'h': 0.7, 'emit': 1})
+        sx, sy, sz = soffit   # the portal's downlight: a small lit disc in the soffit and its pool on the floor
+        glow_facing(glow, (sx - 0.12, sy - 0.005, sz - 0.12), (sx + 0.12, sy - 0.005, sz - 0.12), (sx + 0.12, sy - 0.005, sz + 0.12), (sx - 0.12, sy - 0.005, sz + 0.12), (0, -1, 0), C['white'], 3.0)
+        lit.spot((sx, sy - 0.05, sz), lin('#fff4e6'), 2.6, 4.0, 'h', (0, -1, 0), 22, 50)
+        # the soft light behind the name letters (over the portal) and the number (beside it): a halo on the bronze
+        lit.area((xfront + side * 0.25, L1 + 3.38, zc), (0, 0, 1.4), (0, 0.22, 0), (-side, 0, 0), lin('#fff2e0'), 1.4, 2.0, 'f', 3, 1)
+        lit.area((xfront + side * 0.25, L1 + 1.65, zc + (2.9 if hid == 'X270' else 2.15)), (0, 0, 0.35), (0, 0.5, 0), (-side, 0, 0), lin('#fff2e0'), 1.2, 1.8, 'f', 1, 2)
+        panels.append({'id': 'sign_' + hid, 'x': xf + side * 0.02, 'y': L1 + 2.78, 'z': zc if hid != 'X270' else d['z'], 'yaw': (-math.pi / 2 if side < 0 else math.pi / 2), 'w': 2.0, 'h': 0.36, 'emit': 1})
     # the arrival video wall facing the mezzanine portal (engine plays the brand loop)
     acc.box(7.0, L1 + 0.5, BR['z0'] + 0.15, 13.4, L1 + 3.8, BR['z0'] + 0.25, MAT['brass'], C['gold'])
     panels.append({'id': 'arrival', 'x': 10.2, 'y': L1 + 2.15, 'z': BR['z0'] + 0.26, 'yaw': 0, 'w': 6.2, 'h': 3.1, 'emit': 1})
@@ -571,17 +603,38 @@ def build_street(S):
             acc.box(a, yy, F + 0.4, b, yy + 0.35, F + 0.55, MAT['powder'], FC['bronze'])
         for xx in [a + 1.0 + 2.0 * i for i in range(int((b - a) / 2.0))]:
             acc.box(xx, 0.0, F + 0.4, xx + 0.12, 13.5, F + 0.62, MAT['brass'], FC['gold'])
-    acc.box(-22.0, 9.6, F, 22.0, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
+    # v9.3 (the user's photo of a premiere entrance): over the entrance the stone band becomes a feature wall of deep blue diamond tiles
+    # behind the LUMIERE letters (engine prop), washed from below; the rest of the band stays stone
+    acc.box(-22.0, 9.6, F, -9.5, 13.5, F + 0.4, MAT['stone'], FC['sandstone']); acc.box(9.5, 9.6, F, 22.0, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
+    acc.box(-9.5, 9.6, F, 9.5, 13.5, F + 0.4, MAT['paint'], lin('#0b1a33'))
+    diamond_wall(acc, (-9.5, F + 0.401), (9.5, F + 0.401), 9.7, 13.4, -1, 0.42, 0.06, MAT['lacquer'], lin('#1f4f8f'), lin('#0d2447'), random.Random(21))
+    for xx in (-7.6, -3.8, 0.0, 3.8, 7.6):
+        lit.spot((xx, 9.2, F + 1.2), lin('#9cc4ff'), 3.2, 7.5, 'f', (0, 1, -0.35), 22, 55)
     acc.box(-22.4, 13.5, F, 22.4, 13.9, F + 0.6, MAT['powder'], FC['bronze'])
-    # canopy over the entrance with downlights and a gold fascia; the LUMIERE name in glowing letters on the fascia (engine panel)
-    acc.box(-9.0, 5.2, F, 9.0, 5.6, F + 7.0, MAT['powder'], FC['bronze'], top=MAT['powder'], topcol=FC['bronze'])
-    acc.box(-9.0, 5.6, F + 6.9, 9.0, 6.6, F + 7.1, MAT['brass'], FC['gold'])
-    for xx in (-7.5, -4.5, -1.5, 1.5, 4.5, 7.5):
-        for zz in (F + 2.0, F + 5.0):
-            lit.spot((xx, 5.15, zz), lin('#ffd8a8'), 4.0, 9, 'h', (0, -1, 0), 25, 60)
-            glow.quad((xx - 0.07, 5.199, zz - 0.07), (xx + 0.07, 5.199, zz - 0.07), (xx + 0.07, 5.199, zz + 0.07), (xx - 0.07, 5.199, zz + 0.07), lin('#ffd8a8'), 2.4)
-    for xx in (-8.6, 8.6):
-        acc.cyl(xx, F + 6.6, 0.22, 0.0, 5.2, MAT['brass'], FC['gold'], n=20)
+    # the canopy: a curved black drum in plan (half an ellipse, 9 m by 7 m) with five LED bands wrapping its fascia, a soffit full of
+    # small downlights; two black columns carry its front
+    NS = 40; arc = [(9.0 * math.cos(math.pi * i / NS), F + 0.4 + 6.6 * math.sin(math.pi * i / NS)) for i in range(NS + 1)]
+    acc.poly([(x_, 5.2, z_) for x_, z_ in arc], MAT['powder'], lin('#0d0d10'))                      # soffit (faces down)
+    acc.poly([(x_, 5.6, z_) for x_, z_ in reversed(arc)], MAT['powder'], lin('#0d0d10'))            # roof (faces up)
+    for i in range(NS):
+        (ax_, az_), (bx_, bz_) = arc[i], arc[i + 1]; L_ = math.hypot(bx_ - ax_, bz_ - az_); nx_, nz_ = (bz_ - az_) / L_, -(bx_ - ax_) / L_
+        if nx_ * (ax_ + bx_) / 2 + nz_ * ((az_ + bz_) / 2 - F) < 0: nx_, nz_ = -nx_, -nz_   # outward
+        o = 0.0
+        acc.quad((ax_, 5.0, az_), (bx_, 5.0, bz_), (bx_, 7.3, bz_), (ax_, 7.3, az_), MAT['lacquer'], lin('#09090b')) if nx_ * (bz_ - az_) - nz_ * (bx_ - ax_) < 0 else \
+            acc.quad((bx_, 5.0, bz_), (ax_, 5.0, az_), (ax_, 7.3, az_), (bx_, 7.3, bz_), MAT['lacquer'], lin('#09090b'))
+        for yb in (5.25, 5.68, 6.11, 6.54, 6.97):   # the LED bands, 4 cm proud
+            glow_facing(glow, (ax_ + nx_ * 0.04, yb, az_ + nz_ * 0.04), (bx_ + nx_ * 0.04, yb, bz_ + nz_ * 0.04), (bx_ + nx_ * 0.04, yb + 0.05, bz_ + nz_ * 0.04), (ax_ + nx_ * 0.04, yb + 0.05, az_ + nz_ * 0.04), (nx_, 0, nz_), lin('#fff1dc'), 2.4)
+    for i in range(0, NS + 1, 5):
+        x_, z_ = arc[i]; lit.spot((x_ * 1.03, 6.2, F + 0.4 + (z_ - F - 0.4) * 1.03), lin('#ffe9cc'), 1.2, 6, 'f', (0, -0.3, 1), 40, 80)
+    srnd = random.Random(23)
+    for i in range(70):   # the soffit's downlights
+        while True:
+            xx, zz = srnd.uniform(-8.5, 8.5), srnd.uniform(F + 0.8, F + 6.6)
+            if (xx / 8.6) ** 2 + ((zz - F - 0.4) / 6.2) ** 2 < 1: break
+        glow.quad((xx - 0.035, 5.199, zz - 0.035), (xx + 0.035, 5.199, zz - 0.035), (xx + 0.035, 5.199, zz + 0.035), (xx - 0.035, 5.199, zz + 0.035), lin('#fff0d8'), 3.0)
+        if i % 4 == 0: lit.spot((xx, 5.15, zz), lin('#ffd8a8'), 2.4, 8, 'h', (0, -1, 0), 25, 60)
+    for xx in (-6.2, 6.2):
+        acc.cyl(xx, F + 5.2, 0.24, 0.0, 5.2, MAT['lacquer'], lin('#0b0b0d'), n=24)
     # planters and bollards along the kerb, street lamps
     for xx in range(-44, 42, 8):
         if abs(xx) < 4: continue
