@@ -11,7 +11,7 @@ import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
 import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_STAIRS } from './building.js';
 import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
-import { texturesReady } from './library.js';
+import { texturesReady, named } from './library.js';
 import { makeCanvas, SANS, SERIF } from './textures.js';
 import { posterURL } from './films.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
@@ -306,9 +306,15 @@ function dressRooms(world) {
 // ---------------------------------------------------------------- halls: seats, picture, curtains
 const FAMILY = { rocker: ['seat_rocker', 'arm_rocker'], recliner: ['seat_club', 'arm_club'], sofa: ['seat_club', 'arm_club'], pod: ['seat_club', 'arm_club'] };
 const familyOf = (h, kind) => (h.id === 'CLASSIC' && kind === 'rocker' ? ['seat_classic', 'arm_classic'] : FAMILY[kind]);
+// per-hall upholstery (v9.2): MAX midnight-blue leather (the large-format hall's colour), X-270 deep red (the ScreenX house colour), Curve dark cognac
+const SEAT_SWAP = { MAX: { leather_black: '#151c30' }, X270: { leather_black: '#4a0f16' }, CURVE: { leather_chocolate: '#2e1a10' } };
+const seatOver = (h) => { const sw = SEAT_SWAP[h.id]; if (!sw) return null; const o = {}; for (const k in sw) { const nm = named(k); if (nm) o[k] = { id: nm.id, tint: new THREE.Color(sw[k]).toArray() }; } return o; };
 function buildHall(world, h, room) {
   const mats = world.mats, U = room.U, L = room.lights, seats = hallSeats(h); seats.forEach((s, i) => { s.i = i; s.hallKey = h.key; });
   const f = h.dir, flip = new THREE.Matrix4().makeRotationY(Math.PI), fams = {}, arms = [];
+  const over = seatOver(h);
+  // the screen's light reaches a surface facing it (and a little upward): the seat shader's facing term, per hall
+  { const a0 = h.toWorld(0, 0), b0 = h.toWorld(0, 10), v = new THREE.Vector3(a0.x - b0.x, 0, a0.z - b0.z).normalize(); U.uScreenN.value.set(v.x * 0.96, 0.29, v.z * 0.96); }
   // seat width: each family's model is stretched across to the seat pitch of its row (minus the arm between seats)
   for (const s of seats) { const [sn, an] = familyOf(h, s.kind), k = sn + '|' + s.kind; (fams[k] || (fams[k] = { sn, an, kind: s.kind, list: [] })).list.push(s); }
   for (const row of h.rows) { const places = row.places, us = new Set(); for (const p of places) { const w = row.sd.w; us.add(Math.round((p.u - w / 2) * 1000)); us.add(Math.round((p.u + w / 2) * 1000)); }
@@ -322,13 +328,13 @@ function buildHall(world, h, room) {
   const instanced = (geo, list, lt, sx) => { const ms = [0, 1].map((l) => { const g = geo[l] && geo[l].attributes.position.count ? geo[l] : l ? null : geo[0]; if (!g) return null; const m = new THREE.InstancedMesh(g, mats.litFor(U, g, true), list.length); m.name = 'seats-' + (list[0] && (list[0].an || list[0].kind)) + '-lod' + l; m.count = 0; m.frustumCulled = false;
     for (const [k, w] of [['iLh', 3], ['iLf', 3], ['iLs', 1]]) g.setAttribute(k, new THREE.InstancedBufferAttribute(new Float32Array(list.length * w), w)); room.group.add(m); return m; }); groups.push({ list, ms, lt, sx, arm: !!(list[0] && list[0].an) }); };
   for (const F of Object.values(fams)) {
-    const geo = [0, 1].map((l) => assetGeometry(F.sn, l, flip, toGeometry, Acc)); if (!geo[0]) { console.warn('seat model missing: ' + F.sn); continue; }
+    const geo = [0, 1].map((l) => assetGeometry(F.sn, l, flip, toGeometry, Acc, over)); if (!geo[0]) { console.warn('seat model missing: ' + F.sn); continue; }
     geo[0].computeBoundingBox(); const bw = geo[0].boundingBox.max.x - geo[0].boundingBox.min.x, aw = ASSETS[F.an] ? ASSETS[F.an].box.max.x - ASSETS[F.an].box.min.x : 0.06;
     const want = SEAT[F.kind].w - Math.min(0.12, aw), sx = clamp(want / Math.max(0.2, bw), 0.75, 1.7);
     const idx = F.list.map((s) => s.i), sub = new Float32Array(idx.length * 7); idx.forEach((i, k) => sub.set(lit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, F.list, sub, sx);
   }
   const armFam = {}; arms.forEach((a, i) => { (armFam[a.an] || (armFam[a.an] = [])).push(i); });
-  for (const an in armFam) { const geo = [0, 1].map((l) => assetGeometry(an, l, flip, toGeometry, Acc)); if (!geo[0]) continue; const ids = armFam[an], list = ids.map((i) => arms[i]), sub = new Float32Array(ids.length * 7); ids.forEach((i, k) => sub.set(armLit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, list, sub, 1); }
+  for (const an in armFam) { const geo = [0, 1].map((l) => assetGeometry(an, l, flip, toGeometry, Acc, over)); if (!geo[0]) continue; const ids = armFam[an], list = ids.map((i) => arms[i]), sub = new Float32Array(ids.length * 7); ids.forEach((i, k) => sub.set(armLit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, list, sub, 1); }
   // colliders: each seat's footprint (its own frame: across the seat, from the seat front to the back of the backrest)
   for (const s of seats) { const sd = SEAT[s.kind], cs = Math.cos(s.yaw), sn = Math.sin(s.yaw), hw = sd.w / 2 - 0.02, c = [[-hw, -sd.fr], [hw, -sd.fr], [hw, sd.bk], [-hw, sd.bk]].map(([u, v]) => [s.x + u * cs + v * sn, s.z - u * sn + v * cs]);
     for (let k = 0; k < 4; k++) world.walls.add(c[k][0], c[k][1], c[(k + 1) % 4][0], c[(k + 1) % 4][1], s.y + 0.05, s.y + sd.h); }

@@ -171,13 +171,13 @@ def rb(size, r, n_in=(2, 2, 2), m=2, crown=None, at=None):
     return build
 
 
-def cup_holder(lod, x, y, ztop, ring_mat, glow=None, r_out=0.043, name='Cup'):
+def cup_holder(lod, x, y, ztop, ring_mat, glow=None, r_out=0.043, name='Cup', seg=28):
     """Cup holder set into a surface whose top is at ztop: a raised ring (rolled lip) and a dark well disc inside it, 2 mm proud of
     the surface so the two never share a plane; glow = a thin light ring on the lip's inner edge."""
     ri = r_out - 0.008
-    part(f'{name}Ring', lod, ring_mat, lambda bm: lathe(bm, [(ri, ztop - 0.006), (r_out + 0.002, ztop - 0.006), (r_out + 0.002, ztop + 0.002), (r_out - 0.001, ztop + 0.007), (ri + 0.002, ztop + 0.008), (ri, ztop + 0.005)], 28), T(x, y, 0))
-    part(f'{name}Well', lod, 'plastic_black', lambda bm: disc(bm, ri + 0.0005, ztop - 0.004, ztop + 0.002, 24), T(x, y, 0))
-    if glow: part(f'{name}Glow', lod, glow, lambda bm: lathe(bm, [(ri - 0.003, ztop + 0.0015), (ri + 0.0005, ztop + 0.0015), (ri + 0.0005, ztop + 0.0035), (ri - 0.003, ztop + 0.0035)], 28), T(x, y, 0), smooth=False)
+    part(f'{name}Ring', lod, ring_mat, lambda bm: lathe(bm, [(ri, ztop - 0.006), (r_out + 0.002, ztop - 0.006), (r_out + 0.002, ztop + 0.002), (r_out - 0.001, ztop + 0.007), (ri + 0.002, ztop + 0.008), (ri, ztop + 0.005)], seg), T(x, y, 0))
+    part(f'{name}Well', lod, 'plastic_black', lambda bm: disc(bm, ri + 0.0005, ztop - 0.004, ztop + 0.002, max(12, seg - 4)), T(x, y, 0))
+    if glow: part(f'{name}Glow', lod, glow, lambda bm: lathe(bm, [(ri - 0.003, ztop + 0.0015), (ri + 0.0005, ztop + 0.0015), (ri + 0.0005, ztop + 0.0035), (ri - 0.003, ztop + 0.0035)], seg), T(x, y, 0), smooth=False)
 
 
 
@@ -195,36 +195,57 @@ def export(name, out_dir):
 
 
 
-# ------------------------------------------------------------------ v9.1b: sculpted upholstery from subdivided cages (the user: "freaky, blocky")
-def cage_box(size, cuts=(4, 4, 2), crown=None, grooves=None, lumbar=None):
-    """A box cage evenly cut (cuts per axis), to be smoothed by subd(): Catmull-Clark rounds its edges by about size / (cuts + 1), so
-    the cut count sets how soft a cushion's edges are. crown = (axis, sign, amount): the face on that side bulges out (a filled cushion);
-    grooves = (axis, sign, positions, depth): loops on that face pulled in (channel stitching, the across-axis is the next one);
-    lumbar = (amount, centre, span): the whole cushion bows forward (+x) around height `centre` (a back's lumbar curve)."""
-    hx, hy, hz = size[0] / 2, size[1] / 2, size[2] / 2
-    def build(bm):
-        res = bmesh.ops.create_cube(bm, size=1.0); vs = res['verts']
-        for v in vs: v.co = Vector((v.co.x * size[0], v.co.y * size[1], v.co.z * size[2]))
-        for ax, n in enumerate(cuts):
-            if n <= 0: continue
-            es = [e for e in bm.edges if abs((e.verts[0].co - e.verts[1].co)[ax]) > 1e-6 and all(abs((e.verts[0].co - e.verts[1].co)[k]) < 1e-6 for k in range(3) if k != ax)]
-            bmesh.ops.subdivide_edges(bm, edges=es, cuts=n, use_grid_fill=True)
-        H = (hx, hy, hz)
+# ------------------------------------------------------------------ v9.2: tailored upholstery from subdivided cages (the user: "freaky, blocky")
+def grid_box(bm, xs, ys, zs):
+    """Closed quad surface of the box spanned by sorted coordinate lists (the first and last entries are its faces); shared vertices."""
+    V, L = {}, (xs, ys, zs)
+
+    def vert(p):
+        k = tuple(round(c, 6) for c in p)
+        if k not in V: V[k] = bm.verts.new(p)
+        return V[k]
+    for ax in range(3):
+        a, b = [k for k in range(3) if k != ax]
+        for end in (L[ax][0], L[ax][-1]):
+            for i in range(len(L[a]) - 1):
+                for j in range(len(L[b]) - 1):
+                    q = []
+                    for (ii, jj) in ((i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1)):
+                        p = [0.0, 0.0, 0.0]; p[ax] = end; p[a] = L[a][ii]; p[b] = L[b][jj]; q.append(vert(p))
+                    bm.faces.new(q)
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+
+
+def loops(h, e, inner=()):
+    """Coordinates across [-h, h]: the two faces, support loops e in from them, and inner positions (creases and their sides)."""
+    pts = {round(-h, 6), round(-h + e, 6), round(h - e, 6), round(h, 6)}
+    for p in inner:
+        if -h + e + 1e-4 < p < h - e - 1e-4: pts.add(round(p, 6))
+    return sorted(pts)
+
+
+def pillow(size, e=0.02, crown=(), creases=(), shape=None, levels=1, extra=((), (), ())):
+    """Upholstered cushion or moulded shell: a box cage with support loops e in from every face, smoothed by Catmull-Clark (levels;
+    0 = the cage itself, a chamfered box, for LOD1). crown = [(axis, sign, amount)]: that face bulges out (a filled cushion).
+    creases = [(axis, sign, along, pos, depth, w)]: on face (axis, sign) the loop at `pos` along axis `along` is pulled in by depth,
+    support loops at pos +- w keep the seam crisp (stitched channels, a bolster's seam). shape(co) bends the cage in the cushion's
+    own frame (lumbar, wings, taper); extra = more loops per axis so a shape bends smoothly."""
+    H = [s_ / 2 for s_ in size]; inner = [list(extra[0]), list(extra[1]), list(extra[2])]
+    for (ax, sg, al, pos, depth, w) in creases: inner[al] += [pos - w, pos, pos + w]
+    L = [loops(H[k], e, inner[k]) for k in range(3)]
+
+    def cage(bm):
+        grid_box(bm, *L)
         for v in bm.verts:
             c = v.co
-            if crown:
-                ax, sg, amt = crown; t = c[ax] * sg / H[ax]
-                if t > -1.0:
-                    o = [k for k in range(3) if k != ax]; w = (1 - (c[o[0]] / H[o[0]]) ** 2) * (1 - (c[o[1]] / H[o[1]]) ** 2)
-                    c[ax] += sg * amt * max(0.0, w) * (t + 1) / 2
-            if grooves:
-                ax, sg, pos, depth = grooves; along = (ax + 1) % 3 if ax != 0 else 2
-                if c[ax] * sg > H[ax] * 0.6:
-                    for p_ in pos:
-                        if abs(c[along] - p_) < 1e-4: c[ax] -= sg * depth
-            if lumbar:
-                amt, zc, span = lumbar; c.x += amt * math.exp(-((c.z - zc) / span) ** 2)
-    return build
+            for (ax, sg, amt) in crown:
+                if c[ax] * sg > H[ax] - 1e-5:
+                    o = [k for k in range(3) if k != ax]
+                    c[ax] += sg * amt * max(0.0, 1 - (c[o[0]] / H[o[0]]) ** 2) * max(0.0, 1 - (c[o[1]] / H[o[1]]) ** 2)
+            for (ax, sg, al, pos, depth, w) in creases:
+                if c[ax] * sg > H[ax] - 0.03 and abs(c[al] - pos) < 1e-5: c[ax] -= sg * depth
+            if shape: v.co = Vector(shape(c))
+    return subd(cage, levels) if levels else cage
 
 
 def subd(build, levels=1):

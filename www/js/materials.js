@@ -24,7 +24,7 @@ vec3 lumFog(vec3 c, float dist) { return mix(c, uFogColor, smoothstep(uFogNear, 
 // ---------------- static (baked) ----------------
 const STATIC_VERT = `
 attribute vec3 color; attribute vec3 lh; attribute vec3 lf; attribute float ls; attribute float matid;
-uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec3 uScreenD; uniform vec2 uScreenX;
+uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform vec3 uScreenN;
 varying vec3 vAlb; varying vec3 vLight; varying float vMat; varying vec3 vWP; varying vec3 vN; varying float vDist;
 void main() {
   vAlb = color; vMat = matid; vN = normal;
@@ -84,7 +84,7 @@ attribute vec2 lmuv; varying vec2 vLm;
 #else
 attribute vec3 lh; attribute vec3 lf; attribute float ls;
 #endif
-uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[144]; uniform vec3 uScreenD; uniform vec2 uScreenX;
+uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[144]; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform vec3 uScreenN;
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm; varying vec2 vVar;
 void main() {
   int k = int(matid + 0.5) * 3; vPA = uP[k]; vPB = uP[k + 1]; vLay = uP[k + 2].x; vEm = uP[k + 2].y; vVar = uP[k + 2].zw;
@@ -93,7 +93,7 @@ void main() {
   vec3 n = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
   float hemi = 0.5 + n.y * (n.y > 0.0 ? 0.75 : 0.25);
   vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
-  vLight = (iLh * uHouse + iLf * uFix) * occ * hemi + iLs * (uScreen + uScreenD * clamp((wp.x - uScreenX.x) / uScreenX.y, -1.0, 1.0)) * occ * clamp(dot(n, vec3(0.0, 0.29, -0.96)) * 0.8 + 0.2, 0.06, 1.0);
+  vLight = (iLh * uHouse + iLf * uFix) * occ * hemi + iLs * (uScreen + uScreenD * clamp((wp.x - uScreenX.x) / uScreenX.y, -1.0, 1.0)) * occ * clamp(dot(n, uScreenN) * 0.8 + 0.2, 0.06, 1.0);
 #else
   vec3 n = normalize(mat3(modelMatrix) * normal);
   vec4 wp = modelMatrix * vec4(position, 1.0);
@@ -110,7 +110,7 @@ const LIT_FRAG = COMMON_FRAG + `
 uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn; uniform float uReflK; uniform float uWet; uniform sampler2D uNoise;
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm; varying vec2 vVar;
 #ifdef USE_LIGHTMAP
-uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform float uFill; varying vec2 vLm;
+uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform vec3 uScreenN; uniform float uFill; varying vec2 vLm;
 #endif
 #ifdef LM_SPILL
 uniform sampler2D uSpill; uniform vec4 uSpillP; uniform float uSpillA;
@@ -213,14 +213,14 @@ void main() {
 // ---------------- instanced static props (cinema seats): light per instance, shaped per vertex by the normal ----------------
 const INST_VERT = `
 attribute vec3 color; attribute float matid; attribute float occ; attribute vec3 iLh; attribute vec3 iLf; attribute float iLs;
-uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec3 uScreenD; uniform vec2 uScreenX;
+uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform vec3 uScreenN;
 varying vec3 vAlb; varying vec3 vLight; varying float vMat; varying vec3 vWP; varying vec3 vN; varying float vDist;
 void main() {
   vAlb = color; vMat = matid;
   vec3 n = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal); vN = n;
   float hemi = 0.55 + 0.45 * clamp(n.y * 0.6 + n.z * 0.5 + 0.3, 0.0, 1.0);
   vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
-  vLight = (iLh * uHouse + iLf * uFix) * occ * hemi + iLs * (uScreen + uScreenD * clamp((wp.x - uScreenX.x) / uScreenX.y, -1.0, 1.0)) * occ * clamp(dot(n, vec3(0.0, 0.29, -0.96)) * 0.8 + 0.2, 0.06, 1.0); vWP = wp.xyz;
+  vLight = (iLh * uHouse + iLf * uFix) * occ * hemi + iLs * (uScreen + uScreenD * clamp((wp.x - uScreenX.x) / uScreenX.y, -1.0, 1.0)) * occ * clamp(dot(n, uScreenN) * 0.8 + 0.2, 0.06, 1.0); vWP = wp.xyz;
   vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv;
 }`;
 // ---------------- glow (emissive LED strips, signs' light, lenses) ----------------
@@ -359,7 +359,7 @@ void main() { vec3 V = normalize(cameraPosition - vWP); float f = pow(1.0 - abs(
 }`;
 // one set of per-room uniforms: house light level (1 = full), screen light colour, fixed lights multiplier, environment tint for sheen
 // uWet: rain on up-facing surfaces (the street): darker, glossier paving with puddles
-export function roomUniforms() { return { uFill: { value: 0 }, uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
+export function roomUniforms() { return { uFill: { value: 0 }, uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uScreenN: { value: new THREE.Vector3(0, 0.29, -0.96) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
 export class Materials {
   constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; if (opts.macro) this.defines.USE_MACRO = ''; if (opts.detile) this.defines.USE_DETILE = ''; this._lit = new WeakMap(); }
   // one library material per room (and one for its instanced props): every material id draws in the same call (texture arrays)

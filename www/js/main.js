@@ -185,6 +185,9 @@ async function boot() {
     ui.showTicket(ticketView(tk), game === 'quick'); sound.ticket(); tut.event('ticket');
     if (game === 'flow') { const b = crowd.staff.box1; if (b) setTimeout(() => b.say(pick('box.ticket')), 500); }
   }
+  // v9.2 fast exit (the user: "make some illusion so the exit is faster"): through a hall's exit door the view dips to black and you step out
+  // of the exit passage at the lobby's back doors, skipping the walk down the spine (the audience still walks it)
+  function fastExit() { if (fading) return; player.locked = true; fadeTo(0.3, () => { player.place(0, -12.2, Math.PI, 0, 0); player.locked = false; }); }
   function fadeTo(dur, cb) { if (fading) return; fading = true; ui.fade(1, dur); setTimeout(() => { try { cb(); } finally { setTimeout(() => { ui.fade(0, 0.7); fading = false; }, 200); } }, dur * 1000 + 40); }
   // v9.1b: sitting down, you look at the middle of the picture (the IMAX-shaped MAX picture rises 18 m: level eyes saw its lower half)
   const seatPose = (s) => { const H = BLD.HALL[s.hall], eye = s.y + SEAT[s.kind].eye, pitch = H ? Math.max(0, Math.min(0.5, 0.85 * Math.atan2(H.y0 + H.centreY - eye, Math.max(3, s.d)))) : 0.02;
@@ -265,7 +268,7 @@ async function boot() {
     if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
     else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); player.update(dt); }
     intro.update(dt, player);
-    const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } room = r;
+    const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } if (r === 'spine' && room.startsWith('hall') && mode === 'play' && !dbg) fastExit(); room = r;
     const cam = engine.camera; world.setVisibility(r, cam.position.x, cam.position.y, cam.position.z);
     const watching = mode === 'play' && !!player.seated && r.startsWith('hall') && shows.isOn(world.hallByKey(r).id);
     engine.setZoom(watching ? fitZoom(r) : 1, dt); document.body.classList.toggle('watching', watching); engine.showMode && engine.showMode(watching);

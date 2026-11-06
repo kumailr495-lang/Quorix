@@ -30,7 +30,7 @@ ap = argparse.ArgumentParser(); ap.add_argument('--out', default='www/models'); 
 A = ap.parse_args(argv)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lbl import *   # noqa: E402,F401  (material, rounded_box, lathe, disc, tube, rrect_path, part, rb, T, RY, RZ, PARTS, export)
+from lbl import *   # noqa: E402,F401  (material, rounded_box, lathe, disc, tube, rrect_path, part, rb, pillow, T, RY, RZ, PARTS, export)
 
 
 # ================================================================== Screen 3: classic tip-up seat
@@ -76,72 +76,72 @@ def arm_classic():
             cup_holder(0, 0.215, 0, 0.640, 'brass')
 
 
-# ================================================================== Screen 2: IMAX rocker
+# ================================================================== MAX and X-270: high-back stadium rocker (v9.2 rebuild)
+# Tailored, not inflated: cushions are subdivided cages with tight support loops (edges round to 2-3 cm), stitched channels are
+# creases with their own support loops, the moulded shell wraps the cushion from behind with forward-curving sides, a narrower waist
+# and soft shoulders. Seat 460 mm high, back to about 1.2 m, the arm pad at 640 mm (Octane / Ferco high-back sheets).
 def seat_rocker():
     W, top = 0.55, 0.46
     for lod in (0, 1):
-        m = 2 if lod == 0 else 1; ni = (2, 2, 2) if lod == 0 else (1, 1, 1)
-        part('Pedestal', lod, 'blackmetal', rb((0.16, 0.34, 0.27), 0.03, (1, 1, 1), m), T(0.0, 0, 0.165))
-        part('Cushion', lod, 'leather_black', rb((0.52, W, 0.15), 0.05, ni, m, (2, 0.014) if lod == 0 else None), T(0.03, 0, top - 0.075))
-        if lod == 0: part('Welt', 0, 'leather_black', lambda bm: tube(bm, rrect_path(0.26 - 0.015, W / 2 - 0.015, 0.036, 0.0, 5), 0.005), T(0.03, 0, top - 0.015))
-        BH, BW, BT = 0.74, W - 0.01, 0.12
-        pivot = T(-0.24, 0, top + 0.01) @ RY(-15)
-        if lod == 0:
-            # contoured high back: three shallow stitched channels between two side bolsters (a winged, enveloping back), headrest pad
-            rows = [(0.04, 0.16), (0.205, 0.16), (0.37, 0.16)]
-            for i, (z0, hgt) in enumerate(rows):
-                part(f'Channel{i}', 0, 'leather_black', rb((0.07, BW - 0.11, hgt + 0.003), 0.03, (1, 3, 1), 2, (0, 0.006)), pivot @ T(0.012, 0, z0 + hgt / 2))
-            for sy in (-1, 1):
-                part(f'Bolster{sy + 1}', 0, 'leather_black', rb((0.11, 0.06, 0.52), 0.028, (1, 1, 3), 2, (0, 0.008)), pivot @ T(0.02, sy * (BW / 2 - 0.03), 0.04 + 0.26))
-            part('Headrest', 0, 'leather_black', rb((0.09, BW - 0.12, 0.17), 0.04, (1, 3, 1), 2, (0, 0.01)), pivot @ T(0.03, 0, 0.55 + 0.085))
-            part('BackPad', 0, 'leather_black', rb((BT * 0.6, BW, BH), 0.035, (1, 2, 3), 2), pivot @ T(-0.035, 0, BH / 2))
-        else:
-            part('Back', 1, 'leather_black', rb((BT, BW, BH), 0.045, (1, 1, 1), 1), pivot @ T(-0.01, 0, BH / 2))
-        SW = W + 0.02
-        wrap = lambda c: (c.x + 0.07 * (c.y / (SW / 2)) ** 2, c.y, c.z)
-        part('Shell', lod, 'plastic_black', rb((0.03, SW, BH + 0.03), 0.014, (1, 4 if lod == 0 else 2, 3 if lod == 0 else 2), m), pivot @ T(-0.088, 0, (BH + 0.03) / 2 - 0.015), deform=wrap)
+        lv = 1 if lod == 0 else 0
+        if lod == 0:   # the rocker mechanism and seat pan: hidden past a few metres
+            part('Pedestal', 0, 'blackmetal', rb((0.14, 0.26, 0.30), 0.015, (1, 1, 1), 1), T(-0.06, 0, 0.15))
+            part('Pan', 0, 'plastic_black', pillow((0.46, W - 0.04, 0.05), 0.012, levels=0), T(0.0, 0, 0.335))
+        part('Cushion', lod, 'leather_black', pillow((0.50, W, 0.12), 0.03, crown=[(2, 1, 0.016), (0, 1, 0.012)], levels=lv, extra=((0.0,), (0.0,), ()) if lod == 0 else ((), (), ())), T(0.035, 0, top - 0.06))
+        if lod == 0: part('Welt', 0, 'leather_black', lambda bm: tube(bm, rrect_path(0.25 - 0.014, W / 2 - 0.014, 0.03, 0.0, 5), 0.0045), T(0.035, 0, top - 0.004))
+        pivot = T(-0.235, 0, top + 0.01) @ RY(-14)
+        hy = (W - 0.02) / 2
+        wings = lambda c: (c[0] + 0.05 * (abs(c[1]) / hy) ** 3 + 0.022 * math.exp(-((c[2] + 0.17) / 0.1) ** 2), c[1], c[2])
+        cr = [(0, 1, 2, z, 0.013, 0.016) for z in (-0.10, 0.02, 0.14)]
+        part('BackCushion', lod, 'leather_black', pillow((0.10, W - 0.02, 0.56), 0.028, crown=[(0, 1, 0.018)], creases=cr if lod == 0 else (), shape=wings, levels=lv, extra=((), (0.0,), ())), pivot @ T(0.0, 0, 0.31))
+        part('Headrest', lod, 'leather_black', pillow((0.09, 0.40, 0.13), 0.035, crown=[(0, 1, 0.016)], levels=lv), pivot @ T(0.012, 0, 0.665))
+        hs, zs = (W + 0.03) / 2, 0.40
+        shell = lambda c: (c[0] + 0.07 * (c[1] / hs) ** 2, c[1] * (0.9 + 0.1 * (c[2] + zs) / (2 * zs)), c[2] - (0.07 * (abs(c[1]) / hs) ** 3 * c[2] / zs if c[2] > 0 else 0.0))
+        part('Shell', lod, 'plastic_black', pillow((0.035, W + 0.03, 0.80), 0.012, shape=shell, levels=0, extra=((), (-0.15, 0.0, 0.15), (-0.2, 0.0, 0.2) if lod == 0 else ())), pivot @ T(-0.072, 0, 0.38))
 
 
 def arm_rocker():
     for lod in (0, 1):
-        m = 2 if lod == 0 else 1
-        part('Blade', lod, 'charcoal', rb((0.44, 0.036, 0.6), 0.012, (2, 1, 2), m), T(-0.03, 0, 0.3))
-        part('Pad', lod, 'leather_black', rb((0.52, 0.074, 0.042), 0.019, (3, 1, 1), m), T(0.0, 0, 0.62))
+        lv = 1 if lod == 0 else 0
+        taper = lambda c: (c[0] * (0.82 + 0.18 * (c[2] + 0.29) / 0.58), c[1], c[2])
+        part('Standard', lod, 'plastic_black', pillow((0.46, 0.05, 0.58), 0.012, shape=taper, levels=0), T(-0.03, 0, 0.29))
+        part('Pad', lod, 'leather_black', pillow((0.52, 0.09, 0.045), 0.02, crown=[(2, 1, 0.006)], levels=lv), T(0.0, 0, 0.615))
         if lod == 0:
-            part('Foot', 0, 'rubber', rb((0.38, 0.05, 0.012), 0.004, (1, 1, 1), 1), T(-0.03, 0, 0.006))
-            cup_holder(0, 0.205, 0, 0.642, 'chrome', glow='glow_blue')
+            part('Foot', 0, 'rubber', rb((0.38, 0.056, 0.012), 0.004, (1, 1, 1), 1), T(-0.03, 0, 0.006))
+            cup_holder(0, 0.205, 0, 0.64, 'plastic_black', glow='glow_blue', seg=16)
 
 
-# ================================================================== Screen 1: power recliner and console
+# ================================================================== Curved premium hall, sofas and pods: power recliner (v9.2 rebuild)
+# Upholstered base whose front is the closed footrest panel, a crowned seat cushion with a contrast welt, a deep back with a lumbar
+# seam and side wings, a pillow-top headrest resting on it; consoles between seats carry a walnut top with brass cup holders.
 def seat_club():
-    W, top = 0.68, 0.52
+    W, top = 0.76, 0.52
     for lod in (0, 1):
-        m = 2 if lod == 0 else 1; ni = (2, 2, 2) if lod == 0 else (1, 1, 1)
-        part('Plinth', lod, 'blackmetal', rb((0.66, W - 0.06, 0.08), 0.012, (1, 1, 1), 1), T(-0.06, 0, 0.04))
-        if lod == 0: part('Underglow', 0, 'glow_warm', rb((0.008, W - 0.12, 0.006), 0.002, (1, 2, 1), 1), T(0.272, 0, 0.074), smooth=False)
-        part('Base', lod, 'leather_chocolate', rb((0.80, W, 0.31), 0.05, (2, 2, 1) if lod == 0 else (1, 1, 1), m), T(-0.02, 0, 0.075 + 0.155))
-        if lod == 0: part('Footrest', 0, 'leather_chocolate', rb((0.05, W - 0.07, 0.25), 0.022, (1, 2, 1), 2), T(0.375, 0, 0.235))
-        part('Cushion', lod, 'leather_chocolate', rb((0.64, W - 0.04, 0.16), 0.06, ni, m, (2, 0.016) if lod == 0 else None), T(0.07, 0, top - 0.08))
-        if lod == 0: part('Welt', 0, 'leather_oxblood', lambda bm: tube(bm, rrect_path(0.32 - 0.017, (W - 0.04) / 2 - 0.017, 0.044, 0.0, 5), 0.0055), T(0.07, 0, top - 0.018))
-        BH, BW = 0.72, W
-        pivot = T(-0.3, 0, 0.40) @ RY(-20)
-        part('BackBody', lod, 'leather_chocolate', rb((0.22, BW, BH), 0.07, (1, 2, 2) if lod == 0 else (1, 1, 1), m), pivot @ T(-0.06, 0, BH / 2))
-        if lod == 0:
-            for i in range(3):
-                part(f'Roll{i}', 0, 'leather_chocolate', rb((0.11, BW - 0.08, 0.205), 0.05, (1, 3, 1), 2, (0, 0.015)), pivot @ T(0.075, 0, 0.12 + i * 0.185))
-            part('Headrest', 0, 'leather_chocolate', rb((0.13, BW - 0.2, 0.17), 0.06, (1, 3, 1), 2, (0, 0.016)), pivot @ T(0.085, 0, 0.66))
+        lv = 1 if lod == 0 else 0
+        part('Plinth', lod, 'blackmetal', rb((0.64, W - 0.08, 0.07), 0.01, (1, 1, 1), 1), T(-0.07, 0, 0.035))
+        if lod == 0: part('Underglow', 0, 'glow_warm', rb((0.008, W - 0.14, 0.006), 0.002, (1, 2, 1), 1), T(0.252, 0, 0.066), smooth=False)
+        part('Base', lod, 'leather_chocolate', pillow((0.70, W, 0.30), 0.03, levels=lv), T(-0.05, 0, 0.065 + 0.15))
+        part('Footrest', lod, 'leather_chocolate', pillow((0.06, W - 0.05, 0.27), 0.022, crown=[(0, 1, 0.01)], levels=lv, extra=((), (0.0,), ()) if lod == 0 else ((), (), ())), T(0.32, 0, 0.225))
+        part('Cushion', lod, 'leather_chocolate', pillow((0.60, W - 0.03, 0.15), 0.035, crown=[(2, 1, 0.02), (0, 1, 0.015)], levels=lv, extra=((0.0,), (0.0,), ()) if lod == 0 else ((), (), ())), T(0.03, 0, top - 0.075))
+        if lod == 0: part('Welt', 0, 'leather_oxblood', lambda bm: tube(bm, rrect_path(0.30 - 0.016, (W - 0.03) / 2 - 0.016, 0.04, 0.0, 5), 0.005), T(0.03, 0, top - 0.003))
+        pivot = T(-0.29, 0, 0.42) @ RY(-18)
+        hy = W / 2
+        wings = lambda c: (c[0] + 0.04 * (abs(c[1]) / hy) ** 3 + 0.02 * math.exp(-((c[2] + 0.18) / 0.1) ** 2), c[1], c[2])
+        cr = [(0, 1, 2, -0.06, 0.016, 0.02)] + [(0, 1, 1, sg * (hy - 0.09), 0.014, 0.0) for sg in (-1, 1)]
+        part('Back', lod, 'leather_chocolate', pillow((0.22, W, 0.60), 0.045, crown=[(0, 1, 0.02)], creases=cr if lod == 0 else (), shape=wings, levels=lv, extra=((), (0.0,), (0.15,) if lod == 0 else ())), pivot @ T(-0.04, 0, 0.32))
+        part('Headrest', lod, 'leather_chocolate', pillow((0.14, W - 0.16, 0.18), 0.05, crown=[(0, 1, 0.02)], levels=lv), pivot @ T(0.06, 0, 0.66))
 
 
 def arm_club():
     for lod in (0, 1):
-        m = 2 if lod == 0 else 1
-        part('Plinth', lod, 'blackmetal', rb((0.66, 0.12, 0.08), 0.01, (1, 1, 1), 1), T(-0.06, 0, 0.04))
-        part('Body', lod, 'leather_chocolate', rb((0.80, 0.15, 0.51), 0.045, (2, 1, 2) if lod == 0 else (1, 1, 1), m), T(-0.02, 0, 0.075 + 0.255))
-        part('Top', lod, 'walnut', rb((0.86, 0.17, 0.035), 0.012, (3, 1, 1), m), T(-0.01, 0, 0.6025))
+        lv = 1 if lod == 0 else 0
+        part('Plinth', lod, 'blackmetal', rb((0.64, 0.12, 0.07), 0.01, (1, 1, 1), 1), T(-0.07, 0, 0.035))
+        part('Body', lod, 'leather_chocolate', pillow((0.74, 0.16, 0.50), 0.03, crown=[(1, 1, 0.006), (1, -1, 0.006)], levels=lv), T(-0.03, 0, 0.065 + 0.25))
+        part('Top', lod, 'walnut', pillow((0.80, 0.18, 0.032), 0.01, levels=0), T(-0.02, 0, 0.596))
         if lod == 0:
-            part('Band', 0, 'brass', rb((0.866, 0.176, 0.012), 0.004, (3, 1, 1), 1), T(-0.01, 0, 0.579))
-            cup_holder(0, 0.29, 0, 0.620, 'brass', glow='glow_warm', name='CupA')
-            cup_holder(0, 0.165, 0, 0.620, 'brass', name='CupB')
+            part('Band', 0, 'brass', rb((0.806, 0.186, 0.01), 0.004, (3, 1, 1), 1), T(-0.02, 0, 0.576))
+            cup_holder(0, 0.27, 0, 0.612, 'brass', glow='glow_warm', name='CupA', seg=16)
+            cup_holder(0, 0.15, 0, 0.612, 'brass', name='CupB', seg=16)
 
 
 BUILD = {'seat_classic': seat_classic, 'arm_classic': arm_classic, 'seat_rocker': seat_rocker, 'arm_rocker': arm_rocker, 'seat_club': seat_club, 'arm_club': arm_club}
