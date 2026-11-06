@@ -2,20 +2,20 @@
  "room": "hallCurve",
  "res": 2048,
  "hall": true,
- "hash": "v9.97568b807765",
+ "hash": "v9.a2f07d3007ed",
  "maps": [
   "hallCurve_h.png",
   "hallCurve_f.png",
   "hallCurve_s.png"
  ],
  "scale": [
-  0.7352050214091769,
-  0.12231583893299103,
-  0.8508997559547424
+  0.7804426949170824,
+  0.14768795973062965,
+  0.8713353872299194
  ],
- "avg": 0.03029613122937935,
+ "avg": 0.03179077299860003,
  "probes": "hallCurve_probes.json",
  "glb": "hallCurve.glb",
- "verts": 15423,
- "tris": 5141
+ "verts": 14607,
+ "tris": 4869
 }

@@ -371,20 +371,23 @@ function buildHall(world, h, room) {
 }
 // the idle screen: the hall's name on a dark slate (the show system swaps in the countdown, then the film)
 export function slateTexture(h) {
-  const w = 1024, ht = Math.round(w / h.aspect), c = makeCanvas(w, ht), g = c.getContext('2d'), gr = g.createRadialGradient(w / 2, ht / 2, 10, w / 2, ht / 2, w * 0.6);
-  gr.addColorStop(0, '#1c1a24'); gr.addColorStop(1, '#07070a'); g.fillStyle = gr; g.fillRect(0, 0, w, ht); g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = '#e3b25f'; g.font = `500 ${ht * 0.16}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${ht * 0.04}px`; g.fillText('LUMIÈRE', w / 2, ht * 0.42);
-  g.fillStyle = 'rgba(242,235,221,.75)'; g.font = `500 ${ht * 0.07}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${ht * 0.03}px`; g.fillText(h.name.replace('LUMIERE ', '') + '  ·  SCREEN ' + h.no, w / 2, ht * 0.62);
+  // v9.1b: between shows the screen reads as what it is, a big silver screen under the house lights (it was near black: "the screens look
+  // so small"), with the hall's wordmark in ink and a gold rule, like a cinema's own house slide
+  const w = 1024, ht = Math.round(w / h.aspect), c = makeCanvas(w, ht), g = c.getContext('2d'), gr = g.createRadialGradient(w / 2, ht * 0.45, 10, w / 2, ht / 2, w * 0.62);
+  gr.addColorStop(0, '#e9e6df'); gr.addColorStop(0.6, '#cdcac3'); gr.addColorStop(1, '#8f8c87'); g.fillStyle = gr; g.fillRect(0, 0, w, ht); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#14162e'; g.font = `500 ${ht * 0.15}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${ht * 0.045}px`; g.fillText('LUMIÈRE', w / 2, ht * 0.43);
+  g.fillStyle = '#b8873a'; g.fillRect(w / 2 - ht * 0.22, ht * 0.535, ht * 0.44, Math.max(2, ht * 0.006));
+  g.fillStyle = 'rgba(20,22,46,.78)'; g.font = `600 ${ht * 0.055}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${ht * 0.035}px`; g.fillText(h.name.replace('LUMIERE ', '') + '  ·  SCREEN ' + h.no, w / 2, ht * 0.62);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
 }
 // the picture: shown exactly as graded (no tone curve, no fog); uBox letterboxes it inside the screen
 const PIC_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
-const PIC_FRAG = `uniform sampler2D map; uniform vec4 uBox; uniform float uGain; varying vec2 vUv;
+const PIC_FRAG = `uniform sampler2D map; uniform vec4 uBox; uniform vec4 uSrc; uniform float uGain; varying vec2 vUv;
 void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0);
-  vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb; gl_FragColor = vec4(c * uGain * inside, 1.0);
+  vec3 c = texture2D(map, uSrc.xy + clamp(q, 0.0, 1.0) * uSrc.zw).rgb; gl_FragColor = vec4(c * uGain * inside, 1.0);
   #include <colorspace_fragment>
 }`;
-export function pictureMat(map = null) { return new THREE.ShaderMaterial({ vertexShader: PIC_VERT, fragmentShader: PIC_FRAG, uniforms: { map: { value: map }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uGain: { value: 1 } } }); }
+export function pictureMat(map = null) { return new THREE.ShaderMaterial({ vertexShader: PIC_VERT, fragmentShader: PIC_FRAG, uniforms: { map: { value: map }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uSrc: { value: new THREE.Vector4(0, 0, 1, 1) }, uGain: { value: 1 } } }); }   // uSrc: the part of the frame shown (the 270 hall's split mode shows the middle third)
 // ---------------------------------------------------------------- reflections: one 128 px cube per room
 const PROBE_AT = { lobby: [0, 2.2, 6], street: [0, 2, 24], wc: [27, 1.6, -4], corridor: [0, L1 + 1.6, -18], spine: [0, 1.6, -40] };
 function captureReflections(world, engine) {

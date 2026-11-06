@@ -148,15 +148,14 @@ def build_hall(h, L1):
                 g0, g1 = (q, p) if sg > 0 else (p, q)   # runs towards -u: the strip faces the screen (-d)
                 glow.quad((g0[0], yb + 0.06, g0[1]), (g1[0], yb + 0.06, g1[1]), (g1[0], yb + 0.1, g1[1]), (g0[0], yb + 0.1, g0[1]), th['warm'], 1.3)
                 lit.line((p[0], yb + 0.1, p[1] - 0.1), (q[0], yb + 0.1, q[1] - 0.1), th['warm'], 0.35, 3.5, 'f')
-    # ---------------------------------------------------------------- the front (v9.1). The user: "one theatre is so small no one would
-    # see it", "the exit is total nonsense". The picture now runs nearly wall to wall; beside it, at each front corner, an open exit bay
-    # (BAY_H high): lined in a light finish and lit (an egress light stays on through the film), the exit door in the screen wall at its
-    # back, a lit EXIT sign over its mouth that every seat can read. v9 hid the door in a black slot behind the masking.
+    # ---------------------------------------------------------------- the front (v9.1b). The picture runs nearly wall to wall (the user: "the
+    # screens are so small"); the masking wraps it to both side walls, with an exit portal at each front corner beside the picture (the
+    # user preferred these older exits to v9.1's open bays): a lit EXIT sign over the portal, the push-bar door in the screen wall behind it
     Wp, hB, Hp, Rs = h['W'] / 2, h['hB'], h['H'], h['R']
     def sd(u): return (Rs - math.sqrt(max(0.0, Rs * Rs - u * u))) if Rs else 0.0
     def sd1(u): return (u / math.sqrt(max(1e-6, Rs * Rs - u * u))) if Rs else 0.0   # slope of the curve, d(sd)/du
     md = lambda u: sd(u) + 0.04
-    PU, BAY_H = h['bay'][0], 3.0
+    PU, BAY_H = h['bay'][0], 2.55   # v9.1b (the user preferred the older exits): a portal in the masking beside the picture, the door behind it
     us = sorted(set([-W2 - 0.05, W2 + 0.05, -Wp, Wp, -PU, PU] + [(-Wp + 2 * Wp * i / 24) for i in range(25)]
                     + [sg * (Wp + (PU - Wp) * i / 4) for i in range(5) for sg in (-1, 1)] + [sg * (PU + (W2 - PU) * i / 6) for i in range(7) for sg in (-1, 1)]))
     us = [u for u in us if -W2 - 0.06 <= u <= W2 + 0.06]
@@ -203,31 +202,13 @@ def build_hall(h, L1):
         p = T((c[0] + nu * 0.04, yc, c[1] + nd * 0.04)); panels.append({'id': pid, 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0 + math.atan2(nu, nd), 'w': w_, 'h': h_, 'emit': 1})
         lit.point((c[0] + nu * 0.35, yc, c[1] + nd * 0.35), lin('#2bd07a'), 0.3, 3.5, 'f')
     panels = []
-    for sg in (-1, 1):
-        u_in, u_out, uc = sg * PU, sg * W2, sg * (PU + W2) / 2
-        fr = lambda u: md(u) - 0.07   # 1 cm behind the masking's back face
-        cheek = sorted((u_in, u_in - sg * 0.12))   # the wall between the bay and the dark space behind the masking
-        acc.box(cheek[0], 0.0, Dw, cheek[1], BAY_H, fr(u_in), MAT['paint'], th['bay'])
-        s0, s1 = sorted((u_in - sg * 0.12, u_out)); edge = [s0 + (s1 - s0) * i / 8 for i in range(9)]
-        acc.prism([(s0, Dw), (s1, Dw)] + [(u, fr(u)) for u in reversed(edge)], BAY_H, BAY_H + 0.12, MAT['paint'], th['bay'])   # soffit
-        l0, l1 = sorted((u_out, u_out - sg * 0.02))
-        acc.box(l0, 0.0, Dw, l1, BAY_H, fr(u_out), MAT['paint'], th['bay'])                       # lining on the side wall
-        de0, de1 = sorted((sg * (exitU - 0.9), sg * (exitU + 0.9)))                                 # the door opening (u)
-        for qa, qb, y_a, y_b in ((u_in, de0 if sg > 0 else de1, 0.0, BAY_H), (de1 if sg > 0 else de0, u_out - sg * 0.02, 0.0, BAY_H), (de0, de1, 2.4, BAY_H)):
-            q0, q1 = sorted((qa, qb)); acc.box(q0, y_a, Dw, q1, y_b, Dw + 0.02, MAT['paint'], th['bay'])   # lining on the screen wall
-        for ux in (de0, de1): acc.box(ux - 0.045, 0.0, Dw + 0.02, ux + 0.045, 2.46, Dw + 0.05, MAT['metal'], th['frame'])   # architrave
-        acc.box(de0 - 0.045, 2.4, Dw + 0.02, de1 + 0.045, 2.46, Dw + 0.05, MAT['metal'], th['frame'])
-        dm = (Dw + fr(uc)) / 2   # a downlight in the soffit: house light, plus a dim egress light that stays on through the film
-        lit.spot((uc, BAY_H - 0.03, dm), th['warm'], 1.1, 5, 'h', (0, -1, 0), 30, 70)
-        lit.spot((uc, BAY_H - 0.03, dm), th['warm'], 0.22, 4, 'f', (0, -1, 0), 30, 70)
-        gq((uc - 0.09, BAY_H - 0.004, dm - 0.09), (uc + 0.09, BAY_H - 0.004, dm - 0.09), (uc + 0.09, BAY_H - 0.004, dm + 0.09), (uc - 0.09, BAY_H - 0.004, dm + 0.09), (0, -1, 0), th['warm'], 2.0)
-        i_ = 0 if sg < 0 else 1
-        sign_on_mask(uc, BAY_H + 0.42, 0.9, 0.32, f"exitsign_{h['id']}_{i_}")
-        p = T((sg * exitU, 2.72, Dw + 0.055)); panels.append({'id': f"exitsign_{h['id']}_{2 + i_}", 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0, 'w': 0.6, 'h': 0.22, 'emit': 1})
-        acc.box(sg * exitU - 0.33, 2.58, Dw + 0.02, sg * exitU + 0.33, 2.86, Dw + 0.05, MAT['powder'], lin('#16181b'))
-        # a light line along the floor at the cheek's foot leads into the bay (fixed: on through the film)
-        e_a, e_b = (Dw + 0.1, fr(u_in) - 0.05); xs_ = u_in + sg * 0.004
-        gq((xs_, 0.03, e_a), (xs_, 0.03, e_b), (xs_, 0.06, e_b), (xs_, 0.06, e_a), (sg, 0, 0), th['step'], 1.4)
+    for sg in (-1, 1):   # over each portal: a lit EXIT sign on the masking; in the passage behind: a dim light (it stays on in the film)
+        uc = sg * (PU + W2) / 2; i_ = 0 if sg < 0 else 1
+        sign_on_mask(uc, BAY_H + 0.3, 0.72, 0.26, f"exitsign_{h['id']}_{i_}")
+        lit.point((sg * (W2 - 0.9), 2.3, (Dw + md(sg * (W2 - 0.9))) / 2), lin('#ffd2a0'), 0.35, 3.0, 'h')
+        lit.point((sg * (W2 - 0.9), 2.0, (Dw + md(sg * (W2 - 0.9))) / 2), lin('#ffd2a0'), 0.1, 2.5, 'f')
+        p = T((sg * exitU, 2.62, Dw + 0.055)); panels.append({'id': f"exitsign_{h['id']}_{2 + i_}", 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0, 'w': 0.6, 'h': 0.22, 'emit': 1})
+        acc.box(sg * exitU - 0.33, 2.48, Dw, sg * exitU + 0.33, 2.76, Dw + 0.05, MAT['powder'], lin('#16181b'))
     # ---------------------------------------------------------------- side walls: each hall's own wall system, above the local floor
     rnd = random.Random(h['no']); fmt = h['format']; step = 2.4
     SS = h.get('sideScreen'); x_end = SS['d1'] if SS else -1.0
