@@ -307,7 +307,7 @@ function dressRooms(world) {
 const FAMILY = { rocker: ['seat_rocker', 'arm_rocker'], recliner: ['seat_club', 'arm_club'], sofa: ['seat_club', 'arm_club'], pod: ['seat_club', 'arm_club'] };
 const familyOf = (h, kind) => (h.id === 'CLASSIC' && kind === 'rocker' ? ['seat_classic', 'arm_classic'] : FAMILY[kind]);
 // per-hall upholstery (v9.2): MAX midnight-blue leather (the large-format hall's colour), X-270 deep red (the ScreenX house colour), Curve dark cognac
-const SEAT_SWAP = { MAX: { leather_black: '#151c30' }, X270: { leather_black: '#4a0f16' }, CURVE: { leather_chocolate: '#2e1a10' } };
+const SEAT_SWAP = { MAX: { leather_black: '#151c30' }, X270: { leather_black: '#3c0b11' }, CURVE: { leather_chocolate: '#1c100a' } };
 const seatOver = (h) => { const sw = SEAT_SWAP[h.id]; if (!sw) return null; const o = {}; for (const k in sw) { const nm = named(k); if (nm) o[k] = { id: nm.id, tint: new THREE.Color(sw[k]).toArray() }; } return o; };
 function buildHall(world, h, room) {
   const mats = world.mats, U = room.U, L = room.lights, seats = hallSeats(h); seats.forEach((s, i) => { s.i = i; s.hallKey = h.key; });
