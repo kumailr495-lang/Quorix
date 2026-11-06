@@ -6,12 +6,12 @@
 // speak when you are near), the slow guide (he walks faster than you and waits only when you fall behind).
 // Paths: building.js NAV (lobby, escalators, corridor, spine) and hallmath.seatRoute (door, rear aisle, side aisle, row lane, seat).
 import * as THREE from 'three';
-import { Person, CrowdRenderer, DATA, randomRecipe, staffRecipe, SIT_H } from './people.js';
+import { Person, CrowdRenderer, DATA, randomRecipe, staffRecipe, sitHeight } from './people.js';
 import { POSTS, NAV, HALL, L1, ESC, SPINE } from './building.js';
 import { seatRoute, SEAT, SCREEN_GAP } from './hallmath.js';
 import { pick } from './i18n.js';
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), adiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b)), rnd = (a, b) => a + Math.random() * (b - a);
-const HIDDEN = { visible: false }, SEAT_H = { rocker: 0.45, recliner: 0.48, sofa: 0.44, pod: 0.46 }, RECLINE = { rocker: 0.18, recliner: 0.32, sofa: 0.2, pod: 0.26 };
+const HIDDEN = { visible: false }, SEAT_H = { rocker: 0.44, recliner: 0.5, sofa: 0.5, pod: 0.5 }, RECLINE = { rocker: 0.18, recliner: 0.32, sofa: 0.2, pod: 0.26 };
 const DENSITY = { off: 0, low: 6, medium: 12, high: 20 };
 // ------------------------------------------------------------------ the nav graph: one-way edges only one way; Dijkstra on distance
 const NODES = NAV.nodes, ADJ = {};
@@ -99,7 +99,7 @@ export class Crowd {
   }
   clearAudience(hallId) { for (const v of this.viewers[hallId] || []) this.dropViewer(v); this.viewers[hallId] = []; }
   dropViewer(v) { if (v.agent) { this.remove(v.agent); v.agent = null; } if (v.seat.npc === v) { v.seat.npc = null; v.seat.taken = false; } v.state = 'gone'; }
-  seatPose(s) { return { x: s.x, y: s.y, z: s.z, face: s.yaw + Math.PI, drop: SEAT_H[s.kind] - SIT_H, recline: RECLINE[s.kind] }; }
+  seatPose(s, rec) { return { x: s.x, y: s.y, z: s.z, face: s.yaw + Math.PI, drop: SEAT_H[s.kind] - sitHeight(rec), recline: RECLINE[s.kind] }; }
   laneStand(seat) { const h = HALL[seat.hall], row = h.rows[seat.row], q = h.fromRow(seat.a, (row.lane[0] + row.lane[1]) / 2), w = h.toWorld(q.u, q.d); return { x: w.x, z: w.z }; }
   // a route through the hall: from outside its entry door to the lane in front of a seat (world points with floor heights)
   hallRoute(h, seat, fromOutside = true) {
@@ -228,7 +228,7 @@ export class Crowd {
   }
   draw(a, dt, d, player) {
     const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < 9 ? 0 : d < 20 ? 1 : 2); ch.talking = a.talking || this.now < a.talkUntil;
-    if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat); ch.s.drop = sp.drop; ch.s.recline = sp.recline; } else ch.s.sit = 0;
+    if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; } else ch.s.sit = 0;
     ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;
     // where they look: the screen when seated in a hall; you, briefly, when you come close and they face you; ahead otherwise
     let ly = 0, lp = 0, amt = 0;
@@ -241,7 +241,7 @@ export class Crowd {
   }
   drawGPU(h, visible, cam) {
     const R = h.crowdGPU; if (!visible) { R.hide(); return; } R.begin(); const t = this.now / 1000, lit = h.seatLit, hU = h.room.U;
-    for (const v of this.viewers[h.id]) { if (v.state !== 'seated' || (v.agent && v.agent.ch && v.agent.ch.group.visible)) continue; const s = v.seat, sp = this.seatPose(s), i = s.i * 7;
+    for (const v of this.viewers[h.id]) { if (v.state !== 'seated' || (v.agent && v.agent.ch && v.agent.ch.group.visible)) continue; const s = v.seat, sp = this.seatPose(s, v.rec), i = s.i * 7;
       const blend = v.clipB && this.now < v.reactUntil ? Math.min(1, (t - v.t0B) / 0.3) * Math.min(1, (v.reactUntil - this.now) / 400) : 0;
       R.add({ rec: v.rec, x: s.x, y: s.y + sp.drop, z: s.z, yaw: sp.face, lit: [Math.min(lit[i] * 0.9, 0.7), Math.min(lit[i + 1] * 0.9, 0.7), Math.min(lit[i + 2] * 0.9, 0.7), Math.min(lit[i + 6], 0.6)], clip: v.clip, t0: v.t0, speed: 1, clipB: blend > 0 ? v.clipB : null, t0B: v.t0B, blend }, 2); }
     R.end();

@@ -11,6 +11,7 @@ non-commercial clause, and no real person's voice or likeness.
 | three.js r169 | `www/vendor/three.module.js` | threejs.org | MIT |
 | GLTFLoader, SkeletonUtils | `www/vendor/addons/` | three.js examples | MIT |
 | meshoptimizer decoder | `www/vendor/addons/meshopt_decoder.module.js` | zeux/meshoptimizer | MIT |
+| People (23 avatars, 22 motion clips) | `www/models/rb/` (notice: `www/models/rb/LICENSE-Rocketbox.txt`) | Microsoft Rocketbox (github.com/microsoft/Microsoft-Rocketbox), converted by `tools/blender/rocketbox.py` | MIT (Copyright (c) 2020 Microsoft) |
 | Inter (400, 500, 600) | `www/fonts/inter-*.woff2` | rsms/inter | SIL Open Font License 1.1 |
 | Cormorant Garamond (300, 500, 500 italic) | `www/fonts/cormorant-*.woff2` | CatharsisFonts/Cormorant | SIL Open Font License 1.1 |
 | Devanagari and Urdu text | system fonts of the phone | Android (Noto) | not shipped |

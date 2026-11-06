@@ -17,6 +17,36 @@ import { G, COMMON_FRAG } from './materials.js';
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 export const OUTFITS = { m: ['tee', 'shirt', 'sweat', 'jacket', 'staff'], f: ['tee', 'shirt', 'jacket', 'capri', 'staff'] };
 export const DATA = { ready: false, kinds: {}, clips: {}, tex: null };
+// v9.3 (the user: "glitched, creepy NPCs, wrong textures, clothes, hair"): photographed people from the Microsoft Rocketbox library (MIT,
+// tools/blender/rocketbox.py). One atlas per person (one draw call), clips per gender (the Biped skeletons are identical within a gender),
+// the same bone names as the v8 rig, so the IK, look, jaw, eye and hand-prop code works unchanged. Without www/models/rb the v8 people stay.
+export const RB = { ready: false, avatars: {}, names: { m: [], f: [] }, guests: { m: [], f: [] }, clips: { m: {}, f: {} }, meta: null, refPelvis: { m: 1, f: 1 } };
+const RB_ALIAS = { Walk_Formal_Loop: 'Walk_Loop', Walk_Carry_Loop: 'Walk_Loop', Jog_Fwd_Loop: 'Walk_Loop', Sitting_Talking_Loop: 'Sitting_Idle_Loop', Idle_Talking_Loop: 'Idle_Loop', Idle_TalkingPhone_Loop: 'Idle_Loop', Idle_FoldArms_Loop: 'Idle_Loop' };
+async function loadRB(base, ld) {
+  const meta = await fetch(base + 'rb/rb.json').then((r) => (r.ok ? r.json() : null)).catch(() => null); if (!meta) return;
+  const names = Object.keys(meta.avatars), tl = new THREE.TextureLoader();
+  const [am, af, ...gl] = await Promise.all([ld.loadAsync(base + 'rb/rb_anims_m.glb'), ld.loadAsync(base + 'rb/rb_anims_f.glb'), ...names.map((n) => ld.loadAsync(base + 'rb/rb_' + n + '.glb'))]);
+  for (const [g, a] of [['m', am], ['f', af]]) { for (const c of a.animations) RB.clips[g][c.name] = c; RB.refPelvis[g] = boneY(a.scene, 'pelvis'); }
+  names.forEach((n, i) => { const sc = gl[i].scene, A = meta.avatars[n]; dequantize(sc);
+    const tex = tl.load(base + 'rb/' + n + '.webp'); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 2;
+    const lods = {}; sc.traverse((o) => { if (o.isSkinnedMesh) { o.frustumCulled = false; const m = o.name.match(/L(\d)$/); if (m) lods['L' + m[1]] = o; } });
+    RB.avatars[n] = { name: n, kind: A.kind, scene: sc, tex, lods, pelvisY: boneY(sc, 'pelvis'), clips: null }; RB.names[A.kind].push(n); if (!/^Business_/.test(n)) RB.guests[A.kind].push(n); });
+  RB.meta = meta; RB.ready = names.length > 0;
+}
+// the person a recipe becomes: a staff look can name one (STAFF[look].rb); others are picked by seed within their gender
+export function rbAvatar(r) {
+  if (!RB.ready || !r) return null; if (r.rb && RB.avatars[r.rb]) return RB.avatars[r.rb];
+  const L = RB.guests[r.kind] && RB.guests[r.kind].length ? RB.guests[r.kind] : RB.guests.m.concat(RB.guests.f); if (!L.length) return null;   // suits are for staff
+  r.rb = L[Math.floor((((r.seed || 1) * 0.6180339887) % 1) * L.length) % L.length]; return RB.avatars[r.rb];
+}
+function rbClips(av) {
+  if (av.clips) return av.clips; const src = RB.clips[av.kind], k = av.pelvisY / (RB.refPelvis[av.kind] || av.pelvisY), out = {};
+  for (const n in src) out[n] = adaptClip(src[n], k);
+  for (const n in RB_ALIAS) if (!out[n] && out[RB_ALIAS[n]]) out[n] = out[RB_ALIAS[n]];
+  return (av.clips = out);
+}
+// the seat height a person's sitting clips were made for (the engine lowers or raises them onto the real cushion by the difference)
+export function sitHeight(r) { const av = rbAvatar(r), c = av && RB.meta.clips[av.kind]; return c && c.seatY ? c.seatY : SIT_H; }
 // ------------------------------------------------------------------ palettes (sRGB hex): varied, believable city clothes
 const SKIN = ['#f2d0b6', '#e8b996', '#d9a47f', '#c68b62', '#a8704a', '#8a5538', '#6b3f2a', '#4e2d1f'];
 const HAIR = ['#1c1410', '#2b1d14', '#3d2817', '#5a3a1f', '#7a5230', '#a07444', '#c9a46a', '#6e6a66', '#d8d2c8', '#1a1a1c'];
@@ -36,13 +66,13 @@ export function randomRecipe(seed, o = {}) {
 }
 // staff uniforms: black shirt and trousers, a burgundy waistcoat (the server and the guide), or a brand blazer (reception)
 export const STAFF = {
-  receptionist: { kind: 'f', outfit: 'jacket', over: { top: '#202022', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#2b1d14', hairStyle: 1, pattern: 0, skin: '#d9a47f' } },
-  usher: { kind: 'm', outfit: 'staff', over: { top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#1c1410', hairStyle: 0, beard: false, pattern: 0, skin: '#c68b62' } },
-  vendor: { kind: 'f', outfit: 'staff', over: { top: '#121214', bottom: '#151518', outer: '#7a1f28', shoes: '#141414', hair: '#1c1410', hairStyle: 1, pattern: 0, skin: '#e8b996' } },
-  vendor2: { kind: 'm', outfit: 'staff', over: { top: '#121214', bottom: '#151518', outer: '#7a1f28', shoes: '#141414', hair: '#3d2817', hairStyle: 1, beard: true, pattern: 0, skin: '#a8704a' } },
-  bartender: { kind: 'f', outfit: 'staff', over: { top: '#f1f0ec', bottom: '#151518', outer: '#121214', shoes: '#141414', hair: '#5a3a1f', hairStyle: 0, pattern: 0, skin: '#f2d0b6' } },
-  server: { kind: 'm', outfit: 'staff', over: { top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#2b1d14', hairStyle: 1, beard: false, pattern: 0, skin: '#8a5538' } },
-  greeter: { kind: 'f', outfit: 'staff', over: { top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#1c1410', hairStyle: 0, pattern: 0, skin: '#c68b62' } },
+  receptionist: { kind: 'f', outfit: 'jacket', over: { rb: 'Business_Female_01', top: '#202022', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#2b1d14', hairStyle: 1, pattern: 0, skin: '#d9a47f' } },
+  usher: { kind: 'm', outfit: 'staff', over: { rb: 'Business_Male_01', top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#1c1410', hairStyle: 0, beard: false, pattern: 0, skin: '#c68b62' } },
+  vendor: { kind: 'f', outfit: 'staff', over: { rb: 'Business_Female_02', top: '#121214', bottom: '#151518', outer: '#7a1f28', shoes: '#141414', hair: '#1c1410', hairStyle: 1, pattern: 0, skin: '#e8b996' } },
+  vendor2: { kind: 'm', outfit: 'staff', over: { rb: 'Business_Male_02', top: '#121214', bottom: '#151518', outer: '#7a1f28', shoes: '#141414', hair: '#3d2817', hairStyle: 1, beard: true, pattern: 0, skin: '#a8704a' } },
+  bartender: { kind: 'f', outfit: 'staff', over: { rb: 'Business_Female_03', top: '#f1f0ec', bottom: '#151518', outer: '#121214', shoes: '#141414', hair: '#5a3a1f', hairStyle: 0, pattern: 0, skin: '#f2d0b6' } },
+  server: { kind: 'm', outfit: 'staff', over: { rb: 'Business_Male_03', top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#2b1d14', hairStyle: 1, beard: false, pattern: 0, skin: '#8a5538' } },
+  greeter: { kind: 'f', outfit: 'staff', over: { rb: 'Business_Female_04', top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#1c1410', hairStyle: 0, pattern: 0, skin: '#c68b62' } },
 };
 export const staffRecipe = (look, seed = 7) => randomRecipe(seed, STAFF[look] || STAFF.usher);
 // ------------------------------------------------------------------ loading
@@ -59,6 +89,7 @@ export async function loadPeople(base = './models/') {
     K.clips = {}; for (const c of ga.animations) K.clips[c.name] = adaptClip(c, K.pelvisY / animPelvis);
     K.templates = {}; for (const v in K.variants) K.templates[v] = makeTemplate(g.scene, k, v);
   }
+  try { await loadRB(base, ld); } catch (e) { console.warn('[people] Rocketbox people not loaded, using the v8 people', e); RB.ready = false; }
   DATA.ready = true; return DATA;
 }
 // the people GLBs are meshopt-compressed: positions are stored as small integers and the skins' inverse bind matrices carry the scale back.
@@ -134,6 +165,35 @@ void main() {
   float hide = (_part > 3.5 && _part < 4.5 ? uHide.x : 0.0) + (_part > 10.5 && _part < 11.5 ? uHide.y : 0.0) + (_part > 11.5 && _part < 12.5 ? uHide.z : 0.0) + (_part > 9.5 && _part < 10.5 ? uHide.w : 0.0);
   if (hide > 0.5) gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
 }`;
+// a photographed person: the atlas, alpha-tested hair cards, lit like the v8 people (room probe + key + screen light)
+const VERT_RB = `
+#include <common>
+#include <skinning_pars_vertex>
+uniform vec3 uAmb; uniform vec3 uKey; uniform vec3 uKeyDir; uniform vec3 uScreenL;
+varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+void main() {
+  #include <skinbase_vertex>
+  #include <beginnormal_vertex>
+  #include <skinnormal_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  vUv = uv; vec4 wp = modelMatrix * vec4(transformed, 1.0); vN = normalize(mat3(modelMatrix) * objectNormal);
+  float k = max(dot(vN, uKeyDir) * 0.75 + 0.25, 0.0); vLight = uAmb * (0.62 + 0.38 * (vN.y * 0.5 + 0.5)) + uKey * k + uScreenL * 0.7;
+  vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv;
+}`;
+const FRAG_RB = COMMON_FRAG + `
+uniform sampler2D uMap; varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+void main() {
+  vec4 t = texture2D(uMap, vUv); if (t.a < 0.5) discard;
+  vec3 N = normalize(gl_FrontFacing ? vN : -vN); vec3 col = t.rgb * vLight * 1.15 + 0.05 * vLight * pow(max(N.y * 0.5 + 0.5, 0.0), 4.0);
+  gl_FragColor = vec4(lumFog(lumTone(col), vDist), 1.0);
+  #include <colorspace_fragment>
+}`;
+function rbMaterial(av) {
+  return new THREE.ShaderMaterial({ vertexShader: VERT_RB, fragmentShader: FRAG_RB, side: THREE.DoubleSide, uniforms: {
+    uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uMap: { value: av.tex },
+    uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } } });
+}
 const lin = (hex) => new THREE.Color(hex);
 function hideFor(r) { const h = r.hairStyle; return new THREE.Vector4(h === 0 ? 0 : 1, h === 1 ? 0 : 1, h === 2 ? 0 : 1, r.beard ? 0 : 1); }
 export function personMaterial(r) {
@@ -216,9 +276,12 @@ function poseLayers(rig, frame, g, gt, w, face) {
 const SIT_H = 0.47;   // seat height the library's sitting clips were made for
 export class Person {
   constructor(r, opts = {}) {
-    this.rec = r; const K = DATA.kinds[r.kind]; this.K = K; this.root = skClone(K.templates[r.outfit] || K.templates.tee);
-    this.mat = personMaterial(r); this.meshes = {}; this.root.traverse((o) => { if (o.isSkinnedMesh) { o.material = this.mat; o.frustumCulled = false; this.meshes[o.name.slice(-2)] = o; } });
-    this.group = new THREE.Group(); this.model = new THREE.Group(); this.model.add(this.root); this.group.add(this.model); this.scale = r.height; this.model.scale.setScalar(r.height);
+    this.rec = r; const av = rbAvatar(r); this.av = av; this.sitH = SIT_H; this.walkRef = 1.35;
+    if (av) { const C = RB.meta.clips[av.kind] || {}; this.K = { clips: rbClips(av) }; this.root = skClone(av.scene); this.mat = rbMaterial(av); this.sitH = C.seatY || SIT_H; this.walkRef = (C.Walk_Loop && C.Walk_Loop.speed) || 1.1; }
+    else { const K = DATA.kinds[r.kind]; this.K = K; this.root = skClone(K.templates[r.outfit] || K.templates.tee); this.mat = personMaterial(r); }
+    this.meshes = {}; this.root.traverse((o) => { if (o.isSkinnedMesh) { o.material = this.mat; o.frustumCulled = false; this.meshes[o.name.slice(-2)] = o; } });
+    // photographed people keep their own build: only a small height spread (the v8 bodies took the recipe's height)
+    this.group = new THREE.Group(); this.model = new THREE.Group(); this.model.add(this.root); this.group.add(this.model); this.scale = av ? 0.97 + (((r.seed || 1) * 0.37) % 1) * 0.06 : r.height; this.model.scale.setScalar(this.scale);
     this.rig = new Rig(this.root); this.mixer = new THREE.AnimationMixer(this.root); this.actions = {}; this.base = null; this.lod = -1; this.setLOD(0);
     this.s = { sit: 0, drop: 0, recline: 0.1, lookYaw: 0, lookPitch: 0, lookAmt: 0, t: Math.random() * 100 };
     this.walkT = 0; this.gestT = null; this.snap = true; this.expr = 'neutral'; this.talking = false; this.items = {}; this.staff = !!opts.staff;
@@ -230,7 +293,7 @@ export class Person {
     const prev = this.base && this.actions[this.base]; a.reset(); a.enabled = true; a.setEffectiveWeight(1); a.timeScale = scrub != null ? 0 : 1; if (scrub != null) a.time = scrub * a.getClip().duration; a.play();
     if (prev) prev.crossFadeTo(a, this.snap ? 0.01 : fade, false); this.base = name; this.snap = false;
   }
-  seatDrop(h) { return h - SIT_H; }
+  seatDrop(h) { return h - this.sitH; }
   setExpr(e) { this.expr = e; }
   setLOD(l) { l = Math.min(l, 2); if (l === this.lod) return; this.lod = l; for (const k in this.meshes) this.meshes[k].visible = k === 'L' + l; }
   // a carried thing rides in the palm and stays upright (a bucket of popcorn does not tip with the wrist)
@@ -245,9 +308,10 @@ export class Person {
     const s = this.s; s.t += dt;
     if (light) { const u = this.mat.uniforms; u.uAmb.value.copy(light.amb); u.uKey.value.copy(light.key); u.uKeyDir.value.copy(light.dir); u.uScreenL.value.copy(light.screen); }
     // base clip from the agent's state: sitting down / up is scrubbed by the agent's own progress, so it lands exactly on the seat
-    if (s.sit > 0.01 && s.sit < 0.99) { if (this._lastSit != null) this._sitDir = s.sit > this._lastSit ? 1 : s.sit < this._lastSit ? -1 : this._sitDir; this.play(this._sitDir >= 0 ? 'Sitting_Enter' : 'Sitting_Exit', 0.25, this._sitDir >= 0 ? s.sit : 1 - s.sit); }
+    // (without a stand-up clip, sitting down plays backwards)
+    if (s.sit > 0.01 && s.sit < 0.99) { if (this._lastSit != null) this._sitDir = s.sit > this._lastSit ? 1 : s.sit < this._lastSit ? -1 : this._sitDir; if (this._sitDir >= 0 || !this.K.clips.Sitting_Exit) this.play('Sitting_Enter', 0.25, s.sit); else this.play('Sitting_Exit', 0.25, 1 - s.sit); }
     else if (s.sit >= 0.99) this.play(this.talking ? 'Sitting_Talking_Loop' : 'Sitting_Idle_Loop', 0.35);
-    else if (this.walkT > 0.05) { const name = this.items.item ? 'Walk_Carry_Loop' : this.staff ? 'Walk_Formal_Loop' : this.walkT > 2.2 ? 'Jog_Fwd_Loop' : 'Walk_Loop'; this.play(name, 0.25); const a = this.actions[name]; if (a) a.timeScale = clamp(this.walkT / (name === 'Jog_Fwd_Loop' ? 3.0 : 1.35), 0.55, 1.6); }
+    else if (this.walkT > 0.05) { const name = this.items.item ? 'Walk_Carry_Loop' : this.staff ? 'Walk_Formal_Loop' : this.walkT > 2.2 ? 'Jog_Fwd_Loop' : 'Walk_Loop'; this.play(name, 0.25); const a = this.actions[name]; if (a) a.timeScale = clamp(this.walkT / (this.av ? this.walkRef : name === 'Jog_Fwd_Loop' ? 3.0 : 1.35), 0.55, 1.6); }
     else this.play(this.talking ? 'Idle_Talking_Loop' : this.gestT === 'phone' ? 'Idle_TalkingPhone_Loop' : this.gestT === 'fold' ? 'Idle_FoldArms_Loop' : this.idleKind, 0.35);
     this._lastSit = s.sit;
     this.mixer.update(dt); this.model.position.y = s.sit * (s.drop || 0); this.model.rotation.x = -s.sit * Math.max(0, (s.recline || 0.1) - 0.1) * 0.6;
@@ -267,17 +331,20 @@ export class Person {
 // clips baked per body kind; seated reactions are the sitting idle with a gesture layer on top
 const BAKE = [['Sitting_Idle_Loop', null, 0], ['Sitting_Talking_Loop', null, 0], ['clap', 'clap', 2.4], ['cheer', 'cheer', 2.6], ['scream', 'scream', 1.8], ['gasp', 'gasp', 1.6], ['laugh', 'laugh', 2.4], ['aww', 'aww', 2.2], ['lean', 'lean', 3.0], ['eat', 'eat', 2.6], ['drink', 'drink', 3.0], ['shush', 'shush', 1.8], ['look', null, 3.0]];
 const FPS = 30;
-function bakeKind(k) {
-  const K = DATA.kinds[k], tpl = skClone(K.templates.tee), rig = new Rig(tpl), mixer = new THREE.AnimationMixer(tpl);
+// fps: frames baked per second; idleCap: longest stretch of a seated loop baked (the photographed people's sitting idles run 30 s and more)
+function bakeRig(tpl, clips, fps, idleCap, lookSign) {
+  const rig = new Rig(tpl), mixer = new THREE.AnimationMixer(tpl);
   let sk = null; tpl.traverse((o) => { if (o.isSkinnedMesh && !sk) sk = o.skeleton; });
-  const bones = sk.bones, nb = bones.length, rows = [], table = {}, frame = new THREE.Matrix4(), M = new THREE.Matrix4(), idle = mixer.clipAction(K.clips.Sitting_Idle_Loop);
+  const bones = sk.bones, nb = bones.length, rows = [], table = {}, frame = new THREE.Matrix4(), M = new THREE.Matrix4(), idle = mixer.clipAction(clips.Sitting_Idle_Loop);
   for (const [name, g, len] of BAKE) {
-    const clip = g || name === 'look' ? K.clips.Sitting_Idle_Loop : K.clips[name]; if (!clip) continue; const dur = len || clip.duration, n = Math.max(2, Math.round(dur * FPS));
+    const clip = g || name === 'look' ? clips.Sitting_Idle_Loop : clips[name]; if (!clip) continue;
+    if (!g && name !== 'look' && name !== 'Sitting_Idle_Loop' && clip === clips.Sitting_Idle_Loop && table.Sitting_Idle_Loop) { table[name] = table.Sitting_Idle_Loop; continue; }   // an alias: share the rows
+    const dur = len || Math.min(clip.duration, idleCap), n = Math.max(2, Math.round(dur * fps));
     mixer.stopAllAction(); const a = mixer.clipAction(clip); a.reset().play(); table[name] = { row: rows.length, frames: n };
     for (let i = 0; i < n; i++) {
-      const t = i / FPS; mixer.setTime(g ? t % clip.duration : t); tpl.updateMatrixWorld(true);
+      const t = i / fps; mixer.setTime(g ? t % clip.duration : t); tpl.updateMatrixWorld(true);
       const w = g ? smooth(0, 0.3, t) * (1 - smooth(dur - 0.35, dur, t)) : 0;
-      const face = { jaw: 0, lookYaw: name === 'look' ? 0.9 * Math.sin(Math.PI * t / dur) * (k === 'm' ? 1 : -1) : 0, lookPitch: 0, lookAmt: name === 'look' ? 1 : 0 };
+      const face = { jaw: 0, lookYaw: name === 'look' ? 0.9 * Math.sin(Math.PI * t / dur) * lookSign : 0, lookPitch: 0, lookAmt: name === 'look' ? 1 : 0 };
       if (g || name === 'look') { rig.reset(); tpl.updateMatrixWorld(true); poseLayers(rig, frame, g, t, w, face); }
       const row = new Float32Array(nb * 12);
       for (let b = 0; b < nb; b++) { M.multiplyMatrices(bones[b].matrixWorld, sk.boneInverses[b]); const e = M.elements; row.set([e[0], e[4], e[8], e[12], e[1], e[5], e[9], e[13], e[2], e[6], e[10], e[14]], b * 12); }
@@ -288,9 +355,13 @@ function bakeKind(k) {
   const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat, THREE.FloatType); tex.needsUpdate = true; tex.minFilter = tex.magFilter = THREE.NearestFilter; tex.generateMipmaps = false;
   return { tex, table, nb };
 }
+function bakeKind(k) { const K = DATA.kinds[k]; return bakeRig(skClone(K.templates.tee), K.clips, FPS, 1e9, k === 'm' ? 1 : -1); }
+// one bake per gender serves every photographed person of that gender (their skeletons are identical, tools/blender/rocketbox.py checks it)
+const RB_FPS = 15;
+function bakeRB(g) { const n = RB.names[g][0]; if (!n) return null; const av = RB.avatars[n]; return bakeRig(skClone(av.scene), rbClips(av), RB_FPS, 12, g === 'm' ? 1 : -1); }
 const VERT_CROWD = `
 attribute vec4 skinIndex; attribute vec4 skinWeight; attribute float _part; attribute vec4 iPose; attribute vec4 iClip; attribute vec4 iClipB; attribute vec4 iCol; attribute vec4 iCol2; attribute vec4 iLit;
-uniform sampler2D uBones; uniform float uTime; uniform float uHouse; uniform vec3 uScreen;
+uniform sampler2D uBones; uniform float uTime; uniform float uHouse; uniform vec3 uScreen; uniform vec3 uScreenN;
 varying float vPart; varying vec2 vUv; varying vec3 vN; varying vec3 vRest; varying float vDist; varying vec3 vLight;
 varying vec3 vSkin; varying vec3 vTop; varying vec3 vBot; varying vec3 vHair; varying vec3 vOuter; varying vec3 vShoe; varying vec3 vIris; varying float vPat;
 vec3 unpack(float f) { float r = floor(f / 65536.0), g = floor((f - r * 65536.0) / 256.0), b = f - r * 65536.0 - g * 256.0; vec3 c = vec3(r, g, b) / 255.0; return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
@@ -304,22 +375,50 @@ void main() {
   vec3 p = vec3(c * lp.x + s * lp.z, lp.y, -s * lp.x + c * lp.z) * sc + iPose.xyz; vec3 n = vec3(c * ln.x + s * ln.z, ln.y, -s * ln.x + c * ln.z);
   vPart = _part; vUv = uv; vRest = position; vN = normalize(mat3(modelMatrix) * n);
   vSkin = unpack(iCol.x); vTop = unpack(iCol.y); vBot = unpack(iCol.z); vHair = unpack(iCol.w); vOuter = unpack(iCol2.x); vShoe = unpack(iCol2.y); vIris = vec3(0.35, 0.22, 0.12); vPat = floor(iCol2.z / 16.0);
-  float hemi = vN.y * 0.4 + 0.6; vLight = (iLit.xyz * uHouse + vec3(0.02)) * hemi + iLit.w * uScreen * max(vN.z * -0.6 + 0.4, 0.15);
+  float hemi = vN.y * 0.4 + 0.6; vLight = (iLit.xyz * uHouse + vec3(0.02)) * hemi + iLit.w * uScreen * max(dot(vN, normalize(vec3(uScreenN.x, 0.0, uScreenN.z))) * 0.6 + 0.4, 0.15);
   vec4 mv = viewMatrix * modelMatrix * vec4(p, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv;
   float hs = mod(iCol2.z, 4.0), hide = (_part > 3.5 && _part < 4.5 && hs != 0.0) || (_part > 10.5 && _part < 11.5 && hs != 1.0) || (_part > 11.5 && _part < 12.5 && hs != 2.0) || (_part > 9.5 && _part < 10.5 && mod(floor(iCol2.z / 4.0), 2.0) < 0.5) ? 1.0 : 0.0;
   if (hide > 0.5) gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
 }`;
+const VERT_CROWD_RB = `
+attribute vec4 skinIndex; attribute vec4 skinWeight; attribute vec4 iPose; attribute vec4 iClip; attribute vec4 iClipB; attribute vec4 iCol2; attribute vec4 iLit;
+uniform sampler2D uBones; uniform float uTime; uniform float uHouse; uniform vec3 uScreen; uniform vec3 uScreenN;
+varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+mat4 bone(float row, float i) { int x = int(i) * 3, y = int(row); vec4 a = texelFetch(uBones, ivec2(x, y), 0), b = texelFetch(uBones, ivec2(x + 1, y), 0), c = texelFetch(uBones, ivec2(x + 2, y), 0); return mat4(a.x, b.x, c.x, 0.0, a.y, b.y, c.y, 0.0, a.z, b.z, c.z, 0.0, a.w, b.w, c.w, 1.0); }
+mat4 skinAt(vec4 clip) { float f = floor(mod(max(uTime - clip.z, 0.0) * clip.w * ${RB_FPS}.0, clip.y)), row = clip.x + f;
+  return bone(row, skinIndex.x) * skinWeight.x + bone(row, skinIndex.y) * skinWeight.y + bone(row, skinIndex.z) * skinWeight.z + bone(row, skinIndex.w) * skinWeight.w; }
+void main() {
+  mat4 S = skinAt(iClip); if (iClipB.w > 0.001) S = S * (1.0 - iClipB.w) + skinAt(vec4(iClipB.xyz, 1.0)) * iClipB.w;
+  float c = cos(iPose.w), s = sin(iPose.w); float sc = iCol2.w;
+  vec4 lp = S * vec4(position, 1.0); vec3 ln = mat3(S) * normal;
+  vec3 p = vec3(c * lp.x + s * lp.z, lp.y, -s * lp.x + c * lp.z) * sc + iPose.xyz; vec3 n = vec3(c * ln.x + s * ln.z, ln.y, -s * ln.x + c * ln.z);
+  vUv = uv; vN = normalize(mat3(modelMatrix) * n);
+  float hemi = vN.y * 0.4 + 0.6; vLight = (iLit.xyz * uHouse + vec3(0.02)) * hemi + iLit.w * uScreen * max(dot(vN, normalize(vec3(uScreenN.x, 0.0, uScreenN.z))) * 0.6 + 0.4, 0.15);
+  vec4 mv = viewMatrix * modelMatrix * vec4(p, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv;
+}`;
 const packC = (hex) => { const c = new THREE.Color(hex); c.convertLinearToSRGB(); return Math.round(c.r * 255) * 65536 + Math.round(c.g * 255) * 256 + Math.round(c.b * 255); };
 export class CrowdRenderer {
   constructor(parent, U, lod = 2) {
-    this.parent = parent; this.U = U; this.lod = lod; this.pools = {}; DATA.bake = DATA.bake || { m: bakeKind('m'), f: bakeKind('f') }; this.B = DATA.bake;
+    this.parent = parent; this.U = U; this.lod = lod; this.pools = {};
+    if (RB.ready) { DATA.bakeRB = DATA.bakeRB || { m: bakeRB('m'), f: bakeRB('f') }; this.RBB = DATA.bakeRB; } else { DATA.bake = DATA.bake || { m: bakeKind('m'), f: bakeKind('f') }; this.B = DATA.bake; }
+    this.sN = U.uScreenN || { value: new THREE.Vector3(0, 0.29, -0.96) };
+  }
+  poolRB(av, lod, cap) {
+    const key = 'rb' + av.name + lod; let P = this.pools[key]; if (P && P.cap >= cap) return P; const src = av.lods['L' + lod] || av.lods.L0;
+    const g = new THREE.InstancedBufferGeometry(); for (const n of ['position', 'normal', 'uv', 'skinIndex', 'skinWeight']) g.setAttribute(n, src.geometry.attributes[n]); g.setIndex(src.geometry.index);
+    for (const n of ['iPose', 'iClip', 'iClipB', 'iCol2', 'iLit']) g.setAttribute(n, new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4).setUsage(THREE.DynamicDrawUsage));
+    const m = new THREE.ShaderMaterial({ vertexShader: VERT_CROWD_RB, fragmentShader: FRAG_RB, side: THREE.DoubleSide, uniforms: {
+      uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uTime: G.uTime, uHouse: this.U.uHouse, uScreen: this.U.uScreen, uScreenN: this.sN,
+      uBones: { value: this.RBB[av.kind].tex }, uMap: { value: av.tex } } });
+    if (P) { this.parent.remove(P.mesh); P.mesh.geometry.dispose(); }
+    const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; g.instanceCount = 0; this.parent.add(mesh); P = this.pools[key] = { mesh, cap, n: 0, kind: av.kind, rb: true }; return P;
   }
   pool(kind, outfit, lod, cap) {
     const key = kind + outfit + lod; let P = this.pools[key]; if (P && P.cap >= cap) return P; const src = DATA.kinds[kind].variants[outfit]['L' + lod];
     const g = new THREE.InstancedBufferGeometry(); for (const n of ['position', 'normal', 'uv', 'skinIndex', 'skinWeight', '_part']) g.setAttribute(n, src.geometry.attributes[n]); g.setIndex(src.geometry.index);
     for (const n of ['iPose', 'iClip', 'iClipB', 'iCol', 'iCol2', 'iLit']) g.setAttribute(n, new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4).setUsage(THREE.DynamicDrawUsage));
     const T = DATA.tex, ref = T.ref['skin_' + kind], m = new THREE.ShaderMaterial({ vertexShader: VERT_CROWD, fragmentShader: FRAG, uniforms: {
-      uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uTime: G.uTime, uHouse: this.U.uHouse, uScreen: this.U.uScreen, uBones: { value: this.B[kind].tex },
+      uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uTime: G.uTime, uHouse: this.U.uHouse, uScreen: this.U.uScreen, uScreenN: this.sN, uBones: { value: this.B[kind].tex },
       uSkinTex: { value: T['skin_' + kind] }, uHairTex: { value: T['hair_' + kind] }, uEyeTex: { value: T.eye }, uSkinRef: { value: new THREE.Color().setRGB(ref[0], ref[1], ref[2], THREE.SRGBColorSpace) }, uHairRef: { value: T.ref['hair_' + kind][0] } } });
     if (P) { this.parent.remove(P.mesh); P.mesh.geometry.dispose(); }
     const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; g.instanceCount = 0; this.parent.add(mesh); P = this.pools[key] = { mesh, cap, n: 0, kind }; return P;
@@ -327,13 +426,18 @@ export class CrowdRenderer {
   begin() { for (const k in this.pools) this.pools[k].n = 0; }
   // one seated person: v = { rec, x, y, z, yaw, lit: [r,g,b,screen], clip, t0, speed, clipB, t0B, blend }
   add(v, lod) {
+    const av = this.RBB ? rbAvatar(v.rec) : null;
+    if (av) { const B = this.RBB[av.kind], key = 'rb' + av.name + lod; let P = this.pools[key]; if (!P || P.n >= P.cap) P = this.poolRB(av, lod, Math.max(32, P ? P.cap * 2 : 64));
+      const i = P.n++, a = P.mesh.geometry.attributes, A = B.table[v.clip] || B.table.Sitting_Idle_Loop, Bc = v.clipB && B.table[v.clipB];
+      a.iPose.setXYZW(i, v.x, v.y, v.z, v.yaw); a.iClip.setXYZW(i, A.row, A.frames, v.t0 || 0, v.speed || 1); a.iClipB.setXYZW(i, Bc ? Bc.row : 0, Bc ? Bc.frames : 1, v.t0B || 0, Bc ? v.blend : 0);
+      a.iCol2.setXYZW(i, 0, 0, 0, 0.97 + (((v.rec.seed || 1) * 0.37) % 1) * 0.06); a.iLit.setXYZW(i, v.lit[0], v.lit[1], v.lit[2], v.lit[3]); return; }
     const r = v.rec, B = this.B[r.kind], key = r.kind + r.outfit + lod; let P = this.pools[key]; if (!P || P.n >= P.cap) P = this.pool(r.kind, r.outfit, lod, Math.max(32, P ? P.cap * 2 : 64));
     const i = P.n++, a = P.mesh.geometry.attributes, A = B.table[v.clip] || B.table.Sitting_Idle_Loop, Bc = v.clipB && B.table[v.clipB];
     a.iPose.setXYZW(i, v.x, v.y, v.z, v.yaw); a.iClip.setXYZW(i, A.row, A.frames, v.t0 || 0, v.speed || 1); a.iClipB.setXYZW(i, Bc ? Bc.row : 0, Bc ? Bc.frames : 1, v.t0B || 0, Bc ? v.blend : 0);
     if (!r._pk) r._pk = [packC(r.skin), packC(r.top), packC(r.bottom), packC(r.hair), packC(r.outer), packC(r.shoes), (r.pattern || 0) * 16 + (r.beard ? 4 : 0) + (r.hairStyle < 0 ? 3 : r.hairStyle)];
     const pk = r._pk; a.iCol.setXYZW(i, pk[0], pk[1], pk[2], pk[3]); a.iCol2.setXYZW(i, pk[4], pk[5], pk[6], r.height); a.iLit.setXYZW(i, v.lit[0], v.lit[1], v.lit[2], v.lit[3]);
   }
-  end() { for (const k in this.pools) { const P = this.pools[k], g = P.mesh.geometry; g.instanceCount = P.n; P.mesh.visible = P.n > 0; if (P.n) for (const n of ['iPose', 'iClip', 'iClipB', 'iCol', 'iCol2', 'iLit']) { g.attributes[n].needsUpdate = true; g.attributes[n].addUpdateRange && (g.attributes[n].clearUpdateRanges(), g.attributes[n].addUpdateRange(0, P.n * 4)); } } }
+  end() { for (const k in this.pools) { const P = this.pools[k], g = P.mesh.geometry; g.instanceCount = P.n; P.mesh.visible = P.n > 0; if (P.n) for (const n of P.rb ? ['iPose', 'iClip', 'iClipB', 'iCol2', 'iLit'] : ['iPose', 'iClip', 'iClipB', 'iCol', 'iCol2', 'iLit']) { g.attributes[n].needsUpdate = true; g.attributes[n].addUpdateRange && (g.attributes[n].clearUpdateRanges(), g.attributes[n].addUpdateRange(0, P.n * 4)); } } }
   hide() { for (const k in this.pools) this.pools[k].mesh.visible = false; }
 }
 // the hand props people carry: popcorn bucket, soda cup, coffee (shared geometry, lit like their holder)
