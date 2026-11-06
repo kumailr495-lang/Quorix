@@ -107,9 +107,9 @@ export class Shows {
   book(id, src, delayMs, playerSeat, o = {}) {
     const s = this.s[id]; if (this.active && this.active !== id) this._abort(this.active); if (s.state !== 'idle') this._stopPicture(s);
     if (src.kind === 'film') { const f = filmById(src.filmId) || filmById(FEATURED[id]) || CATALOG[0]; s.src = { kind: 'film', filmId: f.id, title: f.title, ...filmURL(f) }; s.track = null; loadTrack(f.id).then((tr) => { s.track = tr; }); }
-    else { s.src = { ...src }; const M = window.LumiereMedia; if (s.src.kind === 'link' && M && M.proxyBase) { try { const b = M.proxyBase(); if (b) s.src.url = b + encodeURIComponent(src.url); } catch (e) { s.src.url = src.url; } } }
-    s.credits = false; s.curtainKeep = !!o.replay; this.active = id; s.startAt = this.now + Math.max(o.replay ? 3000 : 12000, delayMs); s.state = 'pending'; s.phaseAt = this.now; s.booked = true;
-    if (s.src.kind !== 'youtube') { const v = this.video; v.pause(); v.src = s.src.url; v.load(); }
+    else { s.src = { ...src, orig: src.orig || src.url }; const M = window.LumiereMedia; if (s.src.kind === 'link' && M && M.proxyBase) { try { const b = M.proxyBase(); if (b) s.src.url = b + encodeURIComponent(src.url); } catch (e) { s.src.url = src.url; } } }
+    s.credits = false; s.curtainKeep = !!o.replay; this.active = id; s.startAt = this.now + Math.max(o.minDelay != null ? o.minDelay : o.replay ? 3000 : 12000, delayMs); s.seek = Math.max(0, (o.seekMs || 0) / 1000); s.sync = !!o.sync; s.state = 'pending'; s.phaseAt = this.now; s.booked = true;
+    if (s.src.kind !== 'youtube') { const v = this.video; v.pause(); v.playbackRate = 1; v.src = s.src.url; v.load(); }
     if (!o.replay) { this.crowd.clearAudience(id); const n = Math.min(this.engine.preset.crowd, Math.round(s.hall.seats.length * (0.4 + Math.random() * 0.3))); this.crowd.planAudience(id, n, Math.max(8000, s.startAt - this.now - 6000), new Set([playerSeat])); }
     this._slideWaiting(s);
   }
@@ -129,7 +129,7 @@ export class Shows {
     if (this.walls && pan) for (const m of this.walls) { const U = m.material.uniforms; U.uBox.value.copy(b); U.uSrc.value.set(src[0], src[1], src[2], src[3]); } s.split = split; s.wrap = wrap; }
   _begin(id) {   // the last 10 s: lights down, curtains open, the count
     const s = this.s[id], h = s.hall; s.state = 'countdown'; s.phaseAt = this.now; if (h.curtains) { const was = h.curtains.open; h.curtains.target = 1; if (was < 0.99 && this.sound.listener.room === h.key && !s.curtainKeep) this.sound.curtain(true); }
-    this.crowd.onShowPhase(id, 'dimming'); this.hooks.onBegin && this.hooks.onBegin(id); const v = this.video; if (s.src.kind !== 'youtube') { try { v.currentTime = 0; } catch (e) { /* not loaded */ } }
+    this.crowd.onShowPhase(id, 'dimming'); this.hooks.onBegin && this.hooks.onBegin(id); const v = this.video; if (s.src.kind !== 'youtube') { try { v.currentTime = s.seek || 0; } catch (e) { /* not loaded */ } }   // a shared show joined late starts where the host's is
   }
   _roll(id) {
     const s = this.s[id], v = this.video; s.state = 'playing'; s.phaseAt = this.now; s.playStart = this.now;
@@ -154,6 +154,13 @@ export class Shows {
       else if (s.state === 'countdown') { const k = (now - s.phaseAt) / 1000; if (visible && now - (s._cd || 0) > 66) { s._cd = now; s.slides.count(Math.max(1, Math.ceil(10 - k)), clamp(1 - k / 10), s.src.title); } if (k >= 10) this._roll(id); }
       else if (s.state === 'playing' && s.src.kind === 'film' && s.track && !s.credits && s.track.end > 0 && this.video.currentTime >= s.track.end) { s.credits = true; this.crowd.onFilmEvent(id, { type: 'end', k: 1 }); }
       else if (s.state === 'ended' && now - s.phaseAt > 30000) { s.state = 'idle'; s.booked = false; this._idle(s); }
+      // a shared show stays with the room: every half second the picture is nudged (up to 10 % faster or slower) towards where the room's
+      // clock says it should be; more than 1.5 s off (a stall, a pause) jumps straight there
+      if (s.sync && s.state === 'playing' && s.src.kind !== 'youtube' && this.active === id && now - (s._sy || 0) > 500) { s._sy = now; const v = this.video;
+        if (!v.paused && v.readyState >= 3) { const want = (s.seek || 0) + (now - s.startAt) / 1000, err = v.currentTime - want;
+          const sk = v.seekable, end = sk && sk.length ? sk.end(sk.length - 1) : 0;
+          if (v.duration && want > v.duration) v.playbackRate = 1; else if (Math.abs(err) > 1.5 && want + 0.1 < end) { try { v.currentTime = want + 0.1; } catch (e) { /* not seekable */ } v.playbackRate = 1; }
+          else v.playbackRate = Math.abs(err) < 0.05 ? 1 : clamp(1 - err * 0.5, 0.9, 1.1); } }
       // house lights: a timed smootherstep to each phase's level (10 s down in the countdown, 5 s up after)
       const want = s.state === 'playing' && s.credits ? LIGHT.credits : LIGHT[s.state] ?? 1;
       if (want !== s.lightWant) { s.lightWant = want; s.lightFrom = s.light; s.lightAt = now; }
@@ -180,7 +187,7 @@ export class Shows {
   async _ytStart(s) {
     const el = document.getElementById('yt') || (() => { const d = document.createElement('div'); d.id = 'yt'; document.body.insertBefore(d, document.body.firstChild); return d; })();
     el.innerHTML = ''; const f = document.createElement('iframe'); f.allow = 'autoplay; encrypted-media; picture-in-picture'; f.setAttribute('allowfullscreen', '');
-    f.src = `https://www.youtube-nocookie.com/embed/${s.src.ytId}?autoplay=1&playsinline=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+    f.src = `https://www.youtube-nocookie.com/embed/${s.src.ytId}?autoplay=1${s.seek >= 1 ? '&start=' + Math.floor(s.seek) : ''}&playsinline=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
     el.appendChild(f); this._yt = { el, f, s }; const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; s.slides.card('', '', 0); u.uGain.value = 0; s.pic = true; this.spillMat.uniforms.uBox.value.set(0, 0, 1, 1);
     document.body.classList.add('yt-on'); this.hooks.onPicture && this.hooks.onPicture(s.id);
   }

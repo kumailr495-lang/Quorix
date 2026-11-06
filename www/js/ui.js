@@ -38,7 +38,7 @@ export class UI {
   setButton(id, on) { const b = $(id); if (b && b.hidden === !!on) b.hidden = !on; }
   setFps(text) { const f = $('#fps'); f.hidden = !this.settings.showFps; if (!f.hidden) f.textContent = text; }
   setHidden(h) { this.hidden = h; $('#hud').hidden = h; $('#bShow').hidden = !h; if (h) this.toast(t('toast.uiHidden'), 2200); this.hooks.onHide && this.hooks.onHide(h); }
-  modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk', '#tablet', '#atm', '#tutAsk', '#layoutEd'].some((s) => $(s) && !$(s).hidden) || !$('#menu').hidden; }
+  modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk', '#tablet', '#atm', '#tutAsk', '#layoutEd', '#mpPanel'].some((s) => $(s) && !$(s).hidden) || !$('#menu').hidden; }
   // ---------------- ticket ----------------
   showTicket(tk, quick) {
     $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = tk.row; $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = `${tk.hallName} · ${t('kind.' + tk.kind)}`;

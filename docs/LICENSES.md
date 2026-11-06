@@ -11,6 +11,9 @@ non-commercial clause, and no real person's voice or likeness.
 | three.js r169 | `www/vendor/three.module.js` | threejs.org | MIT |
 | GLTFLoader, SkeletonUtils | `www/vendor/addons/` | three.js examples | MIT |
 | meshoptimizer decoder | `www/vendor/addons/meshopt_decoder.module.js` | zeux/meshoptimizer | MIT |
+| Trystero 0.26.0 (with @trystero-p2p/core and /nostr 0.26.0), bundled with esbuild | `www/vendor/trystero.mjs` (notice: `www/vendor/LICENSE-trystero.txt`) | dmotz/trystero | MIT (Copyright (c) 2021 Dan Motzenbecker) |
+| @noble/secp256k1 3.x (inside the Trystero bundle) | `www/vendor/trystero.mjs` (notice: `www/vendor/LICENSE-noble-secp256k1.txt`) | paulmillr/noble-secp256k1 | MIT (Copyright (c) 2019 Paul Miller) |
+| Avatar portraits (23) | `www/models/rb/portraits/` | rendered for this project from the Rocketbox avatars | MIT (as the avatars) |
 | People (23 avatars, 22 motion clips) | `www/models/rb/` (notice: `www/models/rb/LICENSE-Rocketbox.txt`) | Microsoft Rocketbox (github.com/microsoft/Microsoft-Rocketbox), converted by `tools/blender/rocketbox.py` | MIT (Copyright (c) 2020 Microsoft) |
 | Inter (400, 500, 600) | `www/fonts/inter-*.woff2` | rsms/inter | SIL Open Font License 1.1 |
 | Cormorant Garamond (300, 500, 500 italic) | `www/fonts/cormorant-*.woff2` | CatharsisFonts/Cormorant | SIL Open Font License 1.1 |

@@ -23,6 +23,7 @@ import { Tutorial } from './tutorial.js';
 import { LayoutEditor, applyLayout } from './layoutedit.js';
 import { Crowd } from './npc9.js';
 import { Shows } from './film9.js';
+import { Together } from './mpui.js';
 import { Director } from './react.js';
 import { Intro, ARRIVAL } from './intro9.js';
 import { treeFor } from './dialogue9.js';
@@ -95,9 +96,12 @@ async function boot() {
   const ui = new UI(world, shows, sound, settings, {
     onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(),
     onSettings: (gfx) => applySettings(gfx), onPreset: (g) => Object.assign(settings, presetFor(g)),
-    onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); },
+    onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
     openRemote: () => tablet.open('remote'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
+  // v9.3 playing together (mp.js, mpui.js): a room code, your look, the other players in the cinema, the host's shows on every phone
+  const together = new Together({ world, crowd, shows, player, engine, settings, sound, save: () => saveSettings(settings), toast: (m, ms) => ui.toast(m, ms), onModal: (m) => onModal(m),
+    enterPlay: () => enterPlay('quick'), room: () => room, mySeat: () => (player.seated && room && room.startsWith('hall') ? world.hallByKey(room).seats.find((q) => q.npc === 'player') : null) });
   const booking = new Booking9(world, shows, sound, bill, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), onTicket: (tk) => bought(tk), pickOwn: () => pickOwn(), useLink: (u) => useLink(u) });
   // a few things nobody asked for: rain on the street (wet paving, the drops stop under the canopy), your film on the marquee once you
   // have a ticket, and a stub for every film you watch to the end (the menu keeps your last nights)
@@ -181,7 +185,7 @@ async function boot() {
   const ticketView = (tk) => ({ ...tk, hall: String(HALL[tk.hall].no) });
   function bought(tk) {
     const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; }
-    ticket = tk; const s = seatOf(tk); s.player = true; s.taken = true; shows.book(tk.hall, tk.src, tk.delay * 1000, tk.seat); marquee(tk.title);
+    ticket = tk; const s = seatOf(tk); s.player = true; s.taken = true; shows.book(tk.hall, tk.src, tk.delay * 1000, tk.seat); together.onBooked(tk.hall); marquee(tk.title);
     ui.showTicket(ticketView(tk), game === 'quick'); sound.ticket(); tut.event('ticket');
     if (game === 'flow') { const b = crowd.staff.box1; if (b) setTimeout(() => b.say(pick('box.ticket')), 500); }
   }
@@ -204,7 +208,7 @@ async function boot() {
     const src = o.own ? shows.own : { kind: 'film', filmId: o.film }; if (!src) return false;
     const prev = seatOf(ticket); if (prev && prev !== s) { prev.player = false; prev.taken = false; }
     ticket = { hall: h.id, hallKey: hk, hallName: h.name, seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, src, title: src.title || '', delay: 0, shown: true, checked: true, tablet: true, quick: game === 'quick' };
-    s.player = true; s.taken = true; const st = shows.get(h.id); if (st.state === 'ended' && st.src && !o.own && st.src.filmId === o.film) shows.replay(h.id); else shows.book(h.id, src, 0, s.id, { replay: st.state === 'playing' || st.state === 'ended' });
+    s.player = true; s.taken = true; const st = shows.get(h.id); if (st.state === 'ended' && st.src && !o.own && st.src.filmId === o.film) shows.replay(h.id); else shows.book(h.id, src, 0, s.id, { replay: st.state === 'playing' || st.state === 'ended' }); together.onBooked(h.id);
     // picked outside the hall: straight to your seat
     if (room !== hk) setTimeout(() => { tablet.close(); jumpToSeat(s); }, 400);
     return true;
@@ -275,7 +279,7 @@ async function boot() {
     actors.length = 0; actors.push(player); for (const a of crowd.agents) if (a.path) actors.push(a);
     world.update(dt, actors, now);
     for (const h of world.halls) if (h.room.group.visible) h.updateLOD(cam, false, engine.preset.seatLod * (engine.lodK || 1));
-    crowd.update(dt, now, player, world.vis); shows.update(dt, now, r, world.vis);
+    together.frame(dt); crowd.update(dt, now, player, world.vis); shows.update(dt, now, r, world.vis);
     const lvl = sound.level(); shows.spread += (clamp(((lvl ?? -60) + 30) / 18) - shows.spread) * Math.min(1, dt * 2); director.update(dt, now, lvl, shows.lum);
     sparks.update(dt); if (world.rooms.street.group.visible) rain.update(now / 1000, cam);
     // the film follows you: through the hall's doors, quieter and duller outside
@@ -322,7 +326,7 @@ async function boot() {
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
-  window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
+  window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, together, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles

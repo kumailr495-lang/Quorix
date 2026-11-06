@@ -177,16 +177,29 @@ voices switch, L20 particles switch, L21 shake switch (code only), L19 clapping 
 
 ## 7. Multiplayer (Phase 7)
 
-Nothing in the multiplayer addendum exists yet. Not implemented: (1) hosting through a managed free tier, (2) lobby and rooms, (3)
-avatars, (4) text chat and moderation, (5) proximity voice, (6) cinema sync, (7) network performance, (8) the QA list, (9) the
-architecture review.
-
-**What it needs from you (no payment).** Every managed service with a free tier needs an account and an app key that only the owner
-can create; Photon, Firebase, Supabase, Ably and LiveKit all work this way. That is the one step this machine cannot do. Before any
-code you get a short list of options with their trade-offs, for your approval. Each option is judged on three tests:
-1. Can two or more real clients be tested here, for example against a local emulator of the service?
-2. Is the free tier unable to send a bill (no card on file, hard limits)?
-3. Will voice work on Indian mobile networks without a paid relay server?
+**Built in v9.3 (2026-11-06), with no account, no key and no server of ours.** The user asked for hosting, a player selector,
+avatar choice, "my API key must not leak" and "every player shares some usage". Trystero 0.26 (MIT, `www/vendor/trystero.mjs`)
+finds the other phones through public Nostr relays, which carry only the WebRTC handshake; after that the phones talk to each other
+directly. Nothing in the app is a secret: there is no key to leak.
+- *Rooms.* "Play together" on the menu: your name, your look (23 photographed people, portraits in `www/models/rb/portraits/`), host
+  (a six-letter code without 0/O/1/I) or join with a code. A badge in the game shows the room and the number of players; the room panel
+  lists them, the host starred.
+- *Sharing the load.* Each phone sends only its own player, ten times a second (position, facing, walking speed, seat, room). The host
+  keeps the shows in step; when the host leaves, the player who has been in the room longest takes over (every phone reaches the same
+  answer from the same list), and keeps the show going for anyone who joins later.
+- *Other players* are drawn by the people renderer with their AI switched off: they walk, sit in the seat their phone reports, wave,
+  clap, cheer, and their chat appears as a toast and a speech bubble. Names float over their heads.
+- *Shows together.* When the host books a house film, a YouTube video or a web link, every phone books the same hall and starts at the
+  same moment of the host's clock. A late joiner starts where the room is. While a shared film plays, each phone nudges its picture
+  (up to 10 % faster or slower) towards the room's clock; more than 1.5 s off jumps straight there. Your own gallery videos stay on
+  your phone (the others see a note).
+- *Safety.* Everything a peer sends is checked before use: names and chat are text only (never HTML), avatars must be one of the 23,
+  a shared show must be a house film id, an 11-character YouTube id or an https link, start times must be sane. A link played through
+  this phone's own media server is never sent (the original web address is). Privacy note in the panel: as in any peer-to-peer game,
+  the phones in a room can see each other's IP address.
+- *Not built:* voice chat (needs a paid relay on many mobile networks), moderation beyond leaving the room, shared popcorn orders.
+- *Tested here* with two and three headless Chromium pages on this machine through the real public relays (connect, see each other,
+  chat, emotes, show start, drift, host hand-over, late join). Not tested on two phones yet.
 
 ## 8. Performance and Android
 
@@ -291,3 +304,17 @@ frames, draw calls and triangles, with a short code to paste back. The exact com
     corridor was never rebuilt, so its old door jambs stood inside both halls (walkers stuck at the X-270 entrance). Rebuilt and
     re-baked; new check `build.py --check` (in run-tests.sh) builds every room from the current spec in memory and fails when one
     differs from its bake.
+- **2026-11-06, v9.3 (the user's 12 photos: "entrances are not like that", "everything feels empty", "ScreenX is connected", "fix the
+  curved screens", "add multiplayer, hosting, a player selector, avatars; my API key must not leak").**
+  - *People.* Microsoft Rocketbox (MIT): 23 photographed avatars and 22 motion clips converted in Blender (`tools/blender/rocketbox.py`:
+    bones renamed to the engine's names, root travel removed at the source, one atlas per avatar, three LODs with the hair protected).
+    Staff, guests and the seated audience all use them; the GPU crowd uses one bake per gender.
+  - *ScreenX.* One band: the side screens continue the front picture at its own scale from the corner and fade into spill light
+    further back (it was split into separate pictures). *CURVE* has a deeper screen curve and an LED line under the screen.
+  - *Entrances and corridor (photos 1, 3).* Bronze diamond portals with lit letters and hall numbers, red LED coves, haloed lightbox
+    posters, square ring lights, showtime headers, velvet ropes and red armchairs. *Lobby (8-12).* Star ceiling, arched mirrors, a
+    blue velvet ring sofa, boucle chairs and palms. *Street (4).* A curved black canopy with light bands and a blue diamond wall.
+  - *Playing together.* See section 7. Tested with three headless pages (`tools/dev/mp-sync.mjs`): start 0 ms apart, playback within
+    0.02 s, a late joiner within 0.02 s, host hand-over; names over heads, chat and emotes (renders `docs/v9/renders/v93-together.jpg`).
+    Found on the way: a shared YouTube video sent no video id and a shared link would have sent this phone's private media-server
+    address; both fixed. Not tested on two phones.

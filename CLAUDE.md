@@ -117,6 +117,15 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v9.3 (2026-11-06; the last entry of docs/V9-AUDIT.md "Development record")
+- People are Microsoft Rocketbox avatars (`www/models/rb/`, built by `tools/blender/rocketbox.py`; people.js `RB`, `rbAvatar`). Staff
+  avatars are fixed in people.js STAFF `over.rb`; guests are a seeded pick (Business_* excluded).
+- ScreenX is one continuous band (film9.js WALL_FRAG `uWall`, PIC_FRAG `uExt`); never split the picture into separate wall images.
+- Playing together: `www/js/mp.js` (Trystero over public Nostr relays; no account, no key, nothing secret in the app) and
+  `www/js/mpui.js` (room panel, avatars, names over heads, chat, emotes, shared shows). Every value a peer sends goes through a check
+  (mpui.js `cleanShow`, mp.js clamps); keep it that way. Shared shows carry `orig` (the web address), never this phone's media-server
+  URL. A shared show (`s.sync`) is kept on the room's clock in film9.js update. Test: `node tools/dev/mp-sync.mjs OUT` (10 min).
+
 ## v9.2 halls (2026-11-06; the last entry of docs/V9-AUDIT.md "Development record")
 - The user rejected v9.1b's look as "no change", then said fix it rather than revert. Don't ask them questions mid-fix; act and show
   renders. v9.1b (bigger pictures, exits in the screen wall behind portals in the masking, watch zoom) is the base.

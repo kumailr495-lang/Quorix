@@ -206,6 +206,7 @@ export class Crowd {
       C.group.visible = seen; if (seen) { C.group.position.set(sv.x + (out ? fx * 0.75 : 1.0), sv.y, sv.z + (out ? fz * 0.75 : 0)); C.group.rotation.y = out ? sv.yaw : 0; C.t -= dt; if (C.t <= 0) { C.t = 0.4; this.lightAt(sv.x, sv.y + 1.0, sv.z, C.light); } } }
   }
   step(a, dt, player) {
+    if (a.role === 'remote') { a.walkT = a.remoteWalk || 0; return; }   // v9.3: another player (mpui.js moves them from their phone's messages)
     const now = this.now;
     if (a.state === 'standing') { a.sitT += dt; a.sit = Math.max(0, 1 - a.sitT / 1.1); if (a.sit <= 0) { if (a.viewer && a.viewer.seat.npc === a.viewer) { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.go(a.exitPath, () => { if (a.viewer) a.viewer.state = 'gone'; this.remove(a); }, { state: 'leavingHall' }); } return; }
     if (a.state === 'sitting') { a.sitT += dt; a.sit = Math.min(1, a.sitT / 1.2); const s = a.viewer.seat; a.x += (s.x - a.x) * Math.min(1, dt * 4); a.z += (s.z - a.z) * Math.min(1, dt * 4); a.y += (s.y - a.y) * Math.min(1, dt * 6);
