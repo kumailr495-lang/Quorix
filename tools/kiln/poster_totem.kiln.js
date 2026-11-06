@@ -9,10 +9,10 @@ async function build() {
   createPart('Plinth', uv(await roundedBoxGeo(0.3, 0.16, 0.86, 0.02, { segments: 3 })), black, { position: [0, 0.08, 0], parent: root });
   createPart('Box', uv(await roundedBoxGeo(0.16, 1.66, 0.96, 0.03, { segments: 4 })), black, { position: [0, 0.16 + 0.83, 0], parent: root });
   for (const s of [-1, 1]) {   // a brass frame line round each face, standing 2 mm proud of the box, and the dark poster bed inside it
-    const x = s * 0.0815, y = 1.24, W = 0.86, H = 1.3, t = 0.014;
+    const x = s * 0.087, y = 1.24, W = 0.86, H = 1.3, t = 0.014;   // v9: 5 mm proud (at 2 mm the layers z-fought from across the lobby)
     for (const [dy, dz, w, h] of [[H / 2 - t / 2, 0, W, t], [-H / 2 + t / 2, 0, W, t], [0, W / 2 - t / 2, t, H - 2 * t], [0, -W / 2 + t / 2, t, H - 2 * t]])
       createPart(`Frame${s}_${dy.toFixed(2)}_${dz.toFixed(2)}`, uv(boxGeo(0.004, h, w)), brass, { position: [x, y + dy, dz], parent: root });
-    createPart('Bed' + s, uv(boxGeo(0.002, H - 2 * t, W - 2 * t)), screen, { position: [s * 0.0805, y, 0], parent: root });
+    createPart('Bed' + s, uv(boxGeo(0.01, H - 2 * t, W - 2 * t)), screen, { position: [s * 0.083, y, 0], parent: root });
   }
   createPart('Cap', uv(await roundedBoxGeo(0.18, 0.03, 0.98, 0.012, { segments: 3 })), brass, { position: [0, 1.82 + 0.015, 0], parent: root });
   return root;

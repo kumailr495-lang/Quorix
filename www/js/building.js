@@ -51,9 +51,10 @@ for (const h of Object.values(HALL)) {
     const w = h.toWorld(x.u, 0), id = h.id + 'Out' + i;
     DOORS.push({ id, rooms: [h.key, 'spine'], kind: 'push', axis: 'z', x: h.xScreenWall + 0.2 * h.dir, z: w.z, w: 1.8, h: 2.4, y: h.y0, oneWay: h.key, hall: h.id });
     if (h.y0 > 0.02) {
+      // the landing spans the door's width (+-0.95 m) and the first step starts after it (at 0.85 m the two overlapped: z-fighting)
       const n = Math.ceil(h.y0 / 0.172 - 1e-6), toC = Math.sign(h.zc - w.z), wallX = h.side < 0 ? SPINE.x0 : SPINE.x1, inX = -Math.sign(wallX);
       EXIT_STAIRS.push({ door: id, hall: h.id, x0: wallX, x1: wallX + inX * 1.7, zDoor: w.z, landing: 1.7, dir: toC, n, rise: h.y0 / n, tread: 0.3, y0: h.y0,
-        zTop: w.z + toC * 0.85, zBot: w.z + toC * (0.85 + n * 0.3) });
+        zTop: w.z + toC * 0.95, zBot: w.z + toC * (0.95 + n * 0.3) });
     }
   });
 }

@@ -110,22 +110,25 @@ class Acc:
             (za, ya), (zb, yb) = pts[i], pts[(i + 1) % n]
             s.quad((x0, ya, za), (x1, ya, za), (x1, yb, zb), (x0, yb, zb), mat, col)
         s.poly([(x1, y, z) for z, y in pts[::-1]], mat, col); s.poly([(x0, y, z) for z, y in pts], mat, col)
-    def wall(s, a, b, y0, y1, t, mat, col, openings=(), side=0, capmat=None, capcol=None, inner=None):
+    def wall(s, a, b, y0, y1, t, mat, col, openings=(), side=0, capmat=None, capcol=None, inner=None, trim=(0.0, 0.0)):
         """straight wall from a to b (2D x, z) of thickness t, centred (side 0) or offset to the left (+1) / right (-1) of a->b;
-        openings: (s0, s1, top, bottom=y0) along the wall from a; each opening gets real reveals (jambs, head, sill)"""
+        openings: (s0, s1, top, bottom=y0) along the wall from a; each opening gets real reveals (jambs, head, sill).
+        trim: start the wall trim[0] after a and end it trim[1] before b (openings stay measured from a): where the wall butts against a
+        crossing wall, so the two never overlap (overlapping walls put two faces in one plane at the corner: z-fighting)"""
         dx, dz = b[0] - a[0], b[1] - a[1]; L = math.hypot(dx, dz)
         if L < 1e-4: return
         ux, uz = dx / L, dz / L; nx, nz = -uz, ux   # left normal
         o0 = {0: -t / 2, 1: 0, -1: -t}[side]; o1 = o0 + t
         P = lambda u, o, y: (a[0] + ux * u + nx * o, y, a[1] + uz * u + nz * o)
-        segs, cur = [], 0.0
+        segs, cur, end = [], trim[0], L - trim[1]
         for op in sorted(openings):
-            s0, s1, top = op[0], op[1], op[2]; bot = op[3] if len(op) > 3 else y0
+            s0, s1, top = max(op[0], trim[0]), min(op[1], end), op[2]; bot = op[3] if len(op) > 3 else y0
+            if s1 <= s0: continue
             if s0 > cur: segs.append((cur, s0, y0, y1))
             if bot > y0 + 1e-4: segs.append((s0, s1, y0, bot))
             if top < y1 - 1e-4: segs.append((s0, s1, top, y1))
             cur = s1
-        if cur < L: segs.append((cur, L, y0, y1))
+        if cur < end: segs.append((cur, end, y0, y1))
         cm, cc = capmat if capmat is not None else mat, capcol or col
         for u0, u1, ya, yb in segs:
             q = [P(u0, o0, ya), P(u1, o0, ya), P(u1, o1, ya), P(u0, o1, ya), P(u0, o0, yb), P(u1, o0, yb), P(u1, o1, yb), P(u0, o1, yb)]
@@ -172,7 +175,9 @@ class Acc:
             A, Bq = rings[i], rings[i + 1]
             for k in range(m - 1 + (1 if closed else 0)):
                 k1 = (k + 1) % m; s.quad(A[k], Bq[k], Bq[k1], A[k1], mat, col)
-        if cap and closed: s.poly(rings[0][::-1], mat, col); s.poly(rings[-1], mat, col)
+        if cap and closed:   # end caps facing out of the ends (back along the path at its start, on along it at its end)
+            t0 = norm(sub(rings[1][0], rings[0][0])); t1 = norm(sub(rings[-1][0], rings[-2][0]))
+            s.poly(rings[0], mat, col, normal=scl(t0, -1)); s.poly(rings[-1], mat, col, normal=t1)
     # ---- export
     def arrays(s):
         P = np.asarray(s.P, np.float32).reshape(-1, 3); N = np.asarray(s.N, np.float32).reshape(-1, 3)

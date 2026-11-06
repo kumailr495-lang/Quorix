@@ -21,7 +21,7 @@ def glass_rail(acc, glow, path, y, mat_post=MAT['brass'], col_post=None, h=1.05,
         (ax, az), (bx, bz) = path[i], path[i + 1]; L = math.hypot(bx - ax, bz - az)
         if L < 1e-3: continue
         n = max(1, int(L / 1.2)); ux, uz = (bx - ax) / L, (bz - az) / L
-        for k in range(n + 1):
+        for k in range(0 if i == 0 else 1, n + 1):   # the joint's post belongs to the segment before it
             px, pz = ax + ux * L * k / n, az + uz * L * k / n
             acc.box(px - 0.025, y, pz - 0.025, px + 0.025, y + h - 0.02, pz + 0.025, mat_post, col_post)
         if glass:
@@ -30,7 +30,8 @@ def glass_rail(acc, glow, path, y, mat_post=MAT['brass'], col_post=None, h=1.05,
             acc.prism(q, y + 0.08, y + h - 0.1, MAT['glass'], lin('#9fb3bf'))
         if led:
             nx, nz = -uz, ux
-            glow.quad((bx, y + 0.03, bz), (ax, y + 0.03, az), (ax + nx * 0.0, y + 0.06, az), (bx, y + 0.06, bz), led, 0.8)
+            glow.quad((bx, y + 0.03, bz), (ax, y + 0.03, az), (ax, y + 0.06, az), (bx, y + 0.06, bz), led, 0.8)
+            glow.quad((bx, y + 0.06, bz), (ax, y + 0.06, az), (ax, y + 0.03, az), (bx, y + 0.03, bz), led, 0.8)   # both sides
     acc.tube([(x, y + h, z) for x, z in path], 0.025, mat_post, col_post, n=10)
 
 def stair(acc, glow, x0, x1, z_top, z_dir, y_top, y_bot, n, mat, col, nose=None, k_nose=1.3):
@@ -62,11 +63,29 @@ def diamond_wall(acc, a, b, y0, y1, face, size, depth, mat, col, col2, rnd=None)
                 p, q = ring[k], ring[(k + 1) % 4]
                 acc.tri(p, q, apex, mat, cc)
 
+def glow_facing(glow, a, b, c, d, want, col, k):
+    """a glow quad that faces `want` (a direction), whatever order its corners come in"""
+    n = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]), (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    glow.quad(*((a, b, c, d) if n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 else (d, c, b, a)), col, k)
+
+def door_reveal(acc, d, plane, toward, w_room, h_room, mat, col):
+    """a hall door (axis z: in a wall x = const) seen from the room in front of it: jambs, head and sill from that room's wall opening
+    (w_room x h_room) back to the door leaf, which stands in the middle of the hall's wall. The hall draws its own reveal only while
+    it is drawn, and it is not drawn while its door is shut, so without these the opening showed the void round the closed door
+    (v9 see-through test). plane: the hall wall's face on this side; toward: +1/-1, the side the room is on. Every face sits 1 cm in
+    front of the hall's own (no z-fighting once the door opens and the hall is drawn); the sill is a metal threshold plate."""
+    leaf = d['x'] + toward * 0.03; xa, xb = sorted((leaf, plane + toward * 0.02)); xs0, xs1 = sorted((leaf, plane))
+    z0_, z1_, y0_, hw = d['z'] - w_room / 2, d['z'] + w_room / 2, d['y'], d['w'] / 2 - 0.01
+    acc.box(xa, y0_, z0_, xb, y0_ + h_room, d['z'] - hw, mat, col)                              # jamb, -z side
+    acc.box(xa, y0_, d['z'] + hw, xb, y0_ + h_room, z1_, mat, col)                              # jamb, +z side
+    acc.box(xa, y0_ + d['h'] - 0.01, d['z'] - hw, xb, y0_ + h_room, d['z'] + hw, mat, col)      # head
+    acc.box(xs0, y0_ - 0.05, d['z'] - hw, xs1, y0_ + 0.003, d['z'] + hw, MAT['metal'], (0.3, 0.29, 0.27))   # threshold plate, 3 mm proud of both floors
+
 def lights_grid(lit, acc, glow, x0, z0, x1, z1, y, step, col, I, r, ch='h', can=True):
-    nx, nz = max(1, int((x1 - x0) / step)), max(1, int((z1 - z0) / step))
+    nx, nz = (max(1, int((x1 - x0) / step)) if x1 - x0 > 1e-6 else 0), (max(1, int((z1 - z0) / step)) if z1 - z0 > 1e-6 else 0)   # zero width: one row
     for i in range(nx + 1):
         for j in range(nz + 1):
-            x, z = x0 + (x1 - x0) * i / nx, z0 + (z1 - z0) * j / nz
+            x, z = x0 + (x1 - x0) * (i / nx if nx else 0), z0 + (z1 - z0) * (j / nz if nz else 0)
             lit.spot((x, y - 0.05, z), col, I, r, ch, (0, -1, 0), 25, 60)
             if can:
                 acc.cyl(x, z, 0.08, y - 0.02, y + 0.001, MAT['metal'], lin('#2a2a2e'), n=12)
@@ -97,7 +116,8 @@ def escalator(acc, glow, lit, e, dirz=-1):
         for k in range(len(zs) - 1):
             za, zb = zs[k], zs[k + 1]; ya, yb = h_at(za), h_at(zb)
             inner = xs + (0.05 if xs == x0 else -0.05)
-            acc.quad((inner, ya, za), (inner, yb, zb), (inner, yb + 0.12, zb), (inner, ya + 0.12, za), MAT['metal'], lin('#5c5f66')) if xs == x0 else acc.quad((inner, ya + 0.12, za), (inner, yb + 0.12, zb), (inner, yb, zb), (inner, ya, za), MAT['metal'], lin('#5c5f66'))
+            acc.quad((inner, ya, za), (inner, yb, zb), (inner, yb + 0.12, zb), (inner, ya + 0.12, za), MAT['metal'], lin('#5c5f66'))   # both faces: from the steps and, through
+            acc.quad((inner, ya + 0.12, za), (inner, yb + 0.12, zb), (inner, yb, zb), (inner, ya, za), MAT['metal'], lin('#5c5f66'))   # the glass, from beside the escalator
         lit.line((xs + (0.1 if xs == x0 else -0.1), y0 + 0.15, zf0), (xs + (0.1 if xs == x0 else -0.1), y1 + 0.15, zt1), lin('#ffe0b0'), 0.08, 2.0, 'f')
     return h_at
 
@@ -108,7 +128,7 @@ def build_lobby(S):
     P = {k: lin(v) for k, v in S['PALETTE']['lobby'].items()}; B = {k: lin(v) for k, v in S['PALETTE']['brand'].items()}
     rnd = random.Random(3)
     # floor: warm stone; a brand ring inlaid in front of the doors (champagne terrazzo ring, ink terrazzo disc)
-    slab(acc, x0 - 0.4, z0 - 0.4, x1 + 0.4, z1 + 0.4, 0.0, 0.3, MAT['stone'], P['stone'])
+    slab(acc, x0, z0, x1, z1, 0.0, 0.3, MAT['stone'], P['stone'])   # exactly the room: the neighbours' floors meet it at the doors
     for i in range(48):
         a0, a1 = 2 * math.pi * i / 48, 2 * math.pi * (i + 1) / 48
         for r0, r1, mat, col, yy in ((0.0, 2.6, MAT['tblack'], mix(B['ink'], (0, 0, 0), 0.3), 0.004), (2.6, 3.0, MAT['terrazzo'], P['champagne'], 0.006), (3.0, 3.08, MAT['brass'], B['gold'], 0.008)):
@@ -116,16 +136,16 @@ def build_lobby(S):
             p = [(cx + r0 * math.cos(a0), yy, cz + r0 * math.sin(a0)), (cx + r1 * math.cos(a0), yy, cz + r1 * math.sin(a0)), (cx + r1 * math.cos(a1), yy, cz + r1 * math.sin(a1)), (cx + r0 * math.cos(a1), yy, cz + r0 * math.sin(a1))]
             acc.quad(p[0], p[3], p[2], p[1], mat, col) if r0 > 0 else acc.tri(p[0], p[2], p[1], mat, col)
     # roof slab and walls (thickness 0.4; the facade is glass between bronze mullions)
-    slab(acc, x0 - 0.4, z0 - 0.4, x1 + 0.4, z1 + 0.4, H + 0.4, 0.4, MAT['paint'], P['charcoal'])
+    slab(acc, x0 + 0.02, z0 + 0.02, x1 - 0.02, z1 - 0.02, H + 0.4, 0.4, MAT['paint'], P['charcoal'])   # inside the walls
     acc.wall((x0 + 0.2, z0), (x0 + 0.2, z1), -0.3, H + 0.4, 0.4, MAT['fluted'], P['champagne'])                     # west
     acc.wall((x1 - 0.2, z1), (x1 - 0.2, z0), -0.3, H + 0.4, 0.4, MAT['paint'], mix(P['charcoal'], P['stone'], 0.25),     # east: restroom door
-             openings=[(z1 - (-1.0) - 1.1, z1 - (-1.0) + 1.1, 2.6, 0.0)])
+             openings=[(z1 - (-1.0) - 1.1, z1 - (-1.0) + 1.1, 2.6, -0.3)])
     # back wall (z0): the spine's exit door at G; the portal to the bridge at L1 (x 7.4 .. 13.0); the lift shaft opening at L1 is inside
     acc.wall((x1, z0 + 0.2), (x0, z0 + 0.2), -0.3, H + 0.4, 0.4, MAT['paint'], P['charcoal'],
-             openings=[(x1 - 1.6, x1 + 1.6, 3.0, 0.0), (x1 - 13.0, x1 - 7.4, L1 + 3.4, L1)])
+             openings=[(x1 - 1.6, x1 + 1.6, 3.0, -0.3), (x1 - 13.0, x1 - 7.4, L1 + 3.4, L1 - 0.32)], trim=(0.4, 0.4))   # door and portal: no sill in the floor's plane
     # facade (z1): glass from 0.4 to H-0.6 between mullions every 2.2 m, a bronze plinth and head; the door opening in the middle (4 m)
     acc.wall((x0, z1 - 0.2), (x1, z1 - 0.2), -0.3, H + 0.4, 0.4, MAT['powder'], lin('#3b2f25'),
-             openings=[(2.0 + i * 2.2, 2.0 + i * 2.2 + 2.0, H - 0.8, 0.35) for i in range(19) if abs(x0 + 2.0 + i * 2.2 + 1.0) > 3.0] + [(22 - 2.0, 22 + 2.0, 3.0, 0.0)])
+             openings=[(2.0 + i * 2.2, 2.0 + i * 2.2 + 2.0, H - 0.8, 0.35) for i in range(19) if abs(x0 + 2.0 + i * 2.2 + 1.0) > 3.0] + [(22 - 2.0, 22 + 2.0, 3.0, -0.3)], trim=(0.4, 0.4))
     for i in range(19):
         gx0 = x0 + 2.0 + i * 2.2
         if abs(gx0 + 1.0) <= 3.0: continue
@@ -178,12 +198,12 @@ def build_lobby(S):
         a0, a1 = 2 * math.pi * i / 48, 2 * math.pi * (i + 1) / 48; cx, cz, r0 = -1.0, 1.0, 5.2
         acc.quad((cx, 0.006, cz), (cx + r0 * math.cos(a1), 0.006, cz + r0 * math.sin(a1)), (cx + r0 * math.cos(a0), 0.006, cz + r0 * math.sin(a0)), (cx, 0.006, cz), MAT['carpet'], mix(P['velvet'], P['stone'], 0.15))
     # the back wall over the spine door: a big LED wall (the engine plays the brand film on it) framed in champagne
-    acc.box(-8.0, 3.6, z0 + 0.0, 8.0, 3.7, z0 + 0.15, MAT['brass'], P['champagne']); acc.box(-8.0, 8.3, z0, 8.0, 8.4, z0 + 0.15, MAT['brass'], P['champagne'])
-    lit.area((0, 6.0, z0 + 0.3), (7.8, 0, 0), (0, 2.2, 0), (0, 0, 1), lin('#c0c8ff'), 6.0, 14, 'f', 4, 2)
+    acc.box(-7.2, 3.6, z0 + 0.4, 7.2, 3.7, z0 + 0.48, MAT['brass'], P['champagne']); acc.box(-7.2, 8.3, z0 + 0.4, 7.2, 8.4, z0 + 0.48, MAT['brass'], P['champagne'])   # on the wall's face
+    lit.area((0, 6.0, z0 + 0.7), (7.0, 0, 0), (0, 2.2, 0), (0, 0, 1), lin('#c0c8ff'), 6.0, 14, 'f', 4, 2)
     # escalators and the lift shaft
     E = S['ESC']; escalator(acc, glow, lit, E['up']); escalator(acc, glow, lit, E['down'])
     LF = S['LIFT']
-    for (a, b, c, d) in ((LF['x0'] - 0.15, LF['z0'] - 0.15, LF['x0'], LF['z1']), (LF['x1'], LF['z0'] - 0.15, LF['x1'] + 0.15, LF['z1']), (LF['x0'] - 0.15, LF['z0'] - 0.15, LF['x1'] + 0.15, LF['z0'])):
+    for (a, b, c, d) in ((LF['x0'] - 0.15, LF['z0'], LF['x0'], LF['z1'] - 0.15), (LF['x1'], LF['z0'], LF['x1'] + 0.15, LF['z1'] - 0.15), (LF['x0'] - 0.15, LF['z0'] - 0.15, LF['x1'] + 0.15, LF['z0'])):
         acc.box(a, 0.0, b, c, H, d, MAT['powder'], lin('#3b2f25'))
     for ly in (0.0, L1):   # front of the shaft: bronze with a door opening at each floor (the doors are the engine's)
         acc.box(LF['x0'] - 0.15, ly + 2.3, LF['z1'] - 0.15, LF['x1'] + 0.15, ly + (L1 - 0.32 if ly == 0 else 3.6), LF['z1'], MAT['powder'], lin('#3b2f25'))
@@ -201,7 +221,7 @@ def build_lobby(S):
     # wall washers on the fluted west wall, pendant lights over the lounge
     for zz in range(-12, 18, 3):
         lit.spot((x0 + 0.6, H - 0.4, zz), lin('#ffd2a0'), 2.4, 10, 'h', (-0.35, -1, 0), 15, 40)
-    extra = {'panels': [{'id': 'ledwall', 'x': 0, 'y': 6.0, 'z': z0 + 0.16, 'yaw': 0, 'w': 15.8, 'h': 4.5, 'emit': 1},
+    extra = {'panels': [{'id': 'ledwall', 'x': 0, 'y': 6.0, 'z': z0 + 0.43, 'yaw': 0, 'w': 14.2, 'h': 4.5, 'emit': 1},
                         {'id': 'showtimes', 'x': x0 + 0.21, 'y': 2.6, 'z': 9.0, 'yaw': math.pi / 2, 'w': 8.0, 'h': 1.2, 'emit': 1},
                         {'id': 'menu', 'x': x0 + 0.21, 'y': 3.2, 'z': (co['z0'] + co['z1']) / 2, 'yaw': math.pi / 2, 'w': co['z1'] - co['z0'] - 0.6, 'h': 1.3, 'emit': 1}]}
     return acc, glow, lit, extra
@@ -209,41 +229,41 @@ def build_lobby(S):
 # ------------------------------------------------------------------------------------------------ corridor (L1): the long, dim way in
 def build_corridor(S):
     L1 = S['L1']; BR, FW, LW, FE, LE, PT = S['BRIDGE'], S['FLANK_W'], S['LINK_W'], S['FLANK_E'], S['LINK_E'], S['PANTRY']
-    C = {k: lin(v) for k, v in S['PALETTE']['corridor'].items()}; H = 4.2; top = L1 + H
+    C = {k: lin(v) for k, v in S['PALETTE']['corridor'].items()}; H = 4.2; top = L1 + H; FT = 0.14   # floor thickness (see the spine)
     acc, glow = Acc(), Glow(); lit = Lights([BR['x0'], LW['z0'], BR['x1'], BR['z1']], top); rnd = random.Random(5)
     floors = [(BR['x0'], BR['z0'], BR['x1'], BR['z1']), (FW['x0'], FW['z0'], FW['x1'], FW['z1']), (LW['x0'], LW['z0'], LW['x1'], LW['z1']),
               (FE['x0'], FE['z0'], FE['x1'], FE['z1']), (LE['x0'], LE['z0'], LE['x1'], LE['z1']), (PT['x0'], PT['z0'], PT['x1'], PT['z1'])]
     for (a, b, c, d) in floors:
-        slab(acc, a, b, c, d, L1, 0.16, MAT['paint'], C['black'], top=MAT['dolby'], topcol=mix(C['indigo'], (1, 1, 1), 0.12))
+        slab(acc, a, b, c, d, L1, FT, MAT['paint'], C['black'], top=MAT['dolby'], topcol=mix(C['indigo'], (1, 1, 1), 0.12))
         slab(acc, a, b, c, d, top + 0.3, 0.3, MAT['paint'], C['black'])
     # walls: (a, b, face) with face = which side the corridor is on (left normal of a->b if +1); diamonds on the long walls
     W_ = []
     def wall(a, b, face, openings=(), diamonds=True, t=0.3):
         """a wall on the corridor's side of the line a->b (face +1: the corridor is to the left of a->b); its inner face is t inside"""
-        acc.wall(a, b, L1 - 0.16, top + 0.3, t, MAT['paint'], C['black'], openings=openings, side=face)
+        acc.wall(a, b, L1 - FT, top + 0.3, t, MAT['paint'], C['black'], openings=openings, side=face)
         L = math.hypot(b[0] - a[0], b[1] - a[1]); nx, nz = -(b[1] - a[1]) / L * face, (b[0] - a[0]) / L * face
         W_.append(((a[0] + nx * t, a[1] + nz * t), (b[0] + nx * t, b[1] + nz * t), face, diamonds, openings))
     halls = {h['id']: h for h in S['halls']}
     doors = {d['hall']: d for d in S['DOORS'] if d.get('hall') and d['id'].endswith('In')}
     def dop(a, b, hid):   # the hall door as an opening along a->b
-        d = doors[hid]; s0 = math.hypot(d['x'] - a[0], d['z'] - a[1]); return [(s0 - 1.0, s0 + 1.0, L1 + 2.55, L1)]
+        d = doors[hid]; s0 = math.hypot(d['x'] - a[0], d['z'] - a[1]); return [(s0 - 1.0, s0 + 1.0, L1 + 2.55, L1 - FT)]
     # bridge: north side (corridor to +z), the pantry niche, south side with the portal to the mezzanine (corridor to -z)
     wall((FW['x1'], BR['z0']), (PT['x0'], BR['z0']), 1); wall((PT['x1'], BR['z0']), (FE['x0'], BR['z0']), 1)
-    wall((BR['x1'], BR['z1']), (BR['x0'], BR['z1']), 1, openings=[(BR['x1'] - 10.2 - 2.8, BR['x1'] - 10.2 + 2.8, L1 + 3.4, L1)])
+    wall((BR['x1'], BR['z1']), (BR['x0'], BR['z1']), 1, openings=[(BR['x1'] - 10.2 - 2.8, BR['x1'] - 10.2 + 2.8, L1 + 3.4, L1 - FT)])
     wall((PT['x0'], BR['z0']), (PT['x0'], PT['z0']), 1, diamonds=False); wall((PT['x0'], PT['z0']), (PT['x1'], PT['z0']), 1, diamonds=False); wall((PT['x1'], PT['z0']), (PT['x1'], BR['z0']), 1, diamonds=False)
     # west: outer wall, MAX rear wall lining (with the MAX door), the wall between the halls, CURVE rear lining (with its door)
-    wall((BR['x0'], BR['z1']), (BR['x0'], LW['z0']), -1)
-    wall((BR['x0'], LW['z0']), (LW['x1'], LW['z0']), -1)
+    wall((BR['x0'], BR['z1']), (BR['x0'], LW['z0']), 1)
+    wall((BR['x0'], LW['z0']), (LW['x1'], LW['z0']), 1)
     wall((FW['x1'], BR['z0']), (FW['x1'], FW['z0']), -1, openings=dop((FW['x1'], BR['z0']), (FW['x1'], FW['z0']), 'MAX'))
     wall((FW['x1'], LW['z1']), (LW['x1'], LW['z1']), -1)
     wall((LW['x1'], LW['z1']), (LW['x1'], LW['z0']), -1, openings=dop((LW['x1'], LW['z1']), (LW['x1'], LW['z0']), 'CURVE'))
     # east: outer wall, CLASSIC rear lining (door), the stub to the 270 door
-    wall((BR['x1'], BR['z1']), (BR['x1'], FE['z0']), 1)
-    wall((BR['x1'], FE['z0']), (FE['x0'], FE['z0']), 1)
-    wall((FE['x0'], FE['z0']), (FE['x0'], LE['z0']), 1, diamonds=False)
-    wall((FE['x0'], LE['z1']), (FE['x0'], BR['z0']), 1, openings=dop((FE['x0'], LE['z1']), (FE['x0'], BR['z0']), 'CLASSIC'))
-    wall((FE['x0'], LE['z0']), (LE['x0'], LE['z0']), 1, diamonds=False); wall((LE['x0'], LE['z1']), (FE['x0'], LE['z1']), 1, diamonds=False)
-    wall((LE['x0'], LE['z0']), (LE['x0'], LE['z1']), 1, diamonds=False, openings=dop((LE['x0'], LE['z0']), (LE['x0'], LE['z1']), 'X270'))
+    wall((BR['x1'], BR['z1']), (BR['x1'], FE['z0']), -1)
+    wall((BR['x1'], FE['z0']), (FE['x0'], FE['z0']), -1)
+    wall((FE['x0'], FE['z0']), (FE['x0'], LE['z0']), -1, diamonds=False)
+    wall((FE['x0'], LE['z1']), (FE['x0'], BR['z0']), -1, openings=dop((FE['x0'], LE['z1']), (FE['x0'], BR['z0']), 'CLASSIC'))
+    wall((FE['x0'], LE['z0']), (LE['x0'], LE['z0']), -1, diamonds=False); wall((LE['x0'], LE['z1']), (FE['x0'], LE['z1']), -1, diamonds=False)
+    wall((LE['x0'], LE['z0']), (LE['x0'], LE['z1']), -1, diamonds=False, openings=dop((LE['x0'], LE['z0']), (LE['x0'], LE['z1']), 'X270'))
     # diamond relief on every long wall (indigo lacquer), a gold light line at 0.3 m (floor wash) and at 2.6 m
     for a, b, face, dia, ops in W_:
         L = math.hypot(b[0] - a[0], b[1] - a[1])
@@ -256,9 +276,13 @@ def build_corridor(S):
                 if c0 - cur > 1.9: diamond_wall(acc, (a[0] + ux * cur, a[1] + uz * cur), (a[0] + ux * c0, a[1] + uz * c0), L1 + 0.6, top - 0.9, face, 0.9, 0.06, MAT['lacquer'], C['indigo'], C['smoke'], rnd)
                 cur = max(cur, c1)
         for yy, k in ((L1 + 0.32, 1.4), (top - 0.75, 1.0)):
-            p0, p1 = (sa[0] + nx * 0.012, sa[1] + nz * 0.012), (sb[0] + nx * 0.012, sb[1] + nz * 0.012)
-            q = [(p0[0], yy, p0[1]), (p1[0], yy, p1[1]), (p1[0], yy + 0.025, p1[1]), (p0[0], yy + 0.025, p0[1])]
-            glow.quad(*(q if face < 0 else q[::-1]), C['gold'], k * 1.3)
+            spans, cur = [], 0.0
+            for o in (sorted(ops) if yy < L1 + 2.6 else []): spans.append((cur, o[0] - 0.05)); cur = o[1] + 0.05
+            spans.append((cur, L))
+            for s0_, s1_ in spans:
+                if s1_ - s0_ < 0.05: continue
+                p0, p1 = (a[0] + ux * s0_ + nx * 0.012, a[1] + uz * s0_ + nz * 0.012), (a[0] + ux * s1_ + nx * 0.012, a[1] + uz * s1_ + nz * 0.012)
+                glow_facing(glow, (p0[0], yy, p0[1]), (p1[0], yy, p1[1]), (p1[0], yy + 0.025, p1[1]), (p0[0], yy + 0.025, p0[1]), (nx, 0, nz), C['gold'], k * 1.3)
         lit.line((sa[0] + nx * 0.2, L1 + 0.4, sa[1] + nz * 0.2), (sb[0] + nx * 0.2, L1 + 0.4, sb[1] + nz * 0.2), C['gold'], 0.18, 3.0, 'f', (nx * 0.5, -0.2, nz * 0.5))
     # ceiling: a recessed central channel with indirect light along every corridor leg; round light "portals" every 6 m
     legs = [((BR['x0'] + 3, (BR['z0'] + BR['z1']) / 2), (BR['x1'] - 3, (BR['z0'] + BR['z1']) / 2)), (((FW['x0'] + FW['x1']) / 2, BR['z0']), ((FW['x0'] + FW['x1']) / 2, LW['z1'])),
@@ -276,11 +300,16 @@ def build_corridor(S):
             t = i * L / (n + 1); cx, cz = a[0] + ux * t, a[1] + uz * t
             arc = [(math.cos(math.pi * j / 16), math.sin(math.pi * j / 16)) for j in range(17)]
             w2, hh = 2.6, 1.0
-            pts = [(cx + nx * w2 * c, top - 1.25 + hh * s_, cz + nz * w2 * c) for c, s_ in arc]
-            for j in range(len(pts) - 1):
-                (ax_, ay_, az_), (bx_, by_, bz_) = pts[j], pts[j + 1]
-                glow.quad((ax_ + ux * 0.02, ay_, az_ + uz * 0.02), (bx_ + ux * 0.02, by_, bz_ + uz * 0.02), (bx_ + ux * 0.02, by_ + 0.04, bz_ + uz * 0.02), (ax_ + ux * 0.02, ay_ + 0.04, az_ + uz * 0.02), C['gold'], 1.2)
-                glow.quad((bx_ - ux * 0.02, by_, bz_ - uz * 0.02), (ax_ - ux * 0.02, ay_, az_ - uz * 0.02), (ax_ - ux * 0.02, ay_ + 0.04, az_ - uz * 0.02), (bx_ - ux * 0.02, by_ + 0.04, bz_ - uz * 0.02), C['gold'], 1.2)
+            ring = lambda c, s_, g: (cx + nx * (w2 + g) * c, top - 1.25 + (hh + g) * s_, cz + nz * (w2 + g) * c)
+            for j in range(len(arc) - 1):
+                (c0, s0_), (c1, s1_) = arc[j], arc[j + 1]
+                for e in (1, -1):   # a face towards each end of the corridor, 2 cm apart
+                    o = lambda p: (p[0] + ux * 0.02 * e, p[1], p[2] + uz * 0.02 * e)
+                    glow_facing(glow, o(ring(c0, s0_, 0.0)), o(ring(c1, s1_, 0.0)), o(ring(c1, s1_, 0.05)), o(ring(c0, s0_, 0.05)), (ux * e, 0, uz * e), C['gold'], 1.2)
+                for g, sgn in ((0.0, -1), (0.05, 1)):   # and its inner and outer edges, so it is a closed band seen from below too
+                    cm, sm = (c0 + c1) / 2, (s0_ + s1_) / 2; rad = (nx * (w2 + g) * cm / (w2 + g) * sgn, (hh + g) * sm / (hh + g) * sgn, nz * cm * sgn)
+                    a0, a1 = ring(c0, s0_, g), ring(c1, s1_, g)
+                    glow_facing(glow, (a0[0] + ux * 0.02, a0[1], a0[2] + uz * 0.02), (a1[0] + ux * 0.02, a1[1], a1[2] + uz * 0.02), (a1[0] - ux * 0.02, a1[1], a1[2] - uz * 0.02), (a0[0] - ux * 0.02, a0[1], a0[2] - uz * 0.02), (nx * cm * sgn, sm * sgn, nz * cm * sgn), C['gold'], 1.2)
             lit.point((cx, top - 0.5, cz), lin('#e9c78a'), 0.6, 4.5, 'h')
     lit.ambient(lin('#4a4f80'), lin('#14162a'), 0.012, 'h')
     # hall portals: a lit frame around each entry door (the hall's own accent colour), name sign (engine panel) above
@@ -288,12 +317,13 @@ def build_corridor(S):
     panels = []
     for hid, d in doors.items():
         h = halls[hid]; col = lin(acc_cols[hid]); side = -h['dir']   # the corridor is on the -dir side of the rear wall
+        door_reveal(acc, d, d['x'] + side * 0.2, side, 2.0, 2.55, MAT['paint'], C['black'])
         xf = d['x'] + side * 0.5
-        for (za, zb, ya, yb) in ((d['z'] - 1.2, d['z'] - 1.1, L1, L1 + 2.75), (d['z'] + 1.1, d['z'] + 1.2, L1, L1 + 2.75), (d['z'] - 1.2, d['z'] + 1.2, L1 + 2.65, L1 + 2.75)):
+        for (za, zb, ya, yb) in ((d['z'] - 1.2, d['z'] - 1.1, L1, L1 + 2.75), (d['z'] + 1.1, d['z'] + 1.2, L1, L1 + 2.75), (d['z'] - 1.1, d['z'] + 1.1, L1 + 2.65, L1 + 2.75)):
             acc.box(min(xf, xf + side * 0.08), ya, za, max(xf, xf + side * 0.08), yb, zb, MAT['brass'], C['gold'])
         xg = xf + side * 0.085
         q = [(xg, L1 + 2.8, d['z'] - 1.2), (xg, L1 + 2.8, d['z'] + 1.2), (xg, L1 + 2.84, d['z'] + 1.2), (xg, L1 + 2.84, d['z'] - 1.2)]
-        glow.quad(*(q if side > 0 else q[::-1]), col, 2.0)
+        glow_facing(glow, *q, (side, 0, 0), col, 2.0)
         lit.spot((xf + side * 0.6, top - 0.2, d['z']), col, 1.6, 5, 'h', (side * 0.2, -1, 0), 25, 55)
         panels.append({'id': 'sign_' + hid, 'x': xf + side * 0.09, 'y': L1 + 3.35, 'z': d['z'], 'yaw': (-math.pi / 2 if side < 0 else math.pi / 2), 'w': 2.4, 'h': 0.7, 'emit': 1})
     # the arrival video wall facing the mezzanine portal (engine plays the brand loop)
@@ -322,14 +352,16 @@ def build_spine(S):
     exits = [d for d in S['DOORS'] if d.get('hall') and 'Out' in d['id']]
     for sx in (x0, x1):
         inner = sx + (0.03 if sx == x0 else -0.03); ds = sorted([d for d in exits if (d['x'] < 0) == (sx < 0)], key=lambda d: d['z'])
-        cuts = [(d['z'] - d['w'] / 2 - 0.15, d['z'] + d['w'] / 2 + 0.15, d['y'] + d['h'] + 0.15) for d in ds]
+        cuts = [(d['z'] - d['w'] / 2 - 0.12, d['z'] + d['w'] / 2 + 0.12, d['y'] + d['h'] + 0.12, d['y']) for d in ds]
         zc = z0
-        def lining(za, zb, ya):   # split at the ceiling step so no lining rises into the bridge above
+        def lining(za, zb, ya, yb=None):   # split at the ceiling step so no lining rises into the bridge above
             for (p, q) in ((za, min(zb, zH)), (max(za, zH), zb)):
-                if q - p > 0.01 and hz((p + q) / 2) - ya > 0.01: acc.box(min(sx, inner), ya, p, max(sx, inner), hz((p + q) / 2), q, MAT['slats'], C['oak'])
-        for c0, c1, ch in cuts + [(z1, z1, 0)]:
-            if c0 > zc + 0.1: lining(zc, c0, 0.0)
+                top = hz((p + q) / 2) if yb is None else yb
+                if q - p > 0.01 and top - ya > 0.01: acc.box(min(sx, inner), ya, p, max(sx, inner), top, q, MAT['slats'], C['oak'])
+        for c0, c1, ch, sill in cuts + [(z1, z1, 0, 0)]:
+            if c0 > zc + 0.01: lining(zc, c0, 0.0)
             if c1 > c0: lining(c0, c1, ch)
+            if c1 > c0 and sill > 0.02: lining(c0, c1, 0.0, sill - 0.005)   # under a raised door: just below the landing's top
             zc = max(zc, c1)
         for d in ds:   # exit door frame and an EXIT sign over it (green, fixed light)
             fx = sx + (0.035 if sx == x0 else -0.035)
@@ -337,7 +369,8 @@ def build_spine(S):
                                     (d['z'] - d['w'] / 2, d['z'] + d['w'] / 2, d['y'] + d['h'], d['y'] + d['h'] + 0.12)):
                 acc.box(min(sx, fx), ya, za, max(sx, fx), yb, zb, MAT['metal'], C['concrete'])
             gx = fx + (0.002 if sx == x0 else -0.002); q = [(gx, d['y'] + d['h'] + 0.2, d['z'] - 0.45), (gx, d['y'] + d['h'] + 0.2, d['z'] + 0.45), (gx, d['y'] + d['h'] + 0.48, d['z'] + 0.45), (gx, d['y'] + d['h'] + 0.48, d['z'] - 0.45)]
-            glow.quad(*(q if sx == x0 else q[::-1]), C['green'], 2.0)
+            glow.quad(*(q[::-1] if sx == x0 else q), C['green'], 2.0)
+            door_reveal(acc, d, sx, -1 if sx > 0 else 1, d['w'] + 0.24, d['h'] + 0.12, MAT['metal'], C['concrete'])
     # exit stairs: a landing at the door's height, steps down along the wall towards the hall's centre line, glass rail on the open side
     for st in S['EXIT_STAIRS']:
         xa, xb = min(st['x0'], st['x1']), max(st['x0'], st['x1']); zl0, zl1 = sorted((st['zDoor'] - st['dir'] * 0.85, st['zTop']))
@@ -363,7 +396,7 @@ def build_spine(S):
     # green EXIT -> arrows on the floor towards the lobby (inlaid strips)
     for zz in range(int(z0) + 6, int(z1) - 2, 6):
         for sx in (-1, 1):
-            glow.quad((sx * 1.6 - 0.15, 0.003, zz), (sx * 1.6 + 0.15, 0.003, zz), (sx * 1.6 + 0.0, 0.003, zz + 0.35), (sx * 1.6 - 0.0, 0.003, zz + 0.35), C['green'], 0.7)
+            glow_facing(glow, (sx * 1.6 - 0.15, 0.003, zz), (sx * 1.6 + 0.15, 0.003, zz), (sx * 1.6 + 0.0, 0.003, zz + 0.35), (sx * 1.6 - 0.0, 0.003, zz + 0.35), (0, 1, 0), C['green'], 0.7)   # they faced down
     return acc, glow, lit, {'panels': [{'id': 'exitwall', 'x': 0, 'y': 2.3, 'z': z0 + 0.01, 'yaw': 0, 'w': 6.0, 'h': 2.6, 'emit': 1}]}
 
 # ------------------------------------------------------------------------------------------------ restrooms (men south, women north: the same fixtures and mirrors)
@@ -372,7 +405,7 @@ def build_wc(S):
     acc, glow = Acc(), Glow(); lit = Lights([x0, z0, x1, z1], H)
     tile, floor_c, stone, part = lin('#e9e5df'), lin('#cfc8be'), lin('#e8e2da'), lin('#3a3530')
     slab(acc, x0, z0, x1, z1, 0.0, 0.3, MAT['porcelain'], floor_c); slab(acc, x0, z0, x1, z1, H + 0.2, 0.2, MAT['paint'], lin('#f2efe9'))
-    acc.wall((x0 + 0.1, z0), (x0 + 0.1, z1), -0.3, H + 0.2, 0.2, MAT['walltile'], tile, openings=[(-1.0 - z0 - 1.1, -1.0 - z0 + 1.1, 2.6, 0.0)])
+    acc.wall((x0 + 0.1, z0), (x0 + 0.1, z1), -0.3, H + 0.2, 0.2, MAT['walltile'], tile, openings=[(-1.0 - z0 - 1.1, -1.0 - z0 + 1.1, 2.6, -0.3)])
     acc.wall((x1 - 0.1, z1), (x1 - 0.1, z0), -0.3, H + 0.2, 0.2, MAT['walltile'], tile)
     acc.wall((x1, z0 + 0.1), (x0, z0 + 0.1), -0.3, H + 0.2, 0.2, MAT['walltile'], tile)
     acc.wall((x0, z1 - 0.1), (x1, z1 - 0.1), -0.3, H + 0.2, 0.2, MAT['walltile'], tile)
@@ -414,22 +447,22 @@ def build_street(S):
     FC = {k: lin(v) for k, v in S['PALETTE']['facade'].items()}; B = {k: lin(v) for k, v in S['PALETTE']['brand'].items()}
     acc, glow = Acc(), Glow(); lit = Lights([x0, F, x1, ST['z1']], 30.0); rnd = random.Random(9)
     k, r0, r1, far = ST['kerb'], ST['road'][0], ST['road'][1], ST['far']
-    slab(acc, x0, F, x1, k, 0.0, 0.3, MAT['plaza'], lin('#b8b0a4'))
-    acc.box(x0, -0.15, k, x1, 0.0, r0, MAT['asphalt'], lin('#4a4a4e'))   # drop-off bay, 15 cm below the kerb
+    slab(acc, x0, F, x1, k - 0.18, 0.0, 0.3, MAT['plaza'], lin('#b8b0a4'))
+    acc.box(x0, -0.45, k, x1, -0.15, r0, MAT['asphalt'], lin('#4a4a4e'))   # drop-off bay, 15 cm below the kerb
     acc.box(x0, -0.3, k - 0.18, x1, 0.0, k, MAT['granite'], lin('#9a958e'))   # kerb stone
     acc.box(x0, -0.15 - 0.3, r0, x1, -0.15, r1, MAT['asphalt'], lin('#3a3a3e'), top=MAT['asphalt'], topcol=lin('#3c3c40'))
     acc.box(x0, -0.3, r1, x1, 0.0, far, MAT['paving'], lin('#a49d93'))
     for i in range(int((x1 - x0) / 4)):   # lane dashes and the bay's yellow edge
-        xx = x0 + 2 + i * 4.0; glow.quad((xx, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 + 0.06), (xx, -0.148, (r0 + r1) / 2 + 0.06), lin('#d8d4c8'), 0.25)
+        xx = x0 + 2 + i * 4.0; glow_facing(glow, (xx, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 + 0.06), (xx, -0.148, (r0 + r1) / 2 + 0.06), (0, 1, 0), lin('#d8d4c8'), 0.25)   # they faced down
     # the cinema's facade: sandstone cladding with dark bronze bands and gold fins (no white panels, photo 10)
     fz = F + 0.4
-    for (a, b) in ((-47.6, -22.4), (22.4, 37.0)):
+    for (a, b) in ((x0, -22.0), (22.0, x1)):   # to the street's ends: nothing open behind the facade line
         acc.box(a, -0.3, F, b, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
         for yy in (4.2, 8.4, 12.6):
             acc.box(a, yy, F + 0.4, b, yy + 0.35, F + 0.55, MAT['powder'], FC['bronze'])
         for xx in [a + 1.0 + 2.0 * i for i in range(int((b - a) / 2.0))]:
             acc.box(xx, 0.0, F + 0.4, xx + 0.12, 13.5, F + 0.62, MAT['brass'], FC['gold'])
-    acc.box(-22.4, 9.6, F, 22.4, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
+    acc.box(-22.0, 9.6, F, 22.0, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
     acc.box(-22.4, 13.5, F, 22.4, 13.9, F + 0.6, MAT['powder'], FC['bronze'])
     # canopy over the entrance with downlights and a gold fascia; the LUMIERE name in glowing letters on the fascia (engine panel)
     acc.box(-9.0, 5.2, F, 9.0, 5.6, F + 7.0, MAT['powder'], FC['bronze'], top=MAT['powder'], topcol=FC['bronze'])

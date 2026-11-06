@@ -171,7 +171,8 @@
     const { W, L } = st, actor = { x: pt.x, y: pt.y, z: pt.z }, lf = W.lift;
     for (let i = 0; i < 3; i++) W.update(1.0, [actor], 0);
     if (pt.liftY !== undefined) { lf.y = pt.liftY; lf.state = 'idle'; lf.doors = [0, 0]; lf.cab.position.y = lf.y; for (const pair of lf.leaves) for (const q of pair) q.m.position.x = lf.cx + q.s * lf.dw / 4; }
-    else if (lf.y !== lf.L.stops[lf.level]) { lf.y = lf.L.stops[lf.level]; lf.cab.position.y = lf.y; }
+    else { const inShaft = pt.x > BLD.LIFT.x0 && pt.x < BLD.LIFT.x1 && pt.z > BLD.LIFT.z0 && pt.z < BLD.LIFT.z1, k = inShaft && pt.y > 1 ? 1 : 0;   // inside the cab: the cab is at that floor
+      if (inShaft) lf.level = k; const ty = lf.L.stops[lf.level]; if (lf.y !== ty) { lf.y = ty; lf.cab.position.y = ty; } }
     const it = L.intro; if (it && it.mesh) { if (pt.taxi) { it._place(4.2 + 1); if (!it.mesh.visible) { it.mesh.visible = true; st.taxiOn = true; } } else if (st.taxiOn) { it.mesh.visible = false; st.taxiOn = false; } }
     const r = W.roomAt(pt.x, pt.y, pt.z) || 'lobby'; W.setVisibility(r, pt.x, pt.eye, pt.z);
     for (const h of W.halls) if (h.room.group.visible) h.updateLOD({ position: { x: pt.x, z: pt.z } }, true, 7);
@@ -179,9 +180,38 @@
   }
   function camFor(pt, k, px) {
     if (!st.cam) st.cam = new T.PerspectiveCamera(90, 1, 0.1, st.E.camera.far);
-    const cam = st.cam; cam.far = st.E.camera.far; cam.updateProjectionMatrix(); cam.position.set(pt.x, pt.eye, pt.z); cam.up.set(...UPS[k]);
-    cam.lookAt(pt.x + DIRS[k][0], pt.eye + DIRS[k][1], pt.z + DIRS[k][2]); cam.updateMatrixWorld(true); return cam;
+    const cam = st.cam; cam.far = st.E.camera.far; cam.fov = pt.yaw !== undefined ? (pt.fov || 75) : 90; cam.updateProjectionMatrix(); cam.position.set(pt.x, pt.eye, pt.z);
+    if (pt.yaw !== undefined) { cam.up.set(0, 1, 0); cam.rotation.order = 'YXZ'; cam.rotation.set(pt.pitch || 0, pt.yaw, 0); cam.updateMatrixWorld(true); return cam; }   // a named shot: the game's yaw and pitch
+    cam.up.set(...UPS[k]); cam.lookAt(pt.x + DIRS[k][0], pt.eye + DIRS[k][1], pt.z + DIRS[k][2]); cam.updateMatrixWorld(true); return cam;
   }
+  // multi-angle views of floors, stairs, doors and the other places the fixes touched (named; yaw/pitch as in the game)
+  st.standardShots = () => {
+    const { W } = st, L = [], yawTo = (dx, dz) => Math.atan2(-dx, -dz), E = 1.62;
+    const add = (name, x, y, z, eye, yaw, pitch = 0, fov) => L.push({ name, x, y, z, eye, yaw, pitch, fov });
+    for (const hh of W.halls) { const h = hh.cfg, rows = h.rows, mr = rows[Math.max(1, rows.length >> 1)], a0 = h.aisle[0], aw = (h.aisle[0] + h.aisle[1]) / 2;
+      const P = (u, d) => h.toWorld(u, d), fl = (u, d) => h.y0 + W.floorY(P(u, d).x, P(u, d).z, h.y0 + mr.y);
+      // standing on a row beside the aisle, looking across at the aisle steps (their side faces), low and high
+      { const q = h.fromRow(a0 - 0.6, mr.pf + 0.3), w = P(q.u, q.d), y = W.floorY(w.x, w.z, h.y0 + mr.y), t = h.toWorld(h.fromRow(a0 + 0.5, mr.pf + 0.3).u, h.fromRow(a0 + 0.5, mr.pf + 0.3).d);
+        add(h.key + '-steps-side', w.x, y, w.z, y + E, yawTo(t.x - w.x, t.z - w.z), -0.45); add(h.key + '-steps-side-low', w.x, y, w.z, y + 0.9, yawTo(t.x - w.x, t.z - w.z), -0.25); }
+      // in the aisle looking down the steps towards the screen, and up them towards the rear
+      { const q = h.fromRow(aw, mr.pf + 0.2), w = P(q.u, q.d), y = W.floorY(w.x, w.z, h.y0 + mr.y), s = P(0, 0), r = P(0, h.depthIn);
+        add(h.key + '-aisle-down', w.x, y, w.z, y + E, yawTo(s.x - w.x, s.z - w.z), -0.5); add(h.key + '-aisle-up', w.x, y, w.z, y + E, yawTo(r.x - w.x, r.z - w.z), -0.1); }
+      // the front: the first row's riser and the rake from the floor; the screen from behind (the passage beside it)
+      { const w = P(0, 1.2), y = h.y0, r = P(0, h.depthIn); add(h.key + '-rake-from-front', w.x, y, w.z, y + E, yawTo(r.x - w.x, r.z - w.z), 0.2); }
+      { const ex = h.exits && h.exits[0]; if (ex) { const w = P(ex.u, -0.5), c = P(0, -0.6); add(h.key + '-behind-screen', w.x, h.y0, w.z, h.y0 + E, yawTo(c.x - w.x, c.z - w.z), 0.2); } }
+      // the entrance from the corridor (door shut) and the exit door from the spine (shut)
+      const din = st.W.doors.find((d) => d.hall === h.id && d.id.endsWith('In')), dout = st.W.doors.find((d) => d.hall === h.id && d.id.includes('Out'));
+      if (din) { const side = -h.dir, x = din.x + side * 3.2; add(h.key + '-entrance-shut', x, din.y, din.z + 0.7, din.y + E, yawTo(din.x - x, -0.7), 0); }
+      if (dout) { const side = dout.x < 0 ? 1 : -1, x = dout.x + side * 2.6; add(h.key + '-exit-shut', x, 0, dout.z - 0.8, W.floorY(x, dout.z - 0.8, dout.y) + E, yawTo(dout.x - x, 0.8), 0.05); }
+    }
+    add('lobby-wc-door', 20.0, 0, -1.0, E, yawTo(1, 0), -0.35); add('wc-lobby-door', 23.4, 0, -1.0, E, yawTo(-1, 0), -0.35);
+    add('lobby-under-escalators', 10.7, 0, -1.6, E, yawTo(0, -1), 0.45); add('lobby-escalator-side', 6.0, 0, -4.5, E, yawTo(1, 0), 0.25);
+    add('lobby-escalator-top', 10.7, BLDL1(), -10.6, BLDL1() + E, yawTo(0, 1), -0.45); add('lobby-lift-floor', 14.6, 0, -9.0, E, yawTo(0, -1), -0.6);
+    add('street-entrance-threshold', 0, 0, 20.5, E, yawTo(0, -1), -0.35); add('street-kerb', -6, 0, 24.6, E, yawTo(0.3, 1), -0.45); add('street-facade-corner', 30, 0, 24, E, yawTo(-0.9, -1), 0.15);
+    add('spine-door-to-lobby', 0, 0, -16.5, E, yawTo(0, 1), -0.2); add('corridor-east', 33.9, BLDL1(), -38, BLDL1() + E, yawTo(0, 1), 0); add('corridor-west', -44.5, BLDL1(), -30, BLDL1() + E, yawTo(0, -1), 0);
+    return L;
+  };
+  const BLDL1 = () => BLD.L1;
   function visibleMeshes() { const L = []; st.S.traverseVisible((o) => { if (o.isMesh && !o.isSkinnedMesh) L.push(o); }); return L; }
   function castAt(cam, i, px, meshes) {
     const ix = i % px, iy = Math.floor(i / px), rc = new T.Raycaster(); rc.setFromCamera(new T.Vector2((ix + 0.5) / px * 2 - 1, (iy + 0.5) / px * 2 - 1), cam);
@@ -253,7 +283,7 @@ void main() { gl_FragColor = vec4(float((vId >> 16u) & 255u), float((vId >> 8u) 
       else if (e.idx0 !== undefined) g.setIndex(e.idx0); }
   }
   st.zfight = (pts, px = 96, samples = 2) => {
-    const { R, S } = st; const rt = new T.WebGLRenderTarget(px, px), A = new Uint8Array(px * px * 4), Bf = new Uint8Array(px * px * 4), res = [];
+    const { R, S } = st; const rt = new T.WebGLRenderTarget(px, px, { stencilBuffer: true }), A = new Uint8Array(px * px * 4), Bf = new Uint8Array(px * px * 4), res = [];
     st.hid = []; S.traverse((o) => { if (!o.visible || !(o.isPoints || o.isSprite || o.isLine || o.isSkinnedMesh)) return; o.visible = false; st.hid.push(o); });
     for (const o of S.children) if (o.visible && !o.isCamera && !Object.values(st.W.rooms).some((r) => r.group === o) && !st.W.doors.some((d) => d.group === o)) { o.visible = false; st.hid.push(o); }
     const bg = S.background, fog = S.fog; S.background = new T.Color(0, 0, 0); S.fog = null; idSwap(true);

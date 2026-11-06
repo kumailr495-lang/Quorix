@@ -20,7 +20,7 @@ try { await p.waitForFunction(() => window.__lumiere && window.__lumiere.ready, 
 await p.addScriptTag({ path: path.resolve('tools/dev/seethru-page.js') }); await p.evaluate(() => window.__st.init());
 const t0 = Date.now();
 if (opt('shots', null)) {   // named views: [{ name, x, y, z, eye, k (0..5 = +x -x up down +z -z) }] -> name-game.png, name-mask.png
-  const L = JSON.parse(fs.readFileSync(opt('shots'), 'utf8'));
+  const L = opt('shots') === 'standard' ? await p.evaluate(() => window.__st.standardShots()) : JSON.parse(fs.readFileSync(opt('shots'), 'utf8'));
   for (const v of L) for (const mode of ['game', 'mask']) { const url = await p.evaluate(([pt, kk, m, px]) => window.__st.view(pt, kk, px, m), [v, v.k, mode, +opt('px', 384)]); fs.writeFileSync(path.join(OUT, `${v.name}-${mode}.png`), Buffer.from(url.split(',')[1], 'base64')); }
   console.log('shots', L.length); await b.close(); srv.close(); process.exit(0); }
 if (opt('blob', null)) { const r = await p.evaluate((n) => window.__st.blobCheck(n), opt('blob')); console.log(JSON.stringify(r.slice(0, 12))); const sum = r.reduce((a, x) => [a[0] + x.tris, a[1] + x.windingInward, a[2] + x.normalsInward], [0, 0, 0]); console.log('tris', sum[0], 'winding inward', sum[1], 'normals inward', sum[2]); await b.close(); srv.close(); process.exit(0); }

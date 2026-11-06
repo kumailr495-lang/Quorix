@@ -77,8 +77,9 @@ export class Shows {
     // 270: the side walls' projection surfaces (hallmath + tools/blender/arch/halls.py: 0.4 m to 72 % of the depth, 1.4 m up to 0.9 m under the ceiling)
     const X = world.hallById('X270'); if (X) { const H = X.cfg; this.walls = [-1, 1].map((sg) => { const d0 = 0.4, d1 = H.depthIn * 0.72, y0 = H.y0 + 1.4, y1 = H.y0 + H.ceil - 0.9, u = sg * (H.width / 2 - 0.056);
       const a = H.toWorld(u, d0), b = H.toWorld(u, d1), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([a.x, y0, a.z, b.x, y0, b.z, b.x, y1, b.z, a.x, y1, a.z], 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
-      g.setIndex(sg * H.dir > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]); const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uSide: { value: sg }, uAmt: { value: 0 } }, side: THREE.DoubleSide }));
-      m.renderOrder = 2; X.room.group.add(m); return m; }); }
+      g.setIndex(sg * H.dir > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]); const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uSide: { value: sg }, uAmt: { value: 0 } }, side: THREE.DoubleSide,
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
+      m.renderOrder = 2; m.visible = false; X.room.group.add(m); return m; }); }   // light added onto the panels (it was an opaque layer: black panels with no film)
     this._yt = null;
   }
   cur() { return this.active && this.s[this.active]; }
@@ -141,7 +142,7 @@ export class Shows {
       // screen light gain: the picture's own colour comes from the spill copy
       const g = s.state === 'playing' && s.pic ? 5.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
-      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic ? 0.25 + 0.75 * this.spread : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; } }
+      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic ? 0.25 + 0.75 * this.spread : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
     }
   }
   // ---------------------------------------------------------- per frame (GPU): the spill copy, the average, YouTube placement

@@ -313,6 +313,8 @@ async function boot() {
   window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
+  // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles
+  if (Q.get('bench')) import('./bench.js').then((m) => setTimeout(() => m.runBench(window.__lumiere), 2600)).catch((e) => console.error('[bench]', e));
 }
 // sparks: a burst of warm points before the screen on the strongest scenes (Settings > Sound > Effects)
 function makeSparks(engine) {

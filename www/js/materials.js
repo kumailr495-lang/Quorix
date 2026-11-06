@@ -334,7 +334,8 @@ export class Materials {
   litFor(U, geo, inst = false) { return this.litRoom(U, inst); }
   staticMat(U) { return this._t(mk(STATIC_VERT, STATIC_FRAG, { ...G, ...U })); }
   instMat(U) { return this._t(mk(INST_VERT, STATIC_FRAG, { ...G, ...U })); }
-  glowMat(U) { return this._t(mk(GLOW_VERT, GLOW_FRAG, { ...G, uHouse: U.uHouse, uGlow: U.uGlow })); }
+  // glow strips lie on surfaces (LED lines, step nosings, signs): pulled towards the camera in depth so they never z-fight at a distance
+  glowMat(U) { return this._t(mk(GLOW_VERT, GLOW_FRAG, { ...G, uHouse: U.uHouse, uGlow: U.uGlow }, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); }
   texMat(map, U, light = [1, 1, 1], emit = 0, transparent = false) { const L = Array.isArray(light) ? new THREE.Color(...light) : light;
     return this._t(mk(TEX_VERT, TEX_FRAG, { ...G, map: { value: map }, uLight: { value: L }, uFixL: { value: new THREE.Color(0, 0, 0) }, uRep: { value: new THREE.Vector2(1, 1) }, uEmit: { value: emit }, uHouse: U ? U.uHouse : { value: 1 }, uOpacity: { value: 1 } }, { transparent, depthWrite: !transparent, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })); }
   picMat(map) { return this._t(mk(TEX_VERT, PIC_FRAG, { ...G, uRep: { value: new THREE.Vector2(1, 1) }, map: { value: map }, uGain: { value: 1 }, uRaw: { value: 0 }, uHole: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } })); }

@@ -102,7 +102,22 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - After changing a room's geometry or lights, re-bake it (`sh tools/bake/bake-all.sh <room>`); the console warns about stale bakes.
 - Blender lathes: put axis points on a centre vertex (lbl.py does), or parts sharing the axis overlap coplanar faces.
 
-## Current state (2026-11-05, v9.00)
+## Current state (2026-11-06): sequential phases, Phase 1 (architecture and geometry) in progress
+- **Read `docs/V9-AUDIT.md` first.** The user asked (2026-11-05) for an audit, then sequential phases: finish one system completely before
+  the next, no APK until all phases are done, a phase closes only with test evidence AND the phone check (`?bench=1` in Chrome on the
+  phone from Termux). Multiplayer (Phase 7) needs a free provider account from the user; list options for approval first.
+- **Geometry tests** (all in the real engine, headless): `node tools/dev/seethru.mjs OUT` (see-through from every reachable eye point,
+  `--zfight` visible z-fighting, `--assets` prop winding and open parts, `--shots standard` multi-angle named views with depth masks),
+  `node tools/dev/walk.mjs OUT` (16 scripted walks: entrances to seats, exits to the lobby, escalator, lift, street, restrooms),
+  `tools/dev/check-bakes.mjs` (in run-tests: a stale bake leaves a room undrawn, never commit one).
+- **Builder rules learned in Phase 1**: a room is not drawn while its doors are shut, so each side of a door needs its own reveal back to the
+  leaf (`door_reveal` in rooms.py); a wall opening at floor level goes down to the wall's foot (a sill piece in the floor's plane
+  z-fights); slabs stop at the room's edges (no overhang under a neighbour); walls meeting at a corner use `trim` instead of overlapping;
+  glow quads use `glow_facing(... direction)`; in `rooms.py` corridor walls, `face` is the side the corridor is on (check with
+  `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
+  draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
+
+## Earlier state (2026-11-05, v9.00)
 - v9 on branch `ccr-7bb5aa6a-upup1u`: design and calculations `docs/V9-DESIGN.md` (+ `docs/v9/` drawings), per-ask status `docs/V9-CHECKLIST.md`,
   release notes `docs/V9-RELEASE-NOTES.md`, licences `docs/LICENSES.md`. Not yet seen on the phone.
 - **The building is data**: `www/js/hallmath.js` (UNIC hall maths) and `www/js/building.js` (rooms, doors, escalators, lift, nav graph,

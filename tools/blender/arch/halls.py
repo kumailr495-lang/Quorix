@@ -65,6 +65,15 @@ def build_hall(h, L1):
         pts = [(pA[0], y, pA[1]), (pC[0], y, pC[1]), (pD[0], y, pD[1]), (pB[0], y, pB[1])]
         if sg > 0: acc.quad(pts[0], pts[3], pts[2], pts[1], mat, col)
         else: acc.quad(pts[0], pts[1], pts[2], pts[3], mat, col)
+    def side(a, e_0, e_1, ya, yb, face, mat, col):
+        """vertical face along a = const (an aisle edge) from arc e_0 to e_1, facing +a (face 1) or -a (face -1): the side of an aisle step
+        that stands above the seat platform beside it (v9 see-through test: without it you looked under the step from the seats)"""
+        if yb - ya < 1e-4: return
+        p, q = P(a, e_0), P(a, e_1); m0, m1 = P(a, (e_0 + e_1) / 2), P(a + 0.01, (e_0 + e_1) / 2); ndu, ndd = (m1[0] - m0[0]) * face, (m1[1] - m0[1]) * face
+        A, B, C, D = (p[0], ya, p[1]), (q[0], ya, q[1]), (q[0], yb, q[1]), (p[0], yb, p[1])
+        nu_, nd_ = (B[1] - A[1]) * (D[2] - A[2]) - (B[2] - A[2]) * (D[1] - A[1]), (B[0] - A[0]) * (D[1] - A[1]) - (B[1] - A[1]) * (D[0] - A[0])
+        if nu_ * ndu + nd_ * ndd < 0: acc.quad(A, D, C, B, mat, col)
+        else: acc.quad(A, B, C, D, mat, col)
     def nosing(sg, e, y):
         p, q = P(sg * (a0w + 0.12), e), P(sg * (aW - 0.12), e)
         up_quad(glow, p, q, 0.012, 0.042, y + 0.004, th['step'], 1.6)
@@ -75,7 +84,7 @@ def build_hall(h, L1):
     acc.box(-W2 - WALL, ceil, Dw - WALL, W2 + WALL, ceil + 0.36, depth + WALL, MAT['paint'], th['ceil'])
     exitU, ent = W2 - 0.85, h['entryU']
     acc.wall((W2 + WALL, Dw - WALL / 2), (-W2 - WALL, Dw - WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'],
-             openings=[(WALL + W2 - exitU - 0.9, WALL + W2 - exitU + 0.9, 2.4, 0.0), (WALL + W2 + exitU - 0.9, WALL + W2 + exitU + 0.9, 2.4, 0.0)])
+             openings=[(WALL + W2 - exitU - 0.9, WALL + W2 - exitU + 0.9, 2.4, -0.35), (WALL + W2 + exitU - 0.9, WALL + W2 + exitU + 0.9, 2.4, -0.35)])   # the floor is the threshold
     acc.wall((-W2 - WALL, depth + WALL / 2), (W2 + WALL, depth + WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'],
              openings=[(WALL + W2 + ent - 0.95, WALL + W2 + ent + 0.95, top + 2.5, top)])
     for sg in (-1, 1):
@@ -84,7 +93,7 @@ def build_hall(h, L1):
     n = len(rows)
     for r in range(1, n):
         y, yp, e0 = rows[r]['y'], rows[r - 1]['y'], rows[r]['pf']
-        e1 = rows[r + 1]['pf'] if r + 1 < n else depth + 0.05
+        e1 = rows[r + 1]['pf'] if r + 1 < n else depth
         nx = rows[r + 1] if r + 1 < n else None
         kst = nx['steps'] if nx else 0; tr = nx['tread'] if nx else 0.3
         flat_end = (e1 - (kst - 1) * tr) if kst > 1 else e1
@@ -92,7 +101,7 @@ def build_hall(h, L1):
             # last row + rear aisle of a curved-row hall: from the row's arc to the straight rear wall in one polygon, so the rear corners
             # (outside the last arc) are floor too (the see-through gate found a 4.7 m pit there)
             ea = a_wall(e0); arc = [P(-ea + 2 * ea * i / 48, e0) for i in range(49)]
-            pg = arc + [(W2 + 0.06, depth + 0.05), (-W2 - 0.06, depth + 0.05)]
+            pg = arc + [(W2 + 0.06, depth), (-W2 - 0.06, depth)]
             ar = sum(pg[i][0] * pg[(i + 1) % len(pg)][1] - pg[(i + 1) % len(pg)][0] * pg[i][1] for i in range(len(pg)))
             if ar > 0: pg = pg[::-1]
             acc.poly([(u, y, d) for u, d in pg], MAT['hallCarpet'], carpet)
@@ -105,6 +114,7 @@ def build_hall(h, L1):
                 band(sg, ea, eb, yy, MAT['hallCarpet'], carpet)
                 aa, ab = (a0w, a_wall(ea)) if sg > 0 else (-a_wall(ea), -a0w)
                 riser(aa, ab, ea, yy - nx['riser'] / kst, yy, MAT['hallCarpet'], rcol)
+                side(sg * a0w, ea, eb, y, yy, -sg, MAT['hallCarpet'], rcol)
                 nosing(sg, ea, yy)
         kk = rows[r]['steps']
         riser(-a0w, a0w, e0, yp, y, MAT['hallCarpet'], rcol, nC)
@@ -121,6 +131,7 @@ def build_hall(h, L1):
             band(sg, ea, eb, yy, MAT['hallCarpet'], carpet)
             aa, ab = (a0w, a_wall(ea)) if sg > 0 else (-a_wall(ea), -a0w)
             riser(aa, ab, ea, yy - r1['riser'] / kk, yy, MAT['hallCarpet'], rcol)
+            side(sg * a0w, ea, eb, 0.0, yy, -sg, MAT['hallCarpet'], rcol)
             nosing(sg, ea, yy)
     # ---------------------------------------------------------------- pod tier parapet (MAX): solid walnut wall with warm underglow
     for r in range(1, n):
@@ -164,7 +175,7 @@ def build_hall(h, L1):
         else: acc.quad((u, ya, d), (u, yb, d), (u, yb, d - 0.06), (u, ya, d - 0.06), MAT['velvet'], th['mask'])
     jamb(-Wp, hB, hB + Hp, 1); jamb(Wp, hB, hB + Hp, -1); jamb(-PU, 0, 2.55, -1); jamb(PU, 0, 2.55, 1)
     for i in range(24):   # brass line under and over the picture ("a little more defined")
-        ua, ub = -Wp + 2 * Wp * i / 24, -Wp + 2 * Wp * (i + 1) / 24; da, db = md(ua) + 0.004, md(ub) + 0.004
+        ua, ub = -Wp + 2 * Wp * i / 24, -Wp + 2 * Wp * (i + 1) / 24; da, db = md(ua) + 0.01, md(ub) + 0.01   # 1 cm proud (4 mm z-fought at a distance)
         for yy in (hB - 0.05, hB + Hp + 0.01):
             acc.quad((ua, yy, da), (ub, yy, db), (ub, yy + 0.04, db), (ua, yy + 0.04, da), MAT['brass'], th['trim'])
         scr.quad((ua, hB, sd(ua)), (ub, hB, sd(ub)), (ub, hB + Hp, sd(ub)), (ua, hB + Hp, sd(ua)), 0, (1, 1, 1))

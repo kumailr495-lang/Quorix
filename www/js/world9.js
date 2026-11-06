@@ -98,11 +98,11 @@ class Door {
     this.from = d.hall ? -HALL[d.hall].dir : d.oneWay === 'spine' ? -1 : 0; this.reach = d.kind === 'slide' ? 2.8 : 2.2;
     this.group = new THREE.Group(); this.group.position.set(d.x, this.y, d.z); this.group.rotation.y = d.axis === 'x' ? 0 : Math.PI / 2; this.group.updateMatrixWorld(true);
     if (d.kind === 'open') return;
-    const room = world.rooms[d.oneWay && world.rooms[d.oneWay] ? d.oneWay : d.rooms[0]] || world.rooms[d.rooms[1]], half = d.w / 2;
+    const room = world.rooms[d.oneWay && world.rooms[d.oneWay] ? d.oneWay : d.rooms[0]] || world.rooms[d.rooms[1]], half = d.w / 2, into = -(this.from || 1);
     this.leaves = [-1, 1].map((s) => {
-      const g = leafGeo(half - 0.01, d.h - 0.01, d.kind, s), wx = new THREE.Matrix4().makeTranslation(s * half, 0, 0).premultiply(this.group.matrixWorld);
+      const g = leafGeo(half - 0.01, d.h - 0.01, d.kind, s, s > 0 ? -into : 0), wx = new THREE.Matrix4().makeTranslation(s * half, 0, 0).premultiply(this.group.matrixWorld);
       g.applyMatrix4(wx); room.lights.bake(g); g.applyMatrix4(wx.clone().invert());
-      const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.position.x = s * half; this.group.add(m); return { m, s }; });
+      const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.name = 'door-' + d.id; m.position.x = s * half; this.group.add(m); return { m, s }; });
     if (d.kind === 'slide') this.glass = [-1, 1].map((s) => { const q = new THREE.Mesh(new THREE.PlaneGeometry(half - 0.12, d.h - 0.14), world.mats.glassMat()); q.position.set(s * half / 2, d.h / 2, 0); this.group.add(q); return q; });
   }
   local(a) { const dx = a.x - this.x, dz = a.z - this.z; return this.axis === 'x' ? [dx, dz] : [-dz, dx]; }   // [along, normal]
@@ -119,15 +119,17 @@ class Door {
   get blocking() { return this.kind !== 'open' && this.open < 0.7; }
   segment() { const h = this.w / 2; return this.axis === 'x' ? [this.x - h, this.z, this.x + h, this.z] : [this.x, this.z - h, this.x, this.z + h]; }
 }
-// one leaf in its hinge frame: the hinge on local x = 0, the leaf spans towards the door's centre (-s), thickness along z
-function leafGeo(lw, h, kind, s) {
+// one leaf in its hinge frame: the hinge on local x = 0, the leaf spans towards the door's centre (-s), thickness along z.
+// astragal (-1/+1, 0 none): a strip on that face over the meeting edge, on the side away from the swing, so a shut pair shows no gap
+function leafGeo(lw, h, kind, s, astragal = 0) {
   const a = new Acc(), t = kind === 'slide' ? 0.045 : 0.06, m = (x, y, z) => M(-s * x, y, z);
   if (kind === 'slide') { const fw = 0.06, fc = '#2a2b30';
-    a.add(boxGeo(lw, fw, t), m(lw / 2, h - fw / 2, 0), fc, { mat: MAT.metal }); a.add(boxGeo(lw, fw * 1.6, t), m(lw / 2, fw * 0.8, 0), fc, { mat: MAT.metal });
+    a.add(boxGeo(lw - 2 * fw, fw, t), m(lw / 2, h - fw / 2, 0), fc, { mat: MAT.metal }); a.add(boxGeo(lw - 2 * fw, fw * 1.6, t), m(lw / 2, fw * 0.8, 0), fc, { mat: MAT.metal });   // rails between the stiles
     a.add(boxGeo(fw, h, t), m(fw / 2, h / 2, 0), fc, { mat: MAT.metal }); a.add(boxGeo(fw, h, t), m(lw - fw / 2, h / 2, 0), fc, { mat: MAT.metal });
     a.add(boxGeo(0.03, 0.9, 0.05), m(lw - 0.16, 1.05, t), '#c9a35e', { mat: MAT.brass }); return toGeometry(a); }
   const exit = kind === 'push', c = exit ? '#2b2e34' : '#4a141c';
   a.add(boxGeo(lw, h, t), m(lw / 2, h / 2, 0), c, { mat: exit ? MAT.powder : MAT.leather });
+  if (astragal) a.add(boxGeo(0.05, h - 0.02, 0.012), m(lw + 0.01, h / 2, astragal * (t / 2 + 0.006)), exit ? '#3a3d44' : '#c9a061', { mat: exit ? MAT.powder : MAT.brass });
   for (const z of [-1, 1]) {
     if (exit) { a.add(boxGeo(lw - 0.3, 0.05, 0.05), m(lw / 2 + 0.05, 1.0, z * (t / 2 + 0.04)), '#c9ccd2', { mat: MAT.chrome }); a.add(boxGeo(0.24, 0.4, 0.006), m(lw / 2, 1.62, z * (t / 2 + 0.002)), '#0a0c0e', { mat: MAT.glass }); }
     else { for (let r = 0; r < 6; r++) for (let q = 0; q < 3; q++) { const y = 0.45 + r * 0.32 + (q % 2 ? 0.16 : 0), x = lw * (0.22 + q * 0.28); if (y > h - 0.35) continue; a.add(boxGeo(0.022, 0.022, 0.012), m(x, y, z * (t / 2 + 0.004)), '#c9a061', { mat: MAT.brass }); }
@@ -150,9 +152,11 @@ class Escalator {
   constructor(world, e, key) {
     const p = escProfile(e); Object.assign(this, { e, key, p, run: p.run, rise: e.y1 - e.y0, phase: 0, x0: e.x0, x1: e.x1, speed: e.speed, up: !e.reverse });
     this.sTop = 2.8 + p.run; this.n = Math.ceil((this.sTop - 1.2 + 0.8) / 0.4) + 1; const room = world.rooms.lobby, w = e.x1 - e.x0 - 0.12;
-    const a = new Acc(); a.add(boxGeo(w, 0.035, 0.38), M(0, -0.0175, -0.19), '#8e9299', { mat: MAT.metal }); a.add(boxGeo(w, 0.2, 0.02), M(0, -0.12, -0.01), '#55585e', { mat: MAT.metal });
-    a.add(boxGeo(w, 0.004, 0.04), M(0, 0.002, -0.36), '#d9b23a', { mat: MAT.paint }); for (const sx of [-1, 1]) a.add(boxGeo(0.04, 0.004, 0.36), M(sx * (w / 2 - 0.02), 0.002, -0.19), '#d9b23a', { mat: MAT.paint });
-    this.mesh = instancedParts(a, this.n, room.U, world.mats, room); this.tmp = new THREE.Object3D();
+    const a = new Acc(); a.add(boxGeo(w, 0.035, 0.38), M(0, -0.0175, -0.19), '#8e9299', { mat: MAT.metal }); a.add(boxGeo(w, 0.184, 0.02), M(0, -0.128, -0.01), '#55585e', { mat: MAT.metal });   // the riser stops under the tread (they shared the step's nose)
+    a.add(boxGeo(w, 0.004, 0.04), M(0, 0.002, -0.36), '#d9b23a', { mat: MAT.paint }); for (const sx of [-1, 1]) a.add(boxGeo(0.04, 0.004, 0.33), M(sx * (w / 2 - 0.02), 0.002, -0.175), '#d9b23a', { mat: MAT.paint });   // stop at the front strip
+    this.mesh = instancedParts(a, this.n, room.U, world.mats, room); this.mesh.name = 'esc-' + key; this.tmp = new THREE.Object3D();
+    { const zi0 = p.incline[0] - 0.6, zi1 = p.incline[1] - 0.6, b0 = e.y0 - 0.25, b1 = e.y1 - 1.1, zh = zi0 + (zi1 - zi0) * clamp((HEAD + 0.1 - b0) / (b1 - b0), 0, 1);
+      world.walls.add(e.x0, zh, e.x1, zh, e.y0, e.y0 + HEAD + 0.1); }   // no walking in under the truss where its underside (rooms.py escalator(): b0 -> b1) is below head height
     const pts = []; for (let i = 0; i < this.n; i++) pts.push([(e.x0 + e.x1) / 2, e.y0 + this.rise / 2, e.zBot - this.sTop / 2]); lightInstances(this.mesh, room.lights, pts);
   }
   s(z) { return (this.e.zBot - z) * -this.e.dir; }
@@ -172,7 +176,7 @@ class Travelator {
   constructor(world, T) {
     Object.assign(this, { T, phase: 0, n: Math.ceil((T.z1 - T.z0) / 0.4) }); const room = world.rooms.spine, w = T.x1 - T.x0 - 0.06, a = new Acc();
     a.add(boxGeo(w, 0.02, 0.385), M(0, 0.01, 0.2), '#7d8188', { mat: MAT.metal }); for (let k = -3; k <= 3; k++) a.add(boxGeo(0.012, 0.004, 0.37), M(k * w / 7, 0.022, 0.2), '#a3a7ad', { mat: MAT.metal });
-    this.mesh = instancedParts(a, this.n, room.U, world.mats, room); this.tmp = new THREE.Object3D();
+    this.mesh = instancedParts(a, this.n, room.U, world.mats, room); this.mesh.name = 'travelator'; this.tmp = new THREE.Object3D();
     const pts = []; for (let i = 0; i < this.n; i++) pts.push([0, 0.12, T.z0 + i * 0.4]); lightInstances(this.mesh, room.lights, pts);
   }
   contains(x, z) { return x > this.T.x0 - 0.05 && x < this.T.x1 + 0.05 && z > this.T.z0 - 0.6 && z < this.T.z1 + 0.6; }
@@ -185,18 +189,18 @@ class Lift {
   constructor(world, Lf) {
     Object.assign(this, { L: Lf, y: 0, level: 0, target: 0, state: 'idle', doors: [0, 0], hold: 0, t: 0 }); const room = world.rooms.lobby, U = room.U;
     const a = new Acc(), x0 = Lf.x0 + 0.02, x1 = Lf.x1 - 0.02, z0 = Lf.z0 + 0.02, z1 = Lf.z1 - 0.18, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, W = x1 - x0, D = z1 - z0, H = 2.45;
-    a.add(boxGeo(W, 0.06, D), M(cx, -0.03, cz), '#2a2522', { mat: MAT.granite }); a.add(boxGeo(W, 0.05, D), M(cx, H + 0.025, cz), '#d9d2c5', { mat: MAT.metal });
+    a.add(boxGeo(W, 0.06, D), M(cx, -0.025, cz), '#2a2522', { mat: MAT.granite });   // 5 mm proud of the shaft floor a.add(boxGeo(W, 0.05, D), M(cx, H + 0.025, cz), '#d9d2c5', { mat: MAT.metal });
     a.add(boxGeo(0.03, H, D), M(x0 + 0.015, H / 2, cz), '#b9bcc2', { mat: MAT.chrome }); a.add(boxGeo(0.03, H, D), M(x1 - 0.015, H / 2, cz), '#b9bcc2', { mat: MAT.chrome });
     a.add(boxGeo(W, H, 0.03), M(cx, H / 2, z0 + 0.015), '#3b2f25', { mat: MAT.wood }); a.add(boxGeo(W - 0.2, 1.1, 0.01), M(cx, 1.45, z0 + 0.035), '#a8b4bc', { mat: MAT.chrome });
     a.add(boxGeo(0.05, 0.05, D - 0.1), M(x0 + 0.06, 0.95, cz), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 0.05, D - 0.1), M(x1 - 0.06, 0.95, cz), '#c9a35e', { mat: MAT.brass });
     for (const sx of [-1, 1]) a.add(boxGeo(0.5, H, 0.06), M(sx < 0 ? x0 + 0.25 : x1 - 0.25, H / 2, z1 - 0.03), '#3b2f25', { mat: MAT.powder });
     const g = toGeometry(a); room.lights.bake(g); const lh = g.attributes.lh.array; for (let i = 0; i < lh.length; i++) lh[i] = lh[i] * 0.4 + 0.35;   // the cab's own ceiling light
-    this.cab = new THREE.Mesh(g, world.mats.litFor(U, g)); room.group.add(this.cab);
+    this.cab = new THREE.Mesh(g, world.mats.litFor(U, g)); this.cab.name = 'lift-cab'; room.group.add(this.cab);
     const gl = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.3, D - 0.3), world.mats.glowMat(U)); gl.rotation.x = Math.PI / 2; gl.position.set(cx, H - 0.01, cz);
     gl.geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(12).fill(2.2), 3)); gl.geometry.setAttribute('grp', new THREE.BufferAttribute(new Float32Array(4), 1)); this.cab.add(gl); this.cab.position.y = 0;
     this.cx = cx; this.zDoor = Lf.z1 - 0.07; this.dw = 1.4;
     this.leaves = Lf.stops.map((ly) => [-1, 1].map((s) => { const q = new Acc(); q.add(boxGeo(this.dw / 2, 2.3, 0.04), M(0, 1.15, 0), '#9ea2a8', { mat: MAT.metal }); const lg = toGeometry(q); lg.translate(cx, ly, this.zDoor); room.lights.bake(lg); lg.translate(-cx, -ly, -this.zDoor);
-      const m = new THREE.Mesh(lg, world.mats.litFor(U, lg)); m.position.set(cx + s * this.dw / 4, ly, this.zDoor); room.group.add(m); return { m, s }; }));
+      const m = new THREE.Mesh(lg, world.mats.litFor(U, lg)); m.name = 'lift-door'; m.position.set(cx + s * this.dw / 4, ly, this.zDoor); room.group.add(m); return { m, s }; }));
     this.inner = { x0: x0 + 0.1, x1: x1 - 0.1, z0: z0 + 0.1, z1: Lf.z1 - 0.1 };
   }
   inside(x, z) { return IN(this.inner, x, z); }
@@ -232,7 +236,9 @@ export const PANEL_DRAW = {
 // ---------------------------------------------------------------- props: the furniture of each room (Kiln / Blender assets), lit per vertex
 const RAD = Math.PI / 180, DRESS = (() => {
   const L = [], add = (room, name, x, y, z, yaw = 0, o = {}) => L.push({ room, name, x, y, z, yaw, o });
-  for (const a of [40, 130, 220, 310]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 3.3 * Math.cos(r), 0, 1 + 3.3 * Math.sin(r), -r + Math.PI); }
+  // the lounge: four curved sofas round the table, each one's concave seat side facing it (sofa_curve sits facing local +z, its arc's centre
+  // 2.0 m in front of its origin); yaw -r - 90 deg turns +z towards the table (v9 had them radial, at -r + 180 deg)
+  for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 2.4 * Math.cos(r), 0, 1 + 2.4 * Math.sin(r), -r - Math.PI / 2); }
   add('lobby', 'table_lounge', -1, 0, 1); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   add('lobby', 'poster_totem', -5.2, 0, 14.2, 0.35); add('lobby', 'poster_totem', 5.2, 0, 14.2, -0.35); add('lobby', 'poster_totem', 3.6, 0, 6.5, -0.9);
   // the box-office queue: two rope lines guiding you to the counter
@@ -257,7 +263,7 @@ function dressRooms(world) {
     const room = world.rooms[key]; if (!room) continue; const host = { pacc: new Acc(), gacc: new Acc(), bins: [], col: (x0, z0, x1, z1, y0, y1) => { for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) world.walls.add(ax, az, bx, bz, y0, y1); } };
     for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y; placeAsset(host, p.name, p.x, p.y + lift, p.z, p.yaw, p.o); }
     if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
-    if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; room.group.add(m); }
+    if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
     for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });
   }
 }
@@ -277,7 +283,7 @@ function buildHall(world, h, room) {
   else { if (room.bake) console.warn('bake ' + h.key + ': seat probes missing, analytic seat light'); seats.forEach((s, i) => { const sn = Math.sin(s.yaw), cs = Math.cos(s.yaw); L.at(s.x + sn * 0.2, s.y + 1.1, s.z + cs * 0.2, sn * 0.7, 0.7, cs * 0.7, H3, F3); lit.set([H3[0], H3[1], H3[2], F3[0], F3[1], F3[2], 0.5], i * 7); }); }
   const armLit = new Float32Array(arms.length * 7); arms.forEach((a, i) => { let best = 0, bd = 1e9; for (const s of seats) { if (s.row !== a.row) continue; const d = Math.abs(s.a - a.a); if (d < bd) { bd = d; best = s.i; } } armLit.set(lit.subarray(best * 7, best * 7 + 7), i * 7); });
   const groups = [];
-  const instanced = (geo, list, lt, sx) => { const ms = [0, 1].map((l) => { const g = geo[l] && geo[l].attributes.position.count ? geo[l] : l ? null : geo[0]; if (!g) return null; const m = new THREE.InstancedMesh(g, mats.litFor(U, g, true), list.length); m.count = 0; m.frustumCulled = false;
+  const instanced = (geo, list, lt, sx) => { const ms = [0, 1].map((l) => { const g = geo[l] && geo[l].attributes.position.count ? geo[l] : l ? null : geo[0]; if (!g) return null; const m = new THREE.InstancedMesh(g, mats.litFor(U, g, true), list.length); m.name = 'seats-' + (list[0] && (list[0].an || list[0].kind)) + '-lod' + l; m.count = 0; m.frustumCulled = false;
     for (const [k, w] of [['iLh', 3], ['iLf', 3], ['iLs', 1]]) g.setAttribute(k, new THREE.InstancedBufferAttribute(new Float32Array(list.length * w), w)); room.group.add(m); return m; }); groups.push({ list, ms, lt, sx, arm: !!(list[0] && list[0].an) }); };
   for (const F of Object.values(fams)) {
     const geo = [0, 1].map((l) => assetGeometry(F.sn, l, flip, toGeometry, Acc)); if (!geo[0]) { console.warn('seat model missing: ' + F.sn); continue; }
@@ -296,6 +302,8 @@ function buildHall(world, h, room) {
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); pg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); pg.setIndex(idx); pg.computeVertexNormals();
   { const nv = pg.attributes.normal; if (nv.getX(N) * -f < 0) { const I = pg.index.array; for (let k = 0; k < I.length; k += 3) { const t = I[k + 1]; I[k + 1] = I[k + 2]; I[k + 2] = t; } pg.computeVertexNormals(); } }
   const slate = slateTexture(h), picMat = pictureMat(slate); picMat.uniforms.uGain.value = 0.55; const pic = new THREE.Mesh(pg, picMat); pic.renderOrder = 1; pic.name = h.key + '-picture'; room.group.add(pic);
+  { const bg = pg.clone(), I = bg.index.array; for (let k = 0; k < I.length; k += 3) { const t = I[k + 1]; I[k + 1] = I[k + 2]; I[k + 2] = t; }   // seen from behind (the passage beside the screen): dark cloth, not a hole into the hall
+    const back = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: 0x060607 })); back.name = h.key + '-picture-back'; back.matrixAutoUpdate = false; room.group.add(back); }
   // the analytic screen light (people, held items): six patches across the curve
   const patches = []; for (let i = 0; i < 6; i++) { const ua = -W / 2 + W * i / 6, ub = ua + W / 6, a = h.toWorld(ua, h.screenD(ua)), b = h.toWorld(ub, h.screenD(ub)), tx = (b.x - a.x) / 2, tz = (b.z - a.z) / 2, tl = Math.hypot(tx, tz) || 1, sg = (tz / tl) * -f >= 0 ? 1 : -1;
     patches.push({ c: [(a.x + b.x) / 2, yb + Hh / 2, (a.z + b.z) / 2], u: [tx, 0, tz], v: [0, Hh / 2, 0], n: [sg * tz / tl, 0, -sg * tx / tl], su: 3, sv: 3 }); }
@@ -304,8 +312,11 @@ function buildHall(world, h, room) {
   let curtains = null;
   if (h.curtain) { const cw = W / 2 + 0.7, top = yb + Hh + 0.55, dC = h.sagD + 0.5, base = h.toWorld(0, dC), ms = [];
     for (const s of [-1, 1]) { const n = 30, pp = [], ii = []; for (let i = 0; i <= n; i++) { const t = i / n, x = -s * t * cw, fold = (i % 2 ? 1 : -1) * 0.07; pp.push(x, h.y0 + 0.02, fold, x, top, fold); if (i < n) { const k = i * 2; if (s < 0) ii.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); else ii.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } }
-      const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); g0.setIndex(ii); g0.computeVertexNormals(); const a = new Acc(); a.add(g0, null, h.id === 'CLASSIC' ? '#5a1a24' : '#2a2f4a', { mat: MAT.fabric }); const geo = toGeometry(a);
-      const m = new THREE.Mesh(geo, mats.litFor(U, geo)); m.rotation.y = -f * Math.PI / 2; const o = h.toWorld(s * cw, dC); m.position.set(o.x, 0, o.z); m.updateMatrixWorld(true);
+      const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); g0.setIndex(ii); g0.computeVertexNormals(); const a = new Acc(); a.add(g0, null, h.id === 'CLASSIC' ? '#5a1a24' : '#2a2f4a', { mat: MAT.fabric });
+      { const g1 = g0.clone(), I1 = g1.index.array, N1 = g1.attributes.normal; for (let k = 0; k < I1.length; k += 3) { const t = I1[k + 1]; I1[k + 1] = I1[k + 2]; I1[k + 2] = t; }   // cloth has two sides: the back of each pleat
+        for (let k = 0; k < N1.count; k++) N1.setXYZ(k, -N1.getX(k), -N1.getY(k), -N1.getZ(k)); a.add(g1, null, h.id === 'CLASSIC' ? '#4a1620' : '#23283f', { mat: MAT.fabric }); }
+      const geo = toGeometry(a);
+      const m = new THREE.Mesh(geo, mats.litFor(U, geo)); m.name = 'curtain'; m.rotation.y = -f * Math.PI / 2; const o = h.toWorld(s * cw, dC); m.position.set(o.x, 0, o.z); m.updateMatrixWorld(true);
       geo.applyMatrix4(m.matrixWorld); L.bake(geo); geo.applyMatrix4(m.matrixWorld.clone().invert()); room.group.add(m); ms.push(m); }
     curtains = { meshes: ms, open: 0, target: 0, base }; }
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9];
@@ -392,7 +403,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   // the ticket gate: one glass leaf in the barrier at the foot of the up escalator, hinged at its west post; the usher opens it for you
   { const g = world.gate = { x0: GATE.gate[0], x1: GATE.gate[1], z: GATE.z, open: 0, target: 0 }, w = g.x1 - g.x0 - 0.06, grp = new THREE.Group(), a = new Acc();
     a.add(boxGeo(w, 0.05, 0.05), M(w / 2, 1.0, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 1.0, 0.05), M(w - 0.025, 0.5, 0), '#c9a35e', { mat: MAT.brass }); const fg = toGeometry(a);
-    fg.translate(g.x0 + 0.03, 0, g.z); world.rooms.lobby.lights.bake(fg); fg.translate(-(g.x0 + 0.03), 0, -g.z); grp.add(new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)));
+    fg.translate(g.x0 + 0.03, 0, g.z); world.rooms.lobby.lights.bake(fg); fg.translate(-(g.x0 + 0.03), 0, -g.z); { const gm = new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)); gm.name = 'gate'; grp.add(gm); }
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.06, 0.9), mats.glassMat()); pane.position.set(w / 2, 0.52, 0); grp.add(pane); grp.position.set(g.x0 + 0.03, 0, g.z); world.rooms.lobby.group.add(grp); g.group = grp;
     g.update = (dt) => { g.open += (g.target - g.open) * (1 - Math.exp(-dt * 4)); grp.rotation.y = g.open * 1.5; };   // swings in, towards the escalator
     g.pass = (ms = 9000) => { g.target = 1; clearTimeout(g._t); g._t = setTimeout(() => { g.target = 0; }, ms); }; }
@@ -429,7 +440,10 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   const GLASS = new Set(['lobby|street', 'street|lobby']);   // the lobby's glass front: the street is always in view
   const linkOpen = (a, b) => { if (GLASS.has(a + '|' + b)) return true; let any = false; for (const d of world.doors) if (d.rooms.includes(a) && d.rooms.includes(b)) { any = true; if (d.kind === 'open' || d.open > 0.02) return true; } return !any; };
   world.setVisibility = (room, x, y, z, all = false) => {
-    const v = new Set([room || 'lobby']); const def = ROOMS[room]; if (def) for (const k of def.vis) if (all || linkOpen(room, k)) v.add(k);
+    // two links deep: from the street you see through the lobby's glass and on through its open portal into the corridor and through
+    // the restroom door; from the spine through the lobby to the street (one link left those rooms undrawn: you saw the void there)
+    const v = new Set([room || 'lobby']); let front = [...v];
+    for (let hop = 0; hop < (all ? 1 : 2); hop++) { const next = []; for (const r of front) { const def = ROOMS[r]; if (def) for (const k of def.vis) if (!v.has(k) && (all || linkOpen(r, k))) { v.add(k); next.push(k); } } front = next; }
     world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => v.has(k));
   };
   world.update = (dt, actors, now) => {

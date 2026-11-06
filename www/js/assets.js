@@ -35,8 +35,9 @@ function prepare(scene, name) {
   scene.traverse((o) => {
     if (!o.isMesh || !o.visible) return;
     const lod = (() => { for (let p = o; p; p = p.parent) { const m = /LOD(\d)/.exec(p.name || ''); if (m) return +m[1]; } return 0; })();
-    const geo = o.geometry.clone(); geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(PRE, o.matrixWorld));
+    const geo = o.geometry.clone(), mw = new THREE.Matrix4().multiplyMatrices(PRE, o.matrixWorld); geo.applyMatrix4(mw);
     if (!geo.attributes.normal) geo.computeVertexNormals();
+    solidify(geo, mw.determinant() < 0, (TWO_SIDED[name] || []).includes(parts.length), name + '#' + parts.length);
     const mn = (o.material && o.material.name) || '', glow = /^glow/i.test(mn);
     const nm = named(mn) || { id: 0, tint: (o.material && o.material.color ? o.material.color.toArray() : [0.5, 0.5, 0.5]) };
     const c = o.material && o.material.color ? o.material.color.toArray() : [1, 1, 1], ei = o.material && o.material.emissiveIntensity != null ? o.material.emissiveIntensity : 1;
@@ -46,6 +47,38 @@ function prepare(scene, name) {
   });
   return { name, parts, box, lods: Math.max(...parts.map((p) => p.lod)) + 1 };
 }
+// v9 see-through fixes, per part as loaded (tools/dev/seethru.mjs --assets): a mirrored node (negative scale) baked into the geometry
+// keeps its index order, so its winding would turn inside out; a face whose winding disagrees with its own normals is turned to match
+// them (the hedge planters' leaf clumps: Kiln wound about half their faces inwards, so you saw through them) and a zero-area face is
+// dropped. The parts listed in TWO_SIDED are open shells (an edge used by one face only: the taxi's body panels and glass, rope ends,
+// bollard rings): they get their back faces too, as the GLBs' double-sided materials meant. The list is measured offline, not on the
+// phone: ?assetcheck=1 recomputes it and warns when a GLB changed (tools/dev/seethru.mjs --assets runs that check).
+export const TWO_SIDED = { sofa_curve: [17], planter_tree: [3, 4, 5], rope_velvet: [0], lamp_post: [3], bollard_light: [1], car_taxi: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 56, 57] };
+const CHECK = typeof location !== 'undefined' && /[?&]assetcheck=1/.test(location.search);
+function solidify(g, mirrored, twoSided, label) {
+  const P = g.attributes.position, N = g.attributes.normal; if (!g.index) g.setIndex([...Array(P.count).keys()]);
+  const I0 = g.index.array, I = [], a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+  for (let t = 0; t + 2 < I0.length; t += 3) {
+    let i0 = I0[t], i1 = I0[t + 1], i2 = I0[t + 2]; if (mirrored) [i1, i2] = [i2, i1];
+    a.fromBufferAttribute(P, i0); b.fromBufferAttribute(P, i1).sub(a); c.fromBufferAttribute(P, i2).sub(a); b.cross(c); if (b.lengthSq() < 1e-20) continue;   // zero-area face: drawn as nothing
+    n.set(N.getX(i0) + N.getX(i1) + N.getX(i2), N.getY(i0) + N.getY(i1) + N.getY(i2), N.getZ(i0) + N.getZ(i1) + N.getZ(i2));
+    if (n.lengthSq() > 1e-12 && b.normalize().dot(n.normalize()) < -0.2) [i1, i2] = [i2, i1];
+    I.push(i0, i1, i2);
+  }
+  if (CHECK) { const E = new Map(), key = (j) => `${Math.round(P.getX(j) * 1e4)},${Math.round(P.getY(j) * 1e4)},${Math.round(P.getZ(j) * 1e4)}`;
+    for (let t = 0; t < I.length; t += 3) { const ks = [key(I[t]), key(I[t + 1]), key(I[t + 2])]; for (let e = 0; e < 3; e++) { const p = ks[e], q = ks[(e + 1) % 3], k = p < q ? p + '|' + q : q + '|' + p; E.set(k, (E.get(k) || 0) + 1); } }
+    let open = 0; for (const v of E.values()) if (v === 1) open++;
+    if (!!open !== !!twoSided) console.warn(`[assetcheck] ${label}: ${open} open edges, ${twoSided ? 'listed' : 'not listed'} in TWO_SIDED`);
+    (CHECK_OPEN[label.split('#')[0]] || (CHECK_OPEN[label.split('#')[0]] = [])).push(open ? +label.split('#')[1] : null); }
+  if (twoSided) {   // back faces: a copy of every vertex with its normal flipped, the triangles in reverse order (attributes may be interleaved)
+    const n0 = P.count, GET = ['getX', 'getY', 'getZ', 'getW'];
+    for (const name of Object.keys(g.attributes)) { const A = g.attributes[name], w = A.itemSize, k = name === 'normal' ? -1 : 1, out = new Float32Array(n0 * 2 * w);
+      for (let i = 0; i < n0; i++) for (let c = 0; c < w; c++) { const v = A[GET[c]](i); out[i * w + c] = v; out[(n0 + i) * w + c] = v * k; }
+      g.setAttribute(name, new THREE.BufferAttribute(out, w)); }
+    const m = I.length; for (let t = 0; t < m; t += 3) I.push(I[t] + n0, I[t + 2] + n0, I[t + 1] + n0); }
+  g.setIndex(I);
+}
+export const CHECK_OPEN = {};   // ?assetcheck=1: asset -> the indices of its open parts (the TWO_SIDED entry it should have)
 // stamp an asset into a room's accumulators. o: { lod, scale, grp (glow light group: 1 dims with the house lights), glowK, glowMul { meshName: k },
 // glowColor (linear rgb), swap { materialName: [id, rgb] }, tints { meshName: rgb }, collide: true|pad,
 // only: a mesh-name prefix (one fitting out of a set GLB, e.g. 'Mesh_Dryer'), shift: [x, y, z] moved in the asset's own frame first }

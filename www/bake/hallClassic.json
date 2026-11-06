@@ -2,20 +2,20 @@
  "room": "hallClassic",
  "res": 2048,
  "hall": true,
- "hash": "v9.19961ad98d85",
+ "hash": "v9.5d7940379858",
  "maps": [
   "hallClassic_h.png",
   "hallClassic_f.png",
   "hallClassic_s.png"
  ],
  "scale": [
-  2.419285378179931,
-  0.21292322546243664,
-  0.8553524017333984
+  2.3862438102010883,
+  0.19958625209331293,
+  0.861838698387146
  ],
- "avg": 0.04039730437798985,
+ "avg": 0.04080345989674178,
  "probes": "hallClassic_probes.json",
  "glb": "hallClassic.glb",
- "verts": 11928,
- "tris": 3976
+ "verts": 12048,
+ "tris": 4016
 }
