@@ -40,7 +40,7 @@ export class Player {
     this.anim = { kind: 'sit', t: 0, keys: [
       { d: d1, from: { x: this.x, z: this.z, y: y0, yaw: this.yaw, pitch: this.pitch }, to: { x: fx, z: fz, y: fy, yaw: pose.yaw, pitch: -0.12 }, curve: ease },
       { d: 0.95, to: { x: pose.x - Math.sin(pose.yaw) * 0.04, z: pose.z - Math.cos(pose.yaw) * 0.04, y: pose.y - 0.06, yaw: pose.yaw, pitch: -0.2 }, curve: (t) => t < 0.15 ? t * 0.6 : ease(t) },
-      { d: 0.55, to: { x: pose.x, z: pose.z, y: pose.y, yaw: pose.yaw, pitch: 0.02 }, curve: easeOut }], done: onDone };
+      { d: 0.55, to: { x: pose.x, z: pose.z, y: pose.y, yaw: pose.yaw, pitch: pose.pitch ?? 0.02 }, curve: easeOut }], done: onDone };
   }
   // stand: lean forward and rise, then step out to the aisle / lane
   standUp(onDone) {
@@ -54,7 +54,7 @@ export class Player {
   }
   // instant placement (fade-covered jumps only)
   place(x, z, yaw, pitch = 0, y = null) { this.x = x; this.z = z; this.yaw = yaw; this.pitch = pitch; this.y = this.world.floorY(x, z, y ?? this.y ?? 0); this.vx = this.vz = 0; this.anim = null; this.seated = null; }
-  placeSeated(pose, standAt) { this.seated = { yaw: pose.yaw, standAt, pose }; this.anim = null; this.x = pose.x; this.z = pose.z; this.yaw = pose.yaw; this.pitch = 0; this.camY = pose.y; }
+  placeSeated(pose, standAt) { this.seated = { yaw: pose.yaw, standAt, pose }; this.anim = null; this.x = pose.x; this.z = pose.z; this.yaw = pose.yaw; this.pitch = pose.pitch ?? 0; this.camY = pose.y; }
   collide() {
     const r = this.radius;
     if (this.world.collide) this.world.collide(this, r, this.y);

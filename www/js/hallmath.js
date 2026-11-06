@@ -25,26 +25,25 @@ export const CLASSES = {
 };
 // side: -1 = west of the exit spine (the audience faces +x), +1 = east (faces -x). zc: the hall's centre line (world z). width: inner.
 // groups run from the screen to the rear: rows of single seats (n odd) or two-seat sofas (pairs, gap between the sofas).
-// v9.1 (user, 2026-11-06: "the theatres' size is not realistic, one is so small no one would see it", "the exit is nonsense"): every
-// picture is now nearly wall to wall. The only things beside it are the two exit bays: an open, lit alcove at each front corner
-// (BAY m wide) with the exit door in the screen wall and a green EXIT sign readable from every seat. W = width - 2 (BAY + frame + 0.05).
-// The halls grew to keep their seats. Middle row, horizontal angle of the picture: MAX 56.7 deg (was 54.4), CURVE 61.9 (a 16:9 film
-// 56.2, was 43.7), CLASSIC 54.6 (was 47.0), X-270 54.6 (was 48.5) plus its side screens.
-export const BAY = 2.3;
+// v9.1b (the user, 2026-11-06: "the screens are so small"; "I prefer the older entrance and exit"): every picture runs nearly wall to wall;
+// beside it, at each front corner, a portal in the masking (BAY m wide, 2.55 m high) leads to the exit door in the screen wall, as in v9.
+// W = width - 2 (BAY + 0.15). MAX is IMAX-with-Laser shaped (1.43:1, floor to ceiling); CLASSIC and X-270 are 16:9 so phone videos fill
+// them; D1 keeps row A's view of the picture's top under 45 deg (UNIC) except in MAX, where, as in IMAX GT halls, the front rows look up.
+export const BAY = 1.75;
 export const HALLS = [
-  { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -37.0, width: 29.2, aspect: 1.9, W: 24.0, hB: 0.95, sag: 0.025, D1: 12.6, c: 0.2,
+  { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -37.0, width: 29.2, aspect: 1.43, W: 25.4, hB: 0.95, sag: 0.025, D1: 12.6, c: 0.2,
     aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.6, rowK: 34, curtain: false, frame: 0.25,
     groups: [{ seat: 'rocker', rows: 11, n: 37, pitch: 1.32, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
       { seat: 'pod', rows: 2, pairs: 9, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },
-  { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -66.0, width: 25.2, aspect: 2.0, W: 20.0, hB: 1.05, sag: 0.13, D1: 10.9, c: 0.2,
+  { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -66.0, width: 25.2, aspect: 2.0, W: 21.4, hB: 1.05, sag: 0.14, D1: 10.9, c: 0.2,
     aisleW: 1.4, cross: null, rear: 2.6, rowK: 9, curtain: true, frame: 0.25,
     groups: [{ seat: 'recliner', rows: 6, n: 19, pitch: 1.92, cls: (r) => (r >= 2 && r <= 4 ? 'reclPlus' : 'recl') },
       { seat: 'sofa', rows: 1, pairs: 8, gap: 0.5, pitch: 2.0, cls: () => 'love' }] },
-  { id: 'CLASSIC', no: 3, key: 'hallClassic', name: 'LUMIERE CLASSIC', format: 'classic', side: 1, zc: -32.7, width: 20.8, aspect: 1.85, W: 15.6, hB: 1.0, sag: 0, D1: 8.6, c: 0.2,
+  { id: 'CLASSIC', no: 3, key: 'hallClassic', name: 'LUMIERE CLASSIC', format: 'classic', side: 1, zc: -32.7, width: 20.8, aspect: 1.778, W: 17.0, hB: 1.0, sag: 0, D1: 9.4, c: 0.2,
     aisleW: 1.25, cross: null, rear: 2.6, rowK: 0, curtain: true, frame: 0.25,
     groups: [{ seat: 'rocker', rows: 10, n: 25, pitch: 1.3, cls: (r) => (r >= 6 ? 'prime' : 'std') },
       { seat: 'sofa', rows: 1, pairs: 8, gap: 0.42, pitch: 1.75, cls: () => 'sofa' }] },
-  { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE X·270', format: 'x270', side: 1, zc: -55.5, width: 21.2, aspect: 1.9, W: 16.0, hB: 1.25, sag: 0, D1: 9.0, c: 0.2,
+  { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE X·270', format: 'x270', side: 1, zc: -55.5, width: 21.2, aspect: 1.778, W: 17.4, hB: 1.25, sag: 0, D1: 9.9, c: 0.2,
     aisleW: 1.3, cross: null, rear: 2.6, rowK: 0, curtain: false, frame: 0.25, panels: true,
     groups: [{ seat: 'rocker', rows: 10, n: 25, pitch: 1.3, cls: (r) => (r >= 4 && r <= 7 ? 'x270p' : 'x270') }] },
 ];
@@ -94,11 +93,11 @@ export function makeHall(s) {
   h.toLocal = (x, z) => ({ u: (z - s.zc) * f, d: (h.xPic - x) * f });
   // three.js yaw (rotation about +y) of something in the hall facing the screen, turned by t towards +u
   h.yawOf = (t) => (f > 0 ? -Math.PI / 2 : Math.PI / 2) - f * t;
-  // entrance: the rear corner on the lobby side (+z for every hall: the bridge is north of them); exits: a door in the screen wall at the
-  // back of each front-corner bay (the bay spans |u| = width/2 - BAY .. width/2, in the open beside the picture)
+  // entrance: the rear corner on the lobby side (+z for every hall: the bridge is north of them); exits: a door in the screen wall behind
+  // each front-corner portal in the masking (the portal spans |u| = width/2 - BAY .. width/2, below 2.55 m)
   h.entryU = f * (s.width / 2 - 1.3);
   h.bay = [s.width / 2 - BAY, s.width / 2];
-  h.exits = [-1, 1].map((sg) => ({ u: sg * (s.width / 2 - BAY / 2), d: -SCREEN_GAP + 0.2 }));
+  h.exits = [-1, 1].map((sg) => ({ u: sg * (s.width / 2 - 0.85), d: -SCREEN_GAP + 0.2 }));
   h.y0 = 0;   // building.js lifts the smaller halls so every rear aisle is level with the first-floor corridor (y0 = L1 - total)
   // the 270 hall's side screens (ScreenX-style, the user: "where is the Screen-X"): one projection surface on each side wall from just in
   // front of the exit bay to 74 % of the depth, its bottom edge 1.3 m over the rake (a straight line over a convex rake stays above it),

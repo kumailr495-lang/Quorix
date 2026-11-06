@@ -50,11 +50,16 @@ const SPILL_FRAG = `uniform sampler2D map; uniform vec4 uBox; varying vec2 vUv;
 void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0); vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb * inside; gl_FragColor = vec4(c, 1.0); }`;
 const AVG_FRAG = `uniform sampler2D map; varying vec2 vUv; void main() { gl_FragColor = vec4(textureLod(map, vec2(0.25 + vUv.x * 0.5, 0.5), 8.0).rgb, 1.0); }`;
 const WALL_VERT = `varying vec2 vUv; varying float vDist; void main() { vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
-const WALL_FRAG = `uniform sampler2D uSpill; uniform float uSide; uniform float uAmt; varying vec2 vUv;
-// the 270 hall's side screens extend the picture (v9.1): the band at the picture's edge is mirrored along the wall, sharp next to the
-// screen and softer and dimmer towards the back (peripheral vision), from a 256 x 128 copy of the picture with mipmaps
-void main() { float t = vUv.x; float x = uSide > 0.0 ? 1.0 - 0.24 * t : 0.24 * t; vec3 c = textureLod(uSpill, vec2(x, vUv.y), 0.6 + t * 2.4).rgb;
-  float fade = (1.0 - 0.55 * smoothstep(0.35, 1.0, t)) * smoothstep(0.0, 0.04, vUv.y) * smoothstep(1.0, 0.96, vUv.y) * smoothstep(1.0, 0.92, t); c = c * c * 1.4; gl_FragColor = vec4(c * uAmt * fade, 1.0);
+const WALL_FRAG = `uniform sampler2D uSpill; uniform sampler2D uVid; uniform float uSide; uniform float uAmt; uniform float uMode; uniform vec4 uBox; varying vec2 vUv;
+// the 270 hall's side screens (v9.1b, after research: ScreenX side images are extra footage, never a copy of the front).
+// uMode 1, a panoramic film (3:1 and wider, e.g. three cameras side by side): each wall shows its own third, continuing the front at the seam.
+// uMode 0, an ordinary film: the front keeps the whole picture; the walls carry its outermost columns on as soft light, wider and dimmer
+// towards the back (no copy of the picture is ever shown)
+void main() { float t = vUv.x; vec3 c; float fade;
+  if (uMode > 0.5) { float x = uSide > 0.0 ? 2.0 / 3.0 + t / 3.0 : 1.0 / 3.0 - t / 3.0; c = texture2D(uVid, vec2(x, vUv.y)).rgb; fade = smoothstep(1.0, 0.96, t); }
+  else { float xe = uSide > 0.0 ? uBox.x + uBox.z - 0.006 : uBox.x + 0.006; c = textureLod(uSpill, vec2(xe, uBox.y + vUv.y * uBox.w), 1.0 + t * 3.5).rgb; c = c * c * 1.4;
+    fade = (1.0 - 0.75 * smoothstep(0.0, 1.0, t)) * smoothstep(0.0, 0.05, vUv.y) * smoothstep(1.0, 0.95, vUv.y); }
+  gl_FragColor = vec4(c * uAmt * fade, 1.0);
   #include <colorspace_fragment>
 }`;
 export class Shows {
@@ -82,7 +87,7 @@ export class Shows {
       for (let i = 0; i <= N; i++) { const t = i / N, d = SS.d0 + (SS.d1 - SS.d0) * t, w = H.toWorld(u, d), yb = H.y0 + SS.yb0 + (SS.yb1 - SS.yb0) * t; P.push(w.x, yb, w.z, w.x, H.y0 + SS.yt, w.z); UV.push(t, 0, t, 1);
         if (i) { const a = 2 * i - 2; I.push(a, a + 2, a + 3, a, a + 3, a + 1); } }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I);
-      const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uSide: { value: sg }, uAmt: { value: 0 } }, side: THREE.DoubleSide,
+      const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uVid: { value: this.vtex }, uSide: { value: sg }, uAmt: { value: 0 }, uMode: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } }, side: THREE.DoubleSide,
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
       m.renderOrder = 2; m.visible = false; m.name = 'x270-side-' + sg; X.room.group.add(m); return m; }); }   // light added onto the light grey surfaces
     this._yt = null;
@@ -108,10 +113,13 @@ export class Shows {
   }
   replay(id) { const s = this.s[id]; if (!s || !s.src) return false; this.book(id, s.src, 0, null, { replay: true }); return true; }
   _abort(id) { const s = this.s[id]; this._stopPicture(s); if (this.active === id) this.active = null; this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'idle'; s.booked = false; this._idle(s); this.crowd.clearAudience(id); }
-  _idle(s) { const u = s.hall.picMat.uniforms; u.map.value = s.hall.slate; u.uGain.value = 0.55; u.uBox.value.set(0, 0, 1, 1); if (s.hall.curtains) s.hall.curtains.target = 0; s.pic = false; }
-  _slideWaiting(s) { const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; u.uGain.value = 0.8; u.uBox.value.set(0, 0, 1, 1); s.pic = false; }
+  _idle(s) { const u = s.hall.picMat.uniforms; u.map.value = s.hall.slate; u.uGain.value = 0.55; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; if (s.hall.curtains) s.hall.curtains.target = 0; s.pic = false; }
+  _slideWaiting(s) { const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; u.uGain.value = 0.8; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.pic = false; }
   _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) s.pic = false; }
-  _fit(s, aspect) { const A = s.hall.cfg.aspect, b = s.hall.picMat.uniforms.uBox.value; if (aspect > A) { const hh = A / aspect; b.set(0, (1 - hh) / 2, 1, hh); } else { const ww = aspect / A; b.set((1 - ww) / 2, 0, ww, 1); } this.spillMat.uniforms.uBox.value.copy(b); }
+  _fit(s, aspect) { const A = s.hall.cfg.aspect, u = s.hall.picMat.uniforms, b = u.uBox.value, split = !!(s.hall.cfg.panels && aspect >= 2.8);
+    if (u.uSrc) u.uSrc.value.set(split ? 1 / 3 : 0, 0, split ? 1 / 3 : 1, 1); const a = split ? aspect / 3 : aspect;   // a panoramic film: the front shows its middle third
+    if (a > A) { const hh = A / a; b.set(0, (1 - hh) / 2, 1, hh); } else { const ww = a / A; b.set((1 - ww) / 2, 0, ww, 1); } this.spillMat.uniforms.uBox.value.copy(b);
+    if (this.walls && s.hall.cfg.panels) for (const m of this.walls) { m.material.uniforms.uMode.value = split ? 1 : 0; m.material.uniforms.uBox.value.copy(b); } s.split = split; }
   _begin(id) {   // the last 10 s: lights down, curtains open, the count
     const s = this.s[id], h = s.hall; s.state = 'countdown'; s.phaseAt = this.now; if (h.curtains) { h.curtains.target = 1; if (this.sound.listener.room === h.key && !s.curtainKeep) this.sound.curtain(true); }
     this.crowd.onShowPhase(id, 'dimming'); this.hooks.onBegin && this.hooks.onBegin(id); const v = this.video; if (s.src.kind !== 'youtube') { try { v.currentTime = 0; } catch (e) { /* not loaded */ } }
@@ -147,7 +155,7 @@ export class Shows {
       // screen light gain: the picture's own colour comes from the spill copy
       const g = s.state === 'playing' && s.pic ? 6.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
-      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic ? 0.5 + 0.25 * this.spread : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
+      if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic ? (s.split ? 0.95 : 0.5 + 0.25 * this.spread) : 0; for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
     }
   }
   // ---------------------------------------------------------- per frame (GPU): the spill copy, the average, YouTube placement
