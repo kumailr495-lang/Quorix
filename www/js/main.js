@@ -186,9 +186,7 @@ async function boot() {
     if (game === 'flow') { const b = crowd.staff.box1; if (b) setTimeout(() => b.say(pick('box.ticket')), 500); }
   }
   function fadeTo(dur, cb) { if (fading) return; fading = true; ui.fade(1, dur); setTimeout(() => { try { cb(); } finally { setTimeout(() => { ui.fade(0, 0.7); fading = false; }, 200); } }, dur * 1000 + 40); }
-  // v9.1b: sitting down, you look at the middle of the picture (the IMAX-shaped MAX picture rises 18 m: level eyes saw its lower half)
-  const seatPose = (s) => { const H = BLD.HALL[s.hall], eye = s.y + SEAT[s.kind].eye, pitch = H ? Math.max(0, Math.min(0.5, 0.85 * Math.atan2(H.y0 + H.centreY - eye, Math.max(3, s.d)))) : 0.02;
-    return { x: s.x - Math.sin(s.yaw) * 0.04, y: eye, z: s.z - Math.cos(s.yaw) * 0.04, yaw: s.yaw, pitch }; };
+  const seatPose = (s) => ({ x: s.x - Math.sin(s.yaw) * 0.04, y: s.y + SEAT[s.kind].eye, z: s.z - Math.cos(s.yaw) * 0.04, yaw: s.yaw });
   function claim(s) { if (sitRelease) sitRelease(); s.npc = s.npc || 'player'; sitRelease = () => { if (s.npc === 'player') s.npc = null; sitRelease = null; }; }
   function jumpToSeat(seat) { const s = seat || seatOf(ticket); if (!s) return; fadeTo(0.45, () => { claim(s); player.placeSeated(seatPose(s), crowd.laneStand(s)); player.y = s.y; tut.event('seated'); }); }
   function sitSeat(s) { if (s.npc && s.npc !== 'player') return; claim(s); player.sit(seatPose(s), crowd.laneStand(s), () => { sound.thud(); tut.event('seated'); if (ticket && ticket.tablet && game === 'flow') ui.toast(t('toast9.tabletArm'), 3000); }); }
@@ -254,13 +252,6 @@ async function boot() {
     shows.frame(engine.camera, engine.renderer); engine.render();
   }
   function menuCam(now) { const k = now / 1000 * 0.04, cam = engine.camera; cam.position.set(Math.sin(k) * 7, 2.6 + Math.sin(k * 2.1) * 0.3, 6 + Math.cos(k) * 5); cam.lookAt(Math.sin(k + 1.4) * 3, 2.2, 0); player.x = cam.position.x; player.z = cam.position.z; player.y = 0; }
-  // v9.1b (the user: "the screens are so small"): a landscape phone shows ~105 deg across, a middle seat sees the picture at ~57 deg, so the
-  // picture filled half the phone. While you watch, the view narrows until the picture spans ~92 % of the screen's width (the 270 hall
-  // keeps a wider view: its side screens are the point). Seats near the front need no zoom at all.
-  function fitZoom(hk) { const H = world.hallByKey(hk), c = engine.camera; if (!H) return 0.8; const h = H.cfg, loc = h.toLocal(c.position.x, c.position.z), d = Math.max(2, loc.d - h.sagD);
-    const want = 2 * Math.atan((h.W / 2) / d) / (h.format === 'x270' ? 0.6 : 0.92), vw = 2 * Math.atan(Math.tan(want / 2) / c.aspect) * 180 / Math.PI;
-    const y0 = h.y0 + h.hB, y1 = h.y0 + h.hB + h.H, ey = c.position.y, vh = (Math.atan2(y1 - ey, loc.d) - Math.atan2(y0 - ey, loc.d)) * 180 / Math.PI * 0.88;   // a tall picture may overflow 12 %
-    return Math.max(0.42, Math.min(1, Math.max(vw, vh) / engine.baseFov)); }
   function step(dt, now) {
     if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
     else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); player.update(dt); }
@@ -268,7 +259,7 @@ async function boot() {
     const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } room = r;
     const cam = engine.camera; world.setVisibility(r, cam.position.x, cam.position.y, cam.position.z);
     const watching = mode === 'play' && !!player.seated && r.startsWith('hall') && shows.isOn(world.hallByKey(r).id);
-    engine.setZoom(watching ? fitZoom(r) : 1, dt); document.body.classList.toggle('watching', watching); engine.showMode && engine.showMode(watching);
+    engine.setZoom(watching ? 0.8 : 1, dt); document.body.classList.toggle('watching', watching); engine.showMode && engine.showMode(watching);
     actors.length = 0; actors.push(player); for (const a of crowd.agents) if (a.path) actors.push(a);
     world.update(dt, actors, now);
     for (const h of world.halls) if (h.room.group.visible) h.updateLOD(cam, false, engine.preset.seatLod * (engine.lodK || 1));
