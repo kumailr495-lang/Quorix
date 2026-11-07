@@ -1,0 +1,21 @@
+# graphify (code knowledge graph, docs/SKILLS.md): code only. Docs, vendored libraries and binary assets stay out, so the build is
+# AST-only (no model calls) and fast enough to rebuild at session start.
+www/vendor/
+www/models/
+www/bake/
+www/tex/
+www/films/
+www/fonts/
+www/lang/
+www/voice/
+docs/
+tools/keys/
+tools/apk/
+tools/blender/fonts/
+.claude/
+*.md
+*.json
+*.glb
+*.jpg
+*.png
+*.ogg

@@ -1,0 +1,18 @@
+{
+ "room": "lobby",
+ "res": 2048,
+ "hall": false,
+ "hash": "v9.b476256856e5",
+ "maps": [
+  "lobby_h.png"
+ ],
+ "scale": [
+  1.2819077852583174,
+  0.0,
+  0.0
+ ],
+ "avg": 0.0930446950247773,
+ "glb": "lobby.glb",
+ "verts": 30357,
+ "tris": 10119
+}

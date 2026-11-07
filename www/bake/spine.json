@@ -1,0 +1,18 @@
+{
+ "room": "spine",
+ "res": 2048,
+ "hall": false,
+ "hash": "v9.56b91f0d3e27",
+ "maps": [
+  "spine_h.png"
+ ],
+ "scale": [
+  1.4895889937230506,
+  0.0,
+  0.0
+ ],
+ "avg": 0.2768015538554457,
+ "glb": "spine.glb",
+ "verts": 11688,
+ "tris": 3896
+}

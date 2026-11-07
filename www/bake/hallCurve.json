@@ -1,0 +1,21 @@
+{
+ "room": "hallCurve",
+ "res": 2048,
+ "hall": true,
+ "hash": "v9.068139a920fa",
+ "maps": [
+  "hallCurve_h.png",
+  "hallCurve_f.png",
+  "hallCurve_s.png"
+ ],
+ "scale": [
+  0.83481240114971,
+  0.5678610446453102,
+  0.8532368540763855
+ ],
+ "avg": 0.03759056496849196,
+ "probes": "hallCurve_probes.json",
+ "glb": "hallCurve.glb",
+ "verts": 14319,
+ "tris": 4773
+}

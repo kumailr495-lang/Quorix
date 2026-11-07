@@ -1,0 +1,20 @@
+<!doctype html><html><body><video id="v" muted playsinline crossorigin="anonymous"></video><canvas id="c" width="64" height="36"></canvas><script>
+const R = {};
+async function test(url) {
+  const v = document.getElementById('v'); const out = { url };
+  v.src = url; v.load();
+  await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = () => no(new Error('error ' + (v.error && v.error.code))); setTimeout(() => no(new Error('timeout meta')), 8000); });
+  out.duration = v.duration; out.size = [v.videoWidth, v.videoHeight];
+  await v.play(); await new Promise((r) => setTimeout(r, 1200)); out.t1 = v.currentTime;
+  v.currentTime = 12.5; await new Promise((ok, no) => { v.onseeked = ok; setTimeout(() => no(new Error('timeout seek')), 8000); }); out.afterSeek = v.currentTime;
+  await new Promise((r) => setTimeout(r, 800)); out.t2 = v.currentTime;
+  v.currentTime = 19.2; await new Promise((ok, no) => { v.onseeked = ok; setTimeout(() => no(new Error('timeout seek2')), 8000); });
+  await new Promise((r) => setTimeout(r, 1500)); out.ended = v.ended; out.t3 = v.currentTime;
+  // same-origin: the frame can be read by WebGL/canvas (no CORS taint)
+  const c = document.getElementById('c').getContext('2d'); v.currentTime = 5; await new Promise((ok) => { v.onseeked = ok; });
+  c.drawImage(v, 0, 0, 64, 36); try { out.pixel = Array.from(c.getImageData(32, 18, 1, 1).data).slice(0, 3); } catch (e) { out.pixel = 'tainted: ' + e.message; }
+  const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null; out.dropped = q ? q.droppedVideoFrames + '/' + q.totalVideoFrames : '';
+  return out;
+}
+window.run = async (urls) => { const res = []; for (const u of urls) { try { res.push(await test(u)); } catch (e) { res.push({ url: u, error: String(e) }); } } return res; };
+</script></body></html>

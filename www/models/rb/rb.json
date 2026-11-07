@@ -1,0 +1,979 @@
+{
+ "avatars": {
+  "Female_Adult_01": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0046,
+   "tris": [
+    8732,
+    3142,
+    1134
+   ],
+   "uv": {
+    "body": [
+     0.005,
+     0.006,
+     0.995,
+     0.992
+    ],
+    "head": [
+     0.004,
+     0.004,
+     0.993,
+     0.993
+    ],
+    "opacity": [
+     0.019,
+     0.018,
+     0.995,
+     1.001
+    ]
+   },
+   "hairTris": 668,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Female_Adult_02": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0046,
+   "tris": [
+    8940,
+    3218,
+    1155
+   ],
+   "uv": {
+    "body": [
+     0.009,
+     0.018,
+     0.992,
+     0.992
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.995
+    ],
+    "opacity": [
+     0.021,
+     0.06,
+     0.998,
+     0.945
+    ]
+   },
+   "hairTris": 292,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Female_Adult_03": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0001,
+   "tris": [
+    9208,
+    3314,
+    1192
+   ],
+   "uv": {
+    "body": [
+     0.009,
+     0.005,
+     0.991,
+     0.996
+    ],
+    "head": [
+     0.004,
+     0.004,
+     0.994,
+     0.994
+    ],
+    "opacity": [
+     0.007,
+     0.006,
+     0.997,
+     0.998
+    ]
+   },
+   "hairTris": 936,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Female_Adult_04": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0037,
+   "tris": [
+    9284,
+    3342,
+    1205
+   ],
+   "uv": {
+    "body": [
+     0.009,
+     0.012,
+     0.991,
+     0.995
+    ],
+    "head": [
+     0.004,
+     0.004,
+     0.993,
+     0.996
+    ],
+    "opacity": [
+     0.008,
+     0.004,
+     0.975,
+     0.99
+    ]
+   },
+   "hairTris": 1102,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Female_Adult_05": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0003,
+   "tris": [
+    8288,
+    2982,
+    1076
+   ],
+   "uv": {
+    "body": [
+     0.01,
+     0.016,
+     0.991,
+     0.993
+    ],
+    "head": [
+     0.004,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.007,
+     0.006,
+     0.993,
+     0.99
+    ]
+   },
+   "hairTris": 920,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Female_Adult_06": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0017,
+   "tris": [
+    6992,
+    2516,
+    908
+   ],
+   "uv": {
+    "body": [
+     0.01,
+     0.007,
+     0.99,
+     0.992
+    ],
+    "head": [
+     0.006,
+     0.004,
+     0.998,
+     0.993
+    ],
+    "opacity": [
+     0.013,
+     0.156,
+     0.98,
+     1.006
+    ]
+   },
+   "hairTris": 342,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Female_Adult_07": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0005,
+   "tris": [
+    8308,
+    2990,
+    1079
+   ],
+   "uv": {
+    "body": [
+     0.01,
+     0.011,
+     0.991,
+     0.993
+    ],
+    "head": [
+     0.004,
+     0.004,
+     0.994,
+     0.994
+    ],
+    "opacity": [
+     0.003,
+     0.028,
+     1.015,
+     1.0
+    ]
+   },
+   "hairTris": 576,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Female_Adult_08": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0004,
+   "tris": [
+    8276,
+    2978,
+    1074
+   ],
+   "uv": {
+    "body": [
+     0.009,
+     0.016,
+     0.991,
+     0.998
+    ],
+    "head": [
+     0.003,
+     0.004,
+     0.996,
+     0.992
+    ],
+    "opacity": [
+     0.014,
+     0.005,
+     0.991,
+     0.994
+    ]
+   },
+   "hairTris": 770,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_01": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7440,
+    2678,
+    967
+   ],
+   "uv": {
+    "body": [
+     0.008,
+     0.006,
+     0.993,
+     0.974
+    ],
+    "head": [
+     0.006,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.012,
+     0.094,
+     0.993,
+     0.99
+    ]
+   },
+   "hairTris": 494,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_02": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7312,
+    2632,
+    950
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.012,
+     0.993,
+     0.965
+    ],
+    "head": [
+     0.005,
+     0.005,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.008,
+     0.013,
+     0.993,
+     1.002
+    ]
+   },
+   "hairTris": 704,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_03": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7200,
+    2592,
+    935
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.009,
+     0.992,
+     0.963
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.015,
+     0.014,
+     0.986,
+     0.984
+    ]
+   },
+   "hairTris": 206,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_04": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0007,
+   "tris": [
+    8684,
+    3126,
+    1128
+   ],
+   "uv": {
+    "body": [
+     0.009,
+     0.008,
+     0.99,
+     0.996
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.005,
+     0.004,
+     0.989,
+     0.997
+    ]
+   },
+   "hairTris": 688,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_05": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7836,
+    2820,
+    1017
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.007,
+     0.992,
+     0.996
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.04,
+     0.006,
+     0.999,
+     0.98
+    ]
+   },
+   "hairTris": 380,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_06": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0008,
+   "tris": [
+    7456,
+    2684,
+    968
+   ],
+   "uv": {
+    "body": [
+     0.005,
+     0.012,
+     0.996,
+     0.929
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.001,
+     0.0,
+     1.001,
+     1.0
+    ]
+   },
+   "hairTris": 648,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_07": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0006,
+   "tris": [
+    7588,
+    2730,
+    985
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.01,
+     0.993,
+     0.994
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.011,
+     0.505,
+     0.988,
+     0.997
+    ]
+   },
+   "hairTris": 236,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Male_Adult_08": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7364,
+    2650,
+    956
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.011,
+     0.994,
+     0.994
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.993,
+     0.993
+    ],
+    "opacity": [
+     0.005,
+     0.013,
+     0.984,
+     0.992
+    ]
+   },
+   "hairTris": 302,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Business_Female_01": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0005,
+   "tris": [
+    8966,
+    3225,
+    1163
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.008,
+     0.993,
+     0.993
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.997,
+     0.997
+    ],
+    "opacity": [
+     0.007,
+     0.009,
+     0.995,
+     0.991
+    ]
+   },
+   "hairTris": 614,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0001
+   }
+  },
+  "Business_Female_02": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": 0.0002,
+   "tris": [
+    8640,
+    3109,
+    1122
+   ],
+   "uv": {
+    "body": [
+     0.01,
+     0.008,
+     0.991,
+     0.993
+    ],
+    "head": [
+     0.005,
+     0.003,
+     0.997,
+     0.999
+    ],
+    "opacity": [
+     0.017,
+     0.007,
+     0.982,
+     0.995
+    ],
+    "glasses": [
+     0.034,
+     0.052,
+     0.989,
+     0.906
+    ]
+   },
+   "hairTris": 794,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0001
+   }
+  },
+  "Business_Female_03": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0005,
+   "tris": [
+    8438,
+    3036,
+    1094
+   ],
+   "uv": {
+    "body": [
+     0.01,
+     0.018,
+     0.991,
+     0.993
+    ],
+    "head": [
+     0.005,
+     0.005,
+     0.992,
+     0.994
+    ],
+    "opacity": [
+     0.018,
+     0.008,
+     0.998,
+     0.98
+    ]
+   },
+   "hairTris": 544,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0001
+   }
+  },
+  "Business_Female_04": {
+   "kind": "f",
+   "pelvisY": 0.9233,
+   "minY": -0.0035,
+   "tris": [
+    8270,
+    2976,
+    1074
+   ],
+   "uv": {
+    "body": [
+     0.01,
+     0.016,
+     0.991,
+     0.993
+    ],
+    "head": [
+     0.006,
+     0.004,
+     0.996,
+     0.994
+    ],
+    "opacity": [
+     0.036,
+     0.01,
+     0.973,
+     0.975
+    ]
+   },
+   "hairTris": 552,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0001
+   }
+  },
+  "Business_Male_01": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7435,
+    2676,
+    966
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.012,
+     0.993,
+     0.995
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.993
+    ],
+    "opacity": [
+     0.007,
+     0.023,
+     0.984,
+     0.993
+    ]
+   },
+   "hairTris": 385,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Business_Male_02": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7448,
+    2680,
+    968
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.012,
+     0.994,
+     0.995
+    ],
+    "head": [
+     0.006,
+     0.004,
+     0.992,
+     0.997
+    ],
+    "opacity": [
+     0.01,
+     0.25,
+     1.005,
+     0.996
+    ]
+   },
+   "hairTris": 218,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  },
+  "Business_Male_03": {
+   "kind": "m",
+   "pelvisY": 0.8952,
+   "minY": -0.0009,
+   "tris": [
+    7810,
+    2811,
+    1015
+   ],
+   "uv": {
+    "body": [
+     0.007,
+     0.005,
+     0.993,
+     0.995
+    ],
+    "head": [
+     0.005,
+     0.004,
+     0.992,
+     0.995
+    ],
+    "opacity": [
+     0.037,
+     0.016,
+     0.985,
+     0.993
+    ]
+   },
+   "hairTris": 376,
+   "skel": {
+    "sameBones": true,
+    "maxJointDiff": 0.0
+   }
+  }
+ },
+ "clips": {
+  "m": {
+   "Idle_Loop": {
+    "src": "m_idle_neutral_01",
+    "frames": 351,
+    "dur": 11.667,
+    "speed": 0.0,
+    "pelvisEnd": 0.8952
+   },
+   "Walk_Loop": {
+    "src": "m_walk_neutral_01",
+    "frames": 37,
+    "dur": 1.2,
+    "speed": 1.012,
+    "pelvisEnd": 0.8979
+   },
+   "Sitting_Idle_Loop": {
+    "src": "m_sit_chair_idle_neutral_01",
+    "frames": 1084,
+    "dur": 36.1,
+    "speed": 0.0,
+    "pelvisEnd": 0.5911
+   },
+   "Sitting_Enter": {
+    "src": "m_sit_down_chair_01",
+    "frames": 88,
+    "dur": 2.9,
+    "speed": 0.159,
+    "pelvisEnd": 0.5911
+   },
+   "Sitting_Exit": {
+    "src": "m_sit_stand_up_chair_01",
+    "frames": 76,
+    "dur": 2.5,
+    "speed": 0.169,
+    "pelvisEnd": 0.8952
+   },
+   "Sitting_Talking_Loop": {
+    "src": "m_sit_chair_gestic_shrug_01",
+    "frames": 91,
+    "dur": 3.0,
+    "speed": 0.0,
+    "pelvisEnd": 0.5911
+   },
+   "Idle_Talking_Loop": {
+    "src": "m_gestic_talk_neutral_01",
+    "frames": 1068,
+    "dur": 35.567,
+    "speed": 0.0,
+    "pelvisEnd": 0.8952
+   },
+   "Idle_FoldArms_Loop": {
+    "src": "m_idle_waiting_01",
+    "frames": 1411,
+    "dur": 47.0,
+    "speed": 0.0,
+    "pelvisEnd": 0.8952
+   },
+   "Idle_TalkingPhone_Loop": {
+    "src": "m_cell_phone_talk_01",
+    "frames": 958,
+    "dur": 31.9,
+    "speed": 0.0,
+    "pelvisEnd": 0.8952
+   },
+   "Walk_Formal_Loop": {
+    "src": "m_walk_neutral_02",
+    "frames": 33,
+    "dur": 1.067,
+    "speed": 1.348,
+    "pelvisEnd": 0.8791
+   },
+   "Jog_Fwd_Loop": {
+    "src": "m_run_slow_01",
+    "frames": 24,
+    "dur": 0.767,
+    "speed": 2.411,
+    "pelvisEnd": 0.8354
+   },
+   "seatY": 0.4421,
+   "sitPelvisY": 0.5911
+  },
+  "f": {
+   "Idle_Loop": {
+    "src": "f_idle_neutral_01",
+    "frames": 467,
+    "dur": 15.533,
+    "speed": 0.0,
+    "pelvisEnd": 0.9194
+   },
+   "Walk_Loop": {
+    "src": "f_walk_neutral_01",
+    "frames": 37,
+    "dur": 1.2,
+    "speed": 1.214,
+    "pelvisEnd": 0.9167
+   },
+   "Sitting_Idle_Loop": {
+    "src": "f_sit_chair_idle_neutral_01",
+    "frames": 998,
+    "dur": 33.233,
+    "speed": 0.0,
+    "pelvisEnd": 0.6112
+   },
+   "Sitting_Enter": {
+    "src": "f_sit_down_chair_01",
+    "frames": 148,
+    "dur": 4.9,
+    "speed": 0.093,
+    "pelvisEnd": 0.6112
+   },
+   "Sitting_Exit": {
+    "src": "f_sit_stand_up_chair_01",
+    "frames": 101,
+    "dur": 3.333,
+    "speed": 0.12,
+    "pelvisEnd": 0.9194
+   },
+   "Sitting_Talking_Loop": {
+    "src": "f_sit_chair_gestic_shrug_01",
+    "frames": 45,
+    "dur": 1.467,
+    "speed": 0.0,
+    "pelvisEnd": 0.6112
+   },
+   "Idle_Talking_Loop": {
+    "src": "f_gestic_talk_neutral_01",
+    "frames": 821,
+    "dur": 27.333,
+    "speed": 0.0,
+    "pelvisEnd": 0.9194
+   },
+   "Idle_FoldArms_Loop": {
+    "src": "f_idle_waiting_01",
+    "frames": 1426,
+    "dur": 47.5,
+    "speed": 0.0,
+    "pelvisEnd": 0.9194
+   },
+   "Idle_TalkingPhone_Loop": {
+    "src": "f_cell_phone_textmessage",
+    "frames": 617,
+    "dur": 20.533,
+    "speed": 0.0,
+    "pelvisEnd": 0.9194
+   },
+   "Walk_Formal_Loop": {
+    "src": "f_walk_neutral_02",
+    "frames": 38,
+    "dur": 1.233,
+    "speed": 1.322,
+    "pelvisEnd": 0.9189
+   },
+   "Jog_Fwd_Loop": {
+    "src": "f_run_slow_01",
+    "frames": 26,
+    "dur": 0.833,
+    "speed": 2.269,
+    "pelvisEnd": 0.8623
+   },
+   "seatY": 0.4669,
+   "sitPelvisY": 0.6112
+  }
+ }
+}

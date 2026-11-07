@@ -1,0 +1,2 @@
+{ "name": "lumiere", "version": "4.0.0", "private": true, "type": "module",
+  "scripts": { "models": "node tools/build-models.js", "test": "sh tools/run-tests.sh", "health": "node tools/dev/model-health.mjs www/models" } }

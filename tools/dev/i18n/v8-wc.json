@@ -1,0 +1,10 @@
+{
+  "hud.basin": { "en": "Wash hands", "es": "Lavarse las manos", "hi": "हाथ धोएँ", "ur": "ہاتھ دھوئیں" },
+  "hud.dryer": { "en": "Dry hands", "es": "Secarse las manos", "hi": "हाथ सुखाएँ", "ur": "ہاتھ سکھائیں" },
+  "hud.stall": { "en": "Use the cubicle", "es": "Usar el cubículo", "hi": "केबिन इस्तेमाल करें", "ur": "کیبن استعمال کریں" },
+  "hud.urinal": { "en": "Use the urinal", "es": "Usar el urinario", "hi": "यूरिनल इस्तेमाल करें", "ur": "یورینل استعمال کریں" },
+  "toast.washed": { "en": "Hands washed. Now dry them.", "es": "Manos lavadas. Ahora sécalas.", "hi": "हाथ धुल गए। अब सुखा लीजिए।", "ur": "ہاتھ دھل گئے۔ اب سکھا لیجیے۔" },
+  "toast.dried": { "en": "Clean and dry. Ready for the film.", "es": "Limpias y secas. Listo para la película.", "hi": "साफ़ और सूखे। फ़िल्म के लिए तैयार।", "ur": "صاف اور سوکھے۔ فلم کے لیے تیار۔" },
+  "toast.dryFirst": { "en": "Warm air on dry hands. Bold.", "es": "Aire caliente en manos secas. Atrevido.", "hi": "सूखे हाथों पर गरम हवा। दिलचस्प।", "ur": "سوکھے ہاتھوں پر گرم ہوا۔ دلچسپ۔" },
+  "toast.fresh": { "en": "Feeling fresh.", "es": "Como nuevo.", "hi": "अब ताज़गी महसूस हो रही है।", "ur": "اب تازگی محسوس ہو رہی ہے۔" }
+}
