@@ -164,12 +164,13 @@ def build_lobby(S):
     acc.wall((x1, z0 + 0.2), (x0, z0 + 0.2), -0.3, H + 0.4, 0.4, MAT['paint'], P['charcoal'],
              openings=[(x1 - 1.6, x1 + 1.6, 3.0, -0.3), (x1 - 13.0, x1 - 7.4, L1 + 3.4, L1 - 0.32)], trim=(0.4, 0.4))   # door and portal: no sill in the floor's plane
     # facade (z1): glass from 0.4 to H-0.6 between mullions every 2.2 m, a bronze plinth and head; the door opening in the middle (4 m)
+    # v10 (the user's photo: "the door from outside is unequal"): the bays were on a grid from the west end, which left a 0.6 m pier on one
+    # side of the door and 2.2 m on the other. Now they are laid out from the door outwards: a 0.6 m pier each side, then eight 2 m bays
+    bays = [(2.6 + 2.2 * i, 4.6 + 2.2 * i) for i in range(8)]; bays = [(-b_, -a_) for a_, b_ in reversed(bays)] + bays
     acc.wall((x0, z1 - 0.2), (x1, z1 - 0.2), -0.3, H + 0.4, 0.4, MAT['powder'], lin('#3b2f25'),
-             openings=[(2.0 + i * 2.2, 2.0 + i * 2.2 + 2.0, H - 0.8, 0.35) for i in range(19) if abs(x0 + 2.0 + i * 2.2 + 1.0) > 3.0] + [(22 - 2.0, 22 + 2.0, 3.0, -0.3)], trim=(0.4, 0.4))
-    for i in range(19):
-        gx0 = x0 + 2.0 + i * 2.2
-        if abs(gx0 + 1.0) <= 3.0: continue
-        acc.box(gx0, 0.35, z1 - 0.21, gx0 + 2.0, H - 0.8, z1 - 0.19, MAT['glass'], lin('#2a3a44'))
+             openings=[(a_ - x0, b_ - x0, H - 0.8, 0.35) for a_, b_ in bays] + [(-2.0 - x0, 2.0 - x0, 3.0, -0.3)], trim=(0.4, 0.4))
+    for a_, b_ in bays:
+        acc.box(a_, 0.35, z1 - 0.21, b_, H - 0.8, z1 - 0.19, MAT['glass'], lin('#2a3a44'))
     acc.box(-2.0, 3.0, z1 - 0.21, 2.0, H - 0.8, z1 - 0.19, MAT['glass'], lin('#2a3a44'))
     # mezzanine (L1) over the back of the lobby, with the escalator void; round columns under its edge; glass balustrade
     V = MZ['void']
@@ -269,13 +270,13 @@ def build_lobby(S):
     acc.box(G['podium']['x'] - 0.4, 1.12, G['podium']['z'] - 0.35, G['podium']['x'] + 0.4, 1.16, G['podium']['z'] + 0.35, MAT['nero'], lin('#151517'))
     lit.spot((G['podium']['x'], 3.6, G['podium']['z']), lin('#ffd8a8'), 1.8, 5, 'h', (0, -1, 0), 20, 45)
     # wall washers on the fluted west wall, pendant lights over the lounge
-    for zz in range(-12, 18, 3):
-        lit.spot((x0 + 0.6, H - 0.4, zz), lin('#ffd2a0'), 2.4, 10, 'h', (-0.35, -1, 0), 15, 40)
+    # v10 (the user: "the lighting is way too hard"): one continuous grazing wash per long wall instead of a row of narrow spots (their
+    # scallops were the hardest thing in the room); the same light per metre, spread evenly
+    lit.line((x0 + 0.45, H - 0.3, -12.5), (x0 + 0.45, H - 0.3, 17.5), lin('#ffd6a8'), 0.85, 10, 'h', (-0.45, -1, 0))
     # v9.1 lighting layers (lighting-design: no uniform fill; light where people are and on what they look at): washers grazing the
     # travertine east wall, deep downlights over the waiting areas by the facade, the torcheres' warm pools, the chandelier's glow
-    for zz in range(-12, 18, 3):
-        if abs(zz + 1.0) < 1.5: continue
-        lit.spot((x1 - 0.7, H - 0.4, zz + 0.5), lin('#ffd9ae'), 2.0, 10, 'h', (0.3, -1, 0), 15, 40)
+    lit.line((x1 - 0.5, H - 0.3, -12.0), (x1 - 0.5, H - 0.3, -2.6), lin('#ffdcb4'), 0.75, 10, 'h', (0.45, -1, 0))
+    lit.line((x1 - 0.5, H - 0.3, 0.6), (x1 - 0.5, H - 0.3, 18.0), lin('#ffdcb4'), 0.75, 10, 'h', (0.45, -1, 0))
     for cx, cz in ((11.5, 12.6), (16.5, 12.6), (-9.5, 15.2)):
         lit.spot((cx, H - 0.1, cz), lin('#ffdcb0'), 3.2, 13, 'h', (0, -1, 0), 18, 38)
         lit.point((cx, 2.95, cz + 1.3), lin('#ffcf98'), 0.9, 5, 'h')
@@ -403,14 +404,23 @@ def build_corridor(S):
                     glow_facing(glow, P_(sa_, oa), P_(sb_, oa), P_(sb_, ob), P_(sa_, ob), (0, -1, 0), C['white'], 2.2 if half > 1 else 1.6)
             acc.box(min(cx - 1.18, cx + 1.18), top - 0.1, min(cz - 1.18, cz + 1.18), max(cx - 1.18, cx + 1.18), top - 0.08, max(cz - 1.18, cz + 1.18), MAT['paint'], C['charcoal'])
             lit.point((cx, top - 0.4, cz), lin('#f2f4ff'), 0.85, 5.5, 'h')
-    lit.ambient(lin('#5a2026'), lin('#120a0c'), 0.012, 'h')
+    lit.ambient(lin('#5a4034'), lin('#16100d'), 0.022, 'h')   # v10: a warmer, lighter fill (the user: "too hard"); the red stays in the lines
     # hall entrances (v9.3, the user's photo of a ScreenX entrance): each door sits at the back of a recessed portal 2.6 m wide, cut into
     # a block clad in bronze diamond panels; a downlight in the portal's soffit; the hall's name in face-lit letters over the portal and
     # its number beside it (engine props, world9.js dressRooms) with a soft light behind both; a showtime header inside, over the doors
     panels = []
-    def clad(p0, p1, y0, y1, face):   # bronze diamond panels on a face from p0 to p1 (2D), facing +face of p0->p1
-        if math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.6 and y1 - y0 > 0.5:
-            diamond_wall(acc, p0, p1, y0, y1, face, 0.24, 0.025, MAT['lacquer'], C['bronze'], C['bronze2'], rnd)   # a fine quilt, as in the photo
+    # v10 (the user: "the diamond one looks shit as fuck, just remove and change it"): fluted walnut panels with a brass edge, after the
+    # timber portals of INOX JTM and PVR INOX Gurugram (docs/V10-RESEARCH.md); a 14 mm slab, so every face is a box's own
+    def clad(p0, p1, y0, y1, face):   # p0 -> p1 along an axis (2D), the panel 14 mm proud on the side +face of p0->p1
+        L = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+        if L <= 0.6 or y1 - y0 <= 0.5: return
+        ux, uz = (p1[0] - p0[0]) / L, (p1[1] - p0[1]) / L; nx, nz = -uz * face, ux * face
+        def slab(a, b, ya, yb, t, mat, col):
+            xs = [a[0], b[0], a[0] + nx * t, b[0] + nx * t]; zs = [a[1], b[1], a[1] + nz * t, b[1] + nz * t]
+            acc.box(min(xs), ya, min(zs), max(xs), yb, max(zs), mat, col)
+        slab(p0, p1, y0, y1, 0.014, MAT['fluted'], lin('#6a4529'))
+        for e, d in ((p0, 1), (p1, -1)):   # brass edges, 3 cm wide, 1 cm prouder than the flutes
+            q = (e[0] + ux * d * 0.03, e[1] + uz * d * 0.03); slab((min(e[0], q[0]), min(e[1], q[1])), (max(e[0], q[0]), max(e[1], q[1])), y0, y1, 0.024, MAT['brass'], lin('#b8893c'))
     for hid, d in doors.items():
         h = halls[hid]; side = -h['dir']; zc = d['z']; xf = d['x'] + side * 0.5   # xf: the corridor wall's face
         if hid == 'X270':   # its door is at the back of a short link off the east flank: the link is the portal; clad round its mouth
