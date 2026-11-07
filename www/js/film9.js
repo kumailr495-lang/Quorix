@@ -67,7 +67,11 @@ void main() { float dist = uWall.x + vUv.x * uWall.y, s = uSrc.z / max(1e-4, uBo
 export class Shows {
   constructor(world, sound, crowd, director, engine, hooks = {}) {
     Object.assign(this, { world, sound, crowd, director, engine, hooks, active: null, own: null, now: 0, vis: new Set(), buffering: false, spread: 0, lumV: 0.2 });
-    const v = this.video = document.createElement('video'); v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.crossOrigin = 'anonymous'; v.style.display = 'none'; document.body.appendChild(v);
+    const v = this.video = document.createElement('video'); v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.crossOrigin = 'anonymous';
+    // v10: not display:none. A hidden video element may decode its picture lazily (a frozen or stuttering picture while the sound runs on);
+    // this one is laid out, 2 px in a corner behind the game's canvas, so the browser treats it as on screen
+    Object.assign(v.style, { position: 'fixed', left: '0', top: '0', width: '2px', height: '2px', opacity: '0.01', zIndex: '-1', pointerEvents: 'none' }); document.body.appendChild(v);
+    v.volume = 0;   // the film's own sound is opened by the sound system (sound.startFilm sets its level), never at full volume by itself
     v.addEventListener('ended', () => { const s = this.cur(); if (s && (s.state === 'playing')) this._finish(s.id, !s.credits); });
     v.addEventListener('error', () => { const s = this.cur(); if (s && s.state !== 'idle' && s.state !== 'ended') { this.hooks.onError && this.hooks.onError(s.src && s.src.kind); this._stopPicture(s); s.state = 'ended'; s.phaseAt = this.now; s.slides.text([t('toast.videoError') || 'This video could not be played.']); } });
     v.addEventListener('waiting', () => { this.buffering = true; }); v.addEventListener('playing', () => { this.buffering = false; });
@@ -167,7 +171,7 @@ export class Shows {
       const dur = s.state === 'countdown' ? 9500 : s.state === 'playing' ? 2000 : 5000, u = clamp((now - s.lightAt) / dur); s.light = s.lightFrom + (want - s.lightFrom) * ss(u);
       h.room.U.uHouse.value = s.light; h.room.U.uGlow.value = 0.35 + 0.65 * Math.min(1, s.light * 2.5);
       // screen light gain: the picture's own colour comes from the spill copy
-      const g = s.state === 'playing' && s.pic ? 6.5 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
+      const g = s.state === 'playing' && s.pic ? 3.6 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
       if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic && !this._yt && (s.split || s.wrap) ? 1 : 0;   // as bright as the front at the corner (the edge extension dims itself with distance)
       for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
@@ -188,16 +192,30 @@ export class Shows {
     const el = document.getElementById('yt') || (() => { const d = document.createElement('div'); d.id = 'yt'; document.body.insertBefore(d, document.body.firstChild); return d; })();
     el.innerHTML = ''; const f = document.createElement('iframe'); f.allow = 'autoplay; encrypted-media; picture-in-picture'; f.setAttribute('allowfullscreen', '');
     f.src = `https://www.youtube-nocookie.com/embed/${s.src.ytId}?autoplay=1${s.seek >= 1 ? '&start=' + Math.floor(s.seek) : ''}&playsinline=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
-    el.appendChild(f); this._yt = { el, f, s }; const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; s.slides.card('', '', 0); u.uGain.value = 0; s.pic = true; this.spillMat.uniforms.uBox.value.set(0, 0, 1, 1);
+    // v10: a CSS 3D camera (perspective + the game camera's matrix) carries the player, so the browser clips it where the screen leaves
+    // the view instead of the whole player vanishing (the user: "look a bit left: the movie goes blank but the audio continues")
+    const cam = document.createElement('div'); Object.assign(cam.style, { position: 'absolute', left: '0', top: '0', transformStyle: 'preserve-3d', pointerEvents: 'none' }); cam.appendChild(f); el.appendChild(cam);
+    Object.assign(f.style, { position: 'absolute', left: '0', top: '0', width: '1280px', height: '720px', transformOrigin: '50% 50%' });
+    this._yt = { el, f, s, cam, m: new THREE.Matrix4() }; const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; s.slides.card('', '', 0); u.uGain.value = 0; s.pic = true; this.spillMat.uniforms.uBox.value.set(0, 0, 1, 1);
     document.body.classList.add('yt-on'); this.hooks.onPicture && this.hooks.onPicture(s.id);
   }
   _ytStop() { if (!this._yt) return; this._yt.el.innerHTML = ''; this._yt = null; document.body.classList.remove('yt-on'); }
-  _ytPlace(camera) {   // the iframe's corners follow the screen's corners in perspective (matrix3d from the four projected points)
-    const { el, f, s } = this._yt, H = s.hall.cfg, W = innerWidth, Hh = innerHeight, yb = H.y0 + H.hB, A = 16 / 9, pw = Math.min(H.W, H.H * A), ph = pw / A, u0 = -pw / 2, u1 = pw / 2, y0 = yb + (H.H - ph) / 2, y1 = y0 + ph;
-    const P = [[u0, y1], [u1, y1], [u1, y0], [u0, y0]].map(([u, y]) => { const w = H.toWorld(u, H.screenD(u)); return new THREE.Vector3(w.x, y, w.z).project(camera); });
-    if (P.some((p) => p.z > 1 || p.z < -1)) { el.style.visibility = 'hidden'; return; } el.style.visibility = 'visible';
-    const pts = P.map((p) => [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]), bw = 1280, bh = 720; f.style.width = bw + 'px'; f.style.height = bh + 'px';
-    f.style.transform = homography([[0, 0], [bw, 0], [bw, bh], [0, bh]], pts);
+  _ytPlace(camera) {   // the player sits on the screen's picture area (16:9, centred), placed by the browser's own 3D projection
+    camera.updateMatrixWorld();   // this frame's camera, not the last frame's (the player would trail the picture by a frame)
+    const y = this._yt, { el, f, s, cam } = y, H = s.hall.cfg, W = innerWidth, Hh = innerHeight, yb = H.y0 + H.hB, A = 16 / 9, pw = Math.min(H.W, H.H * A), ph = pw / A;
+    const a = H.toWorld(-pw / 2, H.screenD(-pw / 2)), b = H.toWorld(pw / 2, H.screenD(pw / 2)), cx = (a.x + b.x) / 2, cz = (a.z + b.z) / 2, cy = yb + H.H / 2;
+    const ux = (b.x - a.x) / pw, uz = (b.z - a.z) / pw, k = pw / 1280;   // the screen's right-hand direction, metres per CSS pixel
+    // the picture's own frame in the world: x along the screen, y up, z towards the audience; then scaled to 1280 x 720 CSS pixels
+    y.m.set(ux * k, 0, -uz * k, cx, 0, k, 0, cy, uz * k, 0, ux * k, cz, 0, 0, 0, 1);
+    const P = [[-pw / 2, ph / 2], [pw / 2, ph / 2], [pw / 2, -ph / 2], [-pw / 2, -ph / 2]].map(([u, v]) => new THREE.Vector3(cx + ux * u, cy + v, cz + uz * u).project(camera));
+    const seen = P.some((p) => p.z < 1 && Math.abs(p.x) < 1.2 && Math.abs(p.y) < 1.2) || (P.every((p) => p.z < 1) && !(P.every((p) => p.x > 1) || P.every((p) => p.x < -1) || P.every((p) => p.y > 1) || P.every((p) => p.y < -1)));
+    el.style.visibility = 'visible';
+    if (!seen) {   // looking away: a 2 px corner keeps the player "on screen" (an off-screen player may stop drawing and stall when you look back)
+      el.style.perspective = ''; cam.style.transform = ''; f.style.transform = 'translate(-639px,-359px) scale(0.0016)'; f.style.opacity = '0.01'; return; }
+    f.style.opacity = '1'; const fov = camera.projectionMatrix.elements[5] * Hh / 2, e = camera.matrixWorldInverse.elements, n = (v) => (Math.abs(v) < 1e-10 ? 0 : v);
+    el.style.perspective = fov + 'px'; Object.assign(cam.style, { width: W + 'px', height: Hh + 'px' });
+    cam.style.transform = `translateZ(${fov}px) matrix3d(${n(e[0])},${n(-e[1])},${n(e[2])},${n(e[3])},${n(e[4])},${n(-e[5])},${n(e[6])},${n(e[7])},${n(e[8])},${n(-e[9])},${n(e[10])},${n(e[11])},${n(e[12])},${n(-e[13])},${n(e[14])},${n(e[15])}) translate(${W / 2}px,${Hh / 2}px)`;
+    const o = y.m.elements; f.style.transform = `translate(-50%,-50%) matrix3d(${n(o[0])},${n(o[1])},${n(o[2])},${n(o[3])},${n(-o[4])},${n(-o[5])},${n(-o[6])},${n(-o[7])},${n(o[8])},${n(o[9])},${n(o[10])},${n(o[11])},${n(o[12])},${n(o[13])},${n(o[14])},${n(o[15])})`;
   }
   // ---------------------------------------------------------- tablet remote, lifecycle
   control(cmd, arg) {
@@ -209,8 +227,14 @@ export class Shows {
   }
   playback() { const s = this.cur(); if (!s || !s.src) return null; const v = this.video; return { id: s.id, state: s.state, t: v.currentTime || 0, dur: v.duration || 0, paused: v.paused, rate: v.playbackRate, kind: s.src.kind, src: s.src.kind === 'film' ? 'film' : 'user', film: s.src.filmId, title: s.src.title, url: s.src.url, filmId: s.src.filmId, el: v }; }
   // app to the background and back (wrapper lifecycle): pause, then resume with a seek nudge so the decoder hands over a fresh frame
+  // v10 (the user: on Continue "the audio continues and the screen freezes for 16-20 s"): the old resume nudged currentTime, a seek, and
+  // a phone's decoder then shows nothing new until the next keyframe while the sound runs on. Now it just plays; if no new frame has
+  // arrived 1.2 s later it seeks to exactly where it is (a fresh decode from the nearest keyframe before, which is shown at once)
   pause(on) { const s = this.cur(); if (!s || s.state !== 'playing' || s.src.kind === 'youtube') return; const v = this.video;
-    if (on) { s.wasPlaying = !v.paused; v.pause(); } else if (s.wasPlaying) { try { v.currentTime = v.currentTime + 0.001; } catch (e) { /* not seekable */ } v.play().catch(() => {}); this.vtex.needsUpdate = true; } }
+    if (on) { s.wasPlaying = !v.paused; v.pause(); return; }
+    if (!s.wasPlaying) return; let fresh = false; if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => { fresh = true; });
+    v.play().catch(() => {}); this.vtex.needsUpdate = true;
+    clearTimeout(this._wake); this._wake = setTimeout(() => { if (!fresh && !v.paused && this.cur() === s && 'requestVideoFrameCallback' in v) { try { v.currentTime = v.currentTime; } catch (e) { /* not seekable */ } } }, 1200); }
 }
 // a CSS matrix3d mapping the rectangle src (4 points) onto dst (4 points): the projective transform solved from the 8 equations
 function homography(src, dst) {

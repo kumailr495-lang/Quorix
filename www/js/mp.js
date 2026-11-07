@@ -15,7 +15,7 @@ const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 const small = (l) => (l && typeof l === 'object' ? { o: clip(Math.round(num(l.o)), 0, 15), h: clip(Math.round(num(l.h)), 0, 15), s: clip(Math.round(num(l.s, 2)), 0, 15) } : null);
 
 export class Multi {
-  constructor(hooks = {}) { this.hooks = hooks; this.room = null; this.peers = new Map(); this.code = null; this.host = false; this.me = null; this.lastShow = null; this.offset = 0; this.t = 0; }
+  constructor(hooks = {}) { this.hooks = hooks; this.room = null; this.peers = new Map(); this.code = null; this.host = false; this.me = null; this.lastShow = null; this.offset = 0; this.t = 0; this.term = 0; }
   get active() { return !!this.room; }
   get count() { return this.room ? this.peers.size + 1 : 0; }
   // profile: { name, avatar, look } (avatar: a Rocketbox person's name, people.js RB; look: outfit, hair and height indices, people.js LOOK)
@@ -28,8 +28,9 @@ export class Multi {
     const sHello = act('hello', (h, id) => {
       if (!h || typeof h !== 'object' || !id) return; let p = this.peers.get(id); const fresh = !p;
       if (!p) { p = { id, st: null, at: 0 }; this.peers.set(id, p); }
-      Object.assign(p, { name: String(h.name || 'Guest').slice(0, 18), avatar: String(h.avatar || '').slice(0, 40), look: small(h.look), host: !!h.host, since: num(h.since, Date.now()) });
-      if (p.host && this.host && p.since < this.since) { this.host = false; this.hooks.onHost && this.hooks.onHost(false); }   // two hosts (both opened it): the earlier one keeps it
+      Object.assign(p, { name: String(h.name || 'Guest').slice(0, 18), avatar: String(h.avatar || '').slice(0, 40), look: small(h.look), host: !!h.host, since: num(h.since, Date.now()), term: Math.max(0, Math.round(num(h.term))) });
+      if (p.host) { if (this.host && (p.term > this.term || (p.term === this.term && p.since < this.since))) { this.host = false; this.hooks.onHost && this.hooks.onHost(false); }   // two claims: the newer term wins, then the earlier arrival
+        if (p.term >= this.term) this.term = p.term; for (const q of this.peers.values()) if (q !== p && q.host && q.term <= p.term) q.host = false; }
       if (p.host && h.now) this.offset = num(h.now) - Date.now();   // the host's clock, to start shows together (good to a fraction of a second)
       if (fresh && this.hooks.onJoin) this.hooks.onJoin(p);
       if (this.early && this.early.id === id) { const e = this.early; this.early = null; this.takeShow(e.s, p); }
@@ -41,19 +42,28 @@ export class Multi {
       this.hooks.onState && this.hooks.onState(p); });
     const sShow = act('show', (s, id) => { if (!s || typeof s !== 'object') return; const p = this.peers.get(id); if (!p) { this.early = { s, id }; return; } this.takeShow(s, p); });
     const sChat = act('chat', (m, id) => { const p = this.peers.get(id); if (p && this.hooks.onChat) this.hooks.onChat(p, String(m || '').slice(0, 140)); });
+    // the host hands the role to another player: the new term, and the current show's start as time from now (each phone's own clock)
+    const sHost = act('host', (h, id) => { const p = this.peers.get(id); if (!p || !p.host || !h || typeof h !== 'object' || Math.round(num(h.term)) <= this.term) return;
+      this.term = Math.round(num(h.term)); this.host = true; this.offset = 0; p.host = false;
+      this.lastShow = h.show && typeof h.show === 'object' ? { ...h.show, startAt: Date.now() + clip(num(h.show.left), -6 * 3600000, 600000) } : null; delete (this.lastShow || {}).left;
+      this.sHello(this.hello()); this.hooks.onHost && this.hooks.onHost(true); });
+    // the host's remote control (pause, play, seek, stop) reaches every phone; only the host's own messages count
+    const sCtl = act('ctl', (c, id) => { const p = this.peers.get(id); if (p && p.host && c && typeof c === 'object' && this.hooks.onCtl) this.hooks.onCtl(c, p); });
+    // an order: the cinema has one server, who serves every seat that called him in turn
+    const sOrder = act('order', (o, id) => { const p = this.peers.get(id); if (p && o && typeof o === 'object' && this.hooks.onOrder) this.hooks.onOrder(p, String(o.seat || '').slice(0, 40)); });
     const sEmote = act('emote', (e, id) => { const p = this.peers.get(id); if (p && this.hooks.onEmote) this.hooks.onEmote(p, String(e || '').slice(0, 12)); });
-    Object.assign(this, { sHello, sState, sShow, sChat, sEmote });
+    Object.assign(this, { sHello, sState, sShow, sChat, sEmote, sHost, sCtl, sOrder });
     room.onPeerJoin = (id) => { sHello(this.hello(), id); this.hooks.onCount && this.hooks.onCount(this.count); };
     room.onPeerLeave = (id) => { const p = this.peers.get(id); this.peers.delete(id); if (p && this.hooks.onLeave) this.hooks.onLeave(p); this.elect(); this.hooks.onCount && this.hooks.onCount(this.count); };
     this.hooks.onCount && this.hooks.onCount(this.count);
   }
   takeShow(s, p) { if (!p.host) return; this.lastShow = s; this.hooks.onShow && this.hooks.onShow(s, p); }
-  hello() { return { name: this.me.name, avatar: this.me.avatar, look: this.me.look, host: this.host, since: this.since, now: this.host ? Date.now() : 0 }; }
+  hello() { return { name: this.me.name, avatar: this.me.avatar, look: this.me.look, host: this.host, term: this.term, since: this.since, now: this.host ? Date.now() : 0 }; }
   // the host left: the one who has been in the room longest takes over (every phone reaches the same answer from the same list)
   elect() {
     if (!this.room || this.host || [...this.peers.values()].some((p) => p.host)) return;
     const all = [{ since: this.since, id: selfId, me: true }, ...this.peers.values()].sort((a, b) => a.since - b.since || (a.id < b.id ? -1 : 1));
-    if (all[0].me) { if (this.lastShow) this.lastShow = { ...this.lastShow, startAt: num(this.lastShow.startAt) - this.offset }; this.offset = 0; this.host = true; this.sHello(this.hello()); this.hooks.onHost && this.hooks.onHost(true); }
+    if (all[0].me) { if (this.lastShow) this.lastShow = { ...this.lastShow, startAt: num(this.lastShow.startAt) - this.offset }; this.offset = 0; this.host = true; this.term += 1; this.sHello(this.hello()); this.hooks.onHost && this.hooks.onHost(true); }
   }
   // per frame: my player, at most ten times a second (each phone sends only its own: the load is shared by everyone in the room)
   tick(dt, s) {
@@ -64,6 +74,11 @@ export class Multi {
   show(s) { if (!this.room || !this.host) return; this.lastShow = s; this.sShow(s); }
   hostNow() { return Date.now() + (this.host ? 0 : this.offset); }
   chat(m) { if (this.room) this.sChat(String(m).slice(0, 140)); }
+  // hand the host role to a player in the room
+  giveHost(id) { const p = this.peers.get(id); if (!this.room || !this.host || !p) return false; this.term += 1; const L = this.lastShow;
+    this.sHost({ term: this.term, show: L ? { ...L, left: num(L.startAt) - Date.now() } : null }, id); this.host = false; p.host = true; this.sHello(this.hello()); this.hooks.onHost && this.hooks.onHost(false); return true; }
+  control(c) { if (this.room && this.host) { this.sCtl(c); if (this.lastShow && c && Number.isFinite(c.startAt)) this.lastShow = { ...this.lastShow, startAt: c.startAt }; if (c && c.cmd === 'stop') this.lastShow = null; } }
+  order(seatKey) { if (this.room) this.sOrder({ seat: seatKey }); }
   emote(e) { if (this.room) this.sEmote(e); }
   leave() { if (!this.room) return; try { this.room.leave(); } catch (e) { /* already gone */ } this.room = null; for (const p of this.peers.values()) if (this.hooks.onLeave) this.hooks.onLeave(p); this.peers.clear(); this.lastShow = null; this.early = null; this.offset = 0; this.host = false; this.hooks.onCount && this.hooks.onCount(0); }
 }

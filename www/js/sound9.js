@@ -73,6 +73,12 @@ export class Sound9 extends Sound {
   startFilm(hallKey, src) {
     if (!this.ready) { this._pendingFilm = [hallKey, src]; return; }
     if (!src || !src.video || !src.hall) return super.startFilm(hallKey, src);
+    // v10 (the user: "the sound has a delay"): routed through Web Audio, the film's sound reaches the speaker after the phone's audio
+    // output latency (often 100-250 ms on Android) while its picture does not wait for it. By default the film plays its own sound,
+    // which the media pipeline keeps in step with the picture; its level follows the room (volume) and a captured copy feeds the
+    // audience's ears (level, reactions). The speaker sphere stays as an option (Settings, surround), and once a film has been routed
+    // through it this session the element's sound stays there.
+    if (!this.surround && !this.videoSrc) { super.startFilm(hallKey, { direct: src.video }); this.film.video = src.video; this._tap(src.video); return; }
     this.stopFilm(); this.film = { hall: hallKey, gain: 1, nodes: [], video: src.video };
     const c = this.ctx; if (!this.videoSrc || this.videoSrc._el !== src.video) { try { this.videoSrc = c.createMediaElementSource(src.video); this.videoSrc._el = src.video; } catch (e) { console.warn('[lumiere] film audio routing failed', e); return; } }
     this.videoSrc.disconnect(); const split = c.createChannelSplitter(2), L = c.createGain(), R = c.createGain(); this.videoSrc.connect(split); split.connect(L, 0); split.connect(R, 1);
@@ -89,7 +95,13 @@ export class Sound9 extends Sound {
     out.connect(this.filmIn); this.film.out = out; this.sphere = true;
     clearInterval(this._agcT); this._agcT = setInterval(() => this._agc(), 500);
   }
-  stopFilm(hallKey) { if (this.film && this.film.out) { try { this.film.out.disconnect(); } catch (e) { /* gone */ } if (this.videoSrc) try { this.videoSrc.disconnect(); } catch (e) { /* gone */ } } this.sphere = null; super.stopFilm(hallKey); }
+  // the audience listens to a captured copy of the film's sound (the element keeps its own output); no copy, no live reactions
+  _tap(v) {
+    try { if (this._tapSrc) this._tapSrc.disconnect(); this._tapSrc = null; const st = v.captureStream ? v.captureStream() : v.mozCaptureStream ? v.mozCaptureStream() : null;
+      if (!st || !st.getAudioTracks().length) return; this._tapSrc = this.ctx.createMediaStreamSource(st); this._tapSrc.connect(this.an); } catch (e) { console.warn('[lumiere] film level tap unavailable', e); }
+  }
+  stopFilm(hallKey) { if (this._tapSrc && (!hallKey || (this.film && this.film.hall === hallKey))) { try { this._tapSrc.disconnect(); } catch (e) { /* gone */ } this._tapSrc = null; }
+    if (this.film && this.film.out) { try { this.film.out.disconnect(); } catch (e) { /* gone */ } if (this.videoSrc) try { this.videoSrc.disconnect(); } catch (e) { /* gone */ } } this.sphere = null; super.stopFilm(hallKey); }
   // the listener: your head (position and turn) for the virtual speakers
   setHead(x, y, z, yaw, pitch) {
     if (!this.ready) return; const L = this.ctx.listener, fx = -Math.sin(yaw) * Math.cos(pitch), fy = Math.sin(pitch), fz = -Math.cos(yaw) * Math.cos(pitch), t = this.ctx.currentTime;

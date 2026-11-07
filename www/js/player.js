@@ -18,7 +18,7 @@ export class Player {
     stickEl.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) stickMove(e); });
     const stickEnd = (e) => { if (e.pointerId === stickId) { stickId = null; this.stick.x = this.stick.y = 0; setKnob(0, 0); stickEl.classList.remove('on'); } };
     stickEl.addEventListener('pointerup', stickEnd); stickEl.addEventListener('pointercancel', stickEnd);
-    canvas.addEventListener('pointerdown', (e) => { if (lookId === null) { lookId = e.pointerId; lx = e.clientX; ly = e.clientY; canvas.setPointerCapture(e.pointerId); } });
+    canvas.addEventListener('pointerdown', (e) => { if (lookId === null) { lookId = e.pointerId; lx = e.clientX; ly = e.clientY; try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* a pointer the browser no longer tracks */ } } });
     canvas.addEventListener('pointermove', (e) => { if (e.pointerId !== lookId || this.locked) return; const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY; const s = (this.settings.sensitivity ?? 1) * 0.0042; this.turn(dx * s, dy * s * (this.settings.invertY ? -1 : 1)); });
     const lookEnd = (e) => { if (e.pointerId === lookId) lookId = null; }; canvas.addEventListener('pointerup', lookEnd); canvas.addEventListener('pointercancel', lookEnd);
     const hold = (on) => { this.sprint = on; sprintEl.classList.toggle('on', on); };

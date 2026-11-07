@@ -32,7 +32,13 @@ const CSS = `
 #mpPrev{width:120px;height:170px;border-radius:12px;background:#141418;border:1px solid var(--line-2);flex:none}
 #mpPanel .mpSw{display:flex;flex-wrap:wrap;gap:6px}#mpPanel .mpSw button{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.18);padding:0;cursor:pointer}
 #mpPanel .mpSw button.on{border-color:#e3bf7f;box-shadow:var(--sh-gold)}#mpPanel .mpSw button.orig{background:conic-gradient(#d9c7a6 0 25%,#3a3a40 0 50%,#d9c7a6 0 75%,#3a3a40 0)}
-#mpPanel input[type=range]{padding:0;accent-color:#e3bf7f}`;
+#mpPanel input[type=range]{padding:0;accent-color:#e3bf7f}
+#mpPanel .mpRow{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}#mpPanel .btn.mini{padding:4px 10px;font-size:12px;min-height:0}
+#mpPanel .btn.mini.on{border-color:#e3bf7f;color:#e3bf7f}
+#mpBar button{position:relative}#mpBar button.off{opacity:.45}#mpBar .dot{position:absolute;right:3px;top:3px;width:7px;height:7px;border-radius:50%;background:#e3bf7f;display:none}#mpBar button.unread .dot{display:block}
+#mpChat{flex-direction:column;align-items:stretch;background:rgba(12,10,14,.86);border:1px solid var(--line-2);border-radius:16px;padding:8px;backdrop-filter:blur(8px)}
+#mpChat .mpLog{max-height:30vh;overflow:auto;font:500 13px var(--font);color:var(--fg);line-height:1.45;padding:2px 4px 6px}#mpChat .mpLog b{color:#e3bf7f;font-weight:600}
+#mpChat .mpLog .me b{color:#9fd3c7}#mpChat .mpLog .sys{color:var(--subtle);font-size:12px}#mpChat .mpIn{display:flex;gap:6px}`;
 const el = (tag, attrs = {}, kids = []) => { const e = document.createElement(tag); for (const k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'cls') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); } for (const c of kids) e.appendChild(c); return e; };
 // a show another phone sends is checked here before it reaches the screen: a house film by id, a YouTube video by its 11-character id,
 // or an https link; anything else is dropped (a link through this phone's own media server is never sent: orig is the web address)
@@ -50,7 +56,9 @@ export class Together {
   constructor(ctx) {
     this.c = ctx; this.remotes = new Map(); this.tags = new Map(); this._v = new THREE.Vector3(); this.last = { x: 0, z: 0 }; this.speed = 0;
     this.mp = new Multi({ onJoin: (p) => this.join_(p), onLeave: (p) => this.leave_(p), onState: () => {}, onShow: (s, p) => this.applyShow(s, p), onChat: (p, m) => this.chat_(p, m),
-      onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.c.toast(t('mp.newHost'), 2600); this.badge(); } });
+      onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.note(t('mp.newHost')); this.badge(); },
+      onCtl: (c, p) => this.applyCtl(c, p), onOrder: (p, key) => { const f = this.seatByKey(key); if (f && this.c.order) this.c.order(f.s, p.name); } });
+    this.log = []; this.unread = 0;
     document.head.appendChild(el('style', { text: CSS }));
     // the menu button, after Quick play
     const q = document.querySelector('#mnQuick');
@@ -117,7 +125,12 @@ export class Together {
   isOpen() { return !!this.panel; }
   list() { const L = this.panel && this.panel.querySelector('#mpList'); if (!L) return; L.textContent = ''; if (!this.active) return;
     L.appendChild(el('div', { text: `${t('mp.players')} · ${t('mp.badge', { code: this.mp.code, n: this.mp.count })}` }));
-    L.appendChild(el('div', { text: `• ${this.mp.me.name}${this.mp.host ? ' ★' : ''}` })); for (const p of this.mp.peers.values()) L.appendChild(el('div', { text: `• ${p.name}${p.host ? ' ★' : ''}` })); }
+    L.appendChild(el('div', { text: `• ${this.mp.me.name}${this.mp.host ? ' ★' : ''}` }));
+    for (const p of this.mp.peers.values()) { const row = el('div', { cls: 'mpRow' }, [el('span', { text: `• ${p.name}${p.host ? ' ★' : ''}` })]);
+      if (this.mp.host) { const b = el('button', { cls: 'btn ghost mini', text: t('mp.makeHost') }); b.addEventListener('click', () => { if (this.mp.giveHost(p.id)) this.note(t('mp.gaveHost', { name: p.name })); this.list(); }); row.appendChild(b); }
+      L.appendChild(row); }
+    const tg = (key, label) => { const S = this.c.settings, b = el('button', { cls: 'btn ghost mini' + (S[key] === false ? '' : ' on'), text: label }); b.addEventListener('click', () => { S[key] = S[key] === false; this.c.save(); this.list(); this.badge(); }); return b; };
+    L.appendChild(el('div', { cls: 'mpRow' }, [tg('mpNames', t('mp.names')), tg('mpMsgs', t('mp.msgs'))])); }
   go(code, profile, asHost, status) {
     status.textContent = t('mp.connecting');
     try { this.mp.start(code, profile, asHost); } catch (e) { console.warn('[mp]', e); status.textContent = t('mp.failed'); return; }
@@ -132,28 +145,37 @@ export class Together {
     if (!this.active) { if (this.bdg) { this.bdg.remove(); this.bar.remove(); this.bdg = this.bar = null; } return; }
     if (!this.bdg) {
       this.bdg = el('button', { id: 'mpBadge' }, [el('i'), el('span')]); this.bdg.addEventListener('click', () => this.open());
-      const chatB = el('button', { text: '💬', 'aria-label': 'chat' }); chatB.addEventListener('click', () => this.chatBox());
-      this.bar = el('div', { id: 'mpBar' }, [chatB]);
-      for (const [e, ic] of [['wave', '👋'], ['clap', '👏'], ['cheer', '🎉']]) { const b = el('button', { text: ic, 'aria-label': e }); b.addEventListener('click', () => { this.mp.emote(e); this.c.toast(ic, 900); }); this.bar.appendChild(b); }
+      const chatB = this.chatB = el('button', { text: '💬', 'aria-label': 'chat' }, [el('i', { cls: 'dot' })]); chatB.addEventListener('click', () => this.chatBox());
+      const namesB = this.namesB = el('button', { text: '🏷', 'aria-label': t('mp.names') }); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
+      this.bar = el('div', { id: 'mpBar' }, [chatB, namesB]);
+      for (const [e, ic] of [['wave', '👋'], ['clap', '👏'], ['cheer', '🎉']]) { const b = el('button', { text: ic, 'aria-label': e }); b.addEventListener('click', () => { this.mp.emote(e); this.c.sound && this.c.sound.click(); }); this.bar.appendChild(b); }
       const hud = document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
     }
     this.bdg.classList.toggle('host', this.mp.host); this.bdg.querySelector('span').textContent = t('mp.badge', { code: this.mp.code, n: this.mp.count }); this.list();
+    const S = this.c.settings; this.namesB.classList.toggle('off', S.mpNames === false); this.chatB.classList.toggle('unread', this.unread > 0 && S.mpMsgs !== false); this.chatB.hidden = false;
   }
   chatBox() {
     if (this.chatEl) { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); return; }
-    const inp = el('input', { maxlength: '140', placeholder: t('mp.chatPh'), autocomplete: 'off' }), send = el('button', { cls: 'btn primary', text: '➤' });
-    const go = () => { const m = inp.value.trim(); if (m) { this.mp.chat(m); this.c.toast(`${this.mp.me.name}: ${m}`, 2600); } this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); };
-    send.addEventListener('click', go); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); } });
-    this.chatEl = el('div', { id: 'mpChat' }, [inp, send]); document.body.appendChild(this.chatEl); this.c.onModal(true); setTimeout(() => inp.focus(), 50);
+    const inp = el('input', { maxlength: '140', placeholder: t('mp.chatPh'), autocomplete: 'off' }), send = el('button', { cls: 'btn primary', text: '➤' }), logEl = el('div', { cls: 'mpLog' });
+    const close = () => { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); };
+    const go = () => { const m = inp.value.trim(); if (m) { this.mp.chat(m); this.addLog(this.mp.me.name, m, true); } inp.value = ''; this.renderLog(); };
+    send.addEventListener('click', go); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); });
+    this.chatEl = el('div', { id: 'mpChat' }, [logEl, el('div', { cls: 'mpIn' }, [inp, send])]); document.body.appendChild(this.chatEl); this.c.onModal(true);
+    this.unread = 0; this.badge(); this.renderLog(); setTimeout(() => inp.focus(), 50);
   }
-  chat_(p, m) { if (!m) return; this.c.toast(`${p.name}: ${m}`, 3200); const a = this.remotes.get(p.id); if (a) a.say({ text: m }, Math.max(2.5, m.length * 0.07)); }
+  addLog(who, text, mine = false, sys = false) { this.log.push({ who, text, mine, sys }); if (this.log.length > 40) this.log.shift(); if (!this.chatEl && !mine && !sys) this.unread++; this.renderLog(); this.badge(); }
+  note(text) { this.addLog('', text, false, true); }
+  renderLog() { const L = this.chatEl && this.chatEl.querySelector('.mpLog'); if (!L) return; L.textContent = ''; const hide = this.c.settings.mpMsgs === false;
+    for (const m of this.log) { if (hide && !m.sys && !m.mine) continue; L.appendChild(el('div', { cls: m.sys ? 'sys' : m.mine ? 'me' : '' }, m.sys ? [el('span', { text: m.text })] : [el('b', { text: m.who }), el('span', { text: ' ' + m.text })])); }
+    L.scrollTop = L.scrollHeight; }
+  chat_(p, m) { if (!m) return; this.addLog(p.name, m); if (this.c.settings.mpMsgs === false) return; const a = this.remotes.get(p.id); if (a) a.say({ text: m }, Math.max(2.5, m.length * 0.07)); }
   join_(p) {
     const av = RB.avatars[p.avatar] ? p.avatar : null, kind = av ? RB.avatars[av].kind : 'm';
     const a = this.c.crowd.spawn({ id: 'mp_' + p.id, rec: { kind, seed: hashSeed(p.id), rb: av, height: 1, look: cleanLook(p.look) }, role: 'remote', name: p.name, x: 0, y: 0, z: 14, yaw: 0, state: 'remote' });
-    a.hidden = true; this.remotes.set(p.id, a); this.c.toast(t('mp.joined', { name: p.name }), 2200);
+    a.hidden = true; this.remotes.set(p.id, a); this.note(t('mp.joined', { name: p.name }));
     const tag = el('b', { text: p.name }); this.tagLayer.appendChild(tag); this.tags.set(p.id, tag);
   }
-  leave_(p) { const a = this.remotes.get(p.id); if (a) { this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.c.toast(t('mp.left', { name: p.name }), 2000); }
+  leave_(p) { const a = this.remotes.get(p.id); if (a) { this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
   freeSeat(a) { if (a.viewer && a.viewer.seat && a.viewer.seat.npc === 'remote') { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.viewer = null; }
   seatByKey(key) { if (!key) return null; const [hk, id] = key.split(':'); const h = this.c.world.hallByKey(hk); if (!h) return null; const s = h.seats.find((q) => q.id === id); return s ? { s, h } : null; }
   // per frame: send me, move them, place their names
@@ -170,12 +192,31 @@ export class Together {
       else { if (a.viewer) { this.freeSeat(a); a.sit = 0; }
         // their camera yaw faces -z at 0; a person faces +z at 0
         a.x += (st.x - a.x) * k; a.y += (st.y - a.y) * k; a.z += (st.z - a.z) * k; const want = st.yaw + Math.PI; a.yaw += Math.atan2(Math.sin(want - a.yaw), Math.cos(want - a.yaw)) * k; a.remoteWalk = st.v > 0.25 ? st.v : 0; }
-      if (!tag) continue; const vis = a.ch && a.ch.group.visible; if (!vis) { tag.style.display = 'none'; continue; }
+      if (!tag) continue; const vis = a.ch && a.ch.group.visible && this.c.settings.mpNames !== false; if (!vis) { tag.style.display = 'none'; continue; }
       this._v.set(a.x, a.y + (a.viewer ? 1.45 : 2.0), a.z).project(cam); const near = Math.hypot(a.x - cam.position.x, a.z - cam.position.z) < 22;
       if (this._v.z > 1 || !near) { tag.style.display = 'none'; continue; }
       tag.style.display = ''; tag.style.left = ((this._v.x + 1) / 2 * W).toFixed(0) + 'px'; tag.style.top = ((1 - this._v.y) / 2 * H).toFixed(0) + 'px'; tag.classList.toggle('host', !!p.host);
     }
   }
+  // ---------------------------------------------------------------- the film's controls belong to the host (the user: "only the host has
+  // the tablet to change the movie, stop it"); guests watch what the host plays
+  canControl() { return !this.active || this.mp.host; }
+  onControl(cmd, arg) {
+    if (!this.active || !this.mp.host) return; const v = this.c.shows.video, id = this.c.shows.active; if (!id) return;
+    if (cmd === 'pause') this.mp.control({ hall: id, cmd: 'pause', pos: v.currentTime });
+    else if (cmd === 'play' || cmd === 'seek') { const pos = cmd === 'seek' ? Math.max(0, +arg || 0) : v.currentTime, s = this.c.shows.get(id);
+      if (s) { s.startAt = performance.now() - pos * 1000; s.seek = 0; }   // the host's own film keeps to the re-based room clock too (it was paused)
+      this.mp.control({ hall: id, cmd: v.paused && cmd === 'seek' ? 'seekPaused' : 'play', pos, startAt: this.mp.hostNow() - pos * 1000 }); }
+    else if (cmd === 'stop') this.mp.control({ hall: id, cmd: 'stop' });
+  }
+  applyCtl(c, p) {
+    const S = this.c.shows, s = S.get(String(c.hall || '')); if (!s || !s.src || s.state !== 'playing') return; const v = S.video, pos = Math.max(0, Math.min(6 * 3600, +c.pos || 0));
+    if (c.cmd === 'pause') { v.pause(); try { v.currentTime = pos; } catch (e) { /* not seekable */ } }
+    else if (c.cmd === 'play' || c.cmd === 'seekPaused') { if (Number.isFinite(+c.startAt)) { s.startAt = performance.now() + (+c.startAt - this.mp.hostNow()); s.seek = 0; } try { v.currentTime = pos; } catch (e) { /* not seekable */ } if (c.cmd === 'play') v.play().catch(() => {}); }
+    else if (c.cmd === 'stop') S.control.call(S, 'stop');
+  }
+  // the server: one for the whole cinema; an order from any phone joins his queue on every phone
+  sendOrder(seat, hallKey) { if (this.active && seat && hallKey) this.mp.order(`${hallKey}:${seat.id}`); }
   // ---------------------------------------------------------------- shows: the host books, every phone starts it at the same moment
   onBooked(id) {
     if (!this.active || !this.mp.host) return; const s = this.c.shows.get(id); if (!s || !s.src) return; const src = s.src;

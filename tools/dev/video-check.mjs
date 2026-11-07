@@ -4,7 +4,7 @@ import http from 'node:http'; import fs from 'node:fs'; import path from 'node:p
 const [,, WWW_ARG, VID, PNG, OUT] = process.argv; const WWW = path.resolve(WWW_ARG || 'www');
 let pwPath = process.env.PW_PATH; if (!pwPath) { for (const p of ['/opt/node-tools/node_modules/playwright/index.mjs', '/opt/npm-tools/node_modules/playwright/index.mjs']) if (fs.existsSync(p)) { pwPath = p; break; } }
 const { chromium } = await import(pwPath || 'playwright');
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.webm': 'video/webm', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.png': 'image/png' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.webp': 'image/webp', '.opus': 'audio/ogg', '.css': 'text/css', '.woff2': 'font/woff2', '.webm': 'video/webm', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.png': 'image/png' };
 const srv = http.createServer((q, r) => { const u = decodeURIComponent(q.url.split('?')[0]); const f = u === '/__test.webm' ? VID : u === '/__bars.png' ? PNG : path.join(WWW, u === '/' ? 'index.html' : u); if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; } r.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
 await new Promise((ok) => srv.listen(0, '127.0.0.1', ok));
 const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });

@@ -43,17 +43,31 @@ export class Engine {
     this.ema = this.ema * 0.94 + Math.min(dt, 0.2) * 1000 * 0.06; this.stats.ms = this.ema; this.stats.fps = 1000 / this.ema; if (this.fixed || this.auto === false) return;
     const lv = LEVELS.filter((l) => l >= this.minScale - 1e-6 && l <= this.maxScale + 1e-6), i = lv.reduce((b, l, k) => (Math.abs(l - this.scale) < Math.abs(lv[b] - this.scale) ? k : b), 0);
     this._slow = this.ema > 36 ? (this._slow || now) : 0; this._fast = this.ema < 21 ? (this._fast || now) : 0;
+    // v10 (the user: glitches and stutters during the film): every resize reallocates the canvas, a visible hitch. In show mode the scale
+    // settles in its first 12 s (the countdown, lights going down: steps down after 1.5 s of slowness, 2.5 s apart) and is then frozen
+    // until you leave your seat; it never climbs back mid-film
+    if (this._show) { if (now - this._showAt > 12000 || now - this._tAdj < 2500) return; if (this._slow && now - this._slow > 1500 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); } return; }
     if (now - this._tAdj < 6000) return;
     if (this._slow && now - this._slow > 2000 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); }
     else if (this._fast && now - this._fast > 12000 && i < lv.length - 1) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this.resize(); }
   }
   // v9 show mode: watching the film you get the screen's full resolution (up to the device's pixels); the governor still steps down
   // if the phone can't keep up, and leaving your seat returns to the preset
-  showMode(on) { if (on === !!this._show) return; this._show = on; const P = this.preset; this.maxScale = on ? Math.min(this.dpr, Math.max(P.scale, 1.5)) : Math.min(P.scale, this.dpr); if (!this.fixed) { this.scale = this.maxScale; this._tAdj = performance.now(); this.resize(); } }
+  showMode(on) { if (on === !!this._show) return; this._show = on; this._showAt = performance.now(); const P = this.preset; this.maxScale = on ? Math.min(this.dpr, Math.max(P.scale, P.scale < 0.9 ? 0.9 : P.scale < 1.2 ? 1.3 : 1.5)) : Math.min(P.scale, this.dpr); if (!this.fixed) { this.scale = this.maxScale; this._tAdj = performance.now(); this.resize(); } }
   // seated in a hall the view narrows a little (like your attention does), so the screen fills the picture the way it does in a real cinema
   setZoom(z, dt) { const k = this.zoom || 1, n = k + (z - k) * (1 - Math.exp(-dt * 2.5)); if (Math.abs(n - k) < 1e-4) return; this.zoom = n; this.camera.fov = this.baseFov * n; this.camera.updateProjectionMatrix(); }
   render() {
-    const r = this.renderer; r.info.autoReset = false; r.info.reset(); r.render(this.scene, this.camera);   // one info count for both passes (the HUD's draw calls)
+    const r = this.renderer; r.info.autoReset = false; r.info.reset();   // one info count for both passes (the HUD's draw calls)
+    if (this.stereo) { this.renderStereo(r); return; }
+    r.render(this.scene, this.camera);
     if (this.vm.children.length) { r.autoClear = false; r.clearDepth(); r.render(this.vm, this.vmCam); r.autoClear = true; }
+  }
+  // v10 phone VR (a Cardboard-style viewer): each eye in its half, 64 mm apart, focused at the screen's distance
+  renderStereo(r) {
+    const sc = this._sc || (this._sc = new THREE.StereoCamera()), cam = this.camera, s = r.getSize(this._sz || (this._sz = new THREE.Vector2())); sc.aspect = 0.5; sc.eyeSep = 0.064; cam.updateMatrixWorld(); sc.update(cam);
+    r.setScissorTest(true); r.clear();
+    for (const [i, c] of [[0, sc.cameraL], [1, sc.cameraR]]) { r.setScissor(i * s.x / 2, 0, s.x / 2, s.y); r.setViewport(i * s.x / 2, 0, s.x / 2, s.y); r.autoClear = false; r.render(this.scene, c);
+      if (this.vm.children.length) { r.clearDepth(); r.render(this.vm, this.vmCam); } r.autoClear = true; }
+    r.setScissorTest(false); r.setViewport(0, 0, s.x, s.y);
   }
 }

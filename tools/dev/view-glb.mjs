@@ -6,7 +6,7 @@ import http from 'node:http'; import fs from 'node:fs'; import path from 'node:p
 const [,, OUT, ...GLBS] = process.argv; const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
 let pwPath = process.env.PW_PATH; if (!pwPath) for (const p of ['/opt/node-tools/node_modules/playwright/index.mjs', '/opt/npm-tools/node_modules/playwright/index.mjs']) if (fs.existsSync(p)) { pwPath = p; break; }
 const { chromium } = await import(pwPath || 'playwright');
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.opus': 'audio/ogg', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
 const files = GLBS.map((g) => path.resolve(g));
 const page = `<!doctype html><html><head><script type="importmap">{"imports":{"three":"/www/vendor/three.module.js"}}</script></head><body style="margin:0;background:#222">
 <canvas id="c"></canvas><script type="module">

@@ -336,3 +336,12 @@ body.aim #xhair{transform:scale(1.8);background:#e3b25f}
 .tb-item{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(227,178,95,.25);color:inherit;text-align:start}
 .tb-item b{font:600 13px/1.2 var(--font)}
 .tb-item small{font-size:11px;color:var(--muted)}
+
+/* v10 inputs (input.js): what you last used decides the HUD. Keyboard + mouse and controller: no touch stick or run button; the action
+   button shows its key; phone VR: only the two eyes (and the toast) */
+body[data-input="kbm"] #stick,body[data-input="pad"] #stick,body[data-input="kbm"] #sprint,body[data-input="pad"] #sprint{display:none}
+body[data-input="kbm"] #prompt .act-ic::after,body[data-input="pad"] #prompt .act-ic::after{content:'E';position:absolute;right:-6px;bottom:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:5px;background:#f2ebdd;color:#141418;font:700 11px/18px var(--font);text-align:center;box-shadow:0 1px 0 rgba(0,0,0,.4)}
+body[data-input="pad"] #prompt .act-ic::after{content:'A';border-radius:50%;background:#4caf50;color:#fff}
+#prompt .act-ic{position:relative}
+body.vr #hud>*:not(#toast),body.vr #bShow,body.vr #mpTags,body.vr #mpBar,body.vr #mpBadge{display:none!important}
+body.mouselook{cursor:none}

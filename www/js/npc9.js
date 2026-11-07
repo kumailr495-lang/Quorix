@@ -145,8 +145,11 @@ export class Crowd {
     if (r === 'corridor' || (r && r.startsWith('hall'))) for (const n of navPath('spineS', 'lobbyBack')) back.push({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] });
     back.push({ x: a.home.x, y: a.home.y || 0, z: a.home.z }); a.follow = null; a.go(back, () => { a.state = 'post'; a.yaw = a.home.yaw; }, { speed: 1.5, state: 'returning' }); }
   // ---------------------------------------------------------- the seat bell: the server comes with his cart and the tablet
+  // v10 (the user: "only one server, and if anyone else calls it he is the next in queue"): one server for every seat; a call while he
+  // is out joins the queue and he takes the next one as soon as he is back at his post. Returns true (coming), 'queued' or false
   callServer(seat, onArrive) {
-    const s = this.staff.server; if (!s) return false; const arrive = () => { s.state = 'serving'; onArrive && onArrive(s); };
+    const s = this.staff.server; if (!s) return false; this.srvQ = this.srvQ || []; const arrive = () => { s.state = 'serving'; s.job = seat; onArrive && onArrive(s); };
+    if (s.job && s.job !== seat && s.state !== 'post') { if (!this.srvQ.some((j) => j.seat === seat)) this.srvQ.push({ seat, onArrive }); return 'queued'; }
     // rung while he walks away: he turns back along the way he came (v8: he ignored the bell once he had left)
     if (s.state === 'leaving' && s.cameBy) { s.say(pick('srv.recall')); const i = nearestOn(s.cameBy, s); s.go(s.cameBy.slice(i), arrive, { state: 'coming' }); return true; }
     if (s.state !== 'post') return s.state === 'serving' || s.state === 'coming';
@@ -154,11 +157,12 @@ export class Crowd {
     const pts = navPath('pantry', 'bridgeC').map((n) => ({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] })), H = h.cfg, side = H.side < 0 ? ['bridgeW', 'flankW1'] : ['bridgeE', 'flankE1'];
     if (H.id === 'CURVE') side.push('flankW2', 'linkW'); if (H.id === 'X270') side.push('flankE2');
     for (const n of side) pts.push({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] });
-    const route = this.hallRoute(h, seat, true); s.cameBy = [...pts, ...route]; s.go(s.cameBy, arrive, { speed: 1.6, state: 'coming' }); return true;
+    const route = this.hallRoute(h, seat, true); s.cameBy = [...pts, ...route]; s.job = seat; s.go(s.cameBy, arrive, { speed: 1.6, state: 'coming' }); return true;
   }
   // he goes back the way he came, from wherever he is on it
   serverLeave() { const s = this.staff.server; if (!s || s.state === 'post') return; if (!s.cameBy) { s.state = 'leaving'; this.sendHome(s); return; }
-    const i = nearestOn(s.cameBy, s), back = s.cameBy.slice(0, i + 1).reverse(); s.go(back, () => { s.state = 'post'; s.yaw = s.home.yaw; s.cameBy = null; }, { state: 'leaving' }); }
+    const i = nearestOn(s.cameBy, s), back = s.cameBy.slice(0, i + 1).reverse(); s.go(back, () => { s.state = 'post'; s.yaw = s.home.yaw; s.cameBy = null; s.job = null; this._nextJob(); }, { state: 'leaving' }); }
+  _nextJob() { const s = this.staff.server; if (!s || s.state !== 'post' || !this.srvQ || !this.srvQ.length) return; const j = this.srvQ.shift(); this.callServer(j.seat, j.onArrive); }
   // ---------------------------------------------------------- talking
   talkTarget(px, py, pz, fx, fz) {
     let best = null, bs = 0;
@@ -172,6 +176,7 @@ export class Crowd {
   bumped(a) { if (a.role === 'guest' && this.now - (a._bump || 0) > 6000) { a._bump = this.now; a.say(pick('guest.bump')); a.gesture('gasp', 0.8); } }
   // ---------------------------------------------------------- the frame
   update(dt, now, player, vis) {
+    if (this.srvQ && this.srvQ.length) this._nextJob();   // the server's queue: the next call as soon as he is back at his post
     this.now = now; const cam = this.engine.camera.position, P = this.engine.preset, near = [];
     // audience: arrivals, seated, leaving
     for (const h of this.world.halls) { const list = this.viewers[h.id], inHall = vis.has(h.key);

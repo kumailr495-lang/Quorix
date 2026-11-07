@@ -371,13 +371,13 @@ function buildHall(world, h, room) {
   L.setScreen(patches);
   // curtains (CURVE, CLASSIC): two pleated halves that gather to the sides
   let curtains = null;
-  if (h.curtain) { const cw = W / 2 + 0.7, top = yb + Hh + 0.55, dC = h.sagD + 0.5, base = h.toWorld(0, dC), ms = [];
+  if (h.curtain) { const cw = W / 2 + 0.9, top = yb + Hh + 0.55, dC = h.sagD + 0.5, base = h.toWorld(0, dC), ms = [];
     for (const s of [-1, 1]) { const n = 30, pp = [], ii = []; for (let i = 0; i <= n; i++) { const t = i / n, x = -s * t * cw, fold = (i % 2 ? 1 : -1) * 0.07; pp.push(x, h.y0 + 0.02, fold, x, top, fold); if (i < n) { const k = i * 2; if (s < 0) ii.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); else ii.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } }
       const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)); g0.setIndex(ii); g0.computeVertexNormals(); const a = new Acc(); a.add(g0, null, h.id === 'CLASSIC' ? '#5a1a24' : '#2a2f4a', { mat: MAT.fabric });
       { const g1 = g0.clone(), I1 = g1.index.array, N1 = g1.attributes.normal; for (let k = 0; k < I1.length; k += 3) { const t = I1[k + 1]; I1[k + 1] = I1[k + 2]; I1[k + 2] = t; }   // cloth has two sides: the back of each pleat
         for (let k = 0; k < N1.count; k++) N1.setXYZ(k, -N1.getX(k), -N1.getY(k), -N1.getZ(k)); a.add(g1, null, h.id === 'CLASSIC' ? '#4a1620' : '#23283f', { mat: MAT.fabric }); }
       const geo = toGeometry(a);
-      const m = new THREE.Mesh(geo, mats.litFor(U, geo)); m.name = 'curtain'; m.rotation.y = -f * Math.PI / 2; const o = h.toWorld(s * cw, dC); m.position.set(o.x, 0, o.z); m.updateMatrixWorld(true);
+      const m = new THREE.Mesh(geo, mats.litFor(U, geo)); m.name = 'curtain'; m.userData.cw = cw; m.rotation.y = -f * Math.PI / 2; const o = h.toWorld(s * cw, dC); m.position.set(o.x, 0, o.z); m.updateMatrixWorld(true);
       geo.applyMatrix4(m.matrixWorld); L.bake(geo); geo.applyMatrix4(m.matrixWorld.clone().invert()); room.group.add(m); ms.push(m); }
     curtains = { meshes: ms, open: 0.999, target: 1, base }; }   // v9.3: open, gathered at the sides (closed, the screen read as a dark wall: "where is the screen")
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9];
@@ -519,7 +519,10 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     for (const d of world.doors) d.update(dt, actors); const lob = world.rooms.lobby.group.visible;
     if (lob) for (const e of world.escalators) e.update(dt); if (world.rooms.spine.group.visible) world.travelator.update(dt); world.lift.update(dt, actors, world.onLift); world.gate.update(dt);
     for (const h of world.halls) if (h.curtains) { const c = h.curtains; if (c.open !== c.target || (c.sway || 0) > 0.002) { c.open += Math.sign(c.target - c.open) * Math.min(Math.abs(c.target - c.open), dt / 4.5); const u = c.open, e = u * u * u * (u * (u * 6 - 15) + 10);
-      c.sway = c.open !== c.target ? 1 : (c.sway || 0) * Math.exp(-dt * 1.4); c.t = (c.t || 0) + dt; for (const m of c.meshes) { m.scale.x = 1 - 0.93 * e; m.scale.z = 1 + 3.2 * e; } } }
+      // v10 (the user's photos: "glitchy lines on the very border"): the open halves used to bunch 10 cm over the picture's edges, their
+      // pleats lit by the film. Open, each half now gathers into 0.5 m beside the picture (its inner edge 0.4 m clear) and is put away
+      c.sway = c.open !== c.target ? 1 : (c.sway || 0) * Math.exp(-dt * 1.4); c.t = (c.t || 0) + dt;
+      for (const m of c.meshes) { const cw = m.userData.cw || 1; m.scale.x = 1 - (1 - 0.5 / cw) * e; m.scale.z = 1 + 2.2 * e; m.visible = c.open < 0.995; } } }
   };
   world.probe = (x, y, z) => { const r = world.rooms[roomAt(x, y, z) || 'lobby']; return r ? r.lights.probe(x, y, z) : null; };
   onProgress(0.9, 'reflections'); await texturesReady(); await frame(); captureReflections(world, engine);
