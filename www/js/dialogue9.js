@@ -15,6 +15,9 @@ export const TREES = {
   bar: { start: 'hello', nodes: {
     hello: ['bar.hello', [['opt9.popcorn', 'what'], ['opt9.combo', 'act:buy:combo'], ['opt9.drink', 'act:buy:cola'], ['opt9.coffee', 'act:buy:coffee'], ['opt.bye', 'end']]],
     what: ['bar.what', [['opt9.salted', 'act:buy:salted'], ['opt9.caramel', 'act:buy:caramel'], ['opt9.cheese', 'act:buy:cheese'], ['opt.back', 'hello']]] } },
+  // v10 the cafe's barista (npc9.js 'cafe'): the coffees on the menu board, each one a cup in your hand
+  cafe: { start: 'hello', nodes: {
+    hello: ['cafe.hello', [['opt9.latte', 'act:buy:latte'], ['opt9.cappuccino', 'act:buy:cappuccino'], ['opt9.espresso', 'act:buy:espresso'], ['opt9.hotchoc', 'act:buy:hotchoc'], ['opt.bye', 'end']]] } },
   usher: { start: 'ask', nodes: {
     ask: ['ush.ask', [['opt9.showTicket', 'act:ticket'], ['opt.bye', 'end']]],
     noTicket: ['ush.noTicket', [['opt.thanks', 'end']]],

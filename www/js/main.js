@@ -40,7 +40,8 @@ import { SEAT, CLASSES } from './hallmath.js';
 const $ = (s) => document.querySelector(s), clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const BITES = { popcorn: 9, drink: 8, coffee: 6, nachos: 7 }, DENS = { off: 'off', few: 'low', normal: 'medium', many: 'high' };
 // the bill (v8 feedback: "remove the money" and "make the prices realistic"): Indian multiplex prices, paid by card, never refused
-const PRICES = { salted: 290, caramel: 340, cheese: 340, combo: 460, nachos: 260, cola: 180, coffee: 220, water: 60, tablet: 99, replay: 0 };
+const PRICES = { salted: 290, caramel: 340, cheese: 340, combo: 460, nachos: 260, cola: 180, coffee: 220, water: 60, tablet: 99, replay: 0, latte: 220, cappuccino: 210, espresso: 160, hotchoc: 220 };   // v10: the cafe's board (world9.js cafemenu)
+const HOT = /coffee|latte|cappuccino|espresso|hotchoc/;
 class Bill {
   constructor() { this.P = { replay: 0, sym: '₹' }; this.unlimited = false; this.reset(); this.onChange = null; }
   reset() { this.lines = []; this.total = 0; this.cash = Infinity; this._emit(); }
@@ -149,7 +150,8 @@ async function boot() {
     if (verb === 'buy') { if (held) { tk.line(pick('bar.bye') || t('ven.full'), [['opt.thanks', 'end']]); ui.toast(t('toast9.handsFull'), 2400); return true; }
       bill.pay(bill.itemPrice(arg), arg); if (game === 'flow') sound.pay();
       if (npc.role === 'server') { npc.say(pick('srv.order')); npc.gesture('give', 1.2); setTimeout(() => { takeItem(arg); npc.say(pick('srv.hand')); }, 1400); tk.line(pick('srv.back'), [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]); return true; }
-      npc.gesture(/cola|coffee|water/.test(arg) ? 'pour' : 'scoop', 2.2); sound.pour(); setTimeout(() => { npc.gesture('give', 1.2); takeItem(arg); npc.say(pick('bar.ready')); }, 2300); return false; }
+      const cafe = npc.role === 'cafe'; npc.gesture(/cola|water/.test(arg) || HOT.test(arg) ? 'pour' : 'scoop', cafe ? 4.2 : 2.2); if (cafe && sound.espresso) sound.espresso(npc); else sound.pour();
+      setTimeout(() => { npc.gesture('give', 1.2); takeItem(arg); npc.say(pick(cafe ? 'cafe.ready' : 'bar.ready')); }, cafe ? 4300 : 2300); return false; }
     if (verb === 'ticket') { if (!ticket) { tk.line(pick('ush.noTicket'), [['opt.thanks', 'end']]); return true; } checkTicket(npc); return false; }
     if (verb === 'escort') { escort(npc); return false; }
     if (verb === 'ownWay') { world.gate.pass(); npc.say(pick('ush.enjoy')); highlightSeat(); return false; }
@@ -173,7 +175,7 @@ async function boot() {
   const itemU = { uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKeyDir: { value: new THREE.Vector3(-0.35, 0.8, 0.45).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, itemLight = { amb: itemU.uAmb.value, key: itemU.uKey.value, dir: itemU.uKeyDir.value, screen: itemU.uScreenL.value };
   const itemMat = mats.propMat(itemU); let itemMesh = null, itemAnim = 0, itemIn = 0, lightT = 0;
   function takeItem(kind) {
-    const k = /cola|water/.test(kind) ? 'drink' : kind === 'coffee' ? 'coffee' : kind === 'nachos' ? 'popcorn' : 'popcorn'; held = { kind: k, left: BITES[k], max: BITES[k], name: kind };
+    const k = /cola|water/.test(kind) ? 'drink' : HOT.test(kind) ? 'coffee' : 'popcorn'; held = { kind: k, left: BITES[k], max: BITES[k], name: kind };
     if (itemMesh) engine.vm.remove(itemMesh); itemMesh = makeHeld(k === 'coffee' ? 'coffee' : k); setHeldMaterial(itemMesh, itemMat); itemMesh.userData.setLevel(1); engine.vm.add(itemMesh); itemIn = 0;
     ui.setItem(k, held.left, held.max); sound.pop(); ui.toast(t('toast.gotPopcorn', { item: t('item.' + kind) }), 2400); tut.event('item');
   }
@@ -254,8 +256,8 @@ async function boot() {
     game = m; bill.unlimited = m === 'quick'; bill.reset(); if (ticket) { const s = seatOf(ticket); if (s) { s.player = false; s.taken = false; } } ticket = null; if (held) binItem(); if (sitRelease) sitRelease();
     for (const h of world.halls) if (shows.get(h.id).state !== 'idle') shows._abort(h.id); visits++;
     ui.setButton('#bRemote', m === 'quick');
-    world.gate.target = 0; if (m === 'flow') { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); if (!intro.start({ skippable: !!(settings.seen && settings.seen.intro) })) arrived(); }
-    else { const s = SPAWN.quick; player.place(s.x, s.z, s.yaw, 0, 0); world.gate.target = 1; setTimeout(() => ui.toast(t('toast9.quick'), 3600), 900); }
+    world.gate.always = m !== 'flow'; world.gate.passUntil = 0; if (m === 'flow') { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); if (!intro.start({ skippable: !!(settings.seen && settings.seen.intro) })) arrived(); }
+    else { const s = SPAWN.quick; player.place(s.x, s.z, s.yaw, 0, 0); setTimeout(() => ui.toast(t('toast9.quick'), 3600), 900); }
   }
   function arrived() { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); settings.seen = { ...(settings.seen || {}), intro: true }; saveSettings(settings); onModal(); ui.toast(t('toast.welcome'), 2600); maybeAskTutorial(); }
   function enterPlay(m) {
@@ -302,7 +304,7 @@ async function boot() {
       const key = want ? want.h.key : null; if (key !== curFilm) { curFilm = key; if (!key) sound.stopFilm(); } curFilm && (sound._aud = want.a); }
     const hk = r.startsWith('hall') ? r : null, dark = hk && world.hallByKey(hk).room.U.uHouse.value < 0.5;
     sound.setListener({ room: r, x: player.x, z: player.z, yaw: player.yaw, filmAud: curFilm ? sound._aud || 0 : 0, filmLP: curFilm === hk ? 18000 : 1200, crowdLP: hk ? 18000 : 2500, verb: hk ? 0.45 : r === 'corridor' ? 0.25 : 0.12, dark,
-      people: Math.min(1, crowd.agents.filter((a) => a.ch && a.ch.group.visible && dist(a) < 12).length / 10), popcornDist: Math.hypot(player.x - (COUNTERS.concessions.x0 - 1), player.z + 5), escDist: Math.hypot(player.x - 10.7, player.z - (ESC.up.zBot - 4)), seated: !!player.seated });
+      people: Math.min(1, crowd.agents.filter((a) => a.ch && a.ch.group.visible && dist(a) < 12).length / 10), popcornDist: Math.min(Math.hypot(player.x - (COUNTERS.concessions.x0 - 1), player.z + 5), Math.hypot(player.x + 12.6, player.z - 2.6) + 2), cafeDist: Math.hypot(player.x + 18.5, player.z + 11.4), fountainDist: Math.hypot(player.x, player.z - 10), escDist: Math.hypot(player.x - 10.7, player.z - (ESC.up.zBot - 4)), seated: !!player.seated });
     sound.setHead(cam.position.x, cam.position.y, cam.position.z, player.yaw, player.pitch);
     // held item
     if (itemMesh) { lightT -= dt; if (lightT <= 0) { lightT = 0.3; crowd.lightAt(player.x, player.y + 1.3, player.z, itemLight); } itemIn = Math.min(1, itemIn + dt * 3); itemAnim = Math.max(0, itemAnim - dt * 1.6); const e = Math.sin(itemAnim * Math.PI);

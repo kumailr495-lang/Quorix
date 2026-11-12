@@ -321,3 +321,22 @@ frames, draw calls and triangles, with a short code to paste back. The exact com
     0.02 s, a late joiner within 0.02 s, host hand-over; names over heads, chat and emotes (renders `docs/v9/renders/v93-together.jpg`).
     Found on the way: a shared YouTube video sent no video id and a shared link would have sent this phone's private media-server
     address; both fixed. Not tested on two phones.
+- **2026-11-07, v10 (the user, after a film on the phone: "the lighting is too hard, the light bounces too much", "the diamond wall looks
+  bad", "the halls, corridors and lobby are empty", "players can reach the lift without a ticket", "make the escalator and lift one area",
+  "define the reception, concessions and café, with sounds", "restrooms you can tell by looking", "an unequal entrance door", "a better
+  outside", "make the UIs more defined", "the itel P65 and lower").** Research: docs/V10-RESEARCH.md (11 photo sources).
+  - *Film playback.* Border lines, freeze after Continue, blank when looking left, sound delay and frame stutter (playcheck.mjs 6/6).
+  - *Lighting.* A soft-light curve per room (materials.js `uSoft`), continuous wall washes instead of spot scallops, less screen spill.
+  - *Light maps.* The rooms are triangle soups, so every triangle was its own UV island: the lobby used 10% of its map (6 texels/m) and
+    thin trims had no texel at all (the brand ring's brass edge baked black in 65 of 96 triangles). bake_room.py now unwraps a welded copy
+    and stretches islands under 3 texels: 59% used, 14 texels/m, 7 dark triangles left on that edge.
+  - *Ticket zone.* Glass screens put both escalators and the lift behind the usher's leaf; free-exit half leaves let you out. walk.mjs:
+    7 ways in all blocked with the gate shut, out by the down escalator and by the lift, 25/25 walks.
+  - *Lobby.* Fountain on the entrance axis with light columns, a café kiosk with a barista (latte, cappuccino, espresso, hot chocolate)
+    and its own sounds, pendant clouds, rugs, a popcorn cart, standees, a mural, café art, two-metre restroom pictograms, a seating corner.
+  - *Corridor.* Fluted walnut portals with brass inlays and a lit reveal (no diamonds), benches, palms, standees.
+  - *Outside.* Symmetric facade bays round the doors, gold fins on navy instead of blue diamonds, a lit cornice, a red carpet, light
+    columns at the doors.
+  - *Inputs and together.* Keyboard and mouse, controller, phone VR; host hand-over, one server queue, hide names, quiet chat.
+  - *UI.* Crisper surfaces and contrast; the menu fits the phone's 360 px height (it cut off the wordmark and Credits).
+  - Not tested on a phone. Renders are headless SwiftShader.

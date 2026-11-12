@@ -171,14 +171,85 @@ log('lights', nl, '(house', len(groups[0].objects), 'fixed', len(groups[1].objec
 area = sum(p.area for p in room.data.polygons)
 res = int(min(A.maxres, max(A.minres, 2 ** math.ceil(math.log2(max(1.0, math.sqrt(area * 1.6) * A.density))))))
 log(f'surface {area:.0f} m2 -> light map {res} px ({res / math.sqrt(area * 1.6):.1f} texels/m)')
-bpy.context.view_layer.objects.active = room; room.select_set(True)
-uv2 = room.data.uv_layers.new(name='BakeUV'); room.data.uv_layers.active = uv2
-bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
-bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.0, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
-bpy.ops.uv.average_islands_scale()
-bpy.ops.uv.pack_islands(rotate=True, margin=4.0 / res)
-bpy.ops.object.mode_set(mode='OBJECT')
-log('unwrapped')
+# v10: the room arrives as a triangle soup (three vertices of its own per triangle), so every triangle was its own UV island: 12k slivers
+# in the lobby, each with its margins, which left most of the map empty and many slivers with no texel at all (black). The unwrap now runs
+# on a welded copy (coincident corners merged, so a quad and a run of coplanar faces form one island) and its UVs come back per corner.
+import bmesh
+from bpy_extras import bmesh_utils
+
+
+def widen_thin_islands(me, min_px=3.0, cap=16.0):
+    """an island thinner than a few texels gets no texel centres, so Cycles bakes nothing for it and it stays black (the brand ring's 8 cm
+    brass edge: 65 of its 96 triangles sampled black). Stretch each such island across its thin direction (its UVs' minor axis)."""
+    bm = bmesh.from_edit_mesh(me); uvl = bm.loops.layers.uv.active; n = 0
+    for faces in bmesh_utils.bmesh_linked_uv_islands(bm, uvl):
+        uv = np.array([l[uvl].uv[:] for f in faces for l in f.loops], np.float64)
+        c = uv.mean(0); d = uv - c; w, V = np.linalg.eigh(d.T @ d); minor = V[:, 0]
+        ext = float(np.ptp(d @ minor)) * res
+        if ext >= min_px: continue
+        k = min(cap, min_px / max(ext, 1e-3)) - 1.0
+        for f in faces:
+            for l in f.loops:
+                p = np.array(l[uvl].uv[:], np.float64) - c; p = p + minor * (p @ minor) * k; l[uvl].uv = (c + p).tolist()
+        n += 1
+    bmesh.update_edit_mesh(me)
+    return n
+
+
+def unwrap():
+    src = room.data; wm = src.copy(); wob = bpy.data.objects.new(KEY + '_weld', wm); SC.collection.objects.link(wob)
+    bm = bmesh.new(); bm.from_mesh(wm); fid = bm.faces.layers.int.new('fid')
+    for f in bm.faces: f[fid] = f.index
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4); bm.to_mesh(wm); bm.free()
+    for o in SC.objects: o.select_set(False)
+    bpy.context.view_layer.objects.active = wob; wob.select_set(True)
+    uvw = wm.uv_layers.new(name='BakeUV'); wm.uv_layers.active = uvw
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.0, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
+    bpy.ops.uv.average_islands_scale()
+    # margins as a fraction of the final map (FRACTION): the default (SCALED) multiplied them by the islands' scale
+    bpy.ops.uv.pack_islands(rotate=True, margin_method='FRACTION', margin=3.0 / res)
+    n = widen_thin_islands(wm)
+    bpy.ops.uv.pack_islands(rotate=True, margin_method='FRACTION', margin=3.0 / res)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    nw, nl = len(wm.polygons), len(wm.loops)
+    wfid = np.zeros(nw, np.int32); wm.attributes['fid'].data.foreach_get('value', wfid)
+    wco = np.zeros(len(wm.vertices) * 3, np.float32); wm.vertices.foreach_get('co', wco); wco = wco.reshape(-1, 3)
+    wuv = np.zeros(nl * 2, np.float32); wm.uv_layers['BakeUV'].data.foreach_get('uv', wuv); wuv = wuv.reshape(-1, 2)
+    wlv = np.zeros(nl, np.int32); wm.loops.foreach_get('vertex_index', wlv)
+    wls = np.zeros(nw, np.int32); wm.polygons.foreach_get('loop_start', wls); wlt = np.zeros(nw, np.int32); wm.polygons.foreach_get('loop_total', wlt)
+    sco = np.zeros(len(src.vertices) * 3, np.float32); src.vertices.foreach_get('co', sco); sco = sco.reshape(-1, 3)
+    slv = np.zeros(len(src.loops), np.int32); src.loops.foreach_get('vertex_index', slv)
+    sls = np.zeros(len(src.polygons), np.int32); src.polygons.foreach_get('loop_start', sls); slt = np.zeros(len(src.polygons), np.int32); src.polygons.foreach_get('loop_total', slt)
+    out = np.zeros((len(src.loops), 2), np.float32)
+    for wi in range(nw):
+        f = wfid[wi]; a = wls[wi]; wp = wco[wlv[a:a + wlt[wi]]]
+        for k in range(slt[f]):
+            sl = sls[f] + k; j = int(np.argmin(((wp - sco[slv[sl]]) ** 2).sum(1))); out[sl] = wuv[a + j]
+    src.uv_layers.new(name='BakeUV').data.foreach_set('uv', out.ravel()); src.uv_layers.active = src.uv_layers['BakeUV']
+    bpy.data.objects.remove(wob); bpy.data.meshes.remove(wm)
+    for o in SC.objects: o.select_set(False)
+    bpy.context.view_layer.objects.active = room; room.select_set(True)
+    return n
+
+
+nthin = unwrap()
+
+
+def uv_stats():
+    me = room.data; uvd = np.zeros(len(me.loops) * 2, np.float32); me.uv_layers['BakeUV'].data.foreach_get('uv', uvd); uvd = uvd.reshape(-1, 2) * res
+    fill = big = 0.0; dens = []
+    for poly in me.polygons:
+        li = list(poly.loop_indices); u = uvd[li]; a2 = 0.0
+        for k in range(1, len(li) - 1): a2 += 0.5 * abs((u[k][0] - u[0][0]) * (u[k + 1][1] - u[0][1]) - (u[k + 1][0] - u[0][0]) * (u[k][1] - u[0][1]))
+        fill += a2
+        if poly.area > 2.0: dens.append(math.sqrt(a2 / poly.area))
+    return fill / res / res, float(np.median(dens)) if dens else 0.0
+
+
+fill, dens = uv_stats()
+log(f'unwrapped ({nthin} thin islands widened; map {fill * 100:.0f}% used, {dens:.1f} texels/m on large faces)')
+if os.environ.get('UNWRAP_ONLY'): sys.exit(0)
 
 # ---------------------------------------------------------------- bakes
 room_mat = room.data.materials[0]; nt = room_mat.node_tree

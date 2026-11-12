@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { t, pick } from './i18n.js';
 const $ = (s) => document.querySelector(s);
-const ROLE = { reception: 'role.reception', usher: 'role.usher', vendor: 'role.vendor', bar: 'role.bar', server: 'role.server', greeter: 'role.greeter', host: 'role.greeter', box: 'role.reception', driver: 'role9.driver' };
+const ROLE = { reception: 'role.reception', usher: 'role.usher', vendor: 'role.vendor', bar: 'role.bar', server: 'role.server', greeter: 'role.greeter', host: 'role.greeter', box: 'role.reception', driver: 'role9.driver', cafe: 'role9.barista' };
 export class Talk {
   constructor(sound, hooks = {}, settings = {}) {
     this.sound = sound; this.hooks = hooks; this.el = $('#talk'); this.nameEl = $('#talkName'); this.roleEl = $('#talkRole'); this.textEl = $('#talkText'); this.optsEl = $('#talkOpts'); this.layer = $('#bubbles');

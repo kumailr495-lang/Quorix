@@ -117,6 +117,23 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v10 (2026-11-07; docs/V10-RESEARCH.md, the last entry of docs/V9-AUDIT.md "Development record")
+- **Ticket zone**: both escalators and the lift sit behind one check (building.js `GATE`, `ZONE`; rooms.py glass screens; world9.js
+  `world.gate` and `world.exitGate`). The usher's pass (`gate.pass`) or Quick play (`gate.always`) lets the player through the ticket leaf;
+  walkers swing it but never let you in behind them (`gate.letsPlayer`). The free-exit half leaves only open outwards. walk.mjs proves it:
+  seven "zone shut" walks must stay out, two must get out by the exit leaves.
+- **Light maps**: bake_room.py unwraps a welded copy of the room (the rooms are triangle soups: every triangle was its own island) and
+  stretches islands thinner than 3 texels (they baked black: the brand ring's brass edge). The lobby went from 10% to 59% of its map used,
+  6 to 14 texels a metre. Re-bake a room to get this.
+- **Lobby dressing** (world9.js DRESS, tools/blender/decor10.py): fountain on the brand ring (round collider `o.round`; NAV parts round it:
+  foyerW/foyerE), four light columns, pendant clouds (`detail: 1`: the low preset skips them), cafe kiosk (rooms.py walnut wall, back
+  counter, shelves; props; barista NPC 'cafe' with dialogue9.js `cafe`), rugs, popcorn cart, standees, NE seating corner.
+- **Framed pictures** (world9.js `FRAMED`, `framePanel`, `addPanel`): engine-side panels with a board and frame, no re-bake: restroom
+  pictograms, the east-wall mural (3 panels, one picture), art, standee boards. Artwork is drawn in PANEL_DRAW (original, no images).
+- **Sounds**: cafe room tone, fountain, espresso pump and cup (BigSoundBank 2561, 913, 3049, 410; CC0) by distance (sound9.js).
+- **UI**: app.css v10 block (crisper glass, brighter secondary text, the menu fits 360 px tall screens). `tools/dev/uishots.mjs OUT` shoots
+  every screen at the itel P65's 806 x 360 CSS px.
+
 ## v9.3 (2026-11-06; the last entry of docs/V9-AUDIT.md "Development record")
 - People are Microsoft Rocketbox avatars (`www/models/rb/`, built by `tools/blender/rocketbox.py`; people.js `RB`, `rbAvatar`). Staff
   avatars are fixed in people.js STAFF `over.rb`; guests are a seeded pick (Business_* excluded).

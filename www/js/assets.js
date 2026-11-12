@@ -13,7 +13,9 @@ export const ASSETS = {};
 // v9: only what the v9 rooms use (world9.js DRESS and the hall seat families, intro9.js's taxi); the v7/v8 props stay in www/models
 export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club', 'seat_classic', 'arm_classic', 'sofa_curve', 'table_lounge', 'planter_tall', 'planter_hedge', 'planter_tree',
   'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi',
-  'armchair_deco', 'side_table', 'torchere_deco', 'chandelier_cascade', 'letters_lumiere_lit', 'letters_max', 'letters_curve', 'letters_classic', 'letters_x270', 'num_1', 'num_2', 'num_3', 'num_4', 'sconce_deco', 'mirror_round', 'basin_vessel', 'tap_brass', 'urinal', 'restroom_set'];
+  'armchair_deco', 'side_table', 'torchere_deco', 'chandelier_cascade', 'letters_lumiere_lit', 'letters_max', 'letters_curve', 'letters_classic', 'letters_x270', 'num_1', 'num_2', 'num_3', 'num_4', 'sconce_deco', 'mirror_round', 'basin_vessel', 'tap_brass', 'urinal', 'restroom_set',
+  // v10 (tools/blender/decor10.py): the fountain court, light columns, pendant clouds, the cafe, rugs, standees, the popcorn cart
+  'fountain_tier', 'pillar_light', 'pendant_cloud', 'espresso_machine', 'cake_case', 'cafe_counter', 'rug_round', 'rug_runner', 'standee_base', 'popcorn_cart', 'bistro_table', 'bistro_chair', 'bar_stool', 'pos_terminal'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
@@ -54,7 +56,9 @@ function prepare(scene, name) {
 // dropped. The parts listed in TWO_SIDED are open shells (an edge used by one face only: the taxi's body panels and glass, rope ends,
 // bollard rings): they get their back faces too, as the GLBs' double-sided materials meant. The list is measured offline, not on the
 // phone: ?assetcheck=1 recomputes it and warns when a GLB changed (tools/dev/seethru.mjs --assets runs that check).
-export const TWO_SIDED = { sofa_curve: [17], planter_tree: [3, 4, 5], rope_velvet: [0], lamp_post: [3], bollard_light: [1], car_taxi: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 56, 57] };
+export const TWO_SIDED = { sofa_curve: [17], planter_tree: [3, 4, 5], rope_velvet: [0], lamp_post: [3], bollard_light: [1], car_taxi: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 56, 57],
+  // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
+  letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [2], restroom_set: [14] };
 const CHECK = typeof location !== 'undefined' && /[?&]assetcheck=1/.test(location.search);
 function solidify(g, mirrored, twoSided, label) {
   const P = g.attributes.position, N = g.attributes.normal; if (!g.index) g.setIndex([...Array(P.count).keys()]);
@@ -95,8 +99,9 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
     (room.pacc || room.acc).add(p.geo, mtx, sw ? sw[1] : o.tints && o.tints[p.name] ? o.tints[p.name] : p.tint, { mat: sw ? sw[0] : p.id, uv: 'mesh', occ: o.occ ?? 1 });
   }
   const b = A.box.clone().applyMatrix4(mtx);
-  if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
-  else if (o.collide !== false && solidProp(name, b)) room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y);
+  if (o.round && room.ring) room.ring((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2, typeof o.round === 'number' ? o.round : (b.max.x - b.min.x) / 2, b.min.y, b.max.y);   // v10: round things (the fountain) get a round collider
+  else if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
+  else if (o.collide !== false && !o.round && solidProp(name, b)) room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y);
   if (name.startsWith('bin')) (room.bins || (room.bins = [])).push({ x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2 });   // bins you can drop empty cups into
   return b;
 }

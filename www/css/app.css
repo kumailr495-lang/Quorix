@@ -345,3 +345,23 @@ body[data-input="pad"] #prompt .act-ic::after{content:'A';border-radius:50%;back
 #prompt .act-ic{position:relative}
 body.vr #hud>*:not(#toast),body.vr #bShow,body.vr #mpTags,body.vr #mpBar,body.vr #mpBadge{display:none!important}
 body.mouselook{cursor:none}
+
+/* v10 (the user: "make the UIs more defined"): crisper glass and higher contrast everywhere (more opaque surfaces, stronger hairlines,
+   brighter secondary text, a lit top edge on panels), and a main menu that fits the itel P65's 360 px tall landscape screen with the
+   third card (Play together): one-line card notes, the five links in two columns */
+:root{--surface:rgba(19,15,19,.9);--surface-2:rgba(30,24,29,.96);--line:rgba(242,214,170,.17);--line-2:rgba(242,214,170,.4);--muted:#c4b6a7;--subtle:#93857a;
+  --sh-panel:0 16px 44px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,236,206,.1)}
+.label{font-size:10.5px;letter-spacing:.17em}
+.mode{border-color:rgba(242,214,170,.28)}.mode b{letter-spacing:.04em}.mode small{color:var(--muted)}
+.icon{background:rgba(19,15,19,.82);border-color:rgba(242,214,170,.22)}
+#where,#walletChip{border:1px solid rgba(242,214,170,.22)}
+@media (max-height:430px){
+  .mn-left{justify-content:flex-start;padding-top:calc(8px + var(--sat))}
+  .mn-left .wordmark.xl{font-size:30px}.mn-left .tag{margin:2px 0 7px;font-size:13px}
+  .mn-modes{gap:5px}.mode{padding:6px 12px 7px}.mode b{font-size:14.5px}
+  .mode small{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px}
+  .mn-list{display:grid;grid-template-columns:1fr 1fr;column-gap:14px;margin-top:6px}
+  .mn-list button{height:30px;font-size:12px;gap:8px}.mn-list em{display:none}
+  .ver{margin-top:4px}
+}
+@media (max-height:380px){ .mn-left .tag{display:none}.mn-left .wordmark.xl{font-size:27px;margin-bottom:6px} }

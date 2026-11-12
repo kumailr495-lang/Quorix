@@ -58,6 +58,7 @@ export class Crowd {
     mk('host', 'greeter', 'Clara', 'host', 'host', 'greeter');
     mk('box1', 'receptionist', 'Éloïse', 'box', 'box', null, { x: -18.1, y: 0, z: 9.0, yaw: -Math.PI / 2 }); mk('box2', 'vendor', 'Priya', 'box', 'box', null, { x: -18.1, y: 0, z: 6.2, yaw: -Math.PI / 2 });
     mk('bar1', 'vendor', 'Mia', 'bar', 'barF', null, { x: -19.0, y: 0, z: -6.0, yaw: -Math.PI / 2 }); mk('bar2', 'vendor2', 'Gaston', 'bar', 'barM', null, { x: -19.0, y: 0, z: -2.4, yaw: -Math.PI / 2 });
+    mk('cafe', 'vendor', 'Leo', 'cafe', 'barM', null, { x: -20.45, y: 0, z: -11.3, yaw: -Math.PI / 2 });   // v10: the barista behind the cafe counter
     mk('usher', 'usher', 'Marcel', 'usher', 'usher', 'usher'); mk('server', 'server', 'Rahul', 'server', 'server', 'server');
     this.staff.server.cart = true; this.cart = makeCart(this.mats, this.scene);
     this.setDensity(this.density);

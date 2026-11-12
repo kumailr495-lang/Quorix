@@ -6,9 +6,11 @@
 //  * volume up to 250 %: the gain goes before a brick-wall limiter, so loud never means clipped;
 //  * real recordings (BigSoundBank, CC0) for applause, cheering, the lobby murmur, the street, escalators, the lift, the popcorn machine,
 //    toilets, taps and the taxi; the v8 formant voices stay only for laughs and screams, quieter (no CC0 recordings of those were reachable).
+//  * v10: the cafe (its room tone and, when you buy, the machine's pump and a cup), the fountain's water, the popcorn cart (BigSoundBank
+//    2561, 0913, 3049, 0410; CC0), each heard by how near you are
 import { Sound } from './sound.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), rnd = (a, b) => a + Math.random() * (b - a);
-const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge'];
+const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge', 'cafe', 'fountain', 'espresso', 'cup'];
 export class Sound9 extends Sound {
   constructor() { super(); this.buf = {}; this.loops = {}; this.sphere = null; this.boost = 1; }
   _build() {
@@ -22,7 +24,7 @@ export class Sound9 extends Sound {
   }
   async _loadAll() {
     await Promise.all(FILES.map(async (n) => { try { const r = await fetch(`snd/${n}.ogg`); if (!r.ok) return; this.buf[n] = await this.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* the synth stands in */ } }));
-    for (const [n, dest] of [['murmur', this.master], ['lounge', this.master], ['street', this.master], ['escalator', this.master], ['popcorn', this.master]]) this._loop(n, dest);
+    for (const [n, dest] of [['murmur', this.master], ['lounge', this.master], ['street', this.master], ['escalator', this.master], ['popcorn', this.master], ['cafe', this.master], ['fountain', this.master]]) this._loop(n, dest);
   }
   _loop(n, dest) { const b = this.buf[n]; if (!b || this.loops[n]) return; const c = this.ctx, s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(dest); s.start(0, Math.random() * b.duration); this.loops[n] = g; }
   _ambientTick() {
@@ -33,6 +35,8 @@ export class Sound9 extends Sound {
     set('street', a.room === 'street' ? 0.5 : a.room === 'lobby' ? 0.08 * clamp(1 - Math.abs(18 - a.z) / 14) : 0);
     set('escalator', a.room === 'lobby' ? 0.12 * clamp(1 - (a.escDist ?? 99) / 9) : 0, 0.4);
     set('popcorn', a.room === 'lobby' ? 0.25 * clamp(1 - (a.popcornDist ?? 99) / 8) : 0, 0.5);
+    set('cafe', a.room === 'lobby' ? 0.32 * clamp(1 - (a.cafeDist ?? 99) / 10) ** 1.5 : 0, 0.6);
+    set('fountain', a.room === 'lobby' ? 0.3 * clamp(1 - (a.fountainDist ?? 99) / 11) ** 1.6 : a.room === 'street' ? 0.02 : 0, 0.5);
     this.music.gain.setTargetAtTime(0, t, 0.5);   // the recorded bar ambience replaces the synth lounge chords
   }
   _pops() {}
@@ -48,6 +52,7 @@ export class Sound9 extends Sound {
   water(sec = 2.6) { if (!this.play('tap', { gain: 0.5, dur: sec })) super.water(sec); }
   lock() { if (!this.play('lid', { gain: 0.35, dur: 1.2 })) super.lock(); }
   pay() { if (!this.play('beep', { gain: 0.35 })) super.pay(); }
+  espresso() { if (!this.play('espresso', { gain: 0.55 })) { super.pour(); return; } this.play('cup', { gain: 0.45, when: 4.1 }); }   // v10: the barista makes it
   ticket() { if (!this.play('ticket', { gain: 0.45 })) super.ticket(); }
   carDoor(inside) { this.play(inside ? 'car_door_in' : 'car_door', { gain: 0.6 }); }
   carRide(on) { if (on && !this._ride) this._ride = this.play('car_ride', { gain: 0.35, fadeIn: 1.2, dur: 22 }); else if (!on && this._ride) { try { this._ride.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5); } catch (e) { /* ended */ } this._ride = null; } }

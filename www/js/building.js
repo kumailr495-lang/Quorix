@@ -32,8 +32,13 @@ export function escProfile(e) {
 }
 export const LIFT = { x0: 13.4, x1: 15.8, z0: -12.6, z1: -10.2, doorZ: -10.2, stops: [0, L1], speed: 1.0, doorW: 1.1 };
 export const TRAVELATOR = { x0: -0.8, x1: 0.8, z0: SPINE.z0 + 2.1, z1: -16.5, speed: 0.75 };   // carries you north (+z), towards the lobby
-// ticket gate at the foot of the up escalator: glass panels, one gate leaf, the usher's podium
-export const GATE = { z: 3.2, x0: 7.4, x1: 10.7, gate: [8.9, 10.5], podium: { x: 7.0, z: 3.9 }, sides: [[8.7, 1.4], [10.7, 1.4]] };   // the down escalator lands outside the gate
+// v10 ticket zone: both escalators and the lift behind one check (the user: "players can go straight to the lift without a ticket; make the
+// escalators and the lift one area"). Glass screens: the gate line at z (the usher's ticket leaf 'gate', two free-exit half leaves 'exit'
+// in front of the down escalator, for the way out from the escalator and the lift), the east screen x1 to the back wall, the west screen x0
+// beside the up escalator (from the gate line to the escalator's newel, and again from 'under', where you could walk under its truss, to the
+// back wall). The usher's podium stands outside, beside the ticket leaf.
+export const GATE = { z: 3.2, x0: 8.75, x1: 17.2, gate: [8.9, 10.5], exit: [10.9, 12.5], under: -3.2, back: -13.6, podium: { x: 7.0, z: 3.9 } };
+export const ZONE = { x0: GATE.x0, x1: GATE.x1, z0: GATE.back, z1: GATE.z };
 // doors. oneWay: the side you can pass from. kind: slide (auto glass), pair (heavy double doors), push (exit doors with push bars)
 export const DOORS = [
   { id: 'main', rooms: ['street', 'lobby'], kind: 'slide', axis: 'x', x: 0, z: FACADE, w: 4.0, h: 3.0, y: 0 },
@@ -91,14 +96,17 @@ export const COUNTERS = {
 // nav graph for walkers: named nodes (world), edges walked straight; halls add their own seat routes (hallmath.seatRoute)
 export const NAV = {
   nodes: {
-    kerb: [-2.0, 0, 25.65], plaza: [0, 0, 21.0], doorOut: [0, 0, 19.4], doorIn: [0, 0, 16.6], greet: [2.2, 0, 13.0], foyer: [0, 0, 9.0],
+    // v10: the fountain stands on the brand ring (0, 10) on the entrance axis; walkers part round it (foyerW, foyerE)
+    kerb: [-2.0, 0, 25.65], plaza: [0, 0, 21.0], doorOut: [0, 0, 19.4], doorIn: [0, 0, 16.6], greet: [2.2, 0, 13.0], foyer: [0, 0, 13.6], foyerW: [-3.2, 0, 10.0], foyerE: [3.2, 0, 10.0],
     boxQ: [-12.6, 0, 9.0], boxQ2: [-10.6, 0, 9.0], conQ: [-12.8, 0, -4.0], conQ2: [-10.8, 0, -4.0],
     // v9.1: four nodes round the lounge's sofa ring (centre -1, 1; its sofas reach 3.2 m out): walkers go round it, never through it
     lounge: [-7.0, 0, 1.0], loungeN: [-1.0, 0, 7.0], lounge2: [5.0, 0, 1.0], loungeS: [-1.0, 0, -5.0],
     wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0], wcMa: [23.3, 0, -5.9], wcMg: [24.6, 0, -5.9], wcFg: [24.6, 0, -2.1],
     // v9.1 (walk.mjs NAV check): walkers cross the lobby in front of the escalator gate (the escalators block z < 3.2), not through them;
     // the lift on L1 is left by its east side, round the shaft
-    gateW: [6.6, 0, 5.6], downOut: [11.7, 0, 4.4], east: [14.5, 0, 3.8], liftE: [16.6, L1, -9.2], liftS: [16.6, L1, -13.2], liftP: [12.0, L1, -13.2], flankW3: [BRIDGE.x0 + 3, L1, -56.5],
+    // v10 ticket zone: inside it, a walk along the gate line from the ticket leaf to the lift lobby (exitIn is in front of the exit leaves);
+    // outside it, the way to the restrooms rounds the zone's corner (eastC)
+    gateW: [6.6, 0, 5.6], downOut: [11.7, 0, 4.4], east: [14.5, 0, 3.8], eastC: [18.2, 0, 3.9], exitIn: [11.7, 0, 2.2], liftLob: [14.8, 0, 2.2], liftE: [16.6, L1, -9.2], liftS: [16.6, L1, -13.2], liftP: [12.0, L1, -13.2], flankW3: [BRIDGE.x0 + 3, L1, -56.5],
     gate: [9.7, 0, 4.6], gateIn: [9.7, 0, 2.2], escBot: [9.7, 0, 0.4], escTop: [9.7, L1, -12.6], mezz: [9.7, L1, -11.6],
     downTop: [11.7, L1, -12.6], downBot: [11.7, 0, 0.6], liftG: [14.6, 0, -9.2], liftL1: [14.6, L1, -9.2],
     portal: [10.2, L1, -15.2], bridgeE: [BRIDGE.x1 - 3, L1, -18.0], bridgeW: [BRIDGE.x0 + 3, L1, -18.0], bridgeC: [0, L1, -18.0], pantry: [0, L1, -23.0],
@@ -106,14 +114,15 @@ export const NAV = {
     spineN: [0, 0, -15.6], spineS: [0, 0, SPINE.z0 + 1.6], lobbyBack: [0, 0, -12.0],
   },
   edges: [['kerb', 'plaza'], ['plaza', 'doorOut'], ['doorOut', 'doorIn'], ['doorIn', 'greet'], ['doorIn', 'foyer'], ['greet', 'foyer'], ['foyer', 'boxQ2'], ['boxQ2', 'boxQ'],
-    ['foyer', 'loungeN'], ['loungeN', 'lounge'], ['loungeN', 'lounge2'], ['lounge', 'loungeS'], ['loungeS', 'lounge2'], ['lounge', 'conQ2'], ['conQ2', 'conQ'], ['east', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcIn', 'wcMa'], ['wcMa', 'wcMg'], ['wcMg', 'wcM'], ['wcIn', 'wcFg'], ['wcFg', 'wcF'],
+    ['foyer', 'foyerW'], ['foyerW', 'loungeN'], ['foyer', 'foyerE'], ['foyerE', 'lounge2'], ['loungeN', 'lounge'], ['loungeN', 'lounge2'], ['lounge', 'loungeS'], ['loungeS', 'lounge2'], ['lounge', 'conQ2'], ['conQ2', 'conQ'],
+    ['east', 'eastC'], ['eastC', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcIn', 'wcMa'], ['wcMa', 'wcMg'], ['wcMg', 'wcM'], ['wcIn', 'wcFg'], ['wcFg', 'wcF'],
     ['lounge2', 'gateW'], ['gateW', 'gate'], ['foyer', 'gate'], ['gate', 'gateIn'], ['gateIn', 'escBot'], ['escBot', 'escTop'], ['escTop', 'mezz'], ['mezz', 'portal'], ['mezz', 'downTop'],
-    ['downTop', 'downBot'], ['downBot', 'downOut'], ['downOut', 'gate'], ['downOut', 'east'], ['gate', 'east'], ['east', 'liftG'], ['liftG', 'liftL1'],
+    ['downTop', 'downBot'], ['downBot', 'downOut'], ['downOut', 'gate'], ['downOut', 'east'], ['gate', 'east'], ['gateIn', 'exitIn'], ['exitIn', 'liftLob'], ['liftLob', 'liftG'], ['exitIn', 'downOut'], ['liftG', 'liftL1'],
     ['liftL1', 'liftE'], ['liftE', 'liftS'], ['liftS', 'liftP'], ['liftP', 'mezz'], ['liftP', 'portal'], ['portal', 'bridgeC'], ['portal', 'bridgeE'],
     ['bridgeC', 'pantry'], ['bridgeC', 'bridgeW'], ['bridgeW', 'flankW1'], ['flankW1', 'flankW2'], ['flankW2', 'flankW3'], ['flankW3', 'linkW'], ['bridgeE', 'flankE1'], ['flankE1', 'flankE2'],
     ['lobbyBack', 'loungeS'], ['spineN', 'lobbyBack'], ['spineS', 'spineN']],
   // directed edges (one-way): walkers may only use them in this direction
-  oneWay: [['escBot', 'escTop'], ['downTop', 'downBot'], ['downBot', 'downOut'], ['spineN', 'lobbyBack'], ['spineS', 'spineN'], ['gate', 'gateIn']],
+  oneWay: [['escBot', 'escTop'], ['downTop', 'downBot'], ['downBot', 'downOut'], ['spineN', 'lobbyBack'], ['spineS', 'spineN'], ['gate', 'gateIn'], ['exitIn', 'downOut']],
 };
 // palettes (3-4 colours each, with their dim variants; docs/V9-DESIGN.md section 5). Linear-ish hex as authored in sRGB.
 export const PALETTE = {

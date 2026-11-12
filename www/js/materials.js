@@ -228,8 +228,9 @@ void main() {
   vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv;
 }`;
 // ---------------- glow (emissive LED strips, signs' light, lenses) ----------------
-const GLOW_VERT = `attribute vec3 color; attribute float grp; uniform float uHouse; varying vec3 vC; varying float vDist;
-void main() { vC = color * mix(1.0, uHouse, step(0.5, grp)); vec4 mv = modelViewMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
+const GLOW_VERT = `attribute vec3 color; attribute float grp; uniform float uHouse; uniform float uTime; varying vec3 vC; varying float vDist;
+void main() { float sh = grp > 1.5 ? 0.7 + 0.3 * sin(uTime * 7.0 - position.y * 11.0 + (position.x + position.z) * 5.0) : 1.0;
+  vC = color * mix(1.0, uHouse, step(0.5, grp) * step(grp, 1.5)) * sh; vec4 mv = modelViewMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;   // grp 1: dims with the house lights; grp 2 (v10): water shimmer
 const GLOW_FRAG = COMMON_FRAG + `varying vec3 vC; varying float vDist; uniform float uGlow;
 void main() { vec3 col = lumFog(lumTone(vC * uGlow), vDist); gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>

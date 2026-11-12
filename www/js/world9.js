@@ -222,13 +222,28 @@ class Lift {
   doorSegs() { return this.L.stops.map((ly, k) => ({ seg: [this.cx - this.dw / 2, this.L.z1 - 0.07, this.cx + this.dw / 2, this.L.z1 - 0.07], y0: ly, y1: ly + 2.3, on: this.doors[k] < 0.75 || this.level !== k || this.state !== 'idle' })); }
 }
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
+const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192 };   // canvas pixels per metre for boards with text or fine figures
+const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 function panelTexture(id, w, h, hooks) {
-  const px = Math.min(2048, Math.max(256, Math.round(w * 128))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
+  const ppm = DENSE[id.split('_')[0]] || 128, px = Math.min(2048, Math.max(256, Math.round(w * ppm))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
   const draw = hooks[id.split('_')[0]]; if (draw) draw(g, px, py, id); else { g.fillStyle = '#111'; g.fillRect(0, 0, px, py); }
   return { tex: tx, canvas: c, g };
 }
 // the builder placed the west-wall boards at the wall's centre line (tools/blender/arch/rooms.py: x0 + 0.21); its face is 0.2 m further in
 const NUDGE = { showtimes: 0.22, menu: 0.22 };
+// v10 the ticket zone's header (rooms.py: one beam across the zone front): the screens, the escalators and the lift under one sign
+function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.fillRect(0, h * 0.92, w, h * 0.08); g.textBaseline = 'middle'; g.textAlign = 'left';
+  const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
+  g.fillStyle = '#f4efe6'; g.font = `600 ${h * 0.4}px ${SANS}`; ls(`${h * 0.05}px`); g.fillText('SCREENS 1 – 4', h * 0.45, h * 0.36); ls('0px');
+  g.fillStyle = 'rgba(244,239,230,.72)'; g.font = `400 ${h * 0.16}px ${SANS}`; g.fillText('TICKETS PLEASE  ·  TICKET HOLDERS BEYOND THIS POINT', h * 0.45, h * 0.73);
+  g.strokeStyle = '#f4efe6'; g.fillStyle = '#f4efe6'; g.lineCap = 'round'; g.lineJoin = 'round';
+  let x = w * 0.52; g.lineWidth = h * 0.08; g.beginPath(); g.moveTo(x, h * 0.74); g.lineTo(x + h * 0.22, h * 0.74); g.lineTo(x + h * 0.62, h * 0.26); g.lineTo(x + h * 0.84, h * 0.26); g.stroke();
+  g.beginPath(); g.arc(x + h * 0.4, h * 0.22, h * 0.07, 0, Math.PI * 2); g.fill(); g.lineWidth = h * 0.06; g.beginPath(); g.moveTo(x + h * 0.4, h * 0.3); g.lineTo(x + h * 0.34, h * 0.48); g.stroke();
+  g.font = `600 ${h * 0.3}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText('ESCALATORS', x + h * 1.05, h * 0.47); ls('0px');
+  x = w * 0.79; g.lineWidth = h * 0.05; g.strokeRect(x, h * 0.16, h * 0.5, h * 0.64); g.beginPath(); g.moveTo(x + h * 0.25, h * 0.24); g.lineTo(x + h * 0.38, h * 0.42); g.lineTo(x + h * 0.12, h * 0.42); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(x + h * 0.25, h * 0.72); g.lineTo(x + h * 0.38, h * 0.54); g.lineTo(x + h * 0.12, h * 0.54); g.closePath(); g.fill();
+  g.font = `600 ${h * 0.3}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText('LIFT', x + h * 0.72, h * 0.47); ls('0px');
+  g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.4, h * 0.48); }
 export const PANEL_DRAW = {
   // v9.3: the showtime header inside each hall portal (the user's corridor photo): a white number cube, then the hall and what is on
   sign: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#050506'; g.fillRect(0, 0, w, h);
@@ -246,7 +261,7 @@ export const PANEL_DRAW = {
     g.font = `700 ${h * 0.5}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.04}px`;
     const xa = x0 + s * 1.1; g.fillText('EXIT', xa + (w - xa) / 2, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   // v9.1 wayfinding: ink ground, gold rule, white caps, an arrow; RESTROOMS gets the two figures
-  wayfind: (g, w, h, id) => { const k = id.split('_')[1], T = { screens: ['SCREENS 1 – 4', '↑', 'MAX  ·  CURVE  ·  CLASSIC  ·  X·270'], wc: ['RESTROOMS', '', ''], tickets: ['TICKETS', '', 'BOX OFFICE'], food: ['FOOD & DRINKS', '', 'POPCORN  ·  NACHOS  ·  COFFEE'] }[k] || [k.toUpperCase(), '', ''];
+  wayfind: (g, w, h, id) => { const k = id.split('_')[1]; if (k === 'zone') { zoneSign(g, w, h); return; } const T = { screens: ['SCREENS 1 – 4', '↑', 'MAX  ·  CURVE  ·  CLASSIC  ·  X·270'], wc: ['RESTROOMS', '', ''], tickets: ['TICKETS', '', 'BOX OFFICE'], food: ['FOOD & DRINKS', '', 'POPCORN  ·  NACHOS  ·  COFFEE'] }[k] || [k.toUpperCase(), '', ''];
     g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.fillRect(0, h * 0.92, w, h * 0.08); g.fillStyle = '#f4efe6'; g.textBaseline = 'middle';
     let x = h * 0.35; if (k === 'wc') { const fig = (cx, dress) => { g.beginPath(); g.arc(cx, h * 0.24, h * 0.09, 0, Math.PI * 2); g.fill(); if (dress) { g.beginPath(); g.moveTo(cx - h * 0.15, h * 0.72); g.lineTo(cx + h * 0.15, h * 0.72); g.lineTo(cx, h * 0.36); g.fill(); g.fillRect(cx - h * 0.06, h * 0.7, h * 0.04, h * 0.14); g.fillRect(cx + h * 0.02, h * 0.7, h * 0.04, h * 0.14); } else { g.fillRect(cx - h * 0.09, h * 0.36, h * 0.18, h * 0.3); g.fillRect(cx - h * 0.09, h * 0.62, h * 0.07, h * 0.24); g.fillRect(cx + h * 0.02, h * 0.62, h * 0.07, h * 0.24); } };
       fig(x + h * 0.1, false); fig(x + h * 0.55, true); g.fillRect(x + h * 0.32, h * 0.2, h * 0.02, h * 0.62); x += h * 0.95; }
@@ -258,6 +273,60 @@ export const PANEL_DRAW = {
   poster: (g, w, h, id) => { g.fillStyle = '#0b0b0d'; g.fillRect(0, 0, w, h); const im = new Image(); im.onload = () => { const s_ = Math.max(w / im.width, h / im.height), iw = im.width * s_, ih = im.height * s_; g.drawImage(im, (w - iw) / 2, (h - ih) / 2, iw, ih); if (g.canvas.__tex) g.canvas.__tex.needsUpdate = true; }; im.src = posterURL(id.split('_')[1]); },   // poster_<film>[_<n>]: several cases may show one film
   exitwall: (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#0f3a28'); gr.addColorStop(1, '#14523a'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     g.fillStyle = '#eafff3'; g.font = `600 ${h * 0.22}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('THANK YOU FOR WATCHING', w / 2, h * 0.38); g.font = `400 ${h * 0.12}px ${SANS}`; g.fillText('EXIT  ·  LOBBY  ·  RESTROOMS  →', w / 2, h * 0.68); },
+  // v10 restroom pictograms (docs/V10-RESEARCH.md source 10: figures two metres tall beside the entrance, known from across the room):
+  // a white figure on a blue or rose field, the word under it, an arrow to the door
+  picto: (g, w, h, id) => { const f = id.endsWith('_f'), gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, f ? '#c0466a' : '#2f67c4'); gr.addColorStop(1, f ? '#8e2747' : '#1b4592');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(w * 0.06, w * 0.06, w * 0.88, h - w * 0.12);
+    g.fillStyle = '#f7f3ec'; const cx = w / 2, s_ = w * 0.34, y0 = h * 0.1 + s_ * 0.98; g.beginPath(); g.arc(cx, h * 0.1 + s_ * 0.42, s_ * 0.36, 0, Math.PI * 2); g.fill();
+    if (f) { g.beginPath(); g.moveTo(cx - s_ * 0.42, y0 + s_ * 0.08); g.lineTo(cx + s_ * 0.42, y0 + s_ * 0.08); g.lineTo(cx + s_ * 0.98, y0 + s_ * 2.05); g.lineTo(cx - s_ * 0.98, y0 + s_ * 2.05); g.closePath(); g.fill();
+      for (const sx of [-1, 1]) { g.fillRect(cx + sx * s_ * 0.3 - s_ * 0.13, y0 + s_ * 2.0, s_ * 0.26, s_ * 1.2); g.fillRect(cx + sx * s_ * 0.62 - s_ * 0.1, y0 + s_ * 0.15, s_ * 0.2, s_ * 1.05); } }
+    else { g.fillRect(cx - s_ * 0.6, y0 + s_ * 0.08, s_ * 1.2, s_ * 1.5);
+      for (const sx of [-1, 1]) { g.fillRect(cx + sx * s_ * 0.31 - s_ * 0.27, y0 + s_ * 1.52, s_ * 0.54, s_ * 1.72); g.fillRect(cx + sx * s_ * 0.86 - s_ * 0.11, y0 + s_ * 0.1, s_ * 0.22, s_ * 1.3); } }
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `600 ${w * 0.1}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${w * 0.012}px`; g.fillText(f ? 'LADIES' : 'GENTLEMEN', cx, h * 0.83); if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.font = `700 ${w * 0.17}px ${SANS}`; g.fillText(f ? '←' : '→', cx, h * 0.92); },
+  // v10 the east wall's upper band (research sources 3 and 7: a skyline relief across the upper wall; Art Deco gold on deep colour): a city at
+  // night in gold line, searchlights, a film strip through the sky. mural_<n>: three panels of one picture
+  mural: (g, w, h, id) => { const n = +id.split('_')[1] || 0, W = w * 3, r = rng(7); g.save(); g.translate(-n * w, 0);
+    const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#060a1f'); sky.addColorStop(0.62, '#151b46'); sky.addColorStop(1, '#2c1e4c'); g.fillStyle = sky; g.fillRect(0, 0, W, h);
+    for (let i = 0; i < 520; i++) { const x = r() * W, y = r() * h * 0.62, k = r(); g.fillStyle = k < 0.7 ? 'rgba(255,236,190,.85)' : 'rgba(220,230,255,.8)'; g.fillRect(x, y, k > 0.93 ? 2 : 1, k > 0.93 ? 2 : 1); }
+    for (const fx of [0.1, 0.31, 0.55, 0.78, 0.93]) { const x0 = W * fx, a = (r() - 0.5) * 0.7, xt = x0 + Math.sin(a) * h * 1.4; g.fillStyle = 'rgba(255,214,140,0.09)'; g.beginPath(); g.moveTo(x0 - 3, h * 0.8); g.lineTo(xt - h * 0.13, -4); g.lineTo(xt + h * 0.13, -4); g.lineTo(x0 + 3, h * 0.8); g.fill(); }
+    const strip = (cy, amp) => { const bh = h * 0.15; for (let x = 0; x < W; x += 4) { const y = cy + Math.sin(x / W * Math.PI * 5) * amp; g.fillStyle = '#0c0c10'; g.fillRect(x, y - bh / 2, 4.5, bh); g.fillStyle = '#d9b46a'; g.fillRect(x, y - bh / 2, 4.5, 1.2); g.fillRect(x, y + bh / 2 - 1.2, 4.5, 1.2);
+        if (x % 16 < 4) { g.fillStyle = 'rgba(240,232,214,.85)'; g.fillRect(x, y - bh * 0.42, 3, bh * 0.12); g.fillRect(x, y + bh * 0.3, 3, bh * 0.12); }
+        if (x % 64 < 56) { const t = (Math.floor(x / 64) * 37) % 100 / 100; g.fillStyle = `rgba(${150 + t * 90},${120 + t * 60},${170 - t * 80},.55)`; g.fillRect(x, y - bh * 0.24, 4.5, bh * 0.48); } } };
+    strip(h * 0.3, h * 0.07);
+    const tower = (x, bw, bh, fill, edge, lit) => { let y = h - bh, l = x, ww = bw; const st = 1 + Math.floor(r() * 3), tier = bh * 0.06; g.fillStyle = fill; g.strokeStyle = edge; g.lineWidth = Math.max(1, h * 0.005);
+      g.fillRect(x, y, bw, bh); g.strokeRect(x + 0.5, y + 0.5, bw - 1, bh);
+      for (let k = 0; k < st; k++) { const d = ww * 0.16; l += d; ww -= 2 * d; y -= tier; g.fillRect(l, y, ww, tier + 1); g.strokeRect(l + 0.5, y + 0.5, ww - 1, tier); }
+      if (r() < 0.45) { g.beginPath(); g.moveTo(l + ww * 0.4, y); g.lineTo(l + ww / 2, y - bh * 0.2); g.lineTo(l + ww * 0.6, y); g.closePath(); g.fill(); g.stroke(); }
+      if (lit) for (let yy = h - bh + 5; yy < h - 4; yy += 6) for (let xx = x + 3; xx < x + bw - 4; xx += 5) if (r() < 0.38) { g.fillStyle = r() < 0.8 ? '#f2c46a' : '#fff1c9'; g.fillRect(xx, yy, 2, 3); } };
+    for (const [hmin, hmax, fill, edge, lit] of [[0.3, 0.55, '#1b1f45', 'rgba(217,180,106,.35)', false], [0.2, 0.42, '#121433', 'rgba(217,180,106,.6)', false], [0.1, 0.3, '#08091a', '#d9b46a', true]]) { let x = -10; while (x < W) { const bw = h * (0.1 + r() * 0.18); tower(x, bw, h * (hmin + r() * (hmax - hmin)), fill, edge, lit); x += bw + h * r() * 0.05; } }
+    g.fillStyle = '#c9a35e'; g.fillRect(0, 0, W, Math.max(2, h * 0.012)); g.fillRect(0, h - Math.max(2, h * 0.012), W, Math.max(2, h * 0.012)); g.restore(); },
+  // v10 art: original pictures drawn here (no outside images): a Deco sunburst, colour fields, a gold fan, the projector's beam, a city at dusk
+  art: (g, w, h, id) => { const n = +id.split('_')[1], r = rng(n * 13 + 1);
+    if (n === 1) { g.fillStyle = '#0f3b3c'; g.fillRect(0, 0, w, h); const cx = w / 2, cy = h * 0.72;
+      for (let i = 0; i < 18; i++) { const a0 = Math.PI + Math.PI * i / 18; g.fillStyle = i % 2 ? '#d9b46a' : '#efe0b3'; g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, h, a0, a0 + Math.PI / 36); g.closePath(); g.fill(); }
+      g.fillStyle = '#0f3b3c'; g.beginPath(); g.arc(cx, cy, w * 0.27, Math.PI, 0); g.fill(); g.fillStyle = '#d9b46a'; g.beginPath(); g.arc(cx, cy, w * 0.2, Math.PI, 0); g.fill(); g.fillRect(0, cy, w, h - cy);
+      g.fillStyle = '#0f3b3c'; for (let k = 0; k < 4; k++) g.fillRect(0, cy + (h - cy) * (0.16 + 0.21 * k), w, (h - cy) * 0.08); }
+    else if (n === 2) { g.fillStyle = '#d8c7a8'; g.fillRect(0, 0, w, h); const cols = ['#7a1e2c', '#c9852c', '#1d2340'];
+      for (let k = 0; k < 3; k++) { g.fillStyle = cols[k]; g.filter = `blur(${Math.max(1, w * 0.012)}px)`; g.fillRect(w * 0.09, h * (0.07 + k * 0.3), w * 0.82, h * 0.25); } g.filter = 'none'; }
+    else if (n === 3) { g.fillStyle = '#121214'; g.fillRect(0, 0, w, h); const cx = w / 2, cy = h * 0.92;
+      for (let k = 10; k >= 1; k--) { g.fillStyle = k % 2 ? '#c9a35e' : '#121214'; g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, w * 0.088 * k, Math.PI * 1.04, Math.PI * 1.96); g.closePath(); g.fill(); }
+      g.strokeStyle = '#efe0b3'; g.lineWidth = Math.max(1, w * 0.006); for (let i = 0; i <= 12; i++) { const a = Math.PI * (1.04 + 0.92 * i / 12); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * w * 0.88, cy + Math.sin(a) * w * 0.88); g.stroke(); } }
+    else if (n === 4) { const bg = g.createLinearGradient(0, 0, w, 0); bg.addColorStop(0, '#05060c'); bg.addColorStop(1, '#151b36'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+      const sx = w * 0.86; g.fillStyle = '#e9e4d6'; g.fillRect(sx, h * 0.2, w * 0.05, h * 0.6);
+      const beam = g.createLinearGradient(w * 0.07, 0, sx, 0); beam.addColorStop(0, 'rgba(255,240,200,.8)'); beam.addColorStop(1, 'rgba(255,240,200,.1)'); g.fillStyle = beam; g.beginPath(); g.moveTo(w * 0.07, h * 0.47); g.lineTo(sx, h * 0.2); g.lineTo(sx, h * 0.8); g.lineTo(w * 0.07, h * 0.53); g.fill();
+      for (let i = 0; i < 220; i++) { const t = r(), x = w * 0.07 + t * (sx - w * 0.07), y = h * 0.5 + (r() - 0.5) * 2 * (h * 0.03 + t * h * 0.3); g.fillStyle = `rgba(255,245,215,${0.25 + r() * 0.55})`; g.fillRect(x, y, 1.5, 1.5); }
+      g.fillStyle = '#2a2a30'; g.fillRect(w * 0.01, h * 0.41, w * 0.07, h * 0.18); g.fillStyle = '#c9a35e'; g.beginPath(); g.arc(w * 0.03, h * 0.38, h * 0.06, 0, Math.PI * 2); g.arc(w * 0.07, h * 0.38, h * 0.06, 0, Math.PI * 2); g.fill(); }
+    else { const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#1b1f4a'); sky.addColorStop(0.62, '#b8513a'); sky.addColorStop(1, '#e3b25f'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#f2ebdd'; g.beginPath(); g.arc(w * 0.8, h * 0.22, h * 0.08, 0, Math.PI * 2); g.fill();
+      let x = 0; while (x < w) { const bw = w * (0.05 + r() * 0.08), bh = h * (0.18 + r() * 0.42); g.fillStyle = '#120f1c'; g.fillRect(x, h - bh, bw + 1, bh); for (let yy = h - bh + 6; yy < h - 6; yy += 7) for (let xx = x + 3; xx < x + bw - 3; xx += 6) if (r() < 0.3) { g.fillStyle = '#f2c46a'; g.fillRect(xx, yy, 2, 3); } x += bw; } } },
+  // v10 the cafe's menu board and its name over it (rooms.py places them on the walnut wall)
+  cafemenu: (g, w, h) => { g.fillStyle = '#16110d'; g.fillRect(0, 0, w, h); g.strokeStyle = '#c9a35e'; g.lineWidth = Math.max(2, h * 0.012); g.strokeRect(h * 0.05, h * 0.05, w - h * 0.1, h - h * 0.1);
+    const cols = [['COFFEE', [['Espresso', 160], ['Americano', 190], ['Cappuccino', 210], ['Café latte', 220], ['Mocha', 240]]], ['TEA & MORE', [['Masala chai', 150], ['Iced tea', 180], ['Hot chocolate', 220], ['Cold coffee', 230]]], ['SWEETS', [['Cheesecake', 260], ['Brownie', 180], ['Croissant', 160], ['Blueberry muffin', 170]]]];
+    g.textBaseline = 'middle'; cols.forEach(([head, items], c) => { const x0 = w * (0.05 + c * 0.315), x1 = x0 + w * 0.27; g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.12}px ${SANS}`; g.textAlign = 'left'; g.fillText(head, x0, h * 0.2);
+      g.font = `400 ${h * 0.09}px ${SANS}`; items.forEach(([nm, pr], i) => { const y = h * (0.37 + i * 0.13); g.fillStyle = '#f2ebdd'; g.textAlign = 'left'; g.fillText(nm, x0, y); g.textAlign = 'right'; g.fillStyle = '#e3b25f'; g.fillText('₹' + pr, x1, y); }); }); },
+  cafesign: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1d140d'); gr.addColorStop(1, '#0d0906'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#e8c27a'; g.font = `500 ${h * 0.52}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.12}px`; g.fillText('CAFÉ LUMIÈRE', w / 2, h * 0.5); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.fillRect(w * 0.28, h * 0.86, w * 0.44, Math.max(2, h * 0.025)); },
   marquee: (g, w, h) => { g.fillStyle = '#0a0a0d'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2ebdd'; g.font = `500 ${h * 0.56}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.3}px`; g.fillText('LUMIÈRE', w / 2, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   arrival: (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#120d24'); gr.addColorStop(1, '#2a1640'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.14}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SCREENS 1 – 4', w / 2, h * 0.42); g.fillStyle = 'rgba(242,235,221,.8)'; g.font = `400 ${h * 0.07}px ${SANS}`; g.fillText('MAX  ·  CURVE  ←      CLASSIC  ·  270  →', w / 2, h * 0.62); },
 };
@@ -271,21 +340,50 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 2.4 * Math.cos(r), 0, 1 + 2.4 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }   // square to the axes: their collision boxes stay tight
   for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'armchair_deco', -1 + 3.3 * Math.cos(r), 0, 1 + 3.3 * Math.sin(r), Math.round((-r - Math.PI / 2) / (Math.PI / 2)) * Math.PI / 2, { swap: BOUCLE }); add('lobby', 'planter_tall', -1 + 5.6 * Math.cos(r), 0, 1 + 5.6 * Math.sin(r)); }
   add('lobby', 'table_lounge', -1, 0, 1); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
-  add('lobby', 'poster_totem', -5.2, 0, 14.2, 0.35); add('lobby', 'poster_totem', 5.2, 0, 14.2, -0.35); add('lobby', 'poster_totem', 5.0, 0, 7.6, 0.3);
+  add('lobby', 'poster_totem', -6.0, 0, 16.3, 0.35); add('lobby', 'poster_totem', 6.0, 0, 16.3, -0.35);   // v10: out of the fountain court
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
   for (const x of [-14.4, -13.0]) for (let z = 5.6; z < 12.5; z += 1.75) add('lobby', 'rope_velvet', x, 0, z + 0.875, Math.PI / 2, { collide: 0.02 });
   for (const [z, yaw] of [[-7.6, Math.PI / 2], [-6.5, Math.PI / 2], [-3.0, Math.PI / 2], [-1.7, Math.PI / 2]]) add('lobby', z > -5 ? 'drinks_fountain' : 'popcorn_machine', -21.62, 0.92, z, yaw, { collide: false, ground: false });
   add('lobby', 'candy_wall', -21.7, 0, 0.0, Math.PI / 2);
-  for (const [x, z] of [[-14.8, -10.3], [6.0, 2.4], [-2.4, -12.6], [19.8, -2.6], [-14.8, 2.6]]) add('lobby', 'bin_brass', x, 0, z);
+  for (const [x, z] of [[-16.2, -9.6], [6.0, 2.4], [-2.4, -12.6], [19.8, -2.6], [-14.8, 2.6]]) add('lobby', 'bin_brass', x, 0, z);
   add('lobby', 'bench_velvet', 21.25, 0, 5.0, Math.PI / 2); add('lobby', 'bench_velvet', 21.25, 0, -6.5, Math.PI / 2);
   // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
   for (const [cx, cz, sw] of [[11.5, 12.6, EMERALD], [16.5, 12.6, SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null], [-9.5, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
   add('lobby', 'chandelier_cascade', 0, 8.55, 4.0, 0, { collide: false, ground: false });
+  // v10 (the user: "the lobby is too big and empty: fill it with lighting, paintings, pillars, sofas, a fountain"; docs/V10-RESEARCH.md):
+  // a fountain on the brand ring on the entrance axis with four light columns round it (walkers part round it: building.js foyerW/E), a
+  // pendant cloud over the east waiting areas, rugs under the seating groups, a popcorn cart by the box office, film standees facing the
+  // doors (their boards are FRAMED panels), a seating corner by the restrooms under its own small cloud
+  add('lobby', 'fountain_tier', 0, 0, 10.0, 0, { round: 1.68, grp: 2 });   // grp 2: its lit water shimmers (materials.js GLOW_VERT)
+  for (const [x, z] of [[-4.8, 14.4], [4.8, 14.4], [-4.8, 7.0], [4.8, 7.0]]) add('lobby', 'pillar_light', x, 0, z);
+  add('lobby', 'pendant_cloud', 14.0, LOBBY.ceil - 0.002, 12.8, 0, { collide: false, ground: false, detail: 1 });
+  for (const [cx, cz] of [[11.5, 12.6], [16.5, 12.6], [-9.5, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false });
+  add('lobby', 'popcorn_cart', -12.6, 0, 2.6, Math.PI / 2 + 0.35);
+  // the box office queue and the concessions approach each get a patterned runner (the user: "make the reception and the buy area much defined")
+  add('lobby', 'rug_runner', -13.7, 0, 9.1, 0, { collide: false, scale: [0.5, 1, 1.75] }); add('lobby', 'rug_runner', -14.75, 0, -4.0, Math.PI / 2, { collide: false, scale: [0.62, 1, 0.92] });
+  for (const [x, yaw] of [[-6.6, 0.885], [6.6, -0.885]]) add('lobby', 'standee_base', x, 0, 12.6, yaw, { collide: 0.02 });
+  add('lobby', 'rug_round', 19.4, 0, -10.8, 0, { collide: false }); add('lobby', 'side_table', 19.4, 0, -10.8);
+  add('lobby', 'armchair_deco', 18.4, 0, -10.8, Math.PI / 2, { swap: SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null }); add('lobby', 'armchair_deco', 20.4, 0, -10.8, -Math.PI / 2, { swap: SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null });
+  add('lobby', 'pendant_cloud', 19.4, L1 - 0.322, -10.8, 0.6, { collide: false, ground: false, scale: 0.5, detail: 1 });
+  // v10 cafe (the user: "the cafe and the latte much more defined"): the front counter with bar stools, the espresso machine on the back
+  // counter facing you, a lit cake case, the card reader, five bistro tables under a small pendant cloud (rooms.py builds the walnut wall,
+  // the back counter, the shelves and the menu)
+  add('lobby', 'cafe_counter', -19.6, 0, -11.5, Math.PI / 2, { scale: [1.12, 1, 1] });   // 3.9 m: no gap at either end to slip behind it
+  add('lobby', 'espresso_machine', -21.25, 0.96, -12.3, Math.PI / 2, { collide: false, ground: false });
+  add('lobby', 'cake_case', -19.6, 1.04, -12.55, Math.PI / 2, { collide: false, ground: false });
+  add('lobby', 'pos_terminal', -19.62, 1.04, -10.4, -Math.PI / 2, { collide: false, ground: false });
+  for (const z of [-12.6, -11.7, -10.8, -9.9]) add('lobby', 'bar_stool', -18.72, 0, z, -Math.PI / 2);
+  for (const [tx, tz] of [[-15.4, -12.5], [-12.8, -12.5], [-10.2, -12.5], [-14.1, -10.3], [-11.5, -10.3]]) { add('lobby', 'bistro_table', tx, 0, tz); add('lobby', 'bistro_chair', tx - 0.62, 0, tz, Math.PI / 2); add('lobby', 'bistro_chair', tx + 0.62, 0, tz, -Math.PI / 2); }
+  add('lobby', 'pendant_cloud', -12.8, L1 - 0.322, -11.4, 0, { collide: false, ground: false, scale: 0.55, detail: 1 });
+  for (const x of [-4.6, 4.6]) add('lobby', 'bench_velvet', x, 0, -13.28);   // velvet benches under the pictures either side of the exit
   add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
-  add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, on the blue diamond wall (v9.3; just proud of the tiles)
+  add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, 2 cm in front of the gold fins (v10)
+  // v10 (the user: "improve the overall look from outside"): a premiere carpet from the kerb to the doors, two light columns flanking them
+  add('street', 'rug_runner', 0, 0, FACADE_Z + 4.0, 0, { collide: false, scale: [0.62, 1, 1.8], swap: { carpet_deco: [MAT.velvet, [0.34, 0.015, 0.025]] } });
+  for (const x of [-3.6, 3.6]) add('street', 'pillar_light', x, 0, FACADE_Z + 1.1);
   for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
   for (let x = -40; x <= 40; x += 10) add('street', 'lamp_post', x, 0, 25.55, Math.PI / 2, { collide: 0.05 });
@@ -305,6 +403,12 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
     add('corridor', 'bin_brass', xf + side * 0.35, L1, zc - (d.hall === 'X270' ? 3.4 : 3.45));
   }
   for (const x of [BRIDGE.x0 + 9, BRIDGE.x0 + 24, BRIDGE.x1 - 24, BRIDGE.x1 - 9]) for (const o of [-0.5, 0.5]) add('corridor', 'armchair_deco', x + o, L1, BRIDGE.z1 - 0.75, Math.PI, { swap: { velvet_mustard: [MAT.velvet, [0.5, 0.018, 0.03]] } });
+  // v10 the corridor (the user: "the halls and corridors are empty"): benches with palms between the posters down both flanks, palms along
+  // the bridge between the armchair groups, film standees either side of the mezzanine portal (their boards are FRAMED panels)
+  for (const z of [-38, -46]) { add('corridor', 'bench_velvet', BRIDGE.x0 + 0.62, L1, z, Math.PI / 2); add('corridor', 'planter_tall', BRIDGE.x0 + 0.6, L1, z - 1.55); }
+  add('corridor', 'bench_velvet', BRIDGE.x1 - 0.62, L1, -38, -Math.PI / 2); add('corridor', 'planter_tall', BRIDGE.x1 - 0.6, L1, -39.55);
+  for (const x of [-31, -16, -6, 22, 34]) add('corridor', 'planter_tall', x, L1, BRIDGE.z1 - 0.65);
+  for (const x of [4.6, 16.4]) add('corridor', 'standee_base', x, L1, -14.9, Math.PI, { collide: 0.02 });
   // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup)
   for (const h of Object.values(HALL)) { const w = h.toWorld(h.entryU - Math.sign(h.entryU) * 1.4, h.depthIn - 0.5); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z); }
   return L;
@@ -317,12 +421,41 @@ function dressRooms(world) {
     if (u.kind === 'basin') { L.push({ room: u.room, name: 'basin_vessel', x: u.x + 0.02, y: u.y, z: u.z, yaw: 0, o: { collide: false, ground: false } }); L.push({ room: u.room, name: 'tap_brass', x: u.x - 0.2, y: u.y, z: u.z, yaw: Math.PI / 2, o: { collide: false, ground: false } }); }
     if (u.kind === 'urinal') L.push({ room: u.room, name: 'urinal', x: u.x, y: 0, z: u.z - 0.245, yaw: 0, o: { collide: 0.05, ground: false } }); }
   for (const key in byRoom) {
-    const room = world.rooms[key]; if (!room) continue; const host = { pacc: new Acc(), gacc: new Acc(), bins: [], col: (x0, z0, x1, z1, y0, y1) => { for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) world.walls.add(ax, az, bx, bz, y0, y1); } };
-    for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y; placeAsset(host, p.name, p.x, p.y + lift, p.z, p.yaw, p.o); }
+    const room = world.rooms[key]; if (!room) continue; const host = { pacc: new Acc(), gacc: new Acc(), bins: [], col: (x0, z0, x1, z1, y0, y1) => { for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) world.walls.add(ax, az, bx, bz, y0, y1); },
+      ring: (cx, cz, r, y0, y1, n = 16) => { const R = r / Math.cos(Math.PI / n); for (let k = 0; k < n; k++) { const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n; world.walls.add(cx + R * Math.cos(a0), cz + R * Math.sin(a0), cx + R * Math.cos(a1), cz + R * Math.sin(a1), y0, y1); } } };
+    const framed = FRAMED.filter((f) => f.room === key); for (const f of framed) framePanel(host.pacc, f);
+    const det = world.engine && world.engine.preset ? world.engine.preset.detail ?? 1 : 1;   // v10: the low preset skips purely decorative extras (o.detail 1)
+    for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y; placeAsset(host, p.name, p.x, p.y + lift, p.z, p.yaw, p.o); }
     if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
     if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
     for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });
+    for (const f of framed) addPanel(world, room, f);
   }
+}
+// v10 pictures on boards, framed, placed by the engine (no re-bake): the restroom pictograms, the east wall's mural, art over the cafe and
+// by the spine door, the film standees' boards. x, y, z: the picture's centre; yaw: the way it faces; the board and frame sit behind it
+// (depth + 4 mm), so a wall picture's centre is that far in front of the wall's face
+const ART = { room: 'lobby', yaw: 0, z: -13.6 + 0.034, frameCol: '#3e2618', frameMat: MAT.wood }, PIC = (o) => ({ room: 'lobby', depth: 0.03, ...o });
+const FRAMED = [
+  PIC({ id: 'picto_m', x: 21.56 - 0.034, y: 1.35, z: -3.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
+  PIC({ id: 'picto_f', x: 21.56 - 0.034, y: 1.35, z: 1.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
+  ...[-7.7, 1.8, 11.3].map((z, i) => PIC({ id: 'mural_' + i, x: 21.6 - 0.034, y: 7.6, z, yaw: -Math.PI / 2, w: 9.2, h: 2.4, emit: 0.25, frame: 'thin' })),
+  ...[[-15.4, 1], [-12.8, 2], [-10.2, 3]].map(([x, n]) => PIC({ ...ART, id: 'art_' + n, x, y: 2.25, z: ART.z + 0.014, w: 0.8, h: 1.1 })),   // on the cafe's walnut (14 mm)
+  PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }),
+  ...[[-6.6, 0.885, 'cosmos'], [6.6, -0.885, 'agent327']].map(([x, yaw, f]) => PIC({ id: `poster_${f}_s`, x: x + Math.sin(yaw) * 0.018, y: 0.98, z: 12.6 + Math.cos(yaw) * 0.018, yaw, w: 1.1, h: 1.7, emit: 0.6 })),
+  ...[[4.6, 'hero'], [16.4, 'wingit']].map(([x, f]) => PIC({ room: 'corridor', id: `poster_${f}_s`, x, y: L1 + 0.98, z: -14.9 - 0.018, yaw: Math.PI, w: 1.1, h: 1.7, emit: 0.6 })),
+];
+const UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
+function framePanel(acc, p) {   // the board (front 3 mm behind the picture) and four bars round it, 2.2 cm proud of the picture
+  const t = p.frame === 'thin' ? 0.025 : 0.05, d = p.depth ?? 0.03, col = p.frameCol || '#c9a35e', mat = p.frameMat ?? MAT.brass;
+  const R = new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y, p.z), new THREE.Quaternion().setFromAxisAngle(UP, p.yaw), ONE), put = (w, h, dd, x, y, z, c, m) => acc.add(boxGeo(w, h, dd), R.clone().multiply(M(x, y, z)), c, { mat: m });
+  put(p.w + 0.004, p.h + 0.004, d, 0, 0, -d / 2 - 0.003, p.board || '#121214', MAT.powder);
+  for (const s of [-1, 1]) { put(t, p.h + 0.004 + 2 * t, d + 0.025, s * (p.w / 2 + 0.002 + t / 2), 0, -d / 2 + 0.0095, col, mat); put(p.w + 0.004, t, d + 0.025, 0, s * (p.h / 2 + 0.002 + t / 2), -d / 2 + 0.0095, col, mat); }
+}
+function addPanel(world, room, p) {   // as buildWorld's bake panels: a canvas picture lit by the room's light where it hangs
+  const pt = panelTexture(p.id, p.w, p.h, PANEL_DRAW), H = [0, 0, 0], F = [0, 0, 0], nx = Math.sin(p.yaw), nz = Math.cos(p.yaw); room.lights.at(p.x + nx * 0.1, p.y, p.z + nz * 0.1, nx, 0, nz, H, F);
+  const mat = world.mats.texMat(pt.tex, room.U, new THREE.Color(H[0], H[1], H[2]), p.emit ?? 0), m = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), mat);
+  m.position.set(p.x, p.y, p.z); m.rotation.y = p.yaw; m.updateMatrix(); m.matrixAutoUpdate = false; m.name = 'panel-' + p.id; room.group.add(m); world.panels[p.id] = { ...p, ...pt, mesh: m, mat };
 }
 // ---------------------------------------------------------------- halls: seats, picture, curtains
 const FAMILY = { rocker: ['seat_rocker', 'arm_rocker'], recliner: ['seat_club', 'arm_club'], sofa: ['seat_club', 'arm_club'], pod: ['seat_club', 'arm_club'] };
@@ -476,8 +609,26 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     a.add(boxGeo(w, 0.05, 0.05), M(w / 2, 1.0, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 1.0, 0.05), M(w - 0.025, 0.5, 0), '#c9a35e', { mat: MAT.brass }); const fg = toGeometry(a);
     fg.translate(g.x0 + 0.03, 0, g.z); world.rooms.lobby.lights.bake(fg); fg.translate(-(g.x0 + 0.03), 0, -g.z); { const gm = new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)); gm.name = 'gate'; grp.add(gm); }
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.06, 0.9), mats.glassMat()); pane.position.set(w / 2, 0.52, 0); grp.add(pane); grp.position.set(g.x0 + 0.03, 0, g.z); world.rooms.lobby.group.add(grp); g.group = grp;
-    g.update = (dt) => { g.open += (g.target - g.open) * (1 - Math.exp(-dt * 4)); grp.rotation.y = g.open * 1.5; };   // swings in, towards the escalator
-    g.pass = (ms = 9000) => { g.target = 1; clearTimeout(g._t); g._t = setTimeout(() => { g.target = 0; }, ms); }; }
+    // v10: the leaf also swings for a walker (they hold tickets) but only the usher's pass (or Quick play, 'always') lets the player through:
+    // following someone in is no way past the check
+    g.passUntil = 0; g.npcUntil = 0; g.always = false;
+    g.update = (dt, actors) => { const now = performance.now();
+      if (actors) for (const a of actors) if (a.path && a.x > g.x0 - 0.4 && a.x < g.x1 + 0.4 && Math.abs(a.z - g.z) < 1.3 && (a.y || 0) < 1) { g.npcUntil = now + 1200; break; }
+      g.target = g.always || g.passUntil > now || g.npcUntil > now ? 1 : 0; g.open += (g.target - g.open) * (1 - Math.exp(-dt * 4)); grp.rotation.y = g.open * 1.5; };   // swings in, towards the escalator
+    g.pass = (ms = 9000) => { g.passUntil = performance.now() + ms; };
+    g.letsPlayer = () => (g.always || g.passUntil > performance.now()) && g.open >= 0.6; }
+  // v10 free exit (the ticket zone's way out, from the down escalator and the lift): two half leaves in the gate line that swing out into the
+  // lobby when anyone inside comes near. From the lobby side they never let you in (world.collide).
+  { const E = GATE.exit, z = GATE.z, wl = (E[1] - E[0]) / 2 - 0.04, x = world.exitGate = { x0: E[0], x1: E[1], z, open: 0, until: 0, leaves: [] }, grp = new THREE.Group();
+    for (const hx of [E[0] + 0.03, E[1] - 0.03]) { const d = hx < (E[0] + E[1]) / 2 ? 1 : -1, a = new Acc();   // d: from the hinge towards the middle
+      a.add(boxGeo(wl, 0.05, 0.05), M(d * wl / 2, 1.0, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 1.0, 0.05), M(d * (wl - 0.025), 0.5, 0), '#c9a35e', { mat: MAT.brass });
+      const fg = toGeometry(a); fg.translate(hx, 0, z); world.rooms.lobby.lights.bake(fg); fg.translate(-hx, 0, -z);
+      const piv = new THREE.Group(); piv.position.set(hx, 0, z); const m = new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)); m.name = 'exit-leaf'; piv.add(m);
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(wl - 0.06, 0.9), mats.glassMat()); pane.position.set(d * wl / 2, 0.52, 0); piv.add(pane); grp.add(piv); x.leaves.push({ piv, d }); }
+    world.rooms.lobby.group.add(grp);
+    x.update = (dt, actors) => { const now = performance.now();
+      if (actors) for (const a of actors) if ((a.y || 0) < 1 && a.x > x.x0 - 0.5 && a.x < x.x1 + 0.5 && a.z < z + 0.6 && a.z > z - 1.8) { x.until = now + 1500; break; }
+      const t = x.until > now ? 1 : 0; x.open += (t - x.open) * (1 - Math.exp(-dt * 5)); for (const L of x.leaves) L.piv.rotation.y = -L.d * x.open * 1.45; }; }
   // floors, rooms, collision for the player and the walkers
   world.roomAt = roomAt;
   world.floorY = (x, z, y = 0) => {
@@ -502,7 +653,8 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
       world.walls.near(p.x, p.z, near); for (const i of near) { const j = i * 6; if (W[j + 5] <= lo || W[j + 4] >= hi) continue; seg(W[j], W[j + 1], W[j + 2], W[j + 3]); }
       for (const d of world.doors) if (d.blocking && Math.abs(d.y - y) < 1.5 && Math.abs(p.x - d.x) < d.w + 1 && Math.abs(p.z - d.z) < d.w + 1) seg(...d.segment());
       for (const s of world.lift.doorSegs()) if (s.on && y > s.y0 - 0.5 && y < s.y1 && Math.abs(p.x - s.seg[0]) < 3 && Math.abs(p.z - s.seg[1]) < 2) seg(...s.seg);
-      { const g = world.gate; if (g.open < 0.6 && y < 1 && Math.abs(p.z - g.z) < 1 && p.x > g.x0 - 1 && p.x < g.x1 + 1) seg(g.x0, g.z, g.x1, g.z); }
+      { const g = world.gate; if (!g.letsPlayer() && y < 1 && Math.abs(p.z - g.z) < 1 && p.x > g.x0 - 1 && p.x < g.x1 + 1) seg(g.x0, g.z, g.x1, g.z); }
+      { const g = world.exitGate; if ((g.open < 0.6 || p.z > g.z) && y < 1 && Math.abs(p.z - g.z) < 1 && p.x > g.x0 - 1 && p.x < g.x1 + 1) seg(g.x0, g.z, g.x1, g.z); }   // one way: out only
     }
     return push;
   };
@@ -519,7 +671,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   };
   world.update = (dt, actors, now) => {
     for (const d of world.doors) d.update(dt, actors); const lob = world.rooms.lobby.group.visible;
-    if (lob) for (const e of world.escalators) e.update(dt); if (world.rooms.spine.group.visible) world.travelator.update(dt); world.lift.update(dt, actors, world.onLift); world.gate.update(dt);
+    if (lob) for (const e of world.escalators) e.update(dt); if (world.rooms.spine.group.visible) world.travelator.update(dt); world.lift.update(dt, actors, world.onLift); world.gate.update(dt, actors); world.exitGate.update(dt, actors);
     for (const h of world.halls) if (h.curtains) { const c = h.curtains; if (c.open !== c.target || (c.sway || 0) > 0.002) { c.open += Math.sign(c.target - c.open) * Math.min(Math.abs(c.target - c.open), dt / 4.5); const u = c.open, e = u * u * u * (u * (u * 6 - 15) + 10);
       // v10 (the user's photos: "glitchy lines on the very border"): the open halves used to bunch 10 cm over the picture's edges, their
       // pleats lit by the film. Open, each half now gathers into 0.5 m beside the picture (its inner edge 0.4 m clear) and is put away

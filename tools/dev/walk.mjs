@@ -48,9 +48,17 @@ await p.evaluate(() => {
 const walks = await p.evaluate(async () => {
   const L = window.__lumiere, B = L.B, HM = await import('/js/hallmath.js'), W = L.world, out = [], pt = (o) => [+o.x.toFixed(3), +o.z.toFixed(3)];
   out.push({ label: 'street to lobby (main doors)', start: [0.6, 0, 25.2], pts: [[0.6, 22], [0, 19], [0, 15.5]], room: 'lobby', y: 0 });
-  out.push({ label: 'lobby to restrooms and back', start: [16, 0, -1], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
+  out.push({ label: 'lobby to restrooms and back', start: [18.6, 0, 3.0], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
   out.push({ label: 'up escalator to the bridge', start: [9.7, 0, 6], pts: [[9.7, 4.6], [9.7, 2.6], [9.7, 0.6], [9.7, -1], [9.7, -6], [9.7, -10.6], [9.7, -12.3], [10.2, -15.5], [0, -18]], room: 'corridor', y: B.L1 });
   out.push({ label: 'lift up and out on the first floor', start: [14.6, 0, -6.5], pts: [[14.6, -8.8], [14.6, -9.4, 'wait', 4000], [14.6, -11.2], [14.6, -11.4, 'lift:1'], [14.6, -11.4, 'until-lift:1'], [14.6, -9.0], [13, -8.2]], room: 'lobby', y: B.L1 });
+  // v10 ticket zone (both escalators and the lift behind one check): with the gate shut and no pass, no way in from the lobby (the ticket leaf,
+  // round either end, through the exit leaves, behind the lift, under or behind the escalators); from inside, out by the exit leaves
+  for (const [label, start, pts] of [['the ticket leaf', [9.7, 0, 6], [[9.7, 4.6], [9.7, 0.6]]], ['round the west end', [6.5, 0, 2.4], [[8.3, 2.4], [9.7, 0.8], [9.7, -1.5]]],
+    ['the exit leaves from the lobby', [11.7, 0, 5.5], [[11.7, 4.0], [11.7, 1.5]]], ['round the east end', [19.0, 0, 2.0], [[16.0, 1.0], [14.6, -8.8]]],
+    ['behind the lift', [19.5, 0, -12.9], [[16.4, -12.9], [13.0, -12.4], [13.0, -9.0]]], ['under the escalators', [5.0, 0, -8.0], [[8.0, -8.0], [10.7, -8.0], [13.4, -8.0], [14.6, -9.0]]],
+    ['behind the escalators', [5.0, 0, -12.6], [[8.0, -12.6], [12.9, -12.6], [14.6, -9.4]]]]) out.push({ label: 'zone shut: ' + label, start, pts, shut: true, stayOut: true });
+  out.push({ label: 'zone shut: down escalator and out by the exit leaves', start: [11.7, B.L1, -12.8], pts: [[11.7, -11.2], [11.7, -9], [11.7, -4], [11.7, 0.6], [11.7, 2.4], [11.7, 4.8]], room: 'lobby', y: 0, shut: true, exitZone: true });
+  out.push({ label: 'zone shut: lift down and out by the exit leaves', start: [14.6, B.L1, -8.4], pts: [[14.6, -8.8, 'lift:1'], [14.6, -8.8, 'until-lift:1'], [14.6, -11.2], [14.6, -11.4, 'lift:0'], [14.6, -11.4, 'until-lift:0'], [14.6, -9.0], [14.8, 2.2], [11.7, 2.4], [11.7, 4.8]], room: 'lobby', y: 0, shut: true, exitZone: true });
   for (const h of Object.values(B.HALL)) {
     const wh = W.hallByKey(h.key), din = B.DOORS.find((d) => d.hall === h.id && d.id.endsWith('In')), side = -h.dir;
     const rows = [...new Set(wh.seats.map((s) => s.row))].sort((a, b) => a - b);
@@ -85,13 +93,15 @@ const navHits = await p.evaluate(() => {
     if (worst < 0.25) out.push({ edge: a + '-' + b, clearance: +worst.toFixed(2), wall: at }); }
   return out; });
 console.log(navHits.length ? `NAV edges blocked: ${navHits.length}\n` + navHits.map((h) => `  ${h.edge}  clearance ${h.clearance} m  wall ${JSON.stringify(h.wall)}`).join('\n') : 'NAV edges clear of walls and furniture');
+const ZONE = await p.evaluate(() => window.__lumiere.B.ZONE);
 let pass = 0; const results = [], only = process.argv.indexOf('--only') > 0 ? process.argv[process.argv.indexOf('--only') + 1] : null;
 for (const w of walks.filter((x) => !only || x.label.includes(only))) {
-  const r = await p.evaluate(async (w) => { const L = window.__lumiere; L.player.place(w.start[0], w.start[2], 0, 0, w.start[1]); await new Promise((q) => setTimeout(q, 300)); const res = await window.__auto(w.pts, w.label); return res; }, w);
-  const okEnd = r.ok && r.end[3] === w.room && Math.abs(r.end[1] - w.y) < 0.3 && r.tele === (w.tele || 0); if (okEnd) pass++;
+  const r = await p.evaluate(async (w) => { const L = window.__lumiere, g = L.world.gate; if (w.shut) { g.always = false; g.passUntil = 0; } L.player.place(w.start[0], w.start[2], 0, 0, w.start[1]); await new Promise((q) => setTimeout(q, 300)); const res = await window.__auto(w.pts, w.label); g.always = true; return res; }, w);
+  const q = r.ok ? r.end : r.pos, inZone = !!q && q[0] > ZONE.x0 && q[0] < ZONE.x1 && q[2] > ZONE.z0 && q[2] < ZONE.z1 && q[1] < 1;
+  const okEnd = w.stayOut ? !inZone : r.ok && r.end[3] === w.room && Math.abs(r.end[1] - w.y) < 0.3 && r.tele === (w.tele || 0) && !(w.exitZone && inZone); if (okEnd) pass++;
   if (!okEnd && process.argv.includes('--debug')) console.log(JSON.stringify(r.path), await p.evaluate(() => { const f = window.__lumiere.world.lift; return JSON.stringify({ y: f.y, level: f.level, state: f.state, doors: f.doors }); }));
   results.push({ ...r, want: [w.room, w.y], okEnd });
-  console.log(`${okEnd ? 'PASS' : 'FAIL'}  ${w.label}${r.ok ? `  end ${r.end.join(' ')}` : `  stuck at waypoint ${r.stuckAt} ${JSON.stringify(r.pos)} -> ${JSON.stringify(r.target)}`}${r.ok && !okEnd ? `  (wanted ${w.room} at ${w.y.toFixed(2)}, ${w.tele || 0} fast exit(s); got ${r.tele})` : ''}`);
+  console.log(`${okEnd ? 'PASS' : 'FAIL'}  ${w.label}${w.stayOut ? `  (kept out at ${JSON.stringify(q)})` : r.ok ? `  end ${r.end.join(' ')}` : `  stuck at waypoint ${r.stuckAt} ${JSON.stringify(r.pos)} -> ${JSON.stringify(r.target)}`}${r.ok && !okEnd ? `  (wanted ${w.room} at ${w.y.toFixed(2)}, ${w.tele || 0} fast exit(s); got ${r.tele})` : ''}`);
 }
 console.log(`walks: ${pass}/${results.length} passed`); if (log.length) console.log(log.slice(0, 10).join('\n'));
 if (OUT) fs.writeFileSync(path.join(OUT, 'walks.json'), JSON.stringify(results, null, 1));
