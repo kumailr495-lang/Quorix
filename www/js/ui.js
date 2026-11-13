@@ -1,7 +1,7 @@
-// LUMIERE v8 - interface controller ("Noir & Brass", css/app.css): the "LUMIÈRE PRESENTS" loader, the main menu (Story or Quick play),
-// HUD (location, ticket chip, wallet, remote / bell / item buttons, context action, toasts), the ticket, tabbed settings (controls with a
-// layout editor, graphics with every switch the phone feedback asked for, sound and voices, language, tutorial), help/credits, pause.
-// The booking sheet lives in booking.js, the tablet in tablet.js.
+// LUMIERE v11 - interface controller ("House lights", css/app.css): the "LUMIÈRE PRESENTS" loader, the main menu (tonight's films as a
+// poster strip: tap one to walk straight in; the ways to play as tickets), the HUD (where you are, your ticket, the way-finding pill,
+// remote / bell / item buttons, the action plate, toasts), the ticket, tabbed settings, help/credits, pause.
+// The booking sheet lives in booking9.js, the tablet in tablet.js, the room panel and chat in mpui.js.
 import { t, setLang, LANGS, lang } from './i18n.js';
 import { CATALOG, posterURL } from './films.js';
 const $ = (s) => document.querySelector(s);
@@ -17,14 +17,14 @@ export class UI {
   // ---------------- loading / menu ----------------
   progress(p) { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; }
   showMenu(on, cont) {
-    $('#menu').hidden = !on; $('#mnCont').hidden = !cont; $('#hud').hidden = on || this.hidden; $('#bShow').hidden = on || !this.hidden;
+    $('#menu').hidden = !on; $('#mnCont').hidden = !cont; $('#menu').classList.toggle('has-cont', !!cont); $('#hud').hidden = on || this.hidden; $('#bShow').hidden = on || !this.hidden;
     $('#mnTutLbl').textContent = t(this.settings.tutorialDone ? 'tut.again' : 'tut.start'); if (on) this.nowShowing();
   }
   nowShowing() {
-    const L = $('#nowList'); L.innerHTML = ''; $('#mnLangCur').textContent = (LANGS.find((l) => l.code === lang()) || LANGS[0]).name;
-    for (const f of CATALOG.slice(0, 4)) { const row = document.createElement('div'); row.className = 'now'; const img = new Image(); img.alt = ''; img.src = posterURL(f.id); row.appendChild(img);
-      const tx = document.createElement('div'); tx.innerHTML = '<b></b><small><span></span></small>'; tx.querySelector('b').textContent = f.short || f.title;
-      tx.querySelector('span').textContent = `${t('genre.' + f.genre)} · ${t('book.mins', { n: f.mins })}`; row.appendChild(tx); L.appendChild(row); }
+    const L = $('#nowList'); L.textContent = ''; $('#mnLangCur').textContent = (LANGS.find((l) => l.code === lang()) || LANGS[0]).name;
+    for (const f of CATALOG) { const b = document.createElement('button'); b.className = 'now'; const img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id);
+      const nm = document.createElement('b'); nm.textContent = f.short || f.title; const sm = document.createElement('small'); sm.textContent = `${t('genre.' + f.genre)}, ${t('book.mins', { n: f.mins })}`; b.append(img, nm, sm);
+      b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.unlock(); this.sound.click(); this.hooks.onPlay('quick', f.id); }); L.appendChild(b); }
   }
   fade(v, dur = 0.6) { const f = $('#fade'); f.style.transition = `opacity ${dur}s ease`; f.style.opacity = String(v); }
   // ---------------- HUD ----------------
@@ -32,6 +32,9 @@ export class UI {
   setPrompt(label, fn) { const p = $('#prompt'); if (!label) { if (!p.hidden) p.hidden = true; this.promptFn = null; return; } const l = $('#promptLbl'); if (l.textContent !== label) { l.textContent = label; $('#promptIcon').setAttribute('href', PROMPT_ICON(label)); } if (p.hidden) p.hidden = false; this.promptFn = fn; }
   setWhere(a, b) { const A = $('#whereA'), B = $('#whereB'); if (A.textContent !== a) A.textContent = a; if (B.textContent !== (b || '')) B.textContent = b || ''; }
   setTicketChip(text) { const c = $('#ticketChip'); if (!text) { c.hidden = true; return; } c.hidden = false; const s = $('#tcText'); if (s.textContent !== text) s.textContent = text; }
+  // the way-finding pill: what to do next, an arrow turned towards it (degrees clockwise from straight ahead), metres to go
+  setGoal(text, deg, dist) { const g = $('#goal'); if (!text) { if (!g.hidden) g.hidden = true; return; } if (g.hidden) g.hidden = false; const T = $('#goalText'); if (T.textContent !== text) T.textContent = text;
+    $('#goalArrow').style.transform = `rotate(${deg.toFixed(0)}deg)`; const d = dist > 1.5 ? Math.round(dist) + ' m' : '', D = $('#goalDist'); if (D.textContent !== d) D.textContent = d; }
   setWallet(text) { const w = $('#walletChip'); w.hidden = !text; if (text && $('#wcText').textContent !== text) $('#wcText').textContent = text; }
   // held item: label + how full it is (popcorn empties in 9 bites, a drink in 8 sips)
   setItem(kind, left, max) { const b = $('#itemBtn'); if (!kind) { b.hidden = true; return; } b.hidden = false; $('#itemLbl').textContent = t(kind === 'drink' || kind === 'coffee' ? 'hud.sip' : 'hud.eat'); b.style.setProperty('--fill', String(Math.max(0, Math.min(1, left / max)))); }
@@ -50,7 +53,7 @@ export class UI {
   syncSettings() {
     const S = this.settings, setT = (id, v) => $(id).classList.toggle('on', !!v), num = (id, out, v, f = (x) => x.toFixed(2)) => { const el = $(id); el.value = v; $(out).textContent = f(+v); this.rangeFill(el); };
     num('#sSens', '#oSens', S.sensitivity); num('#sBright', '#oBright', S.brightness); num('#sMaster', '#oMaster', S.master, (x) => Math.round(x * 100)); num('#sFilm', '#oFilm', S.film, (x) => Math.round(x * 100)); num('#sCrowd', '#oCrowd', S.crowd, (x) => Math.round(x * 100)); num('#sHud', '#oHud', S.hudScale, (x) => Math.round(x * 100) + '%');
-    setT('#sInvert', S.invertY); if ($('#sVR')) setT('#sVR', !!S.vr); if ($('#sSurround')) setT('#sSurround', !!S.surround); setT('#sAuto', S.autoRes); setT('#sFps', S.showFps); setT('#sBubbles', S.bubbles); setT('#sVoices', S.voices); setT('#sSubs', S.subtitles); setT('#sLefty', S.lefty); setT('#sSkip', S.skipSeen); setT('#sHaptics', S.haptics !== false); setT('#sFx', S.particles !== false);
+    setT('#sInvert', S.invertY); if ($('#sVR')) setT('#sVR', !!S.vr); if ($('#sSurround')) setT('#sSurround', !!S.surround); setT('#sAuto', S.autoRes); setT('#sFps', S.showFps); setT('#sBubbles', S.bubbles); setT('#sVoices', S.voices); setT('#sSubs', S.subtitles); setT('#sLefty', S.lefty); setT('#sSkip', S.skipSeen); setT('#sHaptics', S.haptics !== false); setT('#sFx', S.particles !== false); setT('#sGoal', S.goal !== false);
     for (const b of document.querySelectorAll('#sGfx button')) b.classList.toggle('on', b.dataset.v === S.graphics);
     for (const [key, id] of CHOICES) for (const b of document.querySelectorAll(id + ' button')) b.classList.toggle('on', b.dataset.v === String(S[key]));
     $('#sDevice').textContent = S.deviceNote || ''; $('#tutBtnLbl').textContent = t(S.tutorialDone ? 'tut.again' : 'tut.start');
@@ -85,7 +88,7 @@ export class UI {
     live('#sSens', 'sensitivity', '#oSens', (x) => x.toFixed(2)); live('#sBright', 'brightness', '#oBright', (x) => x.toFixed(2)); live('#sMaster', 'master', '#oMaster', (x) => Math.round(x * 100)); live('#sFilm', 'film', '#oFilm', (x) => Math.round(x * 100)); live('#sCrowd', 'crowd', '#oCrowd', (x) => Math.round(x * 100)); live('#sHud', 'hudScale', '#oHud', (x) => Math.round(x * 100) + '%');
     for (const [id, key] of [['#sInvert', 'invertY'], ['#sAuto', 'autoRes'], ['#sFps', 'showFps'], ['#sBubbles', 'bubbles'], ['#sVoices', 'voices'], ['#sSubs', 'subtitles'], ['#sLefty', 'lefty'], ['#sSkip', 'skipSeen']]) tap(id, () => { S[key] = !S[key]; this.sound.click(); this.syncSettings(); this.hooks.onSettings(); });
     for (const [id, key] of [['#sVR', 'vr'], ['#sSurround', 'surround']]) { if ($(id)) tap(id, () => { S[key] = !S[key]; this.sound.click(); this.syncSettings(); this.hooks.onSettings(); }); }
-    for (const [id, key] of [['#sHaptics', 'haptics'], ['#sFx', 'particles']]) { if ($(id)) tap(id, () => { S[key] = S[key] === false; this.sound.click(); this.syncSettings(); this.hooks.onSettings(); }); }
+    for (const [id, key] of [['#sHaptics', 'haptics'], ['#sFx', 'particles'], ['#sGoal', 'goal']]) { if ($(id)) tap(id, () => { S[key] = S[key] === false; this.sound.click(); this.syncSettings(); this.hooks.onSettings(); }); }
     for (const b of document.querySelectorAll('#sGfx button')) b.addEventListener('click', () => { S.graphics = b.dataset.v; this.sound.click(); this.hooks.onPreset(b.dataset.v); this.syncSettings(); this.hooks.onSettings(true); });
     for (const [key, id] of CHOICES) for (const b of document.querySelectorAll(id + ' button')) b.addEventListener('click', () => { S[key] = b.dataset.v; this.sound.click(); this.syncSettings(); this.hooks.onSettings(true); });
     const p = $('#prompt'); p.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.sound.unlock(); this.promptFn && this.promptFn(); });

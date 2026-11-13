@@ -60,8 +60,14 @@ void main() { float dist = uWall.x + vUv.x * uWall.y, s = uSrc.z / max(1e-4, uBo
   float x = (uSide > 0.0 ? uSrc.x + uSrc.z : uSrc.x) + uSide * (dist + gap) * s, xc = clamp(x, 0.002, 0.998), over = abs(x - xc) / max(s, 1e-4);
   float y = uSrc.y + uSrc.w * ((vY - uFront.x) / uFront.y - uBox.y) / uBox.w; vec2 q = vec2(xc, clamp(y, 0.0, 1.0));
   vec3 c = mix(texture2D(uVid, q).rgb, textureLod(uSpill, q, 1.5 + over * 0.45).rgb, smoothstep(0.0, 0.25, over)) * (1.0 - 0.45 * smoothstep(0.0, 12.0, over));
+  // v11 (the user, with a photo: "the side screens are not equal"): a film bright on one edge and dark on the other gave one burnt-out wall
+  // and one dim one. Each wall is now pulled most of the way to the whole picture's mean brightness (its colours stay its own edge's),
+  // and the picture replaces the lit surface instead of being added to it, a little under the front screen's level as in a real 270 hall
+  vec3 all = textureLod(uSpill, vec2(0.5), 9.0).rgb, mine = textureLod(uSpill, vec2(uSide > 0.0 ? 0.92 : 0.08, 0.5), 5.0).rgb;
+  float La = dot(all, vec3(0.2126, 0.7152, 0.0722)), Lm = dot(mine, vec3(0.2126, 0.7152, 0.0722));
+  c *= 0.82 * clamp(mix(1.0, (La + 0.02) / (Lm + 0.02), 0.75), 0.45, 1.9);
   float fade = smoothstep(1.0, 0.94, vUv.x) * smoothstep(-0.01, 0.01, y) * smoothstep(1.01, 0.99, y);
-  gl_FragColor = vec4(c * uAmt * fade, 1.0);
+  gl_FragColor = vec4(c, uAmt * fade);
   #include <colorspace_fragment>
 }`;
 export class Shows {
@@ -75,6 +81,9 @@ export class Shows {
     v.addEventListener('ended', () => { const s = this.cur(); if (s && (s.state === 'playing')) this._finish(s.id, !s.credits); });
     v.addEventListener('error', () => { const s = this.cur(); if (s && s.state !== 'idle' && s.state !== 'ended') { this.hooks.onError && this.hooks.onError(s.src && s.src.kind); this._stopPicture(s); s.state = 'ended'; s.phaseAt = this.now; s.slides.text([t('toast.videoError') || 'This video could not be played.']); } });
     v.addEventListener('waiting', () => { this.buffering = true; }); v.addEventListener('playing', () => { this.buffering = false; });
+    // v11 frame watchdog: when the last new frame arrived and how far apart frames come (update() wakes a decoder that has gone idle)
+    this._vfAt = 0; this._vfDt = 42; this.stalls = 0;
+    if ('requestVideoFrameCallback' in v) { const tick = () => { const n = performance.now(), d = n - this._vfAt; if (d < 500) this._vfDt += (d - this._vfDt) * 0.1; this._vfAt = n; v.requestVideoFrameCallback(tick); }; v.requestVideoFrameCallback(tick); }
     this.vtex = new THREE.VideoTexture(v); this.vtex.colorSpace = THREE.SRGBColorSpace; this.vtex.minFilter = THREE.LinearFilter; this.vtex.magFilter = THREE.LinearFilter; this.vtex.generateMipmaps = false;
     this.s = {};
     for (const h of world.halls) { const id = h.id; this.s[id] = { id, hall: h, state: 'idle', src: null, startAt: 0, phaseAt: 0, light: 1, lightFrom: 1, lightAt: 0, lightWant: 1, track: null, credits: false, slides: slides(h.cfg.aspect), curtainKeep: false }; }
@@ -94,8 +103,8 @@ export class Shows {
         if (i) { const a = 2 * i - 2; I.push(a, a + 2, a + 3, a, a + 3, a + 1); } }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I);
       const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: WALL_VERT, fragmentShader: WALL_FRAG, uniforms: { uSpill: { value: this.spillRT.texture }, uVid: { value: this.vtex }, uSide: { value: sg }, uAmt: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uSrc: { value: new THREE.Vector4(0, 0, 1, 1) }, uFront: { value: new THREE.Vector2(H.y0 + H.hB, H.H) }, uWall: { value: new THREE.Vector3(SS.d0, SS.d1 - SS.d0, H.W) } }, side: THREE.DoubleSide,
-        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
-      m.renderOrder = 2; m.visible = false; m.name = 'x270-side-' + sg; X.room.group.add(m); return m; }); }   // light added onto the light grey surfaces
+        transparent: true, depthWrite: false, blending: THREE.NormalBlending, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
+      m.renderOrder = 2; m.visible = false; m.frustumCulled = false; m.name = 'x270-side-' + sg; X.room.group.add(m); return m; }); }   // light added onto the light grey surfaces
     this._yt = null;
   }
   cur() { return this.active && this.s[this.active]; }
@@ -152,6 +161,13 @@ export class Shows {
   // ---------------------------------------------------------- per frame (logic)
   update(dt, now, room, vis) {
     this.now = now; this.vis = vis;
+    // v11 (the user: "go far away and come back: the movie is frozen and the audio continues, for 15-20 s"): a phone's decoder can go idle
+    // while nothing draws the picture, then shows nothing until the film's next keyframe. While a film plays and its clock runs, a new
+    // frame must arrive every 1.5 s; if none does, seek to exactly where it is (a fresh decode from the keyframe before, shown at once).
+    // At most once in 4 s; never while it buffers, seeks or is paused.
+    { const s = this.cur(), v = this.video; if (s && s.state === 'playing' && s.pic && s.src.kind !== 'youtube' && 'requestVideoFrameCallback' in v && !v.paused && !v.seeking && !v.ended && v.readyState >= 3 && !this.buffering) {
+        if (v.currentTime !== this._wdT) { this._wdT = v.currentTime; this._wdMove = now; }
+        if (now - this._vfAt > Math.max(1500, this._vfDt * 6) && now - (this._wdMove || 0) < 600 && now - (this._wdKick || 0) > 4000 && now - (s.playStart || 0) > 3000) { this._wdKick = now; this.stalls++; try { v.currentTime = v.currentTime; } catch (e) { /* not seekable */ } } } }
     for (const id in this.s) {
       const s = this.s[id], h = s.hall, visible = vis.has(h.key);
       if (s.state === 'pending') { if (visible && now - (s._pd || 0) > 250) { s._pd = now; const left = (s.startAt - now) / 1000, line = Math.floor(now / 4000) % 2 ? t('pre.silence') : t('pre.seats'); s.slides.waiting(s.src.title, h.name, Math.max(0, left - 10), line); } if (now >= s.startAt - 10000) this._begin(id); }

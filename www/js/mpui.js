@@ -8,37 +8,6 @@ import { RB, Person, LOOK, cleanLook, applyLook } from './people.js';
 import { filmById } from './films.js';
 import { t } from './i18n.js';
 
-const CSS = `
-#mpPanel .dialog{width:min(560px,94vw);max-height:92vh;overflow:auto;text-align:left;gap:10px}
-#mpPanel h2{margin:0 0 2px}#mpPanel label{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
-#mpPanel input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:var(--r-sm);border:1px solid var(--line-2);background:var(--surface-2);color:var(--fg);font:500 16px var(--font)}
-#mpAv{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin:4px 0 6px}
-#mpAv button{padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;background:#141418;aspect-ratio:4/5;cursor:pointer}
-#mpAv button img{width:100%;height:100%;object-fit:cover;display:block}#mpAv button.on{border-color:#e3bf7f;box-shadow:var(--sh-gold)}
-#mpPanel .row{display:flex;gap:8px;align-items:center}#mpPanel .row input{flex:1;text-transform:uppercase;letter-spacing:.3em}
-#mpPanel .note{font-size:11px;color:var(--subtle);line-height:1.4}#mpStatus{font-size:13px;color:var(--fg);min-height:18px}
-#mpBadge{position:absolute;top:calc(var(--sat) + 52px);left:calc(var(--sal) + 12px);display:flex;gap:6px;align-items:center;padding:6px 11px;border-radius:var(--pill);
-  background:var(--surface);border:1px solid var(--line-2);color:var(--fg);font:600 12px var(--font);letter-spacing:.06em;pointer-events:auto;z-index:6}
-#mpBadge i{width:7px;height:7px;border-radius:50%;background:var(--ok)}#mpBadge.host i{background:#e3bf7f}
-#mpBar{position:absolute;top:calc(var(--sat) + 88px);left:calc(var(--sal) + 12px);display:flex;gap:6px;z-index:6;pointer-events:auto}
-#mpBar button{padding:6px 10px;border-radius:var(--pill);background:var(--surface);border:1px solid var(--line);color:var(--fg);font:500 14px var(--font)}
-#mpChat{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 18px);width:min(460px,80vw);display:flex;gap:6px;z-index:30}
-#mpChat input{flex:1;padding:10px 12px;border-radius:var(--pill);border:1px solid var(--line-2);background:var(--surface-2);color:var(--fg);font:500 15px var(--font)}
-#mpTags{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
-#mpTags b{position:absolute;transform:translate(-50%,-100%);padding:3px 8px;border-radius:var(--pill);background:rgba(10,8,10,.62);color:#f5ede3;font:600 11px var(--font);white-space:nowrap;letter-spacing:.03em}
-#mpTags b.host::before{content:'★ ';color:#e3bf7f}
-#mpList{font-size:13px;line-height:1.7;color:var(--fg)}
-#mpPanel .mpTop{display:flex;gap:12px;align-items:flex-start}#mpPanel .mpEdit{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
-#mpPrev{width:120px;height:170px;border-radius:12px;background:#141418;border:1px solid var(--line-2);flex:none}
-#mpPanel .mpSw{display:flex;flex-wrap:wrap;gap:6px}#mpPanel .mpSw button{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.18);padding:0;cursor:pointer}
-#mpPanel .mpSw button.on{border-color:#e3bf7f;box-shadow:var(--sh-gold)}#mpPanel .mpSw button.orig{background:conic-gradient(#d9c7a6 0 25%,#3a3a40 0 50%,#d9c7a6 0 75%,#3a3a40 0)}
-#mpPanel input[type=range]{padding:0;accent-color:#e3bf7f}
-#mpPanel .mpRow{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}#mpPanel .btn.mini{padding:4px 10px;font-size:12px;min-height:0}
-#mpPanel .btn.mini.on{border-color:#e3bf7f;color:#e3bf7f}
-#mpBar button{position:relative}#mpBar button.off{opacity:.45}#mpBar .dot{position:absolute;right:3px;top:3px;width:7px;height:7px;border-radius:50%;background:#e3bf7f;display:none}#mpBar button.unread .dot{display:block}
-#mpChat{flex-direction:column;align-items:stretch;background:rgba(12,10,14,.86);border:1px solid var(--line-2);border-radius:16px;padding:8px;backdrop-filter:blur(8px)}
-#mpChat .mpLog{max-height:30vh;overflow:auto;font:500 13px var(--font);color:var(--fg);line-height:1.45;padding:2px 4px 6px}#mpChat .mpLog b{color:#e3bf7f;font-weight:600}
-#mpChat .mpLog .me b{color:#9fd3c7}#mpChat .mpLog .sys{color:var(--subtle);font-size:12px}#mpChat .mpIn{display:flex;gap:6px}`;
 const el = (tag, attrs = {}, kids = []) => { const e = document.createElement(tag); for (const k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'cls') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); } for (const c of kids) e.appendChild(c); return e; };
 // a show another phone sends is checked here before it reaches the screen: a house film by id, a YouTube video by its 11-character id,
 // or an https link; anything else is dropped (a link through this phone's own media server is never sent: orig is the web address)
@@ -59,10 +28,9 @@ export class Together {
       onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.note(t('mp.newHost')); this.badge(); },
       onCtl: (c, p) => this.applyCtl(c, p), onOrder: (p, key) => { const f = this.seatByKey(key); if (f && this.c.order) this.c.order(f.s, p.name); } });
     this.log = []; this.unread = 0;
-    document.head.appendChild(el('style', { text: CSS }));
     // the menu button, after Quick play
     const q = document.querySelector('#mnQuick');
-    if (q) { this.menuBtn = el('button', { cls: 'mode', id: 'mnTogether' }, [el('b'), el('small')]); q.after(this.menuBtn); this.menuBtn.addEventListener('click', () => { this.c.sound && this.c.sound.click(); this.open(); }); }
+    if (q) { const ic = el('span', { cls: 'mode-ic' }); ic.innerHTML = '<svg class="ic"><use href="#i-people"/></svg>'; this.menuBtn = el('button', { cls: 'mode', id: 'mnTogether' }, [el('b'), el('small'), ic]); q.after(this.menuBtn); this.menuBtn.addEventListener('click', () => { this.c.sound && this.c.sound.click(); this.open(); }); }
     this.tagLayer = el('div', { id: 'mpTags' }); document.body.appendChild(this.tagLayer);
     this.text();
   }
@@ -149,7 +117,7 @@ export class Together {
       const namesB = this.namesB = el('button', { text: '🏷', 'aria-label': t('mp.names') }); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
       this.bar = el('div', { id: 'mpBar' }, [chatB, namesB]);
       for (const [e, ic] of [['wave', '👋'], ['clap', '👏'], ['cheer', '🎉']]) { const b = el('button', { text: ic, 'aria-label': e }); b.addEventListener('click', () => { this.mp.emote(e); this.c.sound && this.c.sound.click(); }); this.bar.appendChild(b); }
-      const hud = document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
+      const hud = document.querySelector('#hudTL') || document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
     }
     this.bdg.classList.toggle('host', this.mp.host); this.bdg.querySelector('span').textContent = t('mp.badge', { code: this.mp.code, n: this.mp.count }); this.list();
     const S = this.c.settings; this.namesB.classList.toggle('off', S.mpNames === false); this.chatB.classList.toggle('unread', this.unread > 0 && S.mpMsgs !== false); this.chatB.hidden = false;

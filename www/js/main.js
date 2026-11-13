@@ -24,6 +24,7 @@ import { LayoutEditor, applyLayout } from './layoutedit.js';
 import { Crowd } from './npc9.js';
 import { Shows } from './film9.js';
 import { Together } from './mpui.js';
+import { Wayfinder } from './wayfind.js';
 import { Input } from './input.js';
 import { Director } from './react.js';
 import { Intro, ARRIVAL } from './intro9.js';
@@ -98,7 +99,7 @@ async function boot() {
   const ui = new UI(world, shows, sound, settings, {
     onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(),
     onSettings: (gfx) => applySettings(gfx), onPreset: (g) => Object.assign(settings, presetFor(g)),
-    onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
+    onPlay: (m, film) => { enterPlay(m === 'story' ? 'flow' : m); if (film) setTimeout(() => { if (mode !== 'play' || game !== 'quick' || booking.isOpen()) return; booking.sel.film = film; booking.sel.own = false; booking.open({ quick: true }); booking.go(2); }, 1250); }, onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
     openRemote: () => tablet.open('remote'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
   // v9.3 playing together (mp.js, mpui.js): a room code, your look, the other players in the cinema, the host's shows on every phone
@@ -119,11 +120,12 @@ async function boot() {
     g.fillStyle = '#f2ebdd'; g.font = `500 ${H * 0.5}px Cormorant, Georgia, serif`; if ('letterSpacing' in g) g.letterSpacing = `${H * 0.18}px`; g.fillText(title ? 'LUMIÈRE  ·  ' + title.toUpperCase() : 'LUMIÈRE', W / 2, H * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; tex.needsUpdate = true; };
   const stubs = { get() { try { return JSON.parse(localStorage.getItem('lumiere.stubs') || '[]'); } catch (e) { return []; } }, add(x) { try { const a = this.get(); a.unshift(x); localStorage.setItem('lumiere.stubs', JSON.stringify(a.slice(0, 20))); } catch (e) { /* private mode */ } } };
   { const ns = ui.nowShowing.bind(ui); ui.nowShowing = () => { ns(); const a = stubs.get(); if (!a.length) return; const L = $('#nowList'), h = document.createElement('div'); h.className = 'now-h'; h.textContent = t('menu9.stubs'); L.appendChild(h);
-    for (const x of a.slice(0, 3)) { const row = document.createElement('div'); row.className = 'now stub'; const tx = document.createElement('div'), b = document.createElement('b'), sm = document.createElement('small'); b.textContent = x.title; sm.textContent = `${x.hall} · ${x.seat} · ${x.date}`; tx.append(b, sm); row.appendChild(tx); L.appendChild(row); } }; }
+    for (const x of a.slice(0, 3)) { const row = document.createElement('div'); row.className = 'now stub'; row.dataset.h = String(x.hall || ''); row.title = t('menu9.stubs'); const b = document.createElement('b'), sm = document.createElement('small'); b.textContent = x.title; sm.textContent = `${x.seat}  ${x.date}`; row.append(b, sm); L.appendChild(row); } }; }
   const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
     order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });
   tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
+  const way = new Wayfinder(world, crowd); let wayT = 0;
   const layoutEd = new LayoutEditor(settings, sound, { onModal, save: () => { saveSettings(settings); applyLayout(settings); } });
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
   const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived(), driver: (k) => { const ln = pick(k); if (ln) { talk.bubble(driverAgent, ln, 2.6); voice.speak(driverAgent, ln, { full: true }); } } });
@@ -311,6 +313,11 @@ async function boot() {
       itemMesh.position.set(0.27 - e * 0.1, -0.3 - (1 - itemIn) * 0.3 + e * 0.17, -0.55 + e * 0.2); itemMesh.rotation.set(0.22 + e * 0.75, -0.35, e * 0.15); itemMesh.scale.setScalar(1.25); }
     if (glowSeat) { glowT -= dt; seatGlow.material.opacity = 0.45 + 0.4 * Math.sin(now * 0.006); if (glowT <= 0 || player.seated) { glowSeat = null; seatGlow.visible = false; } }
     prompts(r, hk);
+    // where to next (wayfind.js): the route a few times a second, the arrow every frame
+    if (mode !== 'play' || modal || talk.open || intro.active || watching || settings.goal === false || dbg) { way.cur = null; ui.setGoal(null); }
+    else { wayT -= dt; if (wayT <= 0) { wayT = 0.2; way.update({ game, ticket, room: r, player }); } const g = way.cur;
+      if (!g) ui.setGoal(null); else { cam.getWorldDirection(fwd); const dx = g.aim.x - player.x, dz = g.aim.z - player.z, fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl;
+        ui.setGoal(t(g.key, g.vars), Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz) * 180 / Math.PI, g.dist); } }
     ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
     ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet)));
     talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt); if (world.vis.has('lobby')) { led(now); board(now); }
@@ -326,13 +333,16 @@ async function boot() {
     if (player.seated) { ui.setPrompt(player.busy ? null : t('hud.stand'), () => stand()); return; }
     if (player.busy) { ui.setPrompt(null); return; }
     engine.camera.getWorldDirection(fwd); const fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl, ahead = (x, z, k = 0.3) => { const dx = x - player.x, dz = z - player.z, d = Math.hypot(dx, dz) || 1; return (dx * fx + dz * fz) / d > k; };
-    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
+    // v11: nothing is offered through a wall (world9.js Walls.sees): people at eye height (over counters and their glass), seats and
+    // fittings at chest height
+    const sees = (x, z, lo, hi) => world.walls.sees(player.x, player.z, x, z, player.y + lo, player.y + hi);
+    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
     if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
-    if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
+    if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
     const L = world.lift; if (r === 'lobby') { if (L.inside(player.x, player.z)) { const to = L.level ? 0 : 1; ui.setPrompt(t(to ? 'hud9.liftUp' : 'hud9.liftDown'), () => { if (to === 1 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(to); sound.click(); }); return; }
       for (const k of [0, 1]) if (L.atDoor(player.x, player.y, player.z, k) && (L.level !== k || L.state !== 'idle')) { ui.setPrompt(t('hud9.liftCall'), () => { if (k === 0 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(k); sound.click(); }); return; } }
     if (hk) { const h = world.hallByKey(hk); let best = null, bd = 1.5;
-      for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.6 || !ahead(s.x, s.z, 0.2)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
+      for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.45 || !ahead(s.x, s.z, 0.2) || !sees(s.x, s.z, 1.2, 1.6)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
       if (best) { const mine = ticket && ticket.seat === best.id && ticket.hall === h.id; ui.setPrompt(mine ? t('hud.yourSeat', { seat: best.id }) : t('hud9.sitHere', { seat: best.id }), () => { if (!mine) { const tk = { hall: h.id, hallKey: hk, hallName: h.name, seat: best.id, row: best.id.replace(/\d+/, ''), col: best.col, src: ticket && ticket.src, title: ticket ? ticket.title : '', delay: 0, shown: true, checked: true, tablet: true, quick: true }; const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; } ticket = tk; best.player = true; best.taken = true; } sitSeat(best); }); return; } }
     ui.setPrompt(null);
   }

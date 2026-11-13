@@ -36,13 +36,14 @@ export class Booking9 {
     $('#bkNext').disabled = (st === 1 && this.sel.own && !this.shows.own) || (st >= 3 && !s);
   }
   stepFilm() {
-    const box = $('#films'); box.innerHTML = '';
-    for (const f of CATALOG) { const d = el('button', 'film' + (!this.sel.own && this.sel.film === f.id ? ' on' : '')); const img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); d.appendChild(img);
-      d.appendChild(el('b', null, f.short || f.title)); d.appendChild(el('small', null, `${t('genre.' + f.genre)} · ${t('book.mins', { n: f.mins })}`));
-      d.addEventListener('click', () => { this.sel.film = f.id; this.sel.own = false; this.sound.click(); this.build(); }); box.appendChild(d); }
-    const o = el('button', 'film own-card' + (this.sel.own ? ' on' : '')); o.appendChild(el('div', 'own-art')); o.firstChild.innerHTML = '<svg class="ic"><use href="#i-film"/></svg>';
+    const box = $('#films'); box.textContent = '';
+    const o = el('button', 'film own-card' + (this.sel.own ? ' on' : '')); o.appendChild(el('div', 'own-art')); o.firstChild.innerHTML = '<svg class="ic"><use href="#i-upload"/></svg>';
     o.appendChild(el('b', null, t('book.ownCard'))); o.appendChild(el('small', null, this.shows.own ? this.shows.own.title : t('book9.ownHint')));
     o.addEventListener('click', () => { this.sel.own = true; this.sound.click(); this.build(); if (!this.shows.own) this.hooks.pickOwn(); }); box.appendChild(o);
+    for (const f of CATALOG) { const on = !this.sel.own && this.sel.film === f.id, d = el('button', 'film' + (on ? ' on' : '')); const img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); d.appendChild(img);
+      d.appendChild(el('b', null, f.short || f.title)); d.appendChild(el('small', null, `${t('genre.' + f.genre)}, ${t('book.mins', { n: f.mins })}`));
+      d.addEventListener('click', () => { this.sel.film = f.id; this.sel.own = false; this.sound.click(); this.build(); }); box.appendChild(d); if (on) this._onCard = d; }
+    if (this._onCard && this._onCard.scrollIntoView) { const c = this._onCard; this._onCard = null; requestAnimationFrame(() => { if (c.offsetLeft + c.offsetWidth > box.scrollLeft + box.clientWidth || c.offsetLeft < box.scrollLeft) box.scrollLeft = Math.max(0, c.offsetLeft - 120); }); }
     $('#ownPanel').hidden = !this.sel.own; $('#ownState').textContent = this.shows.own ? t('book.ownSet', { name: this.shows.own.title }) : t('book.ownNone');
   }
   stepHall() {
@@ -66,7 +67,7 @@ export class Booking9 {
     const scr = el('div', 'scr'); scr.appendChild(el('span', null, t('book.screen').toUpperCase())); scr.style.cssText = 'position:absolute;left:4%;right:4%;top:0;margin:0'; map.appendChild(scr);
     for (const s of h.seats) { const taken = (s.taken || s.npc) && !s.player, sel = s.id === this.sel.seat, w = Math.max(9, (s.kind === 'rocker' ? 0.54 : 0.8) * k), b = el('button', 'seat9');
       b.setAttribute('aria-label', `${s.id} ${CLASSES[s.cls].label}`);
-      b.style.cssText = `position:absolute;padding:0;border:0;left:${((s.u - u0) * k - w / 2).toFixed(1)}px;top:${(24 + (s.d - d0) * k - w * 0.4).toFixed(1)}px;width:${w.toFixed(1)}px;height:${(w * 0.8).toFixed(1)}px;border-radius:${s.pair >= 0 ? (s.pairSide ? '2px 5px 5px 2px' : '5px 2px 2px 5px') : '3px 3px 5px 5px'};background:${taken ? 'rgba(255,255,255,.08)' : sel ? '#f2ebdd' : CLASS_COL[s.cls]};opacity:${taken ? 1 : sel ? 1 : 0.82};box-shadow:${sel ? '0 0 0 2px #e3b25f,0 0 10px rgba(227,178,95,.8)' : 'none'};cursor:${taken ? 'default' : 'pointer'}`;
+      b.style.cssText = `position:absolute;padding:0;border:0;left:${((s.u - u0) * k - w / 2).toFixed(1)}px;top:${(24 + (s.d - d0) * k - w * 0.4).toFixed(1)}px;width:${w.toFixed(1)}px;height:${(w * 0.8).toFixed(1)}px;border-radius:${s.pair >= 0 ? (s.pairSide ? '2px 5px 5px 2px' : '5px 2px 2px 5px') : '3px 3px 5px 5px'};background:${taken ? 'rgba(255,255,255,.1)' : sel ? '#fff6e0' : CLASS_COL[s.cls]};opacity:${taken ? 1 : sel ? 1 : 0.86};box-shadow:${sel ? '0 0 0 2px #ffb84d,0 0 10px rgba(255,184,77,.8)' : 'none'};cursor:${taken ? 'default' : 'pointer'}`;
       if (!taken) b.addEventListener('click', () => { this.sel.seat = s.id; this.sound.click(); this.build(); }); map.appendChild(b); }
   }
   stepPay() {

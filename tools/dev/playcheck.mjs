@@ -4,7 +4,8 @@
 //   1. the film plays its own sound (direct output, in step with its picture), unmuted, and the audience's level tap hears the beeps;
 //   2. pause for 3 s, Continue: new picture frames arrive within 0.6 s and the clock moves on from where it stopped (no seek back);
 //   3. while it plays the canvas is never resized (a resize is a visible hitch);
-//   4. the open curtains are put away (nothing hangs over the picture's edges).
+//   4. the open curtains are put away (nothing hangs over the picture's edges);
+//   5-7. (v11) look away and back, walk away for 20 s and come back, and the frame watchdog: the picture is there and in step every time.
 // usage: node tools/dev/playcheck.mjs OUT [HALL=CURVE]
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { execFileSync } from 'node:child_process';
 const OUT = process.argv[2] || 'playcheck', HALL = process.argv[3] || 'CURVE'; fs.mkdirSync(OUT, { recursive: true });
@@ -53,6 +54,29 @@ const rs = await p.evaluate(() => window.__resizes); ok('no canvas resize during
 const cu = await p.evaluate((hid) => { const h = window.__lumiere.world.hallById(hid); return h.curtains ? h.curtains.meshes.map((m) => m.visible) : 'no curtains'; }, HALL);
 ok('open curtains put away', cu === 'no curtains' || cu.every((v) => !v), JSON.stringify(cu));
 await p.screenshot({ path: path.join(OUT, `${HALL}-playing.png`) });
+// 5. (v11, the user: "if you look a bit to the side the film goes blank, the sound continues") look away for 4 s and back: the picture is
+// never culled, frames kept arriving, and the middle of the view shows the film again
+const seatPose = await p.evaluate(() => { const P = window.__lumiere.player; return { seated: P.seated, x: P.x, z: P.z, yaw: P.yaw, pitch: P.pitch, camY: P.camY }; });
+const look = await p.evaluate(async (hid) => { const L = window.__lumiere, v = L.shows.video, P = L.player, h = L.world.hallById(hid), pic = h.room.group.children.find((o) => o.name && o.name.endsWith('-picture')); let frames = 0; const cb = () => { frames++; v.requestVideoFrameCallback(cb); }; v.requestVideoFrameCallback(cb);
+  const y0 = P.yaw; P.yaw = y0 + 2.2; await new Promise((r) => setTimeout(r, 4000)); const away = frames, vis = !!(pic && pic.visible && h.room.group.visible), culled = pic ? pic.frustumCulled : null; P.yaw = y0; await new Promise((r) => setTimeout(r, 900)); return { away, back: frames - away, vis, culled }; }, HALL);
+await p.screenshot({ path: path.join(OUT, `${HALL}-lookback.png`) });
+const lum = (f) => +execFileSync('python3', ['-c', 'import sys\nfrom PIL import Image\nim=Image.open(sys.argv[1]).convert("L"); w,h=im.size; c=im.crop((int(w*.3),int(h*.3),int(w*.7),int(h*.6))); print(sum(c.getdata())/(c.size[0]*c.size[1]))', f]).toString().trim();
+const lb = lum(path.join(OUT, `${HALL}-lookback.png`));
+ok('look away and back: picture never culled, frames kept coming, film on screen', look.vis && look.culled === false && look.away > 20 && look.back > 5 && lb > 25, `${look.away} frames while turned away, ${look.back} in 0.9 s after; picture visible ${look.vis}, frustumCulled ${look.culled}; middle of the view ${lb.toFixed(0)}/255`);
+// 6. (v11: "when you go far away and come back the film is frozen for 15-20 s, the sound goes on") stand up, wait 20 s in the lobby, come
+// back and sit: the decoder never went idle (frames flowed all the time), and the newest frame is the sound's own moment
+const walk = await p.evaluate(async (pose) => { const L = window.__lumiere, v = L.shows.video, P = L.player; let frames = 0, last = 0; const cb = (now, md) => { frames++; last = md.mediaTime; v.requestVideoFrameCallback(cb); }; v.requestVideoFrameCallback(cb);
+  P.place(0, 9, 0, 0, 0); await new Promise((r) => setTimeout(r, 20000)); const away = frames, room = L.world.roomAt(P.x, P.y, P.z); P.placeSeated({ x: pose.x, y: pose.camY, z: pose.z, yaw: pose.yaw, pitch: pose.pitch }, pose.seated && pose.seated.standAt);
+  const t = performance.now(); let first = null; const f0 = frames; while (performance.now() - t < 1500) { await new Promise((r) => setTimeout(r, 30)); if (first == null && frames > f0) first = performance.now() - t; }
+  return { away, room, firstMs: first && Math.round(first), lag: +(v.currentTime - last).toFixed(3), stalls: L.shows.stalls, clock: +v.currentTime.toFixed(2), paused: v.paused }; }, seatPose);
+await p.screenshot({ path: path.join(OUT, `${HALL}-return.png`) }); const lr = lum(path.join(OUT, `${HALL}-return.png`));
+ok('walk away 20 s and return: fresh frame at once, picture in step with the sound', walk.room === 'lobby' && walk.away > 200 && walk.firstMs != null && walk.firstMs < 1500 && Math.abs(walk.lag) < 0.3 && !walk.paused && lr > 25, `${walk.away} frames decoded while in the ${walk.room}; first new frame ${walk.firstMs} ms after sitting; picture ${Math.round(walk.lag * 1000)} ms from the sound; watchdog kicks ${walk.stalls}; middle of the view ${lr.toFixed(0)}/255`);
+// 7. the watchdog itself (film9.js): a picture that stops while the clock runs is kicked; the kick does not send the film back or stop it
+const wd = await p.evaluate(async () => { const L = window.__lumiere, S = L.shows, v = S.video, s0 = S.stalls, c0 = v.currentTime; S._wdKick = 0; let tries = 0;
+  while (S.stalls === s0 && tries++ < 400) { S._vfAt = performance.now() - 5000; await new Promise((r) => setTimeout(r, 5)); }
+  const kicked = S.stalls > s0, c1 = v.currentTime; let frames = 0; const cb = () => { frames++; v.requestVideoFrameCallback(cb); }; v.requestVideoFrameCallback(cb); await new Promise((r) => setTimeout(r, 2000));
+  return { kicked, back: +(c1 - c0).toFixed(2), frames, after: +(v.currentTime - c1).toFixed(2), paused: v.paused }; });
+ok('watchdog: a stalled picture is kicked, the film goes on from the same moment', wd.kicked && wd.back > -0.1 && wd.frames > 15 && wd.after > 1.2 && !wd.paused, JSON.stringify(wd));
 let fails = 0; for (const [k, v] of Object.entries(res)) { console.log(`${v.pass ? 'PASS' : 'FAIL'}  ${k}  (${v.why})`); if (!v.pass) fails++; }
 if (log.length) console.log(log.slice(0, 6).join('\n'));
 await b.close(); srv.close(); process.exit(fails ? 1 : 0);

@@ -27,11 +27,13 @@ export const CLASSES = {
 // groups run from the screen to the rear: rows of single seats (n odd) or two-seat sofas (pairs, gap between the sofas).
 // v9.1b (the user, 2026-11-06: "the screens are so small"; "I prefer the older entrance and exit"): every picture runs nearly wall to wall;
 // beside it, at each front corner, a portal in the masking (BAY m wide, 2.55 m high) leads to the exit door in the screen wall, as in v9.
-// W = width - 2 (BAY + 0.15). MAX is IMAX-with-Laser shaped (1.43:1, floor to ceiling); CLASSIC and X-270 are 16:9 so phone videos fill
+// W = width - 2 (BAY + 0.15). MAX was IMAX-GT shaped (1.43:1, 17.8 m high); v11 (the user, with a photo: "this screen is just tall"): it is
+// 1.9:1 now, the shape of today's large-format digital screens: the same 25.4 m across, 13.4 m high, so a 16:9 video nearly fills it instead
+// of sitting in the middle of a tall wall with a third of it black. CLASSIC and X-270 are 16:9 so phone videos fill
 // them; D1 keeps row A's view of the picture's top under 45 deg (UNIC) except in MAX, where, as in IMAX GT halls, the front rows look up.
 export const BAY = 1.75;
 export const HALLS = [
-  { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -37.0, width: 29.2, aspect: 1.43, W: 25.4, hB: 0.95, sag: 0.025, D1: 12.6, c: 0.2,
+  { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -37.0, width: 29.2, aspect: 1.9, W: 25.4, hB: 0.95, sag: 0.025, D1: 12.6, c: 0.2,
     aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.6, rowK: 34, curtain: false, frame: 0.25,
     groups: [{ seat: 'rocker', rows: 11, n: 37, pitch: 1.32, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
       { seat: 'pod', rows: 2, pairs: 9, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },

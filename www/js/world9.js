@@ -53,9 +53,9 @@ function stairY(x, z, y) {
 }
 // ---------------------------------------------------------------- collision: wall segments in 2 m buckets, each with its height range
 class Walls {
-  constructor() { this.S = []; this.B = new Map(); }
-  add(ax, az, bx, bz, y0, y1) {
-    const i = this.S.length / 6; this.S.push(ax, az, bx, bz, y0, y1);
+  constructor() { this.S = []; this.K = []; this.B = new Map(); }
+  add(ax, az, bx, bz, y0, y1, solid = 0) {   // solid 1: part of the building (walls, glass, counters); 0: furniture, seats, props
+    const i = this.S.length / 6; this.S.push(ax, az, bx, bz, y0, y1); this.K.push(solid);
     for (let gx = Math.floor((Math.min(ax, bx) - 0.4) / 2); gx <= Math.floor((Math.max(ax, bx) + 0.4) / 2); gx++) for (let gz = Math.floor((Math.min(az, bz) - 0.4) / 2); gz <= Math.floor((Math.max(az, bz) + 0.4) / 2); gz++) {
       const k = gx * 4096 + gz; let l = this.B.get(k); if (!l) this.B.set(k, l = []); l.push(i); }
   }
@@ -71,11 +71,24 @@ class Walls {
         const y0 = Math.max(lo, b * 0.5), y1 = Math.min(hi, b * 0.5 + 0.5); if (y1 - y0 < 0.02) continue;
         const pts = clipBand(v, y0, y1); if (pts.length < 2) continue;
         let best = -1, pa = null, pb = null; for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) { const d = (pts[i][0] - pts[j][0]) ** 2 + (pts[i][2] - pts[j][2]) ** 2; if (d > best) { best = d; pa = pts[i]; pb = pts[j]; } }
-        if (best < 1e-4) continue; this.add(pa[0], pa[2], pb[0], pb[2], y0, y1);
+        if (best < 1e-4) continue; this.add(pa[0], pa[2], pb[0], pb[2], y0, y1, 1);
       }
     }
   }
   near(x, z, out) { out.length = 0; const gx = Math.floor(x / 2), gz = Math.floor(z / 2), l = this.B.get(gx * 4096 + gz); if (l) for (const i of l) out.push(i); return out; }
+  // v11 line of sight in plan from a to b within the heights y0..y1: false when a wall of the building crosses it (the user: "a Sit button
+  // showing through the wall; I sit on the other side of it"). Furniture and seats never block it. The last `back` metres before b are
+  // left out, so a thing standing against a wall is still seen from its own side.
+  sees(ax, az, bx, bz, y0, y1, back = 0.3) {
+    const L = Math.hypot(bx - ax, bz - az); if (L <= back + 0.05) return true; const k = (L - back) / L; bx = ax + (bx - ax) * k; bz = az + (bz - az) * k;
+    const S = this.S, K = this.K, done = new Set(), cr = (px, pz, qx, qz, rx, rz) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+    for (let gx = Math.floor((Math.min(ax, bx) - 0.4) / 2); gx <= Math.floor((Math.max(ax, bx) + 0.4) / 2); gx++) for (let gz = Math.floor((Math.min(az, bz) - 0.4) / 2); gz <= Math.floor((Math.max(az, bz) + 0.4) / 2); gz++) {
+      const l = this.B.get(gx * 4096 + gz); if (!l) continue;
+      for (const i of l) { if (!K[i] || done.has(i)) continue; done.add(i); const j = i * 6; if (S[j + 5] <= y0 || S[j + 4] >= y1) continue;
+        const o1 = cr(ax, az, bx, bz, S[j], S[j + 1]), o2 = cr(ax, az, bx, bz, S[j + 2], S[j + 3]), o3 = cr(S[j], S[j + 1], S[j + 2], S[j + 3], ax, az), o4 = cr(S[j], S[j + 1], S[j + 2], S[j + 3], bx, bz);
+        if (o1 * o2 < 0 && o3 * o4 < 0) return false; } }
+    return true;
+  }
 }
 function splitGlass(geo) {
   const mid = geo.attributes.matid; if (!mid || !geo.index) return null; const I = geo.index.array, keep = [], glass = [];
@@ -351,16 +364,16 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
-  for (const [cx, cz, sw] of [[11.5, 12.6, EMERALD], [16.5, 12.6, SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null], [-9.5, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
+  for (const [cx, cz, sw] of [[11.5, 12.6, EMERALD], [16.5, 12.6, SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null], [-11.6, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
   add('lobby', 'chandelier_cascade', 0, 8.55, 4.0, 0, { collide: false, ground: false });
   // v10 (the user: "the lobby is too big and empty: fill it with lighting, paintings, pillars, sofas, a fountain"; docs/V10-RESEARCH.md):
-  // a fountain on the brand ring on the entrance axis with four light columns round it (walkers part round it: building.js foyerW/E), a
+  // a fountain on the brand ring on the entrance axis (walkers part round it: building.js foyerW/E; v11: the four columns round the court
+  // are the building's own, full height, tools/blender/arch/rooms.py grand_column), a
   // pendant cloud over the east waiting areas, rugs under the seating groups, a popcorn cart by the box office, film standees facing the
   // doors (their boards are FRAMED panels), a seating corner by the restrooms under its own small cloud
   add('lobby', 'fountain_tier', 0, 0, 10.0, 0, { round: 1.68, grp: 2 });   // grp 2: its lit water shimmers (materials.js GLOW_VERT)
-  for (const [x, z] of [[-4.8, 14.4], [4.8, 14.4], [-4.8, 7.0], [4.8, 7.0]]) add('lobby', 'pillar_light', x, 0, z);
   add('lobby', 'pendant_cloud', 14.0, LOBBY.ceil - 0.002, 12.8, 0, { collide: false, ground: false, detail: 1 });
-  for (const [cx, cz] of [[11.5, 12.6], [16.5, 12.6], [-9.5, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false });
+  for (const [cx, cz] of [[11.5, 12.6], [16.5, 12.6], [-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false });
   add('lobby', 'popcorn_cart', -12.6, 0, 2.6, Math.PI / 2 + 0.35);
   // the box office queue and the concessions approach each get a patterned runner (the user: "make the reception and the buy area much defined")
   add('lobby', 'rug_runner', -13.7, 0, 9.1, 0, { collide: false, scale: [0.5, 1, 1.75] }); add('lobby', 'rug_runner', -14.75, 0, -4.0, Math.PI / 2, { collide: false, scale: [0.62, 1, 0.92] });
@@ -383,14 +396,13 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, 2 cm in front of the gold fins (v10)
   // v10 (the user: "improve the overall look from outside"): a premiere carpet from the kerb to the doors, two light columns flanking them
   add('street', 'rug_runner', 0, 0, FACADE_Z + 4.0, 0, { collide: false, scale: [0.62, 1, 1.8], swap: { carpet_deco: [MAT.velvet, [0.34, 0.015, 0.025]] } });
-  for (const x of [-3.6, 3.6]) add('street', 'pillar_light', x, 0, FACADE_Z + 1.1);
+  for (const x of [-3.1, 3.1]) add('street', 'planter_tall', x, 0, FACADE_Z + 0.95);   // v11: palms flank the doors (the half-height light pillars are gone)
   for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
-  for (let x = -40; x <= 40; x += 10) add('street', 'lamp_post', x, 0, 25.55, Math.PI / 2, { collide: 0.05 });
+  for (let x = -40; x <= 40; x += 10) if (Math.abs(x) > 12) add('street', 'lamp_post', x, 0, 25.55, Math.PI / 2, { collide: 0.05 });   // v11 (the user: "a pole is blocking the view"): none in front of the canopy
   for (let x = -14; x <= 14; x += 2.8) if (Math.abs(x) > 2.5) add('street', 'bollard_light', x, 0, 25.6);
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
-  for (const [x, z, yaw] of [[BRIDGE.x0 + 1.0, -30, Math.PI / 2], [BRIDGE.x1 - 1.0, -30, -Math.PI / 2]]) add('corridor', 'bench_velvet', x, L1, z, yaw);
   // v9.3 hall entrances (the user's ScreenX entrance photo; tools/blender/arch/rooms.py builds the portals): the hall's name in face-lit
   // letters over each portal, its number beside it, a rope line along the portal's face, a bin; red armchairs along the bridge
   const WORD = { MAX: 'letters_max', CURVE: 'letters_curve', CLASSIC: 'letters_classic', X270: 'letters_x270' };
@@ -402,13 +414,15 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
     for (const sg of [-1, 1]) if (d.hall !== 'X270' || sg < 0) add('corridor', 'rope_velvet', xfront + side * 0.55, L1, zc + sg * 2.2, Math.PI / 2, { collide: 0.02 });
     add('corridor', 'bin_brass', xf + side * 0.35, L1, zc - (d.hall === 'X270' ? 3.4 : 3.45));
   }
-  for (const x of [BRIDGE.x0 + 9, BRIDGE.x0 + 24, BRIDGE.x1 - 24, BRIDGE.x1 - 9]) for (const o of [-0.5, 0.5]) add('corridor', 'armchair_deco', x + o, L1, BRIDGE.z1 - 0.75, Math.PI, { swap: { velvet_mustard: [MAT.velvet, [0.5, 0.018, 0.03]] } });
-  // v10 the corridor (the user: "the halls and corridors are empty"): benches with palms between the posters down both flanks, palms along
-  // the bridge between the armchair groups, film standees either side of the mezzanine portal (their boards are FRAMED panels)
-  for (const z of [-38, -46]) { add('corridor', 'bench_velvet', BRIDGE.x0 + 0.62, L1, z, Math.PI / 2); add('corridor', 'planter_tall', BRIDGE.x0 + 0.6, L1, z - 1.55); }
-  add('corridor', 'bench_velvet', BRIDGE.x1 - 0.62, L1, -38, -Math.PI / 2); add('corridor', 'planter_tall', BRIDGE.x1 - 0.6, L1, -39.55);
-  for (const x of [-31, -16, -6, 22, 34]) add('corridor', 'planter_tall', x, L1, BRIDGE.z1 - 0.65);
-  for (const x of [4.6, 16.4]) add('corridor', 'standee_base', x, L1, -14.9, Math.PI, { collide: 0.02 });
+  // v11 the corridor's ribbon walls (tools/blender/arch/rooms.py: the walnut lining swells and falls back every 9 m from each wall's
+  // start): benches, armchairs and palms stand in the troughs, the poster lightboxes hang on the crests; film standees flank the arrival
+  // video wall opposite the mezzanine portal (their boards are FRAMED panels)
+  for (const z of [-32, -41, -50]) { add('corridor', 'bench_velvet', BRIDGE.x0 + 0.68, L1, z, Math.PI / 2); add('corridor', 'planter_tall', BRIDGE.x0 + 0.9, L1, z - 1.6); }
+  for (const z of [-32, -41]) { add('corridor', 'bench_velvet', BRIDGE.x1 - 0.68, L1, z, -Math.PI / 2); add('corridor', 'planter_tall', BRIDGE.x1 - 0.9, L1, z - 1.6); }
+  for (const k of [1, 6, 8]) for (const o of [-0.5, 0.5]) add('corridor', 'armchair_deco', BRIDGE.x1 - 9 * k + o, L1, BRIDGE.z1 - 0.8, Math.PI, { swap: { velvet_mustard: [MAT.velvet, [0.5, 0.018, 0.03]] } });
+  for (const k of [2, 4, 5, 7]) add('corridor', 'planter_tall', BRIDGE.x1 - 9 * k, L1, BRIDGE.z1 - 0.68);
+  for (const x of [FLANK_W.x1 + 18, PANTRY.x1 + 18]) add('corridor', 'planter_tall', x, L1, BRIDGE.z0 + 0.68);
+  for (const x of [6.0, 14.5]) add('corridor', 'standee_base', x, L1, BRIDGE.z0 + 0.8, 0, { collide: 0.02 });
   // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup)
   for (const h of Object.values(HALL)) { const w = h.toWorld(h.entryU - Math.sign(h.entryU) * 1.4, h.depthIn - 0.5); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z); }
   return L;
@@ -441,9 +455,9 @@ const FRAMED = [
   PIC({ id: 'picto_f', x: 21.56 - 0.034, y: 1.35, z: 1.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
   ...[-7.7, 1.8, 11.3].map((z, i) => PIC({ id: 'mural_' + i, x: 21.6 - 0.034, y: 7.6, z, yaw: -Math.PI / 2, w: 9.2, h: 2.4, emit: 0.25, frame: 'thin' })),
   ...[[-15.4, 1], [-12.8, 2], [-10.2, 3]].map(([x, n]) => PIC({ ...ART, id: 'art_' + n, x, y: 2.25, z: ART.z + 0.014, w: 0.8, h: 1.1 })),   // on the cafe's walnut (14 mm)
-  PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }),
+  PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, z: ART.z + 0.014, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, z: ART.z + 0.014, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }),   // on the rear wall's walnut (14 mm)
   ...[[-6.6, 0.885, 'cosmos'], [6.6, -0.885, 'agent327']].map(([x, yaw, f]) => PIC({ id: `poster_${f}_s`, x: x + Math.sin(yaw) * 0.018, y: 0.98, z: 12.6 + Math.cos(yaw) * 0.018, yaw, w: 1.1, h: 1.7, emit: 0.6 })),
-  ...[[4.6, 'hero'], [16.4, 'wingit']].map(([x, f]) => PIC({ room: 'corridor', id: `poster_${f}_s`, x, y: L1 + 0.98, z: -14.9 - 0.018, yaw: Math.PI, w: 1.1, h: 1.7, emit: 0.6 })),
+  ...[[6.0, 'hero'], [14.5, 'wingit']].map(([x, f]) => PIC({ room: 'corridor', id: `poster_${f}_s`, x, y: L1 + 0.98, z: BRIDGE.z0 + 0.8 + 0.018, yaw: 0, w: 1.1, h: 1.7, emit: 0.6 })),
 ];
 const UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
 function framePanel(acc, p) {   // the board (front 3 mm behind the picture) and four bars round it, 2.2 cm proud of the picture
@@ -497,7 +511,7 @@ function buildHall(world, h, room) {
   for (let i = 0; i <= N; i++) { const u = -W / 2 + W * i / N, d = h.screenD(u) - 0.004, w = h.toWorld(u, d); pos.push(w.x, yb, w.z, w.x, yb + Hh, w.z); uv.push(i / N, 0, i / N, 1); if (i < N) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); } }
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); pg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); pg.setIndex(idx); pg.computeVertexNormals();
   { const nv = pg.attributes.normal; if (nv.getX(N) * -f < 0) { const I = pg.index.array; for (let k = 0; k < I.length; k += 3) { const t = I[k + 1]; I[k + 1] = I[k + 2]; I[k + 2] = t; } pg.computeVertexNormals(); } }
-  const slate = slateTexture(h), picMat = pictureMat(slate); picMat.uniforms.uGain.value = 0.55; const pic = new THREE.Mesh(pg, picMat); pic.renderOrder = 1; pic.name = h.key + '-picture'; room.group.add(pic);
+  const slate = slateTexture(h), picMat = pictureMat(slate); picMat.uniforms.uGain.value = 0.55; const pic = new THREE.Mesh(pg, picMat); pic.renderOrder = 1; pic.frustumCulled = false; pic.name = h.key + '-picture'; room.group.add(pic);   // v11: never culled (a picture that blanks when you turn is the one glitch a cinema can't have)
   { const bg = pg.clone(), I = bg.index.array; for (let k = 0; k < I.length; k += 3) { const t = I[k + 1]; I[k + 1] = I[k + 2]; I[k + 2] = t; }   // seen from behind (the passage beside the screen): dark cloth, not a hole into the hall
     const back = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: 0x060607 })); back.name = h.key + '-picture-back'; back.matrixAutoUpdate = false; room.group.add(back); }
   // the analytic screen light (people, held items): six patches across the curve
@@ -605,10 +619,11 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   world.travelator = new Travelator(world, TRAVELATOR); world.movers.push(world.travelator);
   world.lift = new Lift(world, LIFT);
   // the ticket gate: one glass leaf in the barrier at the foot of the up escalator, hinged at its west post; the usher opens it for you
+  const GH = 1.25;   // the leaves are as tall as the glass screens beside them (rooms.py glass_screen)
   { const g = world.gate = { x0: GATE.gate[0], x1: GATE.gate[1], z: GATE.z, open: 0, target: 0 }, w = g.x1 - g.x0 - 0.06, grp = new THREE.Group(), a = new Acc();
-    a.add(boxGeo(w, 0.05, 0.05), M(w / 2, 1.0, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 1.0, 0.05), M(w - 0.025, 0.5, 0), '#c9a35e', { mat: MAT.brass }); const fg = toGeometry(a);
+    a.add(boxGeo(w, 0.05, 0.05), M(w / 2, GH - 0.025, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, GH - 0.05, 0.05), M(w - 0.025, (GH - 0.05) / 2, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(w - 0.05, 0.04, 0.03), M((w - 0.05) / 2, 0.13, 0), '#c9a35e', { mat: MAT.brass }); const fg = toGeometry(a);
     fg.translate(g.x0 + 0.03, 0, g.z); world.rooms.lobby.lights.bake(fg); fg.translate(-(g.x0 + 0.03), 0, -g.z); { const gm = new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)); gm.name = 'gate'; grp.add(gm); }
-    const pane = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.06, 0.9), mats.glassMat()); pane.position.set(w / 2, 0.52, 0); grp.add(pane); grp.position.set(g.x0 + 0.03, 0, g.z); world.rooms.lobby.group.add(grp); g.group = grp;
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.06, GH - 0.2), mats.glassMat()); pane.position.set(w / 2, 0.15 + (GH - 0.2) / 2, 0); grp.add(pane); grp.position.set(g.x0 + 0.03, 0, g.z); world.rooms.lobby.group.add(grp); g.group = grp;
     // v10: the leaf also swings for a walker (they hold tickets) but only the usher's pass (or Quick play, 'always') lets the player through:
     // following someone in is no way past the check
     g.passUntil = 0; g.npcUntil = 0; g.always = false;
@@ -621,10 +636,10 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   // lobby when anyone inside comes near. From the lobby side they never let you in (world.collide).
   { const E = GATE.exit, z = GATE.z, wl = (E[1] - E[0]) / 2 - 0.04, x = world.exitGate = { x0: E[0], x1: E[1], z, open: 0, until: 0, leaves: [] }, grp = new THREE.Group();
     for (const hx of [E[0] + 0.03, E[1] - 0.03]) { const d = hx < (E[0] + E[1]) / 2 ? 1 : -1, a = new Acc();   // d: from the hinge towards the middle
-      a.add(boxGeo(wl, 0.05, 0.05), M(d * wl / 2, 1.0, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 1.0, 0.05), M(d * (wl - 0.025), 0.5, 0), '#c9a35e', { mat: MAT.brass });
+      a.add(boxGeo(wl, 0.05, 0.05), M(d * wl / 2, GH - 0.025, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, GH - 0.05, 0.05), M(d * (wl - 0.025), (GH - 0.05) / 2, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(wl - 0.05, 0.04, 0.03), M(d * (wl - 0.05) / 2, 0.13, 0), '#c9a35e', { mat: MAT.brass });
       const fg = toGeometry(a); fg.translate(hx, 0, z); world.rooms.lobby.lights.bake(fg); fg.translate(-hx, 0, -z);
       const piv = new THREE.Group(); piv.position.set(hx, 0, z); const m = new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)); m.name = 'exit-leaf'; piv.add(m);
-      const pane = new THREE.Mesh(new THREE.PlaneGeometry(wl - 0.06, 0.9), mats.glassMat()); pane.position.set(d * wl / 2, 0.52, 0); piv.add(pane); grp.add(piv); x.leaves.push({ piv, d }); }
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(wl - 0.06, GH - 0.2), mats.glassMat()); pane.position.set(d * wl / 2, 0.15 + (GH - 0.2) / 2, 0); piv.add(pane); grp.add(piv); x.leaves.push({ piv, d }); }
     world.rooms.lobby.group.add(grp);
     x.update = (dt, actors) => { const now = performance.now();
       if (actors) for (const a of actors) if ((a.y || 0) < 1 && a.x > x.x0 - 0.5 && a.x < x.x1 + 0.5 && a.z < z + 0.6 && a.z > z - 1.8) { x.until = now + 1500; break; }

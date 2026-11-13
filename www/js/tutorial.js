@@ -11,9 +11,9 @@ export class Tutorial {
     $('#coachSkip').addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.finish(); });
   }
   start() { this.on = true; this.i = -1; this.moved = 0; this.looked = 0; this.next(); }
-  stop() { this.on = false; $('#coach').hidden = true; }
+  stop() { this.on = false; $('#coach').hidden = true; document.body.classList.remove('coaching'); }
   finish() { this.stop(); this.settings.tutorialDone = true; this.settings.tutorialAsked = true; this.hooks.save(); }
-  next() { this.i++; if (this.i >= STEPS.length) { this.finish(); return; } const [key] = STEPS[this.i]; $('#coach').hidden = false; $('#coachN').textContent = String(this.i + 1); $('#coachText').textContent = t(key); $('#coachNext').textContent = t(this.i === STEPS.length - 1 ? 'tut.done' : 'tut.next'); }
+  next() { this.i++; if (this.i >= STEPS.length) { this.finish(); return; } const [key] = STEPS[this.i]; $('#coach').hidden = false; document.body.classList.add('coaching'); $('#coachN').textContent = String(this.i + 1); $('#coachText').textContent = t(key); $('#coachNext').textContent = t(this.i === STEPS.length - 1 ? 'tut.done' : 'tut.next'); }
   event(name) { if (!this.on || this.i < 0) return; if (STEPS[this.i][1] === name) { this.sound.chime && this.sound.chime(); setTimeout(() => this.on && this.next(), 700); } }
   // movement and looking are measured here (the other steps report themselves through event())
   update(dt) {

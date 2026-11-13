@@ -3,7 +3,7 @@ lobby (double height, mezzanine, escalators, lift, box office, concessions, loun
 curves, rounded corners and diamond relief), spine (G: the bright way out with a travelator and exit stairs), restrooms, street.
 Palettes: docs/V9-DESIGN.md section 5 (3-4 colours per space, dim variants of the same hues)."""
 import math, random
-from geo import Acc, Glow, Lights, MAT, lin, mix
+from geo import Acc, Glow, Lights, MAT, lin, mix, cross, sub
 
 def build(key, S):
     fn = globals().get('build_' + key)
@@ -90,6 +90,56 @@ def lights_grid(lit, acc, glow, x0, z0, x1, z1, y, step, col, I, r, ch='h', can=
             if can:
                 acc.cyl(x, z, 0.08, y - 0.02, y + 0.001, MAT['metal'], lin('#2a2a2e'), n=12)
                 glow.quad((x - 0.055, y - 0.022, z - 0.055), (x + 0.055, y - 0.022, z - 0.055), (x + 0.055, y - 0.022, z + 0.055), (x - 0.055, y - 0.022, z + 0.055), col, 2.2)
+
+def glass_screen(acc, glow, path, y, h=1.25):
+    """v11 a glazed screen that reads as architecture (the user: "make the escalator area barriers, the glass thing, good"): a black marble
+    kerb, clear glass in bays of about 1.5 m with open joints, a bronze shoe and clip at every joint, a flat brass cap rail, a brass line
+    at waist height on both faces, a marble newel with a brass cap at each end and corner. Axis-aligned paths."""
+    brass, nero = lin('#b8893c'), lin('#ffffff')
+    for i in range(len(path) - 1):
+        (ax, az), (bx, bz) = path[i], path[i + 1]; L = math.hypot(bx - ax, bz - az)
+        if L < 1e-3: continue
+        ux, uz = (bx - ax) / L, (bz - az) / L; nx, nz = -uz, ux
+        def bx_(s0, s1, w, y0, y1, mat, col):   # a box along the run from s0 to s1, w wide across it
+            xs = [ax + ux * s0 - nx * w / 2, ax + ux * s1 + nx * w / 2, ax + ux * s0 + nx * w / 2, ax + ux * s1 - nx * w / 2]; zs = [az + uz * s0 - nz * w / 2, az + uz * s1 + nz * w / 2, az + uz * s0 + nz * w / 2, az + uz * s1 - nz * w / 2]
+            acc.box(min(xs), y0, min(zs), max(xs), y1, max(zs), mat, col)
+        e0, e1 = 0.075, L - 0.075   # the newels own the ends
+        bx_(e0, e1, 0.13, y, y + 0.11, MAT['neroGold'], nero)                      # kerb
+        bx_(e0, e1, 0.066, y + h - 0.028, y + h, MAT['brass'], brass)              # cap rail
+        n = max(1, round((e1 - e0) / 1.5)); bay = (e1 - e0) / n
+        for k in range(n):
+            s0, s1 = e0 + k * bay + 0.008, e0 + (k + 1) * bay - 0.008
+            bx_(s0, s1, 0.02, y + 0.11, y + h - 0.028, MAT['glass'], lin('#9fb3bf'))
+            bx_(s0 + 0.004, s1 - 0.004, 0.024, y + 0.86, y + 0.875, MAT['brass'], brass)   # the line you see the glass by
+            if k:
+                bx_(s0 - 0.03, s0 + 0.014, 0.05, y + 0.11, y + 0.3, MAT['brass'], brass); bx_(s0 - 0.03, s0 + 0.014, 0.05, y + h - 0.16, y + h - 0.028, MAT['brass'], brass)
+    for i, (px, pz) in enumerate(path):   # newels
+        acc.box(px - 0.075, y, pz - 0.075, px + 0.075, y + h + 0.04, pz + 0.075, MAT['neroGold'], nero)
+        acc.box(px - 0.085, y + h + 0.04, pz - 0.085, px + 0.085, y + h + 0.065, pz + 0.085, MAT['brass'], brass)
+
+
+def grand_column(acc, glow, lit, cx, cz, H, r=0.42):
+    """v11 (the user: "the pillars are half made and placed in the lobby"): a column that carries the roof. Black-and-gold marble shaft on a
+    stepped plinth, a brass band at 3 m, a stepped Deco capital in brass under the ceiling with a lit ring, an uplight in the floor on four
+    sides. Everything is a closed cylinder; steps differ in radius, so no two faces share a plane."""
+    brass = lin('#b8893c')
+    acc.cyl(cx, cz, r + 0.16, 0.0, 0.14, MAT['neroGold'], lin('#ffffff'), n=32); acc.cyl(cx, cz, r + 0.07, 0.14, 0.22, MAT['brass'], brass, n=32)
+    acc.cyl(cx, cz, r, 0.22, H - 0.86, MAT['neroGold'], lin('#ffffff'), n=32)
+    acc.cyl(cx, cz, r + 0.014, 2.96, 3.04, MAT['brass'], brass, n=32)
+    for rr, ya, yb in ((r + 0.05, H - 0.86, H - 0.7), (r + 0.15, H - 0.7, H - 0.52), (r + 0.28, H - 0.52, H - 0.3), (r + 0.4, H - 0.3, H - 0.2)):
+        acc.cyl(cx, cz, rr, ya, yb, MAT['brass'], brass, n=32)
+    acc.cyl(cx, cz, r + 0.3, H - 0.2, H + 0.001, MAT['paint'], lin('#1a1816'), n=32)   # a recessed neck: the ring of light sits on it
+    for k in range(24):
+        a0, a1 = 2 * math.pi * k / 24, 2 * math.pi * (k + 1) / 24; rg = r + 0.302
+        p0, p1 = (cx + rg * math.cos(a0), cz + rg * math.sin(a0)), (cx + rg * math.cos(a1), cz + rg * math.sin(a1)); am = (a0 + a1) / 2
+        glow_facing(glow, (p0[0], H - 0.17, p0[1]), (p1[0], H - 0.17, p1[1]), (p1[0], H - 0.05, p1[1]), (p0[0], H - 0.05, p0[1]), (math.cos(am), 0, math.sin(am)), lin('#ffd9a8'), 2.2)
+    for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        ux_, uz_ = cx + dx * (r + 0.42), cz + dz * (r + 0.42)
+        lit.spot((ux_, 0.06, uz_), lin('#ffd9a8'), 0.9, 9.0, 'h', (-dx * 0.07, 1, -dz * 0.07), 10, 26)   # grazes the shaft from the floor
+        acc.cyl(ux_, uz_, 0.07, 0.0, 0.012, MAT['metal'], lin('#2a2a2e'), n=12)
+        glow.quad((ux_ - 0.04, 0.0125, uz_ - 0.04), (ux_ - 0.04, 0.0125, uz_ + 0.04), (ux_ + 0.04, 0.0125, uz_ + 0.04), (ux_ + 0.04, 0.0125, uz_ - 0.04), lin('#ffd9a8'), 2.0)
+        lit.point((cx + dx * (r + 0.75), H - 0.55, cz + dz * (r + 0.75)), lin('#ffd9a8'), 0.5, 3.2, 'h')   # the ring's wash on the ceiling and the capital
+
 
 def escalator(acc, glow, lit, e, dirz=-1):
     """static parts of an escalator (balustrades, skirts, handrails, truss cladding, landing plates); the moving steps are the engine's"""
@@ -268,10 +318,15 @@ def build_lobby(S):
     # beside the up escalator (where its truss is low, the truss and balustrade are the wall; the screen resumes where you could walk
     # under them). v9 left the gate line's west end open: you could walk round it onto the escalator.
     G = S['GATE']
-    glass_rail(acc, glow, [(G['x0'], 0.95), (G['x0'], G['z']), (G['gate'][0], G['z'])], 0.0, h=1.0)
-    glass_rail(acc, glow, [(G['gate'][1], G['z']), (G['exit'][0], G['z'])], 0.0, h=1.0)
-    glass_rail(acc, glow, [(G['exit'][1], G['z']), (G['x1'], G['z']), (G['x1'], G['back'])], 0.0, h=1.0)
-    glass_rail(acc, glow, [(G['x0'], G['under']), (G['x0'], G['back'])], 0.0, h=1.0)
+    glass_screen(acc, glow, [(G['x0'], 0.95), (G['x0'], G['z'])], 0.0)                 # the ticket leaf hangs beside its last newel
+    glass_screen(acc, glow, [(G['gate'][1], G['z']), (G['exit'][0], G['z'])], 0.0)        # the post between the ticket leaf and the exit leaves
+    glass_screen(acc, glow, [(12.925, G['z']), (16.975, G['z'])], 0.0)                    # between the portal's middle pier and its corner pier
+    glass_screen(acc, glow, [(G['x1'], G['z'] - 0.15), (G['x1'], G['back'])], 0.0)
+    glass_screen(acc, glow, [(G['x0'], G['under']), (G['x0'], G['back'])], 0.0)
+    # v11 the way through the zone reads as one hall: a brass line in the floor from the ticket leaf to the lift's door
+    acc.box(9.7 - 0.02, 0.003, 2.18, 14.62, 0.0046, 2.22, MAT['brass'], P['champagne']); acc.box(14.58, 0.003, -10.1, 14.62, 0.0046, 2.18, MAT['brass'], P['champagne'])
+    # v11 the roof stands on four columns round the fountain court (they replace the half-height light pillars)
+    for cx_, cz_ in ((-8.1, 3.3), (8.1, 3.3), (-8.1, 14.2), (8.1, 14.2)): grand_column(acc, glow, lit, cx_, cz_, H)
     # the zone's own floor (research brief: "its own floor inlay"): black-and-gold marble, 3 mm proud, clear of the landing plates and the lift
     for (a, b, c, d) in ((G['gate'][0], 1.25, G['x1'] - 0.05, G['z'] - 0.05), (12.62, -10.12, G['x1'] - 0.05, 1.25)):
         acc.box(a, 0.0, b, c, 0.003, d, MAT['neroGold'], lin('#ffffff'))
@@ -286,7 +341,7 @@ def build_lobby(S):
     # travertine east wall, deep downlights over the waiting areas by the facade, the torcheres' warm pools, the chandelier's glow
     lit.line((x1 - 0.5, H - 0.3, -12.0), (x1 - 0.5, H - 0.3, -2.6), lin('#ffdcb4'), 0.75, 10, 'h', (0.45, -1, 0))
     lit.line((x1 - 0.5, H - 0.3, 0.6), (x1 - 0.5, H - 0.3, 18.0), lin('#ffdcb4'), 0.75, 10, 'h', (0.45, -1, 0))
-    for cx, cz in ((11.5, 12.6), (16.5, 12.6), (-9.5, 15.2)):
+    for cx, cz in ((11.5, 12.6), (16.5, 12.6), (-11.6, 15.2)):   # v11: the west group moved clear of its court column
         lit.spot((cx, H - 0.1, cz), lin('#ffdcb0'), 3.2, 13, 'h', (0, -1, 0), 18, 38)
         lit.point((cx, 2.95, cz + 1.3), lin('#ffcf98'), 0.9, 5, 'h')
         acc.cyl(cx, cz, 0.11, H - 0.03, H + 0.001, MAT['metal'], lin('#2a2a2e'), n=12)
@@ -306,10 +361,22 @@ def build_lobby(S):
         lit.spot((xf - 0.9, 3.9, zc_), lin('#ffe2bf'), 1.4, 6, 'h', (0.45, -1, 0), 18, 40)
     # v10: one header beam across the whole zone front (a departures portal: screens, escalators, lift), an exit sign on its back over the
     # free-exit leaf
-    for xp in (8.58, 12.74, 17.12): acc.box(xp, 0.0, 3.29, xp + 0.08, 2.86, 3.37, MAT['powder'], lin('#16171a'))
-    acc.box(8.5, 2.86, 3.25, 17.28, 3.34, 3.41, MAT['powder'], lin('#16171a'))
-    signs.append({'id': 'wayfind_zone', 'x': 12.89, 'y': 3.1, 'z': 3.416, 'yaw': 0, 'w': 8.7, 'h': 0.44, 'emit': 1})
-    signs.append({'id': 'exitsign_zone', 'x': (G['exit'][0] + G['exit'][1]) / 2, 'y': 3.1, 'z': 3.244, 'yaw': math.pi, 'w': 1.3, 'h': 0.36, 'emit': 1})
+    # v11: the beam runs from the east court column to a pier at the zone's corner, with a pier between the leaves and the glass run; piers in
+    # black marble with a brass shoe, the beam in dark bronze with a brass line under it and a light line that washes the gate
+    for xa, xb in ((12.55, 12.85), (17.05, 17.35)):
+        acc.box(xa, 0.0, 3.05, xb, 2.9, 3.35, MAT['neroGold'], lin('#ffffff')); acc.box(xa - 0.012, 0.0, 3.038, xb + 0.012, 0.1, 3.362, MAT['brass'], P['champagne'])
+    acc.box(8.48, 2.9, 3.02, 17.38, 3.4, 3.38, MAT['powder'], lin('#16171a')); acc.box(8.5, 2.875, 3.035, 17.36, 2.9, 3.365, MAT['brass'], P['champagne'])
+    glow_facing(glow, (8.9, 2.874, 3.16), (12.5, 2.874, 3.16), (12.5, 2.874, 3.24), (8.9, 2.874, 3.24), (0, -1, 0), lin('#ffe2b8'), 2.0)
+    lit.line((8.9, 2.8, 3.2), (12.5, 2.8, 3.2), lin('#ffe2b8'), 0.5, 3.2, 'h', (0, -1, 0))
+    signs.append({'id': 'wayfind_zone', 'x': 12.93, 'y': 3.15, 'z': 3.386, 'yaw': 0, 'w': 8.7, 'h': 0.44, 'emit': 1})
+    signs.append({'id': 'exitsign_zone', 'x': (G['exit'][0] + G['exit'][1]) / 2, 'y': 3.15, 'z': 3.014, 'yaw': math.pi, 'w': 1.3, 'h': 0.36, 'emit': 1})
+    # v11 (the user: "fix the walls"): the whole rear wall under the mezzanine in fluted walnut (it was bare charcoal paint east of the cafe),
+    # with a brass base; the lift's bronze front and the spine doors stay as they are
+    for xa, xb, ya in ((-8.6, -1.75, 0.0), (1.75, 13.2, 0.0), (16.0, x1 - 0.4, 0.0), (-1.75, 1.75, 3.06)):
+        acc.box(xa, ya, z0 + 0.4, xb, L1 - 0.33, z0 + 0.414, MAT['fluted'], lin('#5a3a22'))
+        if ya == 0.0: acc.box(xa, 0.0, z0 + 0.414, xb, 0.1, z0 + 0.43, MAT['brass'], P['champagne'])
+    lit.line((-8.0, L1 - 0.42, z0 + 0.75), (7.0, L1 - 0.42, z0 + 0.75), lin('#ffd6a8'), 0.4, 4.5, 'h', (0, -1, -0.45))
+    lit.line((16.4, L1 - 0.42, z0 + 0.75), (x1 - 0.8, L1 - 0.42, z0 + 0.75), lin('#ffd6a8'), 0.4, 4.5, 'h', (0, -1, -0.45))
     # v10 cafe (the user: "the cafe and the latte much more defined"): a corner kiosk north of the concessions, under the mezzanine. A walnut
     # back counter and fluted walnut wall with lit shelves of jars, the menu board and the name over it (engine panels); the front counter,
     # espresso machine, cake case and seats are props (world9.js DRESS). The concessions' staff side gets an end so you can't walk behind it.
@@ -342,7 +409,7 @@ def build_lobby(S):
     signs.append({'id': 'wayfind_wc', 'x': xe - 0.081, 'y': 3.07, 'z': -1.0, 'yaw': -math.pi / 2, 'w': 2.4, 'h': 0.42, 'emit': 1})
     signs.append({'id': 'wayfind_tickets', 'x': x0 + 0.43, 'y': 3.62, 'z': 9.0, 'yaw': math.pi / 2, 'w': 3.0, 'h': 0.46, 'emit': 1})
     signs.append({'id': 'wayfind_food', 'x': x0 + 0.43, 'y': 4.22, 'z': (co['z0'] + co['z1']) / 2, 'yaw': math.pi / 2, 'w': 3.4, 'h': 0.46, 'emit': 1})
-    signs.append({'id': 'noentry_spine', 'x': 0.0, 'y': 3.36, 'z': z0 + 0.42, 'yaw': 0, 'w': 2.0, 'h': 0.34, 'emit': 1})
+    signs.append({'id': 'noentry_spine', 'x': 0.0, 'y': 3.36, 'z': z0 + 0.436, 'yaw': 0, 'w': 2.0, 'h': 0.34, 'emit': 1})
     extra = {'panels': signs + [{'id': 'ledwall', 'x': 0, 'y': 6.0, 'z': z0 + 0.43, 'yaw': 0, 'w': 14.2, 'h': 4.5, 'emit': 1},
                         {'id': 'showtimes', 'x': x0 + 0.21, 'y': 2.6, 'z': 9.0, 'yaw': math.pi / 2, 'w': 8.0, 'h': 1.2, 'emit': 1},
                         {'id': 'menu', 'x': x0 + 0.21, 'y': 3.2, 'z': (co['z0'] + co['z1']) / 2, 'yaw': math.pi / 2, 'w': co['z1'] - co['z0'] - 0.6, 'h': 1.3, 'emit': 1}]}
@@ -360,27 +427,46 @@ def build_corridor(S):
         slab(acc, a, b, c, d, top + 0.3, 0.3, MAT['paint'], C['black'])
     # walls: (a, b, face) with face = which side the corridor is on (left normal of a->b if +1); diamonds on the long walls
     W_ = []
-    def wall(a, b, face, openings=(), diamonds=True, t=0.3):
+    # v11 (the user: "if you are making corridors, make them actually curved"): the long walls are ribbon walls. A fluted walnut lining
+    # stands in front of the straight wall and swells and falls back along it (RIB_LAM m from crest to crest, flat on each crest, where a
+    # poster lightbox hangs, and flat in each trough, where a bench or a palm stands); the outer corners are rounded (RF m). rib = (how far
+    # it swells, [(from, to, flat at the start, flat at the end), ...]) in metres along the wall; keep = stretches left clear of posters.
+    RF, RIB_D0, RIB_LAM = 2.4, 0.03, 9.0
+    def sst(v): v = max(0.0, min(1.0, v)); return v * v * (3 - 2 * v)
+    def wall(a, b, face, openings=(), diamonds=True, t=0.3, rib=None, keep=()):
         """a wall on the corridor's side of the line a->b (face +1: the corridor is to the left of a->b); its inner face is t inside"""
         acc.wall(a, b, L1 - FT, top + 0.3, t, MAT['paint'], C['black'], openings=openings, side=face)
         L = math.hypot(b[0] - a[0], b[1] - a[1]); nx, nz = -(b[1] - a[1]) / L * face, (b[0] - a[0]) / L * face
-        W_.append(((a[0] + nx * t, a[1] + nz * t), (b[0] + nx * t, b[1] + nz * t), face, diamonds, openings))
+        W_.append(((a[0] + nx * t, a[1] + nz * t), (b[0] + nx * t, b[1] + nz * t), face, diamonds, openings, rib, tuple(keep)))
+    def depth_of(rib, L):
+        """how far the lining stands in front of the wall's face at s metres along it (0 where there is none)"""
+        runs = [(s0, L if s1 is None else s1, t0, t1) for (s0, s1, t0, t1) in rib[1]] if rib else []
+        def dep(sv):
+            for (s0, s1, t0, t1) in runs:
+                if s0 - 1e-6 <= sv <= s1 + 1e-6:
+                    w = sst((sv - s0 - t0) / 1.8) * sst((s1 - t1 - sv) / 1.8); g = (1 - math.cos(2 * math.pi * sv / RIB_LAM)) / 2
+                    return RIB_D0 + rib[0] * w * sst(1.3 * g)
+            return 0.0
+        dep.runs = runs; dep.A = rib[0] if rib else 0.0
+        return dep
     halls = {h['id']: h for h in S['halls']}
     doors = {d['hall']: d for d in S['DOORS'] if d.get('hall') and d['id'].endswith('In')}
     def dop(a, b, hid):   # the hall door as an opening along a->b
         d = doors[hid]; s0 = math.hypot(d['x'] - a[0], d['z'] - a[1]); return [(s0 - 1.0, s0 + 1.0, L1 + 2.55, L1 - FT)]
     # bridge: north side (corridor to +z), the pantry niche, south side with the portal to the mezzanine (corridor to -z)
-    wall((FW['x1'], BR['z0']), (PT['x0'], BR['z0']), 1); wall((PT['x1'], BR['z0']), (FE['x0'], BR['z0']), 1)
-    wall((BR['x1'], BR['z1']), (BR['x0'], BR['z1']), 1, openings=[(BR['x1'] - 10.2 - 2.8, BR['x1'] - 10.2 + 2.8, L1 + 3.4, L1 - FT)])
+    po0, po1 = BR['x1'] - 10.2 - 2.8, BR['x1'] - 10.2 + 2.8   # the portal to the mezzanine, along the north wall
+    wall((FW['x1'], BR['z0']), (PT['x0'], BR['z0']), 1, rib=(0.9, [(0.0, None, 0.3, 0.3)]))
+    wall((PT['x1'], BR['z0']), (FE['x0'], BR['z0']), 1, rib=(0.9, [(10.2, None, 0.3, 0.3)]), keep=[(3.0, 10.2)])   # the arrival video wall faces the portal
+    wall((BR['x1'], BR['z1']), (BR['x0'], BR['z1']), 1, openings=[(po0, po1, L1 + 3.4, L1 - FT)], rib=(0.9, [(0.0, po0 - 0.35, RF + 0.4, 0.3), (po1 + 0.35, None, 0.3, RF + 0.4)]))
     wall((PT['x0'], BR['z0']), (PT['x0'], PT['z0']), 1, diamonds=False); wall((PT['x0'], PT['z0']), (PT['x1'], PT['z0']), 1, diamonds=False); wall((PT['x1'], PT['z0']), (PT['x1'], BR['z0']), 1, diamonds=False)
     # west: outer wall, MAX rear wall lining (with the MAX door), the wall between the halls, CURVE rear lining (with its door)
-    wall((BR['x0'], BR['z1']), (BR['x0'], LW['z0']), 1)
+    wall((BR['x0'], BR['z1']), (BR['x0'], LW['z0']), 1, rib=(0.6, [(0.0, None, RF + 0.4, RF + 0.4)]))
     wall((BR['x0'], LW['z0']), (LW['x1'], LW['z0']), 1)
     wall((FW['x1'], BR['z0']), (FW['x1'], FW['z0']), -1, openings=dop((FW['x1'], BR['z0']), (FW['x1'], FW['z0']), 'MAX'))
     wall((FW['x1'], LW['z1']), (LW['x1'], LW['z1']), -1)
     wall((LW['x1'], LW['z1']), (LW['x1'], LW['z0']), -1, openings=dop((LW['x1'], LW['z1']), (LW['x1'], LW['z0']), 'CURVE'))
     # east: outer wall, CLASSIC rear lining (door), the stub to the 270 door
-    wall((BR['x1'], BR['z1']), (BR['x1'], FE['z0']), -1)
+    wall((BR['x1'], BR['z1']), (BR['x1'], FE['z0']), -1, rib=(0.6, [(0.0, None, RF + 0.4, RF + 0.4)]))
     wall((BR['x1'], FE['z0']), (FE['x0'], FE['z0']), -1)
     wall((FE['x0'], FE['z0']), (FE['x0'], LE['z0']), -1, diamonds=False)
     wall((FE['x0'], LE['z1']), (FE['x0'], BR['z0']), -1, openings=dop((FE['x0'], LE['z1']), (FE['x0'], BR['z0']), 'CLASSIC'))
@@ -388,11 +474,12 @@ def build_corridor(S):
     wall((LE['x0'], LE['z0']), (LE['x0'], LE['z1']), -1, diamonds=False, openings=dop((LE['x0'], LE['z0']), (LE['x0'], LE['z1']), 'X270'))
     # v9.1: a "coming soon" gallery: lit poster cases on the long walls, one every 9 m clear of the doors (the user: "empty", "posters")
     films = ['wingit', 'agent327', 'llamigos', 'glasshalf', 'coffeerun', 'hero', 'sintel', 'cosmos', 'bunny']; nposter = [0]; cpanels = []
-    def posters_on(a, b, face, ops, L):
+    def posters_on(a, b, face, ops, L, dep=None, keep=()):
         ux, uz = (b[0] - a[0]) / L, (b[1] - a[1]) / L; nx, nz = -uz * face, ux * face; out = []; sp = 4.5
         while sp < L - 3.0:
-            if all(abs(sp - (o[0] + o[1]) / 2) > 3.2 for o in ops):
-                cx, cz = a[0] + ux * sp, a[1] + uz * sp; pw, ph, pyc = 1.1, 1.65, L1 + 1.75
+            if all(abs(sp - (o[0] + o[1]) / 2) > 3.2 for o in ops) and all(not (k0 - 1.0 < sp < k1 + 1.0) for k0, k1 in keep):
+                dd = dep(sp) if dep else 0.0   # on a ribbon wall the lightbox hangs on the lining's crest
+                cx, cz = a[0] + ux * sp + nx * dd, a[1] + uz * sp + nz * dd; pw, ph, pyc = 1.1, 1.65, L1 + 1.75
                 q = [(cx - ux * (pw / 2 + 0.08), cz - uz * (pw / 2 + 0.08)), (cx + ux * (pw / 2 + 0.08), cz + uz * (pw / 2 + 0.08))]
                 acc.prism([q[0], q[1], (q[1][0] + nx * 0.05, q[1][1] + nz * 0.05), (q[0][0] + nx * 0.05, q[0][1] + nz * 0.05)], pyc - ph / 2 - 0.08, pyc + ph / 2 + 0.08, MAT['powder'], C['charcoal'])
                 # v9.3: a red halo round the lightbox (LED tape on the case's back edge washing the black wall), as in the user's photo
@@ -405,26 +492,76 @@ def build_corridor(S):
                 cpanels.append({'id': f'poster_{fid}_c{nposter[0]}', 'x': cx + nx * 0.056, 'y': pyc, 'z': cz + nz * 0.056, 'yaw': math.atan2(nx, nz), 'w': pw, 'h': ph, 'emit': 1})
                 lit.spot((cx + nx * 0.9, top - 0.3, cz + nz * 0.9), lin('#fff1e0'), 0.7, 5.5, 'h', (-nx * 0.45, -1, -nz * 0.45), 18, 40)
                 out.append((sp - 0.95, sp + 0.95)); sp += 9.0
-            else: sp += 0.5
+            else: sp += 9.0 if (dep and dep.runs) else 0.5   # a ribbon wall's posters stay on its crests
         return out
+    MATF, COLF = MAT['fluted'], lin('#4b2f1d')
+    def facing(A3, B3, C3, D3, want, nA=None, nB=None):
+        """a lining quad A-B along the floor, C-D above them, wound to face `want`; nA, nB: smooth normals at A/D and B/C"""
+        fn = cross(sub(B3, A3), sub(C3, A3))
+        if fn[0] * want[0] + fn[1] * want[1] + fn[2] * want[2] >= 0: acc.tri(A3, B3, C3, MATF, COLF, nA, nB, nB); acc.tri(A3, C3, D3, MATF, COLF, nA, nB, nA)
+        else: acc.tri(A3, C3, B3, MATF, COLF, nA, nB, nB); acc.tri(A3, D3, C3, MATF, COLF, nA, nA, nB)
+    def lines_on(pts, nrm):
+        """the red line at the floor and the warm cove line under the ceiling, along a lining"""
+        for i in range(len(pts) - 1):
+            (p, q), (m, n_) = (pts[i], pts[i + 1]), (nrm[i], nrm[i + 1]); mid = ((m[0] + n_[0]) / 2, 0.0, (m[2] + n_[2]) / 2); e = 0.012
+            pa, pb = (p[0] + m[0] * e, p[1] + m[2] * e), (q[0] + n_[0] * e, q[1] + n_[2] * e)
+            glow_facing(glow, (pa[0], L1 + 0.05, pa[1]), (pb[0], L1 + 0.05, pb[1]), (pb[0], L1 + 0.08, pb[1]), (pa[0], L1 + 0.08, pa[1]), mid, C['red'], 2.08)
+            glow_facing(glow, (pa[0], top - 0.2, pa[1]), (pb[0], top - 0.2, pb[1]), (pb[0], top - 0.155, pb[1]), (pa[0], top - 0.155, pa[1]), mid, lin('#ffd9a8'), 1.7)
+    def ribbon(a, b, face, dep, L):
+        ux, uz = (b[0] - a[0]) / L, (b[1] - a[1]) / L; nx, nz = -uz * face, ux * face
+        for (s0, s1, t0, t1) in dep.runs:
+            n = max(2, int(math.ceil((s1 - s0) / 0.3))); ss_ = [s0 + (s1 - s0) * i / n for i in range(n + 1)]
+            pts = [(a[0] + ux * sv + nx * dep(sv), a[1] + uz * sv + nz * dep(sv)) for sv in ss_]; nrm = []
+            for i in range(n + 1):
+                p, q = pts[max(0, i - 1)], pts[min(n, i + 1)]; tx, tz = q[0] - p[0], q[1] - p[1]; tl = math.hypot(tx, tz) or 1.0; m = (-tz / tl, tx / tl)
+                if m[0] * nx + m[1] * nz < 0: m = (-m[0], -m[1])
+                nrm.append((m[0], 0.0, m[1]))
+            for i in range(n):
+                p, q = pts[i], pts[i + 1]
+                facing((p[0], L1, p[1]), (q[0], L1, q[1]), (q[0], top, q[1]), (p[0], top, p[1]), (nx, 0.0, nz), nrm[i], nrm[i + 1])
+            lines_on(pts, nrm)
+            for pt, sv, sg in ((pts[0], s0, -1), (pts[-1], s1, 1)):   # the lining's edge, back to the wall
+                w0 = (a[0] + ux * sv, a[1] + uz * sv); want = (ux * sg, 0.0, uz * sg)
+                facing((w0[0], L1, w0[1]), (pt[0], L1, pt[1]), (pt[0], top, pt[1]), (w0[0], top, w0[1]), want, want, want)
+            # red light washing the floor at the lining's foot: chords from trough to crest, a hand's width in front of it
+            k0, k1 = int(math.floor(s0 / (RIB_LAM / 2))), int(math.ceil(s1 / (RIB_LAM / 2)))
+            for k in range(k0, k1):
+                sa_, sb_ = max(s0, k * RIB_LAM / 2), min(s1, (k + 1) * RIB_LAM / 2)
+                if sb_ - sa_ < 0.5: continue
+                da, db = dep(sa_) + 0.25, dep(sb_) + 0.25
+                lit.line((a[0] + ux * sa_ + nx * da, L1 + 0.1, a[1] + uz * sa_ + nz * da), (a[0] + ux * sb_ + nx * db, L1 + 0.1, a[1] + uz * sb_ + nz * db), C['red'], 0.42, 2.6, 'f', (nx * 0.6, 0.35, nz * 0.6))
+    def fillet(cx_, cz_, a0, R_):
+        """a rounded corner: a quarter cylinder of lining from angle a0 (degrees) about (cx_, cz_), facing the centre"""
+        n = 12; pts = [(cx_ + R_ * math.cos(math.radians(a0 + 90.0 * i / n)), cz_ + R_ * math.sin(math.radians(a0 + 90.0 * i / n))) for i in range(n + 1)]
+        nrm = [(-(p[0] - cx_) / R_, 0.0, -(p[1] - cz_) / R_) for p in pts]
+        for i in range(n):
+            p, q = pts[i], pts[i + 1]; mid = ((nrm[i][0] + nrm[i + 1][0]) / 2, 0.0, (nrm[i][2] + nrm[i + 1][2]) / 2)
+            facing((p[0], L1, p[1]), (q[0], L1, q[1]), (q[0], top, q[1]), (p[0], top, p[1]), mid, nrm[i], nrm[i + 1])
+        lines_on(pts, nrm)
     # diamond relief on every long wall (indigo lacquer), a gold light line at 0.3 m (floor wash) and at 2.6 m
-    for a, b, face, dia, ops in W_:
+    for a, b, face, dia, ops, rib, keep in W_:
         L = math.hypot(b[0] - a[0], b[1] - a[1])
         if L < 2.5: continue
         ux, uz = (b[0] - a[0]) / L, (b[1] - a[1]) / L; nx, nz = -uz * face, ux * face
         sa, sb = a, b
+        dep = depth_of(rib, L)
+        if dep.runs: ribbon(a, b, face, dep, L)
         # v9.3 (the user's corridor photo): plain black walls carry the lightboxes; the hall entrances carry the texture (portals below)
-        pcuts = posters_on(a, b, face, ops, L) if (dia and L > 9.0) else []
+        pcuts = posters_on(a, b, face, ops, L, dep, keep) if (dia and L > 9.0) else []
         for yy, k in ((L1 + 0.05, 1.6),):
             spans, cur = [], 0.0
-            for o in (sorted(ops) if yy < L1 + 2.6 else []): spans.append((cur, o[0] - 0.05)); cur = o[1] + 0.05
+            for o in sorted([(o_[0], o_[1]) for o_ in ops] + [(r_[0], r_[1]) for r_ in dep.runs]): spans.append((cur, o[0] - 0.05)); cur = max(cur, o[1] + 0.05)   # a lining carries its own line
             spans.append((cur, L))
             for s0_, s1_ in spans:
                 if s1_ - s0_ < 0.05: continue
                 p0, p1 = (a[0] + ux * s0_ + nx * 0.012, a[1] + uz * s0_ + nz * 0.012), (a[0] + ux * s1_ + nx * 0.012, a[1] + uz * s1_ + nz * 0.012)
                 glow_facing(glow, (p0[0], yy, p0[1]), (p1[0], yy, p1[1]), (p1[0], yy + 0.03, p1[1]), (p0[0], yy + 0.03, p0[1]), (nx, 0, nz), C['red'], k * 1.3)
-        lit.line((sa[0] + nx * 0.12, L1 + 0.1, sa[1] + nz * 0.12), (sb[0] + nx * 0.12, L1 + 0.1, sb[1] + nz * 0.12), C['red'], 0.42, 2.6, 'f', (nx * 0.6, 0.35, nz * 0.6))
-        lit.line((sa[0] + nx * 0.35, top - 0.45, sa[1] + nz * 0.35), (sb[0] + nx * 0.35, top - 0.45, sb[1] + nz * 0.35), lin('#ffe9e4'), 0.12, 4.5, 'h', (-nx * 0.35, -1, -nz * 0.35))
+        if not dep.runs:
+            lit.line((sa[0] + nx * 0.12, L1 + 0.1, sa[1] + nz * 0.12), (sb[0] + nx * 0.12, L1 + 0.1, sb[1] + nz * 0.12), C['red'], 0.42, 2.6, 'f', (nx * 0.6, 0.35, nz * 0.6))
+            lit.line((sa[0] + nx * 0.35, top - 0.45, sa[1] + nz * 0.35), (sb[0] + nx * 0.35, top - 0.45, sb[1] + nz * 0.35), lin('#ffe9e4'), 0.12, 4.5, 'h', (-nx * 0.35, -1, -nz * 0.35))
+        else:   # a warm wash down the walnut from the cove, in front of the deepest crest
+            o_ = dep.A + 0.4
+            lit.line((sa[0] + nx * o_, top - 0.4, sa[1] + nz * o_), (sb[0] + nx * o_, top - 0.4, sb[1] + nz * o_), lin('#ffd2a0'), 0.34, 5.0, 'h', (-nx * 0.55, -1, -nz * 0.55))
     # ceiling (v9.3, the user's corridor photo): a dark coffer grid, and a square ring of white light every 6 m along each corridor leg
     legs = [((BR['x0'] + 3, (BR['z0'] + BR['z1']) / 2), (BR['x1'] - 3, (BR['z0'] + BR['z1']) / 2)), (((FW['x0'] + FW['x1']) / 2, BR['z0']), ((FW['x0'] + FW['x1']) / 2, LW['z1'])),
             (((FE['x0'] + FE['x1']) / 2, BR['z0']), ((FE['x0'] + FE['x1']) / 2, FE['z0'] + 1.0)), ((BR['x0'] + 3, (LW['z0'] + LW['z1']) / 2), (LW['x1'] - 1.0, (LW['z0'] + LW['z1']) / 2))]
@@ -498,10 +635,16 @@ def build_corridor(S):
         lit.area((xfront + side * 0.25, L1 + 3.38, zc), (0, 0, 1.4), (0, 0.22, 0), (-side, 0, 0), lin('#fff2e0'), 1.4, 2.0, 'f', 3, 1)
         lit.area((xfront + side * 0.25, L1 + 1.65, zc + (2.9 if hid == 'X270' else 2.15)), (0, 0, 0.35), (0, 0.5, 0), (-side, 0, 0), lin('#fff2e0'), 1.2, 1.8, 'f', 1, 2)
         panels.append({'id': 'sign_' + hid, 'x': xf + side * 0.02, 'y': L1 + 2.78, 'z': zc if hid != 'X270' else d['z'], 'yaw': (-math.pi / 2 if side < 0 else math.pi / 2), 'w': 2.0, 'h': 0.36, 'emit': 1})
-    # the arrival video wall facing the mezzanine portal (engine plays the brand loop)
-    acc.box(7.0, L1 + 0.5, BR['z0'] + 0.15, 13.4, L1 + 3.8, BR['z0'] + 0.25, MAT['brass'], C['gold'])
-    panels.append({'id': 'arrival', 'x': 10.2, 'y': L1 + 2.15, 'z': BR['z0'] + 0.26, 'yaw': 0, 'w': 6.2, 'h': 3.1, 'emit': 1})
-    lit.area((10.2, L1 + 2.15, BR['z0'] + 0.4), (3.0, 0, 0), (0, 1.5, 0), (0, 0, 1), lin('#b8c0ff'), 3.5, 9, 'f', 3, 2)
+    # v11 the four outer corners are rounded: the lining turns the corner on a quarter circle (the long walls' linings arrive flat there)
+    xw, xe_, zn = BR['x0'] + 0.3 + RIB_D0, BR['x1'] - 0.3 - RIB_D0, BR['z1'] - 0.3 - RIB_D0
+    fillet(xw + RF, zn - RF, 90.0, RF); fillet(xe_ - RF, zn - RF, 0.0, RF)                       # north-west, north-east
+    fillet(xw + RF, LW['z0'] + 0.3 + RF, 180.0, RF); fillet(xe_ - RF, FE['z0'] + 0.3 + RF, 270.0, RF)   # south-west (by the CURVE link), south-east
+    # the arrival video wall facing the mezzanine portal (engine plays the brand loop). v11: it stood 4 cm inside the wall since the walls
+    # became 0.3 m thick (v9.1) and was never seen; it is on the wall's face now, in a brass frame
+    acc.box(6.9, L1 + 0.45, BR['z0'] + 0.3, 13.5, L1 + 3.85, BR['z0'] + 0.34, MAT['brass'], C['gold'])
+    acc.box(7.02, L1 + 0.55, BR['z0'] + 0.34, 13.38, L1 + 3.75, BR['z0'] + 0.345, MAT['powder'], lin('#0b0b0d'))
+    panels.append({'id': 'arrival', 'x': 10.2, 'y': L1 + 2.15, 'z': BR['z0'] + 0.351, 'yaw': 0, 'w': 6.2, 'h': 3.1, 'emit': 1})
+    lit.area((10.2, L1 + 2.15, BR['z0'] + 0.5), (3.0, 0, 0), (0, 1.5, 0), (0, 0, 1), lin('#b8c0ff'), 3.5, 9, 'f', 3, 2)
     # pantry: a service counter for the server's cart
     acc.box(PT['x0'] + 0.3, L1, PT['z0'] + 0.2, PT['x1'] - 0.3, L1 + 0.95, PT['z0'] + 0.8, MAT['lacquer'], C['smoke'])
     acc.box(PT['x0'] + 0.25, L1 + 0.95, PT['z0'] + 0.15, PT['x1'] - 0.25, L1 + 1.0, PT['z0'] + 0.85, MAT['calacatta'], lin('#ddd6cc'))
@@ -709,6 +852,7 @@ def build_street(S):
         acc.box(xx - 0.9, 0.0, k - 1.6, xx + 0.9, 0.55, k - 0.6, MAT['stone'], FC['sandstone'])
         acc.box(xx - 0.82, 0.55, k - 1.52, xx + 0.82, 0.62, k - 0.68, MAT['carpet'], lin('#2e4a2a'))
     for xx in range(-42, 42, 14):
+        if xx == 0: continue   # v11 (the user: "a pole is blocking the view" of the entrance): nothing stands on the entrance axis
         acc.cyl(xx, k - 0.4, 0.07, 0.0, 6.2, MAT['powder'], FC['bronze'], n=12)
         acc.box(xx - 0.25, 6.2, k - 0.65, xx + 0.25, 6.35, k - 0.15, MAT['powder'], FC['bronze'])
         lit.spot((xx, 6.15, k - 0.4), lin('#ffdcae'), 9.0, 16, 'h', (0, -1, 0.15), 40, 75)

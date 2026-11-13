@@ -18,7 +18,7 @@ A = ap.parse_args(argv)
 for k, v in {'stone_light': ((0.62, 0.58, 0.52), 0.4, 0.0), 'marble_nero': ((0.02, 0.02, 0.022), 0.15, 0.0), 'marble_calacatta': ((0.8, 0.78, 0.74), 0.2, 0.0),
              'lacquer_cream': ((0.72, 0.66, 0.55), 0.2, 0.0), 'lacquer_red': ((0.35, 0.02, 0.025), 0.2, 0.0), 'fluted_walnut': ((0.15, 0.07, 0.035), 0.5, 0.0),
              'steel': ((0.55, 0.56, 0.58), 0.3, 1.0), 'candy_pink': ((0.75, 0.3, 0.45), 0.5, 0.0), 'popcorn': ((0.85, 0.72, 0.4), 0.8, 0.0),
-             'carpet_deco': ((0.25, 0.2, 0.18), 0.9, 0.0), 'velvet_navy': ((0.02, 0.03, 0.1), 0.9, 0.0), 'fluted_plaster': ((0.8, 0.74, 0.62), 0.8, 0.0)}.items():
+             'carpet_deco': ((0.25, 0.2, 0.18), 0.9, 0.0), 'oak': ((0.45, 0.28, 0.13), 0.6, 0.0), 'lacquer_black': ((0.01, 0.01, 0.012), 0.2, 0.0), 'paper_red': ((0.55, 0.03, 0.04), 0.7, 0.0), 'candy_red': ((0.6, 0.03, 0.05), 0.4, 0.0), 'candy_yellow': ((0.85, 0.55, 0.05), 0.4, 0.0), 'candy_green': ((0.1, 0.45, 0.12), 0.4, 0.0), 'candy_blue': ((0.05, 0.2, 0.65), 0.4, 0.0), 'ceramic': ((0.8, 0.76, 0.7), 0.3, 0.0), 'velvet_navy': ((0.02, 0.03, 0.1), 0.9, 0.0), 'fluted_plaster': ((0.8, 0.74, 0.62), 0.8, 0.0)}.items():
     lbl.MAT_DEF.setdefault(k, v)
 
 
@@ -112,8 +112,24 @@ def espresso_machine(lod=0):
     part('Rail', lod, 'chrome', lambda bm: box(bm, -0.24, -0.36, 0.435, 0.24, 0.36, 0.44))
 
 
+def wedge(bm, r, z0, z1, a0, a1, seg=20):
+    """a cake with a slice taken out (or the slice): a closed cylinder sector from angle a0 to a1 (degrees)"""
+    n = max(2, int(seg * (a1 - a0) / 360.0)); cb, ct = bm.verts.new((0, 0, z0)), bm.verts.new((0, 0, z1)); B, Tp = [], []
+    for k in range(n + 1):
+        a = math.radians(a0 + (a1 - a0) * k / n); B.append(bm.verts.new((r * math.cos(a), r * math.sin(a), z0))); Tp.append(bm.verts.new((r * math.cos(a), r * math.sin(a), z1)))
+    for k in range(n):
+        bm.faces.new((B[k], B[k + 1], Tp[k + 1], Tp[k])); bm.faces.new((ct, Tp[k], Tp[k + 1])); bm.faces.new((cb, B[k + 1], B[k]))
+    bm.faces.new((cb, B[0], Tp[0], ct)); bm.faces.new((cb, ct, Tp[n], B[n]))
+
+
+def torus(bm, R, r, zc, seg=10, sides=6):
+    lathe(bm, [(R + r * math.cos(2 * math.pi * k / sides), zc + r * math.sin(2 * math.pi * k / sides)) for k in range(sides)], seg)
+
+
 def cake_case(lod=0):
-    """a lit pastry case: walnut base, brass frame, two shelves of cakes, a light strip under its lid"""
+    """v11 (the user: "fix the cake models": they were plain cylinders). A lit pastry case with eight things you can name: a strawberry
+    layer cake with a slice out, a chocolate cake with cream rosettes and cherries, a cheesecake, glazed doughnuts; over them cupcakes,
+    a two-tier cake on a stand, a fruit tart, three slices on plates. Walnut base, brass frame, a light strip under the lid."""
     part('Base', lod, 'walnut', lambda bm: box(bm, -0.3, -0.58, 0.0, 0.3, 0.58, 0.12))
     for x in (-0.28, 0.28):
         for y in (-0.56, 0.56):
@@ -121,9 +137,53 @@ def cake_case(lod=0):
     part('Lid', lod, 'brass', lambda bm: box(bm, -0.3, -0.58, 0.62, 0.3, 0.58, 0.65))
     part('Light', lod, 'glow_warm', lambda bm: box(bm, -0.2, -0.5, 0.605, 0.2, 0.5, 0.618), smooth=False)
     part('Shelf', lod, 'lacquer_cream', lambda bm: box(bm, -0.26, -0.54, 0.36, 0.26, 0.54, 0.375))
-    for row, z in ((0, 0.12), (1, 0.375)):
-        for i, (y, mat, rr, hh) in enumerate([(-0.38, 'candy_pink', 0.09, 0.09), (-0.12, 'walnut_dark', 0.1, 0.1), (0.14, 'lacquer_cream', 0.085, 0.08), (0.38, 'candy_pink' if row else 'walnut_dark', 0.09, 0.07)]):
-            part('Cake', lod, mat, lambda bm, y=y, z=z, rr=rr, hh=hh: (lathe(bm, ring(1e-4, rr, 0.0, hh), 16), bm.transform(T(0.02, y, z + 0.001))))
+    part('ShelfEdge', lod, 'brass', lambda bm: box(bm, 0.26, -0.54, 0.357, 0.268, 0.54, 0.378))
+    def at(x, y, z): return T(x, y, z)
+    def ball(name, mat, r, x, y, z, n=4): part(name, lod, mat, lambda bm: (sphere(bm, r, n), bm.transform(at(x, y, z))))
+    def cyl(name, mat, r, z0, z1, x, y, z, seg=20, smooth=True): part(name, lod, mat, lambda bm: (lathe(bm, ring(1e-4, r, z0, z1), seg), bm.transform(at(x, y, z))), smooth=smooth)
+    def sect(name, mat, r, z0, z1, a0, a1, x, y, z, rot=0.0): part(name, lod, mat, lambda bm: (wedge(bm, r, z0, z1, a0, a1), bm.transform(at(x, y, z) @ RZ(rot))), smooth=False)
+    Z0, Z1 = 0.121, 0.376   # the base's top and the shelf's top
+    # ---- lower shelf
+    x, y = 0.02, -0.40   # strawberry layer cake, a slice out towards you
+    cyl('Plate', 'ceramic', 0.118, 0.0, 0.008, x, y, Z0, 24)
+    sect('Sponge', 'popcorn', 0.095, 0.008, 0.046, 35, 325, x, y, Z0); sect('Cream', 'lacquer_cream', 0.0958, 0.046, 0.052, 35, 325, x, y, Z0)
+    sect('Sponge', 'popcorn', 0.095, 0.052, 0.088, 35, 325, x, y, Z0); sect('Icing', 'candy_pink', 0.098, 0.088, 0.098, 35, 325, x, y, Z0)
+    for k in range(6): a = math.radians(60 + 48 * k); ball('Berry', 'candy_red', 0.013, x + 0.07 * math.cos(a), y + 0.07 * math.sin(a), Z0 + 0.108)
+    x, y = 0.02, -0.13   # chocolate cake: dark glaze, cream rosettes, a cherry on each
+    cyl('Plate', 'ceramic', 0.12, 0.0, 0.008, x, y, Z0, 24); cyl('Choc', 'walnut_dark', 0.1, 0.008, 0.09, x, y, Z0, 24); cyl('Glaze', 'lacquer_black', 0.102, 0.09, 0.096, x, y, Z0, 24)
+    for k in range(8):
+        a = 2 * math.pi * k / 8; ball('Rosette', 'lacquer_cream', 0.015, x + 0.078 * math.cos(a), y + 0.078 * math.sin(a), Z0 + 0.107); ball('Cherry', 'candy_red', 0.008, x + 0.078 * math.cos(a), y + 0.078 * math.sin(a), Z0 + 0.124, 3)
+    x, y = 0.02, 0.14    # cheesecake: biscuit base, berry glaze, a slice out
+    cyl('Plate', 'ceramic', 0.122, 0.0, 0.008, x, y, Z0, 24); sect('Biscuit', 'oak', 0.105, 0.008, 0.022, 20, 320, x, y, Z0); sect('Cheese', 'lacquer_cream', 0.103, 0.022, 0.064, 20, 320, x, y, Z0)
+    sect('BerryGlaze', 'candy_red', 0.094, 0.064, 0.07, 20, 320, x, y, Z0)
+    x, y = 0.02, 0.40    # doughnuts on a steel tray
+    part('Tray', lod, 'steel', lambda bm: box(bm, x - 0.115, y - 0.115, Z0, x + 0.115, y + 0.115, Z0 + 0.008))
+    for k, mat in enumerate(('candy_pink', 'walnut_dark', 'candy_yellow', 'lacquer_cream')):
+        dx, dy = (-0.055 if k % 2 == 0 else 0.055), (-0.055 if k < 2 else 0.055)
+        part('Doughnut', lod, 'oak', lambda bm, dx=dx, dy=dy: (torus(bm, 0.032, 0.017, 0.0), bm.transform(at(x + dx, y + dy, Z0 + 0.025))))
+        part('Icing', lod, mat, lambda bm, dx=dx, dy=dy: (lathe(bm, [(0.019, 0.0), (0.045, 0.0), (0.041, 0.012), (0.023, 0.012)], 10), bm.transform(at(x + dx, y + dy, Z0 + 0.031))))
+    # ---- upper shelf
+    x, y = 0.02, -0.40   # six cupcakes
+    for k in range(6):
+        dx, dy = (-0.055 if k % 2 == 0 else 0.055), (-0.085 + 0.085 * (k // 2)); ic = ('candy_pink', 'lacquer_cream', 'candy_yellow')[k % 3]
+        part('Cup', lod, 'paper_red', lambda bm, dx=dx, dy=dy: (lathe(bm, [(1e-4, 0.0), (0.022, 0.0), (0.03, 0.036), (1e-4, 0.036)], 10), bm.transform(at(x + dx, y + dy, Z1))))
+        ball('Swirl', ic, 0.027, x + dx, y + dy, Z1 + 0.048); ball('Swirl', ic, 0.018, x + dx, y + dy, Z1 + 0.072); ball('Cherry', 'candy_red', 0.007, x + dx, y + dy, Z1 + 0.092, 3)
+    x, y = 0.02, -0.13   # two tiers on a stand
+    part('Stand', lod, 'ceramic', lambda bm: (lathe(bm, [(1e-4, 0.0), (0.055, 0.0), (0.05, 0.008), (0.014, 0.014), (0.012, 0.05), (0.1, 0.056), (0.1, 0.062), (1e-4, 0.062)], 24), bm.transform(at(x, y, Z1))))
+    cyl('Tier', 'lacquer_cream', 0.082, 0.062, 0.122, x, y, Z1, 24); cyl('Band', 'candy_pink', 0.0835, 0.062, 0.072, x, y, Z1, 24)
+    cyl('Tier', 'lacquer_cream', 0.052, 0.122, 0.17, x, y, Z1, 20); cyl('Band', 'candy_pink', 0.0535, 0.122, 0.131, x, y, Z1, 20)
+    for k in range(10): a = 2 * math.pi * k / 10; ball('Pearl', 'candy_pink', 0.007, x + 0.068 * math.cos(a), y + 0.068 * math.sin(a), Z1 + 0.126, 3)
+    ball('Topper', 'candy_red', 0.014, x, y, Z1 + 0.183)
+    x, y = 0.02, 0.14    # fruit tart
+    part('Shell', lod, 'oak', lambda bm: (lathe(bm, [(1e-4, 0.0), (0.085, 0.0), (0.098, 0.03), (0.09, 0.03), (0.084, 0.012), (1e-4, 0.012)], 24), bm.transform(at(x, y, Z1 + 0.001))))
+    cyl('Custard', 'popcorn', 0.086, 0.012, 0.024, x, y, Z1 + 0.001, 24)
+    for k in range(12):
+        a = 2 * math.pi * k / 12; rr = 0.066 if k % 2 == 0 else 0.036; ball('Fruit', ('candy_red', 'candy_yellow', 'candy_green', 'candy_blue')[k % 4], 0.012, x + rr * math.cos(a), y + rr * math.sin(a), Z1 + 0.034)
+    x, y = 0.02, 0.40    # three slices on plates
+    for k, (mat, top) in enumerate((('walnut_dark', 'lacquer_cream'), ('popcorn', 'candy_pink'), ('lacquer_cream', 'candy_red'))):
+        dy = -0.085 + 0.085 * k; dx = 0.03 if k == 1 else -0.03
+        cyl('Plate', 'ceramic', 0.05, 0.0, 0.006, x + dx, y + dy, Z1, 16)
+        sect('Slice', mat, 0.085, 0.006, 0.062, -18, 18, x + dx - 0.04, y + dy, Z1); sect('SliceTop', top, 0.086, 0.062, 0.07, -18, 18, x + dx - 0.04, y + dy, Z1)
 
 
 def cafe_counter(lod=0):
