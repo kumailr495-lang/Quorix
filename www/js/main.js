@@ -99,7 +99,7 @@ async function boot() {
   const ui = new UI(world, shows, sound, settings, {
     onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(),
     onSettings: (gfx) => applySettings(gfx), onPreset: (g) => Object.assign(settings, presetFor(g)),
-    onPlay: (m, film) => { enterPlay(m === 'story' ? 'flow' : m); if (film) setTimeout(() => { if (mode !== 'play' || game !== 'quick' || booking.isOpen()) return; booking.sel.film = film; booking.sel.own = false; booking.open({ quick: true }); booking.go(2); }, 1250); }, onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
+    onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), stubs: () => stubs.get(), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
     openRemote: () => tablet.open('remote'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
   // v9.3 playing together (mp.js, mpui.js): a room code, your look, the other players in the cinema, the host's shows on every phone
@@ -114,13 +114,11 @@ async function boot() {
   { const ctl0 = shows.control.bind(shows); shows.control = (cmd, arg) => { if (!together.canControl() && cmd !== 'speed') { ui.toast(t('mp.hostOnly'), 2200); return false; } const r = ctl0(cmd, arg); if (r) together.onControl(cmd, arg); return r; }; }
   const booking = new Booking9(world, shows, sound, bill, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), onTicket: (tk) => bought(tk), pickOwn: () => pickOwn(), useLink: (u) => useLink(u) });
   // a few things nobody asked for: rain on the street (wet paving, the drops stop under the canopy), your film on the marquee once you
-  // have a ticket, and a stub for every film you watch to the end (the menu keeps your last nights)
+  // have a ticket, and a stub for every film you watch to the end (Settings, More keeps your last nights)
   const rain = makeRain(world.rooms.street, { count: lowG ? 1500 : 3500 }); rain.mesh.material.uniforms.uBoxMin.value.z = 25.4; world.rooms.street.U.uWet.value = 1;
   const marquee = (title) => { const P = world.panels.marquee; if (!P) return; const { g, canvas: c, tex } = P, W = c.width, H = c.height; g.fillStyle = '#0a0a0d'; g.fillRect(0, 0, W, H); g.textBaseline = 'middle'; g.textAlign = 'center';
     g.fillStyle = '#f2ebdd'; g.font = `500 ${H * 0.5}px Cormorant, Georgia, serif`; if ('letterSpacing' in g) g.letterSpacing = `${H * 0.18}px`; g.fillText(title ? 'LUMIÈRE  ·  ' + title.toUpperCase() : 'LUMIÈRE', W / 2, H * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; tex.needsUpdate = true; };
   const stubs = { get() { try { return JSON.parse(localStorage.getItem('lumiere.stubs') || '[]'); } catch (e) { return []; } }, add(x) { try { const a = this.get(); a.unshift(x); localStorage.setItem('lumiere.stubs', JSON.stringify(a.slice(0, 20))); } catch (e) { /* private mode */ } } };
-  { const ns = ui.nowShowing.bind(ui); ui.nowShowing = () => { ns(); const a = stubs.get(); if (!a.length) return; const L = $('#nowList'), h = document.createElement('div'); h.className = 'now-h'; h.textContent = t('menu9.stubs'); L.appendChild(h);
-    for (const x of a.slice(0, 3)) { const row = document.createElement('div'); row.className = 'now stub'; row.dataset.h = String(x.hall || ''); row.title = t('menu9.stubs'); const b = document.createElement('b'), sm = document.createElement('small'); b.textContent = x.title; sm.textContent = `${x.seat}  ${x.date}`; row.append(b, sm); L.appendChild(row); } }; }
   const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
     order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });

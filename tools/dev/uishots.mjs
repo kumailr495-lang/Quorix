@@ -22,7 +22,7 @@ for (const t of [...new Set(tabs)].slice(1)) { await p.evaluate((t) => document.
 await p.evaluate(() => { const L = window.__lumiere; L.ui.closeModal ? L.ui.closeModal('#settings') : (document.querySelector('#settings').hidden = true); });
 await p.evaluate(() => document.querySelector('#mnQuick').click()); await p.waitForFunction(() => window.__lumiere.mode === 'play', null, { timeout: 120000 }); await p.waitForTimeout(4000);
 await shot('03-hud');
-await p.evaluate(() => { const L = window.__lumiere; L.player.place(-17.6, -11.4, Math.PI / 2, 0, 0); }); await p.waitForTimeout(2500); await shot('04-cafe-prompt');
+await p.evaluate(() => { const L = window.__lumiere; L.player.place(-18.75, -10.9, Math.PI / 2 + 0.25, 0, 0); }); await p.waitForTimeout(2500); await shot('04-cafe-prompt');
 await p.evaluate(async () => { const L = window.__lumiere, D = await import('/js/dialogue9.js'), npc = L.crowd.staff.cafe; if (npc) L.talk.start(npc, D.treeFor(npc, {})); }); await shot('05-talk-barista');
 await p.evaluate(() => { const L = window.__lumiere; L.talk.close && L.talk.close(); }); await p.waitForTimeout(400);
 await p.evaluate(() => window.__lumiere.booking.open({ quick: true })); await shot('06-book1');
@@ -30,5 +30,8 @@ for (let i = 2; i <= 4; i++) { const ok = await p.evaluate(() => { const n = doc
 await p.evaluate(() => { const L = window.__lumiere; L.booking.close && L.booking.close(); document.querySelectorAll('.scrim').forEach((e) => { e.hidden = true; }); });
 await p.evaluate(() => window.__lumiere.tablet.open('remote')); await shot('07-tablet');
 await p.evaluate(() => { const L = window.__lumiere; L.tablet.close && L.tablet.close(); });
-await p.keyboard.press('KeyP'); await shot('08-pause');
+await p.evaluate(() => window.__lumiere.ui.openPause()); await shot('08-pause'); await p.evaluate(() => window.__lumiere.ui.closeModal('#pause'));
+await p.evaluate(() => { const L = window.__lumiere; L.ui.showTicket({ title: 'Cosmos Laundromat', hall: 'MAX', hallName: 'LUMIERE MAX', kind: L.world.hallById('MAX').cfg.format, row: 'H', col: 12, delay: 180 }, false); }); await shot('09-ticket');
+await p.evaluate(() => { window.__lumiere.ui.closeModal('#ticket'); window.__lumiere.together.open(); }); await shot('10-together');
+await p.evaluate(() => { const L = window.__lumiere; L.together.close && L.together.close(); L.ui.openSettings('graphics'); document.querySelector('#settings .tab[data-tab="graphics"] .adv-toggle').click(); }); await shot('11-settings-more-options');
 console.log(log.slice(0, 6).join('\n')); await b.close(); srv.close();

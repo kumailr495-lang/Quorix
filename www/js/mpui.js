@@ -30,11 +30,11 @@ export class Together {
     this.log = []; this.unread = 0;
     // the menu button, after Quick play
     const q = document.querySelector('#mnQuick');
-    if (q) { const ic = el('span', { cls: 'mode-ic' }); ic.innerHTML = '<svg class="ic"><use href="#i-people"/></svg>'; this.menuBtn = el('button', { cls: 'mode', id: 'mnTogether' }, [el('b'), el('small'), ic]); q.after(this.menuBtn); this.menuBtn.addEventListener('click', () => { this.c.sound && this.c.sound.click(); this.open(); }); }
+    if (q) { this.menuBtn = el('button', { cls: 'mi', id: 'mnTogether' }); q.after(this.menuBtn); this.menuBtn.addEventListener('click', () => { this.c.sound && this.c.sound.click(); this.open(); }); }
     this.tagLayer = el('div', { id: 'mpTags' }); document.body.appendChild(this.tagLayer);
     this.text();
   }
-  text() { if (this.menuBtn) { this.menuBtn.querySelector('b').textContent = t('menu.together'); this.menuBtn.querySelector('small').textContent = t('menu.togetherSub'); } }
+  text() { if (this.menuBtn) this.menuBtn.textContent = t('menu.together'); }
   get active() { return this.mp.active; }
   // ---------------------------------------------------------------- the room panel
   open() {
@@ -53,13 +53,16 @@ export class Together {
     const fill = () => size.style.setProperty('--p', (look.s / (LOOK.height.length - 1) * 100).toFixed(1) + '%'); fill();
     size.addEventListener('input', () => { look.s = +size.value; fill(); this.previewSet(); }); size.addEventListener('change', () => this.c.save());
     const prev = el('canvas', { id: 'mpPrev', width: '240', height: '340' });
-    const top = el('div', { cls: 'mpTop' }, [prev, el('div', { cls: 'mpEdit' }, [el('label', { text: t('mp.name') }), name, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'),
-      el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size])]);
-    const status = el('div', { id: 'mpStatus' }), hostB = el('button', { cls: 'btn primary', id: 'mpHost', text: t('mp.host') }), joinB = el('button', { cls: 'btn secondary', id: 'mpJoin', text: t('mp.join') }), close = el('button', { cls: 'btn ghost', id: 'mpClose', text: t('book.back') });
-    const leaveB = el('button', { cls: 'btn ghost', id: 'mpLeave', text: t('mp.leave') }); leaveB.hidden = !this.active;
+    name.setAttribute('placeholder', t('mp.name')); name.setAttribute('aria-label', t('mp.name')); code.setAttribute('aria-label', t('mp.code'));
+    const status = el('div', { id: 'mpStatus' }), hostB = el('button', { cls: 'btn primary', id: 'mpHost', text: t('mp.host') }), joinB = el('button', { cls: 'btn secondary', id: 'mpJoin', text: t('mp.join') }), close = el('button', { cls: 'icon x', id: 'mpClose', 'aria-label': t('book.back') });
+    close.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>';
+    const leaveB = el('button', { cls: 'btn ghost sm', id: 'mpLeave', text: t('mp.leave') }); leaveB.hidden = !this.active;
     const list = el('div', { id: 'mpList' });
-    const d = el('div', { cls: 'dialog' }, [el('h2', { text: t('mp.title') }), top, el('label', { text: t('mp.pick') }), grid, hostB,
-      el('label', { text: t('mp.code') }), el('div', { cls: 'row' }, [code, joinB]), status, list, el('div', { cls: 'note', text: t('mp.privacy') }), leaveB, close]);
+    // v11: the panel is your name, Host, or a code and Join; how you look waits behind one line (your last look is kept)
+    const lookB = el('button', { cls: 'adv-toggle', text: t('mp.look') }), lookBox = el('div', { cls: 'adv' }, [grid, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'), el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size]);
+    lookBox.hidden = true; lookB.addEventListener('click', () => { lookBox.hidden = !lookBox.hidden; lookB.classList.toggle('on', !lookBox.hidden); });
+    const side = el('div', { cls: 'mpEdit' }, [name, el('div', { cls: 'row' }, [hostB, code, joinB]), status, list, lookB, lookBox, leaveB]);
+    const d = el('div', { cls: 'dialog' }, [el('div', { cls: 'mpHead' }, [el('h2', { text: t('mp.title') }), close]), el('div', { cls: 'mpTop' }, [prev, side]), el('div', { cls: 'note', text: t('mp.privacy') })]);
     this.panel = el('div', { id: 'mpPanel', cls: 'scrim center' }, [d]); document.body.appendChild(this.panel); this.c.onModal(true); this.list();
     this.pv = { canvas: prev, ctx: prev.getContext('2d'), scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(30, 120 / 170, 0.1, 20), p: null, av: null, yaw: 0.5,
       light: { amb: new THREE.Color(0.62, 0.58, 0.55), key: new THREE.Color(0.7, 0.66, 0.6), dir: new THREE.Vector3(0.45, 0.75, 0.5).normalize(), screen: new THREE.Color(0, 0, 0) } };

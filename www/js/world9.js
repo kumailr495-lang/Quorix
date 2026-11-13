@@ -404,15 +404,15 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
   // v9.3 hall entrances (the user's ScreenX entrance photo; tools/blender/arch/rooms.py builds the portals): the hall's name in face-lit
-  // letters over each portal, its number beside it, a rope line along the portal's face, a bin; red armchairs along the bridge
+  // letters over each portal, its number beside it, a bin; red armchairs along the bridge
   const WORD = { MAX: 'letters_max', CURVE: 'letters_curve', CLASSIC: 'letters_classic', X270: 'letters_x270' };
   for (const d of DOORS.filter((q) => q.hall && q.id.endsWith('In'))) {
     const h = HALL[d.hall], side = -h.dir, xf = d.x + side * 0.5; let xfront = xf + side * 0.8, zc = d.z, zn = zc + 2.15;
     if (d.hall === 'X270') { xfront = FLANK_E.x0 + 0.3; zc = (LINK_E.z0 + LINK_E.z1) / 2; zn = zc + 2.9; }
     add('corridor', WORD[d.hall], xfront + side * 0.03, L1 + 3.2, zc, side * Math.PI / 2, { collide: false, ground: false, scale: 0.36 });   // just proud of the diamond panels (2.5 cm deep)
     add('corridor', 'num_' + h.no, xfront + side * 0.03, L1 + 1.2, zn, side * Math.PI / 2, { collide: false, ground: false, scale: 0.9 });
-    for (const sg of [-1, 1]) if (d.hall !== 'X270' || sg < 0) add('corridor', 'rope_velvet', xfront + side * 0.55, L1, zc + sg * 2.2, Math.PI / 2, { collide: 0.02 });
-    add('corridor', 'bin_brass', xf + side * 0.35, L1, zc - (d.hall === 'X270' ? 3.4 : 3.45));
+    // v11 (the user: "that red line thing barrier"): the ropes along the portals' faces hung between nothing; gone
+    add('corridor', 'bin_brass', xf + side * 0.35, L1, zc - 3.4);
   }
   // v11 the corridor's ribbon walls (tools/blender/arch/rooms.py: the walnut lining swells and falls back every 9 m from each wall's
   // start): benches, armchairs and palms stand in the troughs, the poster lightboxes hang on the crests; film standees flank the arrival

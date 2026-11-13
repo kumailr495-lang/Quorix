@@ -1,6 +1,6 @@
-// LUMIERE v11 - interface controller ("House lights", css/app.css): the "LUMIÈRE PRESENTS" loader, the main menu (tonight's films as a
-// poster strip: tap one to walk straight in; the ways to play as tickets), the HUD (where you are, your ticket, the way-finding pill,
-// remote / bell / item buttons, the action plate, toasts), the ticket, tabbed settings, help/credits, pause.
+// LUMIERE v11 - interface controller ("House lights", css/app.css): the "LUMIÈRE PRESENTS" loader, the main menu (the name and four
+// words), the HUD (where you are, your ticket, the way-finding pill, remote / bell / item buttons, the action plate, toasts), the ticket,
+// settings (four tabs, a few rows each, the rest behind "More options"), help/credits, pause.
 // The booking sheet lives in booking9.js, the tablet in tablet.js, the room panel and chat in mpui.js.
 import { t, setLang, LANGS, lang } from './i18n.js';
 import { CATALOG, posterURL } from './films.js';
@@ -16,16 +16,7 @@ export class UI {
   }
   // ---------------- loading / menu ----------------
   progress(p) { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; }
-  showMenu(on, cont) {
-    $('#menu').hidden = !on; $('#mnCont').hidden = !cont; $('#menu').classList.toggle('has-cont', !!cont); $('#hud').hidden = on || this.hidden; $('#bShow').hidden = on || !this.hidden;
-    $('#mnTutLbl').textContent = t(this.settings.tutorialDone ? 'tut.again' : 'tut.start'); if (on) this.nowShowing();
-  }
-  nowShowing() {
-    const L = $('#nowList'); L.textContent = ''; $('#mnLangCur').textContent = (LANGS.find((l) => l.code === lang()) || LANGS[0]).name;
-    for (const f of CATALOG) { const b = document.createElement('button'); b.className = 'now'; const img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id);
-      const nm = document.createElement('b'); nm.textContent = f.short || f.title; const sm = document.createElement('small'); sm.textContent = `${t('genre.' + f.genre)}, ${t('book.mins', { n: f.mins })}`; b.append(img, nm, sm);
-      b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.unlock(); this.sound.click(); this.hooks.onPlay('quick', f.id); }); L.appendChild(b); }
-  }
+  showMenu(on, cont) { $('#menu').hidden = !on; $('#mnCont').hidden = !cont; $('#hud').hidden = on || this.hidden; $('#bShow').hidden = on || !this.hidden; }
   fade(v, dur = 0.6) { const f = $('#fade'); f.style.transition = `opacity ${dur}s ease`; f.style.opacity = String(v); }
   // ---------------- HUD ----------------
   toast(msg, ms = 2600, kind = 'info') { const el = $('#toast'); $('#toastText').textContent = msg; el.classList.toggle('err', kind === 'error'); $('#toastIcon').setAttribute('href', kind === 'error' ? '#i-alert' : '#i-check'); el.classList.add('show'); clearTimeout(this._toastT); this._toastT = setTimeout(() => el.classList.remove('show'), ms); }
@@ -44,7 +35,7 @@ export class UI {
   modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk', '#tablet', '#atm', '#tutAsk', '#layoutEd', '#mpPanel'].some((s) => $(s) && !$(s).hidden) || !$('#menu').hidden; }
   // ---------------- ticket ----------------
   showTicket(tk, quick) {
-    $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = tk.row; $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = `${tk.hallName} · ${t('kind.' + tk.kind)}`;
+    $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = tk.row; $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = String(tk.hallName || '').replace('LUMIERE ', '');
     $('#tkHint').textContent = quick ? t('tk.hintQuick') : t('tk.hintStory', { n: Math.round(tk.delay / 60) }); $('#tkJump').hidden = !quick; $('#ticket').hidden = false; this.hooks.onModal(true);
   }
   // ---------------- settings / language / info / pause ----------------
@@ -58,6 +49,8 @@ export class UI {
     for (const [key, id] of CHOICES) for (const b of document.querySelectorAll(id + ' button')) b.classList.toggle('on', b.dataset.v === String(S[key]));
     $('#sDevice').textContent = S.deviceNote || ''; $('#tutBtnLbl').textContent = t(S.tutorialDone ? 'tut.again' : 'tut.start');
     this.langButtons($('#sLang'), (code) => this.chooseLang(code)); this.setTab(this.tab);
+    const N = $('#nights'), a = this.hooks.stubs ? this.hooks.stubs().slice(0, 5) : []; N.hidden = !a.length; N.textContent = '';
+    if (a.length) { const h = document.createElement('div'); h.className = 'label'; h.textContent = t('menu9.stubs'); N.appendChild(h); for (const x of a) { const r = document.createElement('div'); r.className = 'night'; const b = document.createElement('b'), sm = document.createElement('small'); b.textContent = x.title; sm.textContent = `${x.hall}, ${x.seat}, ${x.date}`; r.append(b, sm); N.appendChild(r); } }
   }
   rangeFill(el) { const p = (el.value - el.min) / (el.max - el.min) * 100; el.style.setProperty('--p', p.toFixed(1) + '%'); }
   langButtons(L, onPick) { L.innerHTML = ''; for (const l of LANGS) { const b = document.createElement('button'); b.classList.toggle('on', l.code === lang()); const n = document.createElement('b'); n.textContent = l.name; if (LANG_CLASS[l.code]) n.className = LANG_CLASS[l.code]; const s = document.createElement('small'); s.textContent = LANG_SUB[l.code] || l.code; b.append(n, s); b.addEventListener('click', () => { this.sound.click(); onPick(l.code); }); L.appendChild(b); } }
@@ -71,11 +64,11 @@ export class UI {
   bind() {
     const tap = (sel, fn) => $(sel).addEventListener('click', (e) => { e.stopPropagation(); this.sound.unlock(); fn(e); });
     tap('#mnStory', () => { this.sound.click(); this.hooks.onPlay('story'); }); tap('#mnQuick', () => { this.sound.click(); this.hooks.onPlay('quick'); }); tap('#mnCont', () => { this.sound.click(); this.hooks.onPlay(null); });
-    tap('#mnSettings', () => { this.sound.click(); this.openSettings(); }); tap('#mnLang', () => { this.sound.click(); this.openLang(); }); tap('#mnHelp', () => this.openInfo('help')); tap('#mnCredits', () => this.openInfo('credits'));
-    tap('#mnTut', () => { this.sound.click(); this.hooks.onTutorial(); });
+    tap('#mnSettings', () => { this.sound.click(); this.openSettings(); }); tap('#mnHelp', () => this.openInfo('help')); tap('#mnCredits', () => this.openInfo('credits'));
+    for (const b of document.querySelectorAll('.adv-toggle')) b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); const box = b.nextElementSibling; box.hidden = !box.hidden; b.classList.toggle('on', !box.hidden); if (!box.hidden) box.scrollIntoView({ block: 'nearest' }); });
     tap('#tkOk', () => { this.closeModal('#ticket'); }); tap('#tkJump', () => { $('#ticket').hidden = true; this.hooks.onModal(this.modalOpen()); this.hooks.jumpToSeat(); });
     tap('#ticketChip', () => this.hooks.ticketInfo());
-    tap('#bHide', () => { this.sound.click(); this.setHidden(true); }); tap('#bShow', () => { this.sound.click(); this.setHidden(false); });
+    tap('#psHide', () => { this.closeModal('#pause'); this.hooks.onPause && this.hooks.onPause(false); this.setHidden(true); }); tap('#bShow', () => { this.sound.click(); this.setHidden(false); });
     tap('#bMenu', () => { this.sound.click(); this.openPause(); }); tap('#bRemote', () => { this.sound.click(); this.hooks.openRemote(); }); tap('#bBell', () => { this.hooks.ringBell(); });
     tap('#psResume', () => { this.closeModal('#pause'); this.hooks.onPause && this.hooks.onPause(false); }); tap('#psSettings', () => { $('#pause').hidden = true; this.openSettings(); this._fromPause = true; }); tap('#psQuit', () => { this.closeModal('#pause'); this.hooks.onQuit(); });
     tap('#setX', () => { this.closeModal('#settings'); if (this._fromPause) { this._fromPause = false; $('#pause').hidden = false; this.hooks.onModal(true); } });

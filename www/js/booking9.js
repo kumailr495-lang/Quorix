@@ -6,7 +6,7 @@ import { t } from './i18n.js';
 import { CATALOG, filmById, posterURL } from './films.js';
 import { CLASSES } from './hallmath.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
-const MINS = [1, 3, 5], TABLET = 99;
+const MINS = [1, 3, 5, 10], TABLET = 99;
 const CLASS_COL = { std: '#7d8794', prime: '#c9a35e', sofa: '#b8452f', maxStd: '#3f7fd9', maxPrime: '#e3b25f', pod: '#d06b8a', recl: '#8a6a48', reclPlus: '#e3b25f', love: '#d06b8a', x270: '#1f8a8a', x270p: '#e3b25f' };
 export class Booking9 {
   constructor(world, shows, sound, bill, hooks) {
@@ -16,7 +16,8 @@ export class Booking9 {
   isOpen() { return !$('#book').hidden; }
   open(o = {}) { this.quick = !!o.quick; this.step = 1; if (o.own) this.sel.own = true; $('#book').hidden = false; this.sound.click(); if (!this.seatOk()) this.pickSeat(); this.build(); this.hooks.onModal(true); }
   close() { $('#book').hidden = true; this.hooks.onModal(false); }
-  go(n) { this.step = Math.max(1, Math.min(4, n)); this.sound.click(); this.build(); }
+  get last() { return this.quick ? 3 : 4; }   // Quick play has no bill: the seat step starts the film
+  go(n) { this.step = Math.max(1, Math.min(this.last, n)); this.sound.click(); this.build(); }
   seat() { return this.sel.seat && this.hall().seats.find((q) => q.id === this.sel.seat); }
   seatOk() { const s = this.seat(); return !!s && !((s.taken || s.npc) && !s.player); }
   // the best free seat: a little behind the middle of the hall, in the middle of its row
@@ -25,44 +26,43 @@ export class Booking9 {
   total() { return this.price() + (this.sel.tablet ? TABLET : 0); }
   title() { return this.sel.own ? (this.shows.own ? this.shows.own.title : t('book.ownName')) : filmById(this.sel.film).title; }
   build() {
-    const st = this.step; for (let i = 1; i <= 4; i++) $('#bkStep' + i).hidden = i !== st;
-    [...$('#bkSteps').children].forEach((li, i) => { li.className = i + 1 === st ? 'on' : i + 1 < st ? 'done' : ''; });
-    $('#bkStepLbl').textContent = `${st} / 4`; $('#bkTitle').textContent = t(['book.step1', 'book9.step2', 'book.seat', 'book9.step4'][st - 1]);
+    const st = this.step, N = this.last; for (let i = 1; i <= 4; i++) $('#bkStep' + i).hidden = i !== st;
+    [...$('#bkSteps').children].forEach((li, i) => { li.hidden = i >= N; li.className = i + 1 === st ? 'on' : i + 1 < st ? 'done' : ''; });
+    $('#bkStepLbl').textContent = `${st} / ${N}`; $('#bkTitle').textContent = t(['book.step1', 'book9.step2', 'book.seat', 'book9.step4'][st - 1]);
     $('#bkBack').hidden = st === 1; $('#bkWallet').hidden = true;
     if (st === 1) this.stepFilm(); else if (st === 2) this.stepHall(); else if (st === 3) this.stepSeat(); else this.stepPay();
     const s = this.seatOk() ? this.seat() : null, h = this.hall();
-    $('#seatSel').textContent = st === 1 ? this.title() : st === 2 ? `${h.name.replace('LUMIERE ', '')} · ${t('book.inMins', { n: this.sel.mins })}` : s ? `${s.id} · ${CLASSES[s.cls].label}${this.quick ? '' : ' · ' + this.bill.fmt(CLASSES[s.cls].price)}` : '';
-    $('#bkNextLbl').textContent = st < 4 ? t('book.next') : this.quick ? t('book.start') : t('book9.payCard', { price: this.bill.fmt(this.total()) });
+    const f = this.sel.own ? null : filmById(this.sel.film);
+    $('#seatSel').textContent = st === 1 ? (f ? `${f.title}, ${t('book.mins', { n: f.mins })}` : this.title()) : st === 2 ? `${h.name.replace('LUMIERE ', '')}, ${t('book.inMins', { n: this.sel.mins })}` : s ? `${s.id}, ${CLASSES[s.cls].label}${this.quick ? '' : ', ' + this.bill.fmt(CLASSES[s.cls].price)}` : '';
+    $('#bkNextLbl').textContent = st < N ? t('book.next') : this.quick ? t('book.start') : t('book9.payCard', { price: this.bill.fmt(this.total()) });
     $('#bkNext').disabled = (st === 1 && this.sel.own && !this.shows.own) || (st >= 3 && !s);
   }
   stepFilm() {
     const box = $('#films'); box.textContent = '';
     const o = el('button', 'film own-card' + (this.sel.own ? ' on' : '')); o.appendChild(el('div', 'own-art')); o.firstChild.innerHTML = '<svg class="ic"><use href="#i-upload"/></svg>';
-    o.appendChild(el('b', null, t('book.ownCard'))); o.appendChild(el('small', null, this.shows.own ? this.shows.own.title : t('book9.ownHint')));
+    o.appendChild(el('b', null, this.shows.own ? this.shows.own.title : t('book.ownCard')));
     o.addEventListener('click', () => { this.sel.own = true; this.sound.click(); this.build(); if (!this.shows.own) this.hooks.pickOwn(); }); box.appendChild(o);
     for (const f of CATALOG) { const on = !this.sel.own && this.sel.film === f.id, d = el('button', 'film' + (on ? ' on' : '')); const img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); d.appendChild(img);
-      d.appendChild(el('b', null, f.short || f.title)); d.appendChild(el('small', null, `${t('genre.' + f.genre)}, ${t('book.mins', { n: f.mins })}`));
-      d.addEventListener('click', () => { this.sel.film = f.id; this.sel.own = false; this.sound.click(); this.build(); }); box.appendChild(d); if (on) this._onCard = d; }
+      d.setAttribute('aria-label', f.title); d.addEventListener('click', () => { this.sel.film = f.id; this.sel.own = false; this.sound.click(); this.build(); }); box.appendChild(d); if (on) this._onCard = d; }
     if (this._onCard && this._onCard.scrollIntoView) { const c = this._onCard; this._onCard = null; requestAnimationFrame(() => { if (c.offsetLeft + c.offsetWidth > box.scrollLeft + box.clientWidth || c.offsetLeft < box.scrollLeft) box.scrollLeft = Math.max(0, c.offsetLeft - 120); }); }
     $('#ownPanel').hidden = !this.sel.own; $('#ownState').textContent = this.shows.own ? t('book.ownSet', { name: this.shows.own.title }) : t('book.ownNone');
   }
   stepHall() {
     const box = $('#halls'); box.innerHTML = '';
     for (const h of this.world.halls) { const c = h.cfg, free = h.seats.filter((s) => !s.taken && !s.npc).length, from = Math.min(...h.seats.map((s) => CLASSES[s.cls].price)), d = el('button', 'hallc' + (this.sel.hall === c.id ? ' on' : ''));
-      d.appendChild(el('b', null, c.name.replace('LUMIERE ', ''))); d.appendChild(el('small', null, t('fmt9.' + c.id))); d.appendChild(el('em', null, (this.quick ? '' : t('book9.from', { price: this.bill.fmt(from) }) + ' · ') + t('book.seatsFree', { n: free })));
+      d.appendChild(el('b', null, c.name.replace('LUMIERE ', ''))); d.appendChild(el('em', null, (this.quick ? '' : t('book9.from', { price: this.bill.fmt(from) }) + ', ') + t('book.seatsFree', { n: free })));
       d.addEventListener('click', () => { if (this.sel.hall !== c.id) { this.sel.hall = c.id; this.pickSeat(); } this.sound.click(); this.build(); }); box.appendChild(d); }
     const tm = $('#times'); tm.innerHTML = ''; for (const m of MINS) { const b = el('button', this.sel.mins === m ? 'on' : '', t('book.inMins', { n: m })); b.addEventListener('click', () => { this.sel.mins = m; this.sound.click(); this.build(); }); tm.appendChild(b); }
-    $('#tpVal').textContent = t('book.inMins', { n: this.sel.mins });
   }
   // a true top view: every seat at its own (u, d), the screen along the top, curved rows curve, sofas sit in pairs
   stepSeat() {
-    const h = this.hall(), c = h.cfg, m = $('#seatmap'); m.innerHTML = ''; $('#hallName').textContent = `${c.name.replace('LUMIERE ', '')} · ${t('fmt9.' + c.id)}`;
+    const h = this.hall(), c = h.cfg, m = $('#seatmap'); m.innerHTML = ''; $('#hallName').textContent = c.name.replace('LUMIERE ', '');
     const free = h.seats.some((s) => !s.taken && !s.npc); $('#seatEmpty').hidden = free; m.hidden = !free; if (!free) return;
     const body = $('#book .sh-body'), W = Math.max(240, (body.clientWidth || 600) - 24), Hh = Math.max(150, (body.clientHeight || 260) - 60);
     const us = h.seats.map((s) => s.u), ds = h.seats.map((s) => s.d), u0 = Math.min(...us) - 0.6, u1 = Math.max(...us) + 0.6, d0 = Math.min(...ds) - 0.8, d1 = Math.max(...ds) + 0.5, k = Math.min(W / (u1 - u0), 1.9 * Hh / (d1 - d0));
     // the legend first (each class in its colour and price), then the map: it may scroll a little on small screens, the seats stay tappable
     const lg = el('div', 'legend'); lg.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;justify-content:center;font-size:11px;opacity:.9;margin:2px 0 6px';
-    for (const cls of [...new Set(h.seats.map((s) => s.cls))]) { const i = el('span'); i.innerHTML = `<i style="display:inline-block;width:10px;height:10px;background:${CLASS_COL[cls]};border-radius:3px;margin-right:5px;vertical-align:-1px"></i>`; i.appendChild(document.createTextNode(CLASSES[cls].label + (this.quick ? '' : ' · ' + this.bill.fmt(CLASSES[cls].price)))); lg.appendChild(i); }
+    for (const cls of [...new Set(h.seats.map((s) => s.cls))]) { const i = el('span'); i.innerHTML = `<i style="display:inline-block;width:10px;height:10px;background:${CLASS_COL[cls]};border-radius:3px;margin-right:5px;vertical-align:-1px"></i>`; i.appendChild(document.createTextNode(CLASSES[cls].label + (this.quick ? '' : ' ' + this.bill.fmt(CLASSES[cls].price)))); lg.appendChild(i); }
     m.appendChild(lg); const map = el('div'); map.style.cssText = `position:relative;height:${((d1 - d0) * k + 30).toFixed(0)}px;width:${((u1 - u0) * k).toFixed(0)}px;margin:0 auto`; m.appendChild(map); m.style.position = ''; m.style.height = ''; m.style.width = ''; m.style.margin = '';
     const scr = el('div', 'scr'); scr.appendChild(el('span', null, t('book.screen').toUpperCase())); scr.style.cssText = 'position:absolute;left:4%;right:4%;top:0;margin:0'; map.appendChild(scr);
     for (const s of h.seats) { const taken = (s.taken || s.npc) && !s.player, sel = s.id === this.sel.seat, w = Math.max(9, (s.kind === 'rocker' ? 0.54 : 0.8) * k), b = el('button', 'seat9');
@@ -73,8 +73,8 @@ export class Booking9 {
   stepPay() {
     const h = this.hall(), c = h.cfg, s = this.seat(), S = $('#bkSummary'); S.innerHTML = '';
     const img = new Image(); img.alt = ''; img.src = this.sel.own ? '' : posterURL(this.sel.film); if (this.sel.own) img.className = 'own-poster'; S.appendChild(img);
-    const tx = el('div'); tx.appendChild(el('h3', null, this.title())); tx.appendChild(el('div', 'note', `${c.name.replace('LUMIERE ', '')} · ${t('fmt9.' + c.id)}`));
-    const meta = el('div', 'meta'); for (const txt of [s ? `${s.id} · ${CLASSES[s.cls].label}` : '', t('book.inMins', { n: this.sel.mins })]) if (txt) meta.appendChild(el('span', 'badge', txt)); tx.appendChild(meta);
+    const tx = el('div'); tx.appendChild(el('h3', null, this.title())); tx.appendChild(el('div', 'note', c.name.replace('LUMIERE ', '')));
+    const meta = el('div', 'meta'); for (const txt of [s ? `${s.id}, ${CLASSES[s.cls].label}` : '', t('book.inMins', { n: this.sel.mins })]) if (txt) meta.appendChild(el('span', 'badge', txt)); tx.appendChild(meta);
     // the armrest tablet: order from your seat without calling anyone
     const tb = el('button', 'addon' + (this.sel.tablet ? ' on' : '')); tb.innerHTML = '<svg class="ic"><use href="#i-tablet"/></svg>'; tb.appendChild(el('b', null, t('book9.tablet'))); tb.appendChild(el('small', null, this.quick ? t('book9.tabletQuick') : t('book9.tabletNote', { price: this.bill.fmt(TABLET) })));
     tb.addEventListener('click', () => { this.sel.tablet = !this.sel.tablet; this.sound.click(); this.build(); }); if (!this.quick) tx.appendChild(tb);
@@ -93,8 +93,7 @@ export class Booking9 {
   bind() {
     const tap = (sel, fn) => $(sel).addEventListener('click', (e) => { e.stopPropagation(); this.sound.unlock(); fn(e); });
     tap('#bookX', () => { this.sound.click(); this.close(); }); tap('#bkBack', () => this.go(this.step - 1)); tap('#bkOther', () => this.go(2));
-    tap('#bkNext', () => { if (this.step < 4) this.go(this.step + 1); else this.confirm(); });
-    tap('#tpMinus', () => { this.sel.mins = Math.max(1, this.sel.mins - 1); this.sound.click(); this.build(); }); tap('#tpPlus', () => { this.sel.mins = Math.min(30, this.sel.mins + 1); this.sound.click(); this.build(); });
+    tap('#bkNext', () => { if (this.step < this.last) this.go(this.step + 1); else this.confirm(); });
     tap('#pick', () => this.hooks.pickOwn()); tap('#urlUse', () => { const u = $('#url').value.trim(); if (!/^https?:\/\//i.test(u)) { this.hooks.toast(t('toast.badLink'), 3000, 'error'); return; } this.hooks.useLink(u); });
     $('#book').addEventListener('click', (e) => { if (e.target === $('#book')) this.close(); });
   }

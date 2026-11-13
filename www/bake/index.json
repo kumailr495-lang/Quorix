@@ -1,16 +1,16 @@
 {
  "rooms": {
   "corridor": {
-   "avg": 0.0552464414741509,
+   "avg": 0.05503061486288295,
    "glb": "corridor.glb",
    "hall": false,
-   "hash": "v9.e28c64b44c0b",
+   "hash": "v9.1d1a3c52e1e2",
    "maps": [
     "corridor_h.jpg"
    ],
    "res": 2048,
    "scale": [
-    1.5341789761971745,
+    1.5289597815493663,
     0.0,
     0.0
    ]

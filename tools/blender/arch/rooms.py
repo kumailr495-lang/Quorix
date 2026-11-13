@@ -477,7 +477,9 @@ def build_corridor(S):
     def posters_on(a, b, face, ops, L, dep=None, keep=()):
         ux, uz = (b[0] - a[0]) / L, (b[1] - a[1]) / L; nx, nz = -uz * face, ux * face; out = []; sp = 4.5
         while sp < L - 3.0:
-            if all(abs(sp - (o[0] + o[1]) / 2) > 3.2 for o in ops) and all(not (k0 - 1.0 < sp < k1 + 1.0) for k0, k1 in keep):
+            # v11 (the user: "photos half cropped"): a hall entrance is a block 3 m to each side of its door; a lightbox (0.71 m to its halo's
+            # edge) hung 3.2 m from the door stood half inside it. 4.5 m keeps it clear of the block and of the bin beside it
+            if all(abs(sp - (o[0] + o[1]) / 2) > max(4.5, (o[1] - o[0]) / 2 + 1.3) for o in ops) and all(not (k0 - 1.0 < sp < k1 + 1.0) for k0, k1 in keep):
                 dd = dep(sp) if dep else 0.0   # on a ribbon wall the lightbox hangs on the lining's crest
                 cx, cz = a[0] + ux * sp + nx * dd, a[1] + uz * sp + nz * dd; pw, ph, pyc = 1.1, 1.65, L1 + 1.75
                 q = [(cx - ux * (pw / 2 + 0.08), cz - uz * (pw / 2 + 0.08)), (cx + ux * (pw / 2 + 0.08), cz + uz * (pw / 2 + 0.08))]
