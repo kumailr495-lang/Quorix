@@ -6,6 +6,10 @@ import { lang } from './i18n.js';
 const ROLE = { greeter: 'greeter', reception: 'reception', usher: 'usher', bar: 'bar', server: 'server' };
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', MAX_LIVE = 3, MAX_BUFS = 48;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+// v11: an index entry's third field is a hash of the words the clip says (tools/tts stamp); a line whose words have changed since its clip
+// was recorded stays silent rather than saying something else under its subtitle. FNV-1a over UTF-8, as the recorders compute it.
+const ENC = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+export function textHash(s) { let h = 0x811c9dc5; for (const b of ENC ? ENC.encode(s) : []) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); }
 export class Voice {
   constructor(sound, settings) { this.sound = sound; this.on = settings.voices !== false; this.dir = null; this.man = null; this._load = null; this.bufs = new Map(); this.live = []; }
   setOptions(s) { this.on = s.voices !== false; if (!this.on) this.stopAll(); }
@@ -25,6 +29,7 @@ export class Voice {
     if (!o.full) { const L = S.listener; if (Math.hypot(a.x - L.x, a.z - L.z) > 14 || this.live.filter((v) => !v.full).length >= MAX_LIVE) return 0; }
     const man = await this.prepare(); if (!man) return 0;
     const id = `${this.voiceOf(a)}/${line.key}.${line.i}${line.j != null ? '.' + line.j : ''}`, m = man.c[id]; if (!m) return 0;
+    if (m[2] && line.text && this.dir === lang() && m[2] !== textHash(line.text)) return 0;   // Urdu plays the Hindi clips: its words differ by design
     let buf; try { buf = await this._buf(id); } catch (e) { return 0; } if (!buf || !this.on) return 0;
     this.stop(a); const c = S.ctx, src = c.createBufferSource(), g = c.createGain(), p = c.createStereoPanner ? c.createStereoPanner() : null, rate = this.rate(a);
     src.buffer = buf; src.playbackRate.value = rate; g.gain.value = 0; src.connect(g);

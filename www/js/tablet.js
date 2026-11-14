@@ -4,11 +4,12 @@
 //   Remote:    the show you are watching. The seek bar's preview is a second, muted <video> of the same film that jumps to where your finger
 //              is (a real frame, no canvas, so streamed films without CORS work too).
 //   Films:     the open films; "play" starts one in your hall (Story: costs Wallet.P.replay).
-//   My videos: the Android media bridge (window.LumiereMedia, the v8 APK) lists the phone's videos with thumbnails; without it (older APK,
+//   My videos: the Android media bridge (bridge.js media: window.LumiereMedia with its key) lists the phone's videos with thumbnails; without it (older APK,
 //              desktop) the system picker and a link field stand in.
 // Favourites and collections are kept on the device (localStorage).
 // v9: the app's own server gives each video's address and thumbnail in the list (it.url, it.thumb); the film is a WebGL picture now.
 import { t } from './i18n.js';
+import { media } from './bridge.js';
 import { CATALOG, posterURL, filmById, cleanTitle } from './films.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
@@ -65,7 +66,7 @@ export class Tablet {
   films(B) {
     $('#tbTitle').textContent = t('tab.films'); const grid = el('div', 'tb-grid'); const story = !this.hooks.quick();
     // v9: each open film can be saved to the phone (the app downloads it; it then plays offline, with no Wi-Fi stutter)
-    const M = window.LumiereMedia, saved = (() => { try { return M ? JSON.parse(M.downloaded() || '[]') : []; } catch (e) { return []; } })();
+    const M = media, saved = (() => { try { return M ? JSON.parse(M.downloaded() || '[]') : []; } catch (e) { return []; } })();
     for (const f of CATALOG) { const c = el('button', 'tb-film'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); c.appendChild(img); c.appendChild(el('b', null, f.short || f.title)); c.appendChild(el('small', null, `${t('genre.' + f.genre)} · ${t('book.mins', { n: f.mins })}` + (story && this.wallet.P.replay ? ` · ${this.wallet.fmt(this.wallet.P.replay)}` : '')));
       c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.playFilm({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } });
       if (M && M.download) { const have = saved.find((d) => d.name === f.id + '.mp4' && d.done), dl = el('span', 'tb-dl' + (have ? ' done' : ''), have ? t('tab9.saved') : t('tab9.save'));
@@ -85,7 +86,7 @@ export class Tablet {
   }
   // ---------------- my videos ----------------
   mine(B) {
-    $('#tbTitle').textContent = t('tab.mine'); const M = window.LumiereMedia;
+    $('#tbTitle').textContent = t('tab.mine'); const M = media;
     if (!M) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.noBridge'))); e.appendChild(el('p', 'note', t('tab.noBridgeHint'))); const pick = el('button', 'btn primary', t('book.gallery')); pick.addEventListener('click', (ev) => { ev.stopPropagation(); this.hooks.pickOwn(); }); e.appendChild(pick);
       if (this.shows.own) { const play = el('button', 'btn secondary', t('tab.playOwn', { name: this.shows.own.label })); play.addEventListener('click', (ev) => { ev.stopPropagation(); if (this.hooks.playFilm({ own: true })) this.show('remote'); }); e.appendChild(play); } B.appendChild(e); return; }
     if (!M.hasPermission()) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.permTitle'))); e.appendChild(el('p', 'note', t('tab.permBody'))); const ask = el('button', 'btn primary', t('tab.permAsk')); ask.addEventListener('click', (ev) => { ev.stopPropagation(); window.__lumiereMediaPermission = (ok) => { if (ok) { this.items = null; this.show('mine'); } else this.hooks.toast(t('tab.permDenied'), 3200, 'error'); }; M.requestPermission(); }); e.appendChild(ask); B.appendChild(e); return; }

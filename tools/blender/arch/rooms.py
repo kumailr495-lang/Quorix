@@ -169,6 +169,11 @@ def escalator(acc, glow, lit, e, dirz=-1):
             acc.quad((inner, ya, za), (inner, yb, zb), (inner, yb + 0.12, zb), (inner, ya + 0.12, za), MAT['metal'], lin('#5c5f66'))   # both faces: from the steps and, through
             acc.quad((inner, ya + 0.12, za), (inner, yb + 0.12, zb), (inner, yb, zb), (inner, ya, za), MAT['metal'], lin('#5c5f66'))   # the glass, from beside the escalator
         lit.line((xs + (0.1 if xs == x0 else -0.1), y0 + 0.15, zf0), (xs + (0.1 if xs == x0 else -0.1), y1 + 0.15, zt1), lin('#ffe0b0'), 0.08, 2.0, 'f')
+        # v11 a warm light line under the handrail on the steps' side, along the whole run
+        xi = xs + (0.014 if xs == x0 else -0.014); nx_ = 1 if xs == x0 else -1
+        for k in range(len(zs) - 1):
+            za, zb = zs[k], zs[k + 1]; ya, yb = h_at(za), h_at(zb)
+            glow_facing(glow, (xi, ya + 0.9, za), (xi, yb + 0.9, zb), (xi, yb + 0.935, zb), (xi, ya + 0.935, za), (nx_, 0, 0), lin('#ffd9a0'), 1.5)
     return h_at
 
 # ------------------------------------------------------------------------------------------------ lobby
@@ -339,6 +344,10 @@ def build_lobby(S):
     glow_facing(glow, (lx0 + 0.3, Ht - 0.201, lz0 + 0.4), (lx1 - 0.3, Ht - 0.201, lz0 + 0.4), (lx1 - 0.3, Ht - 0.201, lz1 - 0.4), (lx0 + 0.3, Ht - 0.201, lz1 - 0.4), (0, -1, 0), lin('#ffe6c4'), 1.4)
     lit.point((lcx, Ht - 0.7, (lz0 + lz1) / 2), lin('#ffe1b5'), 1.0, 6.0, 'h')
     for sx_ in (-1, 1): lit.spot((lcx + sx_ * 1.5, 0.06, lz1 + 0.35), lin('#ffd9a8'), 0.7, 8.0, 'h', (-sx_ * 0.1, 1, -0.06), 12, 30)   # two uplights graze the tower's front
+    for px in (lx0 - 0.15, lx1):   # a light line up each front post, on its outer faces (front and side)
+        glow_facing(glow, (px + 0.06, 3.1, lz1 + 0.002), (px + 0.09, 3.1, lz1 + 0.002), (px + 0.09, Ht - 0.25, lz1 + 0.002), (px + 0.06, Ht - 0.25, lz1 + 0.002), (0, 0, 1), lin('#ffd9a0'), 1.6)
+        xo_ = px - 0.002 if px < lcx else px + 0.152; sn_ = -1 if px < lcx else 1
+        glow_facing(glow, (xo_, 3.1, lz1 - 0.09), (xo_, 3.1, lz1 - 0.06), (xo_, Ht - 0.25, lz1 - 0.06), (xo_, Ht - 0.25, lz1 - 0.09), (sn_, 0, 0), lin('#ffd9a0'), 1.6)
     # the gallery's end beside the tower: low bronze wings close the gaps between the rails and the tower
     for xa_, xb_ in ((GA['x0'] + 0.03, lx0 - 0.15), (lx1 + 0.15, GA['x1'] - 0.03)): acc.box(xa_, L1, GA['z1'] - 0.12, xb_, L1 + 1.08, GA['z1'], MAT['powder'], BRZ)
     # a marble pier fills the gap between the down escalator and the tower (the lift's call panel is on it)
@@ -382,6 +391,28 @@ def build_lobby(S):
         acc.cyl(cx, cz, 0.11, H - 0.03, H + 0.001, MAT['metal'], lin('#2a2a2e'), n=12)
         glow.quad((cx - 0.07, H - 0.032, cz - 0.07), (cx + 0.07, H - 0.032, cz - 0.07), (cx + 0.07, H - 0.032, cz + 0.07), (cx - 0.07, H - 0.032, cz + 0.07), lin('#ffdcb0'), 2.2)
     lit.point((0.0, 6.6, 4.0), lin('#ffe1b5'), 3.0, 14, 'h')
+    # v11 the service wall (the user: "do all of that cooking for the others too"): the box office and the concessions under one bronze
+    # fascia on black marble piers, in the language of the gate's portal: a brass line under it, a light line washing the counters, the
+    # signs on its face; three ticket machines on a walnut panel in the gap between the two counters; a brass waiting line in the floor
+    fx0, fx1 = bo['x1'] - 0.15, bo['x1'] + 0.15
+    for za_, zb_ in ((bo['z1'] + 0.07, bo['z1'] + 0.37), (bo['z0'] - 0.38, bo['z0'] - 0.07), (co['z1'] + 0.07, co['z1'] + 0.37), (co['z0'] - 0.37, co['z0'] - 0.07)):
+        acc.box(fx0, 0.0, za_, fx1, 3.0, zb_, MAT['neroGold'], lin('#ffffff')); acc.box(fx0 - 0.012, 0.0, za_ - 0.012, fx1 + 0.012, 0.1, zb_ + 0.012, MAT['brass'], P['champagne'])
+    fz0, fz1 = co['z0'] - 0.4, bo['z1'] + 0.4
+    acc.box(fx0 - 0.03, 3.0, fz0, fx1 + 0.03, 3.5, fz1, MAT['powder'], lin('#16171a')); acc.box(fx0 - 0.015, 2.975, fz0 + 0.02, fx1 + 0.015, 3.0, fz1 - 0.02, MAT['brass'], P['champagne'])
+    for za_, zb_ in ((bo['z0'] + 0.1, bo['z1'] - 0.1), (co['z0'] + 0.1, co['z1'] - 0.1)):
+        glow_facing(glow, (fx0 + 0.11, 2.974, za_), (fx0 + 0.19, 2.974, za_), (fx0 + 0.19, 2.974, zb_), (fx0 + 0.11, 2.974, zb_), (0, -1, 0), lin('#ffe2b8'), 1.8)
+        lit.line((fx0 + 0.15, 2.9, za_), (fx0 + 0.15, 2.9, zb_), lin('#ffe2b8'), 0.4, 3.4, 'h', (-0.15, -1, 0))
+        acc.box(bo['x1'] + 1.25, 0.003, za_ + 0.3, bo['x1'] + 1.29, 0.0046, zb_ - 0.3, MAT['brass'], P['champagne'])   # wait behind this line
+    kz0, kz1 = co['z1'] + 0.37, bo['z0'] - 0.38; kx = bo['x1'] - 0.12   # the ticket machines' wall
+    acc.box(kx - 0.1, 0.0, kz0 + 0.002, kx, 2.4, kz1 - 0.002, MAT['fluted'], lin('#5a3a22')); acc.box(kx - 0.1, 0.0, kz0 + 0.002, kx + 0.012, 0.1, kz1 - 0.002, MAT['brass'], P['champagne'])
+    kiosks = []
+    for i_ in range(3):
+        zk_ = (kz0 + kz1) / 2 + (i_ - 1) * 0.66
+        acc.box(kx, 0.98, zk_ - 0.27, kx + 0.07, 1.74, zk_ + 0.27, MAT['powder'], lin('#16171a'))                 # the machine: a bronze case
+        acc.box(kx, 0.86, zk_ - 0.23, kx + 0.2, 0.9, zk_ + 0.23, MAT['brass'], P['champagne'])                    # the card shelf
+        acc.box(kx + 0.07, 1.0, zk_ - 0.25, kx + 0.078, 1.72, zk_ - 0.235, MAT['brass'], P['champagne']); acc.box(kx + 0.07, 1.0, zk_ + 0.235, kx + 0.078, 1.72, zk_ + 0.25, MAT['brass'], P['champagne'])
+        kiosks.append({'id': 'kiosk_%d' % (i_ + 1), 'x': kx + 0.076, 'y': 1.36, 'z': zk_, 'yaw': math.pi / 2, 'w': 0.44, 'h': 0.66, 'emit': 1})
+    lit.line((kx + 0.5, 2.6, kz0 + 0.3), (kx + 0.5, 2.6, kz1 - 0.3), lin('#ffd8a8'), 0.35, 3.0, 'h', (-0.3, -1, 0))
     # v9.1 the poster wall: five lit poster cases on the travertine (brass frame, black backing, a spot over each; the posters are the house
     # films' one-sheets, CC BY, drawn by the engine), and wayfinding (the user: "directional signage"): a header over the escalator gate,
     # restrooms over their door, tickets over the box office, food & drinks over the menu boards, "exit only" over the spine door
@@ -442,8 +473,9 @@ def build_lobby(S):
     acc.box(x0 + 0.75, 0.95, co['z0'] - 0.14, co['x1'] - 0.9, 0.99, co['z0'] - 0.05, MAT['calacatta'], lin('#e8e2da'))
     acc.box(xe - 0.075, 2.84, -2.25, xe - 0.04, 3.3, 0.25, MAT['powder'], lin('#16171a'))
     signs.append({'id': 'wayfind_wc', 'x': xe - 0.081, 'y': 3.07, 'z': -1.0, 'yaw': -math.pi / 2, 'w': 2.4, 'h': 0.42, 'emit': 1})
-    signs.append({'id': 'wayfind_tickets', 'x': x0 + 0.43, 'y': 3.62, 'z': 9.0, 'yaw': math.pi / 2, 'w': 3.0, 'h': 0.46, 'emit': 1})
-    signs.append({'id': 'wayfind_food', 'x': x0 + 0.43, 'y': 4.22, 'z': (co['z0'] + co['z1']) / 2, 'yaw': math.pi / 2, 'w': 3.4, 'h': 0.46, 'emit': 1})
+    signs.append({'id': 'wayfind_tickets', 'x': fx1 + 0.036, 'y': 3.25, 'z': (bo['z0'] + bo['z1']) / 2, 'yaw': math.pi / 2, 'w': 3.0, 'h': 0.4, 'emit': 1})   # on the fascia
+    signs.append({'id': 'wayfind_food', 'x': fx1 + 0.036, 'y': 3.25, 'z': (co['z0'] + co['z1']) / 2, 'yaw': math.pi / 2, 'w': 3.4, 'h': 0.4, 'emit': 1})
+    signs += kiosks
     signs.append({'id': 'noentry_spine', 'x': 0.0, 'y': 3.36, 'z': z0 + 0.436, 'yaw': 0, 'w': 2.0, 'h': 0.34, 'emit': 1})
     extra = {'panels': signs + [{'id': 'ledwall', 'x': 0, 'y': 6.0, 'z': z0 + 0.43, 'yaw': 0, 'w': 14.2, 'h': 4.5, 'emit': 1},
                         {'id': 'showtimes', 'x': x0 + 0.21, 'y': 2.6, 'z': 9.0, 'yaw': math.pi / 2, 'w': 8.0, 'h': 1.2, 'emit': 1},

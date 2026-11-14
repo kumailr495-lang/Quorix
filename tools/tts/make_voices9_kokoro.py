@@ -44,6 +44,19 @@ def level(x, sr):
     if len(x) > 2 * n: x[:n] *= ramp; x[-n:] *= ramp[::-1]
     return x.astype(np.float32)
 
+def text_hash(s):
+    """FNV-1a (32 bit) over the line's UTF-8 bytes, as voice.js computes it: a clip plays only for the words it says (v11)"""
+    h = 0x811c9dc5
+    for b in s.encode('utf-8'): h ^= b; h = (h * 0x01000193) & 0xffffffff
+    return '%08x' % h
+
+def stamp(man, cache):
+    """each index entry: [ms, mouth envelope, hash of the text the clip says]"""
+    for rel in man:
+        c = cache.get(rel + '.ogg')
+        if c and 't' in c: man[rel] = list(man[rel][:2]) + [text_hash(c['t'])]
+    return man
+
 def envelope(x, sr):
     n = int(sr / ENV_HZ); fr = [np.sqrt(np.mean(x[i:i + n] ** 2)) for i in range(0, len(x), n)]; top = max(fr) or 1
     return ''.join(B64[min(63, int(63 * (f / top) ** 0.6))] for f in fr)
@@ -74,7 +87,7 @@ def main():
             rel = os.path.relpath(os.path.join(d, f), os.path.join(OUT, lang)).replace(os.sep, '/')
             if f.endswith('.ogg') and rel not in keep: os.unlink(os.path.join(d, f))
     json.dump(cache, open(cpath, 'w'), ensure_ascii=False)
-    json.dump({'v': 2, 'hz': ENV_HZ, 'c': man}, open(os.path.join(OUT, lang, 'index.json'), 'w'), separators=(',', ':'), ensure_ascii=False)
+    json.dump({'v': 3, 'hz': ENV_HZ, 'c': stamp(man, cache)}, open(os.path.join(OUT, lang, 'index.json'), 'w'), separators=(',', ':'), ensure_ascii=False)
     print(lang, 'done:', made, 'made,', kept, 'kept,', len(man), 'clips', flush=True)
 
 main()

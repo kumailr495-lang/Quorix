@@ -64,6 +64,19 @@ def level(x, sr):
     if len(x) > 2 * n: x[:n] *= ramp; x[-n:] *= ramp[::-1]
     return x.astype(np.float32)
 
+def text_hash(s):
+    """FNV-1a (32 bit) over the line's UTF-8 bytes, as voice.js computes it: a clip plays only for the words it says (v11)"""
+    h = 0x811c9dc5
+    for b in s.encode('utf-8'): h ^= b; h = (h * 0x01000193) & 0xffffffff
+    return '%08x' % h
+
+def stamp(man, cache):
+    """each index entry: [ms, mouth envelope, hash of the text the clip says]"""
+    for rel in man:
+        c = cache.get(rel + '.ogg')
+        if c and 't' in c: man[rel] = list(man[rel][:2]) + [text_hash(c['t'])]
+    return man
+
 def envelope(x, sr):
     n = int(sr / ENV_HZ); fr = [np.sqrt(np.mean(x[i:i + n] ** 2)) for i in range(0, len(x), n)]; top = max(fr) or 1
     return ''.join(B64[min(63, int(63 * (f / top) ** 0.6))] for f in fr)
@@ -87,7 +100,11 @@ def main():
     for lang in langs:
         table = {k: v[lang] for k, v in D.items()}
         cpath = os.path.join(CACHE, lang + '.json'); cache = json.load(open(cpath)) if os.path.exists(cpath) else {}
-        man, todo = {}, list(clips(table)); done = made = 0; t0 = time.time()
+        todo = list(clips(table)); done = made = 0; t0 = time.time()
+        # v11: start from the index as it stands (every clip whose file exists), so a run that is stopped half way never leaves the game
+        # without the clips it has not reached yet; entries for lines that no longer exist are dropped when the run completes
+        ipath = os.path.join(OUT, lang, 'index.json'); old = json.load(open(ipath))['c'] if os.path.exists(ipath) else {}
+        man = {k: v for k, v in old.items() if os.path.exists(os.path.join(OUT, lang, k + '.ogg'))}
         for stem, text, w, key in todo:
             rel = f'{w}/{stem}.ogg'; dst = os.path.join(OUT, lang, rel); ref = os.path.join(refs, lang, w + '.wav')
             ex, cfg, temp = STYLE.get(w, (0.6 if key in LIVELY else 0.5, 0.45, 0.8))
@@ -109,14 +126,16 @@ def main():
             if made % 10 == 0:
                 el = time.time() - t0; print(f'{lang} {made} made, {done} kept of {len(todo)} ({el / made:.1f} s per clip)', flush=True)
                 json.dump(cache, open(cpath, 'w'), ensure_ascii=False)
-                json.dump({'v': 2, 'hz': ENV_HZ, 'c': man}, open(os.path.join(OUT, lang, 'index.json'), 'w'), separators=(',', ':'), ensure_ascii=False)
+                json.dump({'v': 3, 'hz': ENV_HZ, 'c': stamp(man, cache)}, open(os.path.join(OUT, lang, 'index.json'), 'w'), separators=(',', ':'), ensure_ascii=False)
+        valid = {f'{w}/{stem}' for stem, text, w, key in todo}
+        if not only: man = {k: v for k, v in man.items() if k in valid}
         keep = {r + '.ogg' for r in man}
         for d, _, fs in os.walk(os.path.join(OUT, lang)):
             for f in fs:
                 rel = os.path.relpath(os.path.join(d, f), os.path.join(OUT, lang)).replace(os.sep, '/')
                 if f.endswith('.ogg') and rel not in keep and not only: os.unlink(os.path.join(d, f)); cache.pop(rel, None)
         json.dump(cache, open(cpath, 'w'), ensure_ascii=False)
-        json.dump({'v': 2, 'hz': ENV_HZ, 'c': man}, open(os.path.join(OUT, lang, 'index.json'), 'w'), separators=(',', ':'), ensure_ascii=False)
+        json.dump({'v': 3, 'hz': ENV_HZ, 'c': stamp(man, cache)}, open(os.path.join(OUT, lang, 'index.json'), 'w'), separators=(',', ':'), ensure_ascii=False)
         print(lang, 'done:', made, 'made,', done, 'kept,', len(man), 'clips', flush=True)
 
 main()

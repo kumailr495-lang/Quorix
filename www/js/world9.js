@@ -242,7 +242,7 @@ class Lift {
     this.L.stops.forEach((ly, k) => { out.push(S(this.zDoor[k], ly, this.doors[k] < 0.75 || this.level !== k || this.state !== 'idle')); for (const z of this.zDoor) if (z !== this.zDoor[k]) out.push(S(z, ly, true)); }); return out; }
 }
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
-const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192 };   // canvas pixels per metre for boards with text or fine figures
+const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192, kiosk: 640 };   // canvas pixels per metre for boards with text or fine figures
 const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 function panelTexture(id, w, h, hooks) {
   const ppm = DENSE[id.split('_')[0]] || 128, px = Math.min(2048, Math.max(256, Math.round(w * ppm))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
@@ -265,6 +265,13 @@ function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.
   g.font = `600 ${h * 0.3}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText('LIFT', x + h * 0.72, h * 0.47); ls('0px');
   g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.4, h * 0.48); }
 export const PANEL_DRAW = {
+  // v11 a ticket machine's screen (rooms.py: three on the walnut panel between the box office and the concessions)
+  kiosk: (g, w, h) => { g.fillStyle = '#101225'; g.fillRect(0, 0, w, h); g.textAlign = 'center'; g.textBaseline = 'middle'; const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
+    g.fillStyle = '#e3b25f'; g.font = `500 ${h * 0.07}px ${SERIF}`; ls(`${h * 0.022}px`); g.fillText('LUMIÈRE', w / 2, h * 0.12); ls('0px');
+    g.strokeStyle = '#f2ebdd'; g.lineWidth = h * 0.012; g.lineJoin = 'round'; const tw = w * 0.46, th = h * 0.2, tx = (w - tw) / 2, ty = h * 0.25; g.strokeRect(tx, ty, tw, th); g.setLineDash([h * 0.02, h * 0.02]); g.beginPath(); g.moveTo(tx + tw * 0.7, ty); g.lineTo(tx + tw * 0.7, ty + th); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#f2ebdd'; g.font = `700 ${h * 0.1}px ${SANS}`; ls(`${h * 0.012}px`); g.fillText('TICKETS', w / 2, h * 0.6); ls('0px');
+    g.fillStyle = '#e3b25f'; const bw = w * 0.74, bh = h * 0.15, bx = (w - bw) / 2, by = h * 0.72; g.beginPath(); g.roundRect ? g.roundRect(bx, by, bw, bh, h * 0.02) : g.rect(bx, by, bw, bh); g.fill();
+    g.fillStyle = '#241707'; g.font = `700 ${h * 0.062}px ${SANS}`; g.fillText('TOUCH TO BOOK', w / 2, by + bh * 0.54); },
   // v9.3: the showtime header inside each hall portal (the user's corridor photo): a white number cube, then the hall and what is on
   sign: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#050506'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#f4f4f2'; g.fillRect(h * 0.12, h * 0.12, h * 0.76, h * 0.76); g.fillStyle = '#050506'; g.font = `800 ${h * 0.6}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(H_ ? String(H_.no) : '', h * 0.5, h * 0.54);
@@ -400,7 +407,9 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('lobby', 'pendant_cloud', -12.8, L1 - 0.322, -11.4, 0, { collide: false, ground: false, scale: 0.55, detail: 1 });
   for (const x of [-4.6, 4.6]) add('lobby', 'bench_velvet', x, 0, -13.28);
   // v11 the alcove under the lift's gallery: a bench against the tower's back, a palm at each end
-  add('lobby', 'bench_velvet', 14.5, 0, LIFT.z0 - 0.4, Math.PI); for (const x of [13.0, 16.0]) add('lobby', 'planter_tall', x, 0, LIFT.z0 - 0.45);   // velvet benches under the pictures either side of the exit
+  add('lobby', 'bench_velvet', 14.5, 0, LIFT.z0 - 0.4, Math.PI); for (const x of [13.0, 16.0]) add('lobby', 'planter_tall', x, 0, LIFT.z0 - 0.45);
+  // the first-floor landing between the gallery and the corridor: two benches and palms along the back wall
+  for (const x of [16.6, 19.2]) add('lobby', 'bench_velvet', x, L1, -13.28); for (const x of [15.1, 20.7]) add('lobby', 'planter_tall', x, L1, -13.2);   // velvet benches under the pictures either side of the exit
   add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
   add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, 2 cm in front of the gold fins (v10)
   // v10 (the user: "improve the overall look from outside"): a premiere carpet from the kerb to the doors, two light columns flanking them
@@ -460,6 +469,7 @@ function dressRooms(world) {
 // v10 pictures on boards, framed, placed by the engine (no re-bake): the restroom pictograms, the east wall's mural, art over the cafe and
 // by the spine door, the film standees' boards. x, y, z: the picture's centre; yaw: the way it faces; the board and frame sit behind it
 // (depth + 4 mm), so a wall picture's centre is that far in front of the wall's face
+const ESC_BOX_Z = (() => { const [zi0, zi1] = escProfile(ESC.up).incline; return zi0 - 0.6 - 2.45 / (L1 - 0.85) * (zi0 - zi1); })();   // the back of the boxed-in escalator feet (rooms.py zk1)
 const ART = { room: 'lobby', yaw: 0, z: -13.6 + 0.034, frameCol: '#3e2618', frameMat: MAT.wood }, PIC = (o) => ({ room: 'lobby', depth: 0.03, ...o });
 const FRAMED = [
   PIC({ id: 'picto_m', x: 21.56 - 0.034, y: 1.35, z: -3.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
@@ -468,6 +478,7 @@ const FRAMED = [
   ...[[-15.4, 1], [-12.8, 2], [-10.2, 3]].map(([x, n]) => PIC({ ...ART, id: 'art_' + n, x, y: 2.25, z: ART.z + 0.014, w: 0.8, h: 1.1 })),   // on the cafe's walnut (14 mm)
   PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, z: ART.z + 0.014, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, z: ART.z + 0.014, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }),   // on the rear wall's walnut (14 mm)
   ...[[-6.6, 0.885, 'cosmos'], [6.6, -0.885, 'agent327']].map(([x, yaw, f]) => PIC({ id: `poster_${f}_s`, x: x + Math.sin(yaw) * 0.018, y: 0.98, z: 12.6 + Math.cos(yaw) * 0.018, yaw, w: 1.1, h: 1.7, emit: 0.6 })),
+  ...[[9.85, 'bunny'], [11.55, 'llamigos']].map(([x, f]) => PIC({ id: `poster_${f}_s`, x, y: 1.12, z: ESC_BOX_Z - 0.034, yaw: Math.PI, w: 0.9, h: 1.4, emit: 0.6 })),   // v11 on the walnut under the escalators
   ...[[6.0, 'hero'], [14.5, 'wingit']].map(([x, f]) => PIC({ room: 'corridor', id: `poster_${f}_s`, x, y: L1 + 0.98, z: BRIDGE.z0 + 0.8 + 0.018, yaw: 0, w: 1.1, h: 1.7, emit: 0.6 })),
 ];
 const UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
@@ -638,7 +649,9 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     // v10: the leaf also swings for a walker (they hold tickets) but only the usher's pass (or Quick play, 'always') lets the player through:
     // following someone in is no way past the check
     g.passUntil = 0; g.npcUntil = 0; g.always = false;
-    g.update = (dt, actors) => { const now = performance.now();
+    // v11 a light on the leaf's top rail: red while it is shut to you, green once your ticket (or Quick play) opens it
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(w - 0.3, 0.014, 0.03), new THREE.MeshBasicMaterial({ color: 0xff4d5a })); lamp.position.set(w / 2, GH + 0.007, 0); lamp.name = 'gate-lamp'; grp.add(lamp); g.lamp = lamp;
+    g.update = (dt, actors) => { const now = performance.now(); lamp.material.color.setHex(g.always || g.passUntil > now ? 0x3ecf8e : 0xff4d5a);
       if (actors) for (const a of actors) if (a.path && a.x > g.x0 - 0.4 && a.x < g.x1 + 0.4 && Math.abs(a.z - g.z) < 1.3 && (a.y || 0) < 1) { g.npcUntil = now + 1200; break; }
       g.target = g.always || g.passUntil > now || g.npcUntil > now ? 1 : 0; g.open += (g.target - g.open) * (1 - Math.exp(-dt * 4)); grp.rotation.y = g.open * 1.5; };   // swings in, towards the escalator
     g.pass = (ms = 9000) => { g.passUntil = performance.now() + ms; };
@@ -694,6 +707,13 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     const v = new Set([room || 'lobby']); let front = [...v];
     for (let hop = 0; hop < (all ? 1 : 2); hop++) { const next = []; for (const r of front) { const def = ROOMS[r]; if (def) for (const k of def.vis) if (!v.has(k) && (all || linkOpen(r, k))) { v.add(k); next.push(k); } } front = next; }
     world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => v.has(k));
+    // v11 a neighbouring room's furniture is drawn only from the rooms it can be made out from: the corridor's, the restrooms' and the
+    // street's from the lobby (and their own room), the lobby's wherever the lobby itself is drawn. It switches only when you pass from
+    // one room to another, as the rooms themselves do, never part way across a room (a threshold inside a room would make things pop).
+    // From the corridor this hides the street's and the restrooms' furniture, 40 m away through two openings: about 57,000 triangles.
+    const here = room || 'lobby', show = { corridor: here === 'corridor' || here === 'lobby', wc: here === 'wc' || here === 'lobby', street: here === 'street' || here === 'lobby' };
+    for (const k in show) { const rm = world.rooms[k]; if (!rm) continue; if (!rm.propMeshes || !rm.propMeshes.length) rm.propMeshes = rm.group.children.filter((o) => o.name === k + '-props' || o.name === k + '-propglow');   // looked up again until the props exist (reflections are captured before them)
+      for (const m of rm.propMeshes) m.visible = all || world.propCull === false || show[k]; }
   };
   world.update = (dt, actors, now) => {
     for (const d of world.doors) d.update(dt, actors); const lob = world.rooms.lobby.group.visible;

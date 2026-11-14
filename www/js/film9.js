@@ -12,12 +12,13 @@ import * as THREE from 'three';
 import { filmById, loadTrack, FEATURED, CATALOG } from './films.js';
 import { makeCanvas, SANS, SERIF } from './textures.js';
 import { t } from './i18n.js';
+import { media } from './bridge.js';
 const LIGHT = { idle: 1, pending: 1, countdown: 0.06, playing: 0.02, credits: 0.3, ended: 0.85 };
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), ss = (u) => u * u * u * (u * (u * 6 - 15) + 10);
 export function youtubeId(u) { const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; }
 // where a film is played from: a download, the app's server (proxy), or the web
 export function filmURL(f) {
-  const M = window.LumiereMedia; if (!M) return { url: f.url, cors: true };
+  const M = media; if (!M) return { url: f.url, cors: true };
   try { const dl = JSON.parse(M.downloaded() || '[]').find((d) => d.name === f.id + '.mp4' && d.done); if (dl) return { url: dl.url, local: true }; } catch (e) { /* no downloads */ }
   try { const b = M.proxyBase && M.proxyBase(); if (b) return { url: b + encodeURIComponent(f.url), local: true }; } catch (e) { /* older wrapper */ }
   return { url: f.url, cors: true };
@@ -120,7 +121,7 @@ export class Shows {
   book(id, src, delayMs, playerSeat, o = {}) {
     const s = this.s[id]; if (this.active && this.active !== id) this._abort(this.active); if (s.state !== 'idle') this._stopPicture(s);
     if (src.kind === 'film') { const f = filmById(src.filmId) || filmById(FEATURED[id]) || CATALOG[0]; s.src = { kind: 'film', filmId: f.id, title: f.title, ...filmURL(f) }; s.track = null; loadTrack(f.id).then((tr) => { s.track = tr; }); }
-    else { s.src = { ...src, orig: src.orig || src.url }; const M = window.LumiereMedia; if (s.src.kind === 'link' && M && M.proxyBase) { try { const b = M.proxyBase(); if (b) s.src.url = b + encodeURIComponent(src.url); } catch (e) { s.src.url = src.url; } } }
+    else { s.src = { ...src, orig: src.orig || src.url }; const M = media; if (s.src.kind === 'link' && M && M.proxyBase) { try { const b = M.proxyBase(); if (b) s.src.url = b + encodeURIComponent(src.url); } catch (e) { s.src.url = src.url; } } }
     s.credits = false; s.curtainKeep = !!o.replay; this.active = id; s.startAt = this.now + Math.max(o.minDelay != null ? o.minDelay : o.replay ? 3000 : 12000, delayMs); s.seek = Math.max(0, (o.seekMs || 0) / 1000); s.sync = !!o.sync; s.state = 'pending'; s.phaseAt = this.now; s.booked = true;
     if (s.src.kind !== 'youtube') { const v = this.video; v.pause(); v.playbackRate = 1; v.src = s.src.url; v.load(); }
     if (!o.replay) { this.crowd.clearAudience(id); const n = Math.min(this.engine.preset.crowd, Math.round(s.hall.seats.length * (0.4 + Math.random() * 0.3))); this.crowd.planAudience(id, n, Math.max(8000, s.startAt - this.now - 6000), new Set([playerSeat])); }

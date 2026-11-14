@@ -5,7 +5,8 @@ package com.buddyapps.lumiere;
 // CORS headers, so v8 had to show the open films through a hole in the screen). Byte ranges are forwarded, so seeking works and Chromium
 // buffers as usual. Plain Java (no Android classes): tools/android/test runs it on a desktop JVM.
 // Security: https only (plain http only for the loopback test upstream when allowLoopbackHttp is set); the route needs the per-launch
-// token like the other media routes; redirects are followed only to https; nothing is cached on disk.
+// token like the other media routes; redirects are followed only to https; nothing is cached on disk. v11: hosts on the phone's own
+// network are refused, and anything that is not video or audio is passed on as plain bytes (it is served from the game's origin).
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -25,9 +26,25 @@ public class Proxy implements LocalServer.Source {
         if (u == null || u.length() > 2048) throw new IOException("no url");
         URL url = new URL(u); String p = url.getProtocol().toLowerCase(Locale.ROOT), h = url.getHost().toLowerCase(Locale.ROOT);
         boolean loop = h.equals("127.0.0.1") || h.equals("localhost");
-        if (p.equals("https") && !loop) return url;
+        if (p.equals("https") && !loop) { publicHost(h); return url; }
         if (p.equals("http") && loop && allowLoopbackHttp) return url;
         throw new IOException("only https links");
+    }
+
+    /** v11: never a machine on the phone's own network (a router page, a camera, another app's server): only the public internet.
+     *  Checked on every hop. (A name that answers differently between this check and the connection is not caught: see docs/V11-SECURITY.md.) */
+    public static void publicHost(String h) throws IOException {
+        for (java.net.InetAddress a : java.net.InetAddress.getAllByName(h)) {
+            byte[] b = a.getAddress(); boolean ula = b.length == 16 && (b[0] & 0xfe) == 0xfc;   // IPv6 unique local, fc00::/7
+            boolean cgn = b.length == 4 && (b[0] & 0xff) == 100 && (b[1] & 0xc0) == 64;          // carrier-grade NAT, 100.64.0.0/10
+            if (a.isLoopbackAddress() || a.isSiteLocalAddress() || a.isLinkLocalAddress() || a.isAnyLocalAddress() || a.isMulticastAddress() || ula || cgn) throw new IOException("private address");
+        }
+    }
+    /** an https address on the public internet, or an IOException */
+    public static URL publicHttps(String u) throws IOException {
+        if (u == null || u.length() > 2048) throw new IOException("no url");
+        URL url = new URL(u); if (!"https".equalsIgnoreCase(url.getProtocol())) throw new IOException("only https links");
+        publicHost(url.getHost()); return url;
     }
 
     private HttpURLConnection open(URL url, String range) throws IOException {
@@ -53,6 +70,8 @@ public class Proxy implements LocalServer.Source {
             if (total < 0 && c.getResponseCode() == 200) total = c.getContentLengthLong();
             type = c.getContentType(); c.disconnect();
             if (type == null || type.startsWith("application/octet") || type.startsWith("binary")) type = LocalServer.mime(url.getPath());
+            // v11: what comes through is served from the game's own origin, so it is only ever media: a page or a script is handed on as bytes
+            String tl = type.toLowerCase(Locale.ROOT); if (!(tl.startsWith("video/") || tl.startsWith("audio/") || tl.startsWith("application/vnd.apple.mpegurl") || tl.startsWith("application/x-mpegurl"))) type = "application/octet-stream";
             len = new long[] { total };
             synchronized (this) { lengths.put(key, len); types.put(key, type); }
         }

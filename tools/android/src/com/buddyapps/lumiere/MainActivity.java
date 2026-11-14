@@ -93,6 +93,7 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setSupportZoom(false); s.setBuiltInZoomControls(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW); s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        { byte[] kb = new byte[16]; new java.security.SecureRandom().nextBytes(kb); StringBuilder ks = new StringBuilder(); for (byte x : kb) ks.append(String.format(java.util.Locale.ROOT, "%02x", x)); bridgeKey = ks.toString(); }
         web.addJavascriptInterface(new Media(), "LumiereMedia");
         web.setWebViewClient(new Client());
         web.setWebChromeClient(new Chrome());
@@ -103,8 +104,9 @@ public class MainActivity extends Activity {
         setContentView(root);
         immersive();
         startServer();
-        String url = server != null ? server.base() + "/index.html?app=1" : "about:blank";
-        if (state == null || web.restoreState(state) == null) web.loadUrl(url);
+        // v11: always a fresh load, with this launch's bridge key in the fragment (a restored page would hold the last launch's key)
+        String url = server != null ? server.base() + "/index.html?app=1#k=" + bridgeKey : "about:blank";
+        web.loadUrl(url);
     }
 
     void startServer() {
@@ -161,6 +163,11 @@ public class MainActivity extends Activity {
         if (customCb != null) customCb.onCustomViewHidden(); customCb = null;
     }
 
+    // v11 the bridge is visible to every frame in the page (addJavascriptInterface has no per-origin switch), so a video site's embed could
+    // call it. Every method therefore wants this launch's key, which only the game's own page is given.
+    String bridgeKey = "";
+    boolean granted() { return checkSelfPermission(permission()) == PackageManager.PERMISSION_GRANTED; }
+    boolean key(String k) { return k != null && !bridgeKey.isEmpty() && java.security.MessageDigest.isEqual(bridgeKey.getBytes(), k.getBytes()); }
     void js(final String code) { runOnUiThread(new Runnable() { public void run() { if (web != null) web.evaluateJavascript(code, null); } }); }
 
     static String q(String s) { return JSONObject.quote(s == null ? "" : s); }
@@ -188,20 +195,20 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- window.LumiereMedia
     class Media {
-        @JavascriptInterface public boolean hasPermission() { return checkSelfPermission(permission()) == PackageManager.PERMISSION_GRANTED; }
-        @JavascriptInterface public void requestPermission() {
+        @JavascriptInterface public boolean hasPermission(String k) { if (!key(k)) return false; return checkSelfPermission(permission()) == PackageManager.PERMISSION_GRANTED; }
+        @JavascriptInterface public void requestPermission(String k) { if (!key(k)) return;
             runOnUiThread(new Runnable() { public void run() {
-                if (hasPermission()) js("window.__lumiereMediaPermission && window.__lumiereMediaPermission(true)");
+                if (granted()) js("window.__lumiereMediaPermission && window.__lumiereMediaPermission(true)");
                 else requestPermissions(new String[] { permission() }, PERM);
             } });
         }
-        @JavascriptInterface public String base() { return server == null ? "" : server.base(); }
-        @JavascriptInterface public String proxyBase() { return server == null ? "" : server.base() + "/p/" + server.token + "/?u="; }
-        @JavascriptInterface public String serverError() { return startError == null ? "" : startError; }
+        @JavascriptInterface public String base(String k) { if (!key(k)) return ""; return server == null ? "" : server.base(); }
+        @JavascriptInterface public String proxyBase(String k) { if (!key(k)) return ""; return server == null ? "" : server.base() + "/p/" + server.token + "/?u="; }
+        @JavascriptInterface public String serverError(String k) { if (!key(k)) return ""; return startError == null ? "" : startError; }
         /** every video on the phone, newest first: [{ id, name, title, dur (ms), size, date (s), album, w, h, mime, url, thumb }] */
-        @JavascriptInterface public String list() {
+        @JavascriptInterface public String list(String k) { if (!key(k)) return "";
             JSONArray out = new JSONArray();
-            if (!hasPermission() || server == null) return out.toString();
+            if (!granted() || server == null) return out.toString();
             String[] cols = { MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DURATION, MediaStore.Video.Media.SIZE,
                 MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.BUCKET_DISPLAY_NAME, MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT,
                 MediaStore.Video.Media.MIME_TYPE, MediaStore.Video.Media.TITLE };
@@ -221,9 +228,9 @@ public class MainActivity extends Activity {
             return out.toString();
         }
         /** a frame of a video at ms (scrub preview), w pixels wide */
-        @JavascriptInterface public String frameUrl(long id, long ms, int w) { return server == null ? "" : server.base() + "/t/" + server.token + "/" + id + "?ms=" + ms + "&w=" + w; }
+        @JavascriptInterface public String frameUrl(String k, long id, long ms, int w) { if (!key(k)) return ""; return server == null ? "" : server.base() + "/t/" + server.token + "/" + id + "?ms=" + ms + "&w=" + w; }
         /** the phone's video decoders: [{ name, type, hw, maxW, maxH }] (the diagnostics page and the "this file may stutter" hint) */
-        @JavascriptInterface public String codecs() {
+        @JavascriptInterface public String codecs(String k) { if (!key(k)) return "";
             JSONArray out = new JSONArray();
             try {
                 for (MediaCodecInfo ci : new MediaCodecList(MediaCodecList.REGULAR_CODECS).getCodecInfos()) {
@@ -240,7 +247,7 @@ public class MainActivity extends Activity {
             } catch (Exception e) { /* empty */ }
             return out.toString();
         }
-        @JavascriptInterface public String info() {
+        @JavascriptInterface public String info(String k) { if (!key(k)) return "";
             JSONObject o = new JSONObject();
             try {
                 o.put("android", Build.VERSION.RELEASE); o.put("sdk", Build.VERSION.SDK_INT); o.put("model", Build.MANUFACTURER + " " + Build.MODEL);
@@ -251,7 +258,7 @@ public class MainActivity extends Activity {
             return o.toString();
         }
         /** seat shake: timings (ms) and amplitudes (0..255), as JSON arrays */
-        @JavascriptInterface public void vibrate(String timingsJson, String ampsJson) {
+        @JavascriptInterface public void vibrate(String k, String timingsJson, String ampsJson) { if (!key(k)) return;
             try {
                 JSONArray t = new JSONArray(timingsJson), a = new JSONArray(ampsJson); long[] tt = new long[t.length()]; int[] aa = new int[t.length()];
                 for (int i = 0; i < tt.length; i++) { tt[i] = Math.max(0, Math.min(2000, t.getLong(i))); aa[i] = Math.max(0, Math.min(255, i < a.length() ? a.getInt(i) : 128)); }
@@ -260,25 +267,26 @@ public class MainActivity extends Activity {
                 if (v.hasAmplitudeControl()) v.vibrate(VibrationEffect.createWaveform(tt, aa, -1)); else v.vibrate(VibrationEffect.createWaveform(tt, -1));
             } catch (Exception e) { /* no vibration */ }
         }
-        @JavascriptInterface public void stopVibrate() { Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.cancel(); }
+        @JavascriptInterface public void stopVibrate(String k) { if (!key(k)) return; Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.cancel(); }
         /** download a film for offline play into the app's Movies folder; progress arrives as window.__lumiereDownload(name, done, total, state) */
-        @JavascriptInterface public void download(final String url, final String name) {
-            if (!name.matches("[A-Za-z0-9._-]{1,80}")) return;
-            synchronized (downloads) { if (downloads.containsKey(name)) return; }
+        @JavascriptInterface public void download(String k, final String url, final String name) { if (!key(k)) return;
+            if (!name.matches("[A-Za-z0-9._-]{1,80}") || url == null || url.length() > 2048 || !url.toLowerCase(java.util.Locale.ROOT).startsWith("https://")) return;   // v11: https only
+            synchronized (downloads) { if (downloads.containsKey(name) || downloads.size() >= 3) return; }
             Thread t = new Thread(new Runnable() { public void run() { fetch(url, name); } }, "dl-" + name);
             synchronized (downloads) { downloads.put(name, t); } t.start();
         }
-        @JavascriptInterface public void cancelDownload(String name) { synchronized (downloads) { Thread t = downloads.remove(name); if (t != null) t.interrupt(); } }
+        @JavascriptInterface public void cancelDownload(String k, String name) { if (!key(k)) return; synchronized (downloads) { Thread t = downloads.remove(name); if (t != null) t.interrupt(); } }
         /** films already on the phone: [{ name, size, url }] */
-        @JavascriptInterface public String downloaded() {
+        @JavascriptInterface public String downloaded(String k) { if (!key(k)) return "";
             JSONArray out = new JSONArray();
             File d = filmsDir(); File[] fs = d == null ? null : d.listFiles();
             if (fs != null && server != null) for (File f : fs) { if (f.getName().endsWith(".part")) continue; try { JSONObject o = new JSONObject(); o.put("name", f.getName()); o.put("size", f.length()); o.put("url", server.base() + "/f/" + server.token + "/" + f.getName()); out.put(o); } catch (Exception e) { /* skip */ } }
             return out.toString();
         }
-        @JavascriptInterface public boolean removeDownload(String name) { File d = filmsDir(); if (d == null || !name.matches("[A-Za-z0-9._-]{1,80}")) return false; return new File(d, name).delete(); }
+        @JavascriptInterface public boolean removeDownload(String k, String name) { if (!key(k)) return false; File d = filmsDir(); if (d == null || !name.matches("[A-Za-z0-9._-]{1,80}")) return false; return new File(d, name).delete(); }
     }
 
+    static final long MAX_FILM = 4L * 1024 * 1024 * 1024;
     File filmsDir() { File d = getExternalFilesDir(Environment.DIRECTORY_MOVIES); if (d != null && !d.exists()) d.mkdirs(); return d; }
 
     void fetch(String url, String name) {
@@ -287,16 +295,28 @@ public class MainActivity extends Activity {
         HttpURLConnection c = null;
         try {
             long have = part.exists() ? part.length() : 0;
-            c = (HttpURLConnection) new URL(url).openConnection(); c.setInstanceFollowRedirects(true); c.setConnectTimeout(15000); c.setReadTimeout(30000);
-            if (have > 0) c.setRequestProperty("Range", "bytes=" + have + "-");
-            int code = c.getResponseCode(); boolean resume = code == 206;
+            // v11: redirects are followed by hand, each hop checked like the first (https, a public host): an https start cannot hand the
+            // download on to a machine on the phone's own network
+            URL at = Proxy.publicHttps(url); int code = 0;
+            for (int hop = 0; ; hop++) {
+                if (hop > 6) throw new IOException("too many redirects");
+                c = (HttpURLConnection) at.openConnection(); c.setInstanceFollowRedirects(false); c.setConnectTimeout(15000); c.setReadTimeout(30000);
+                if (have > 0) c.setRequestProperty("Range", "bytes=" + have + "-");
+                code = c.getResponseCode();
+                if (code < 300 || code >= 400) break;
+                String loc = c.getHeaderField("Location"); c.disconnect(); c = null; if (loc == null) throw new IOException("redirect without location");
+                at = Proxy.publicHttps(new URL(at, loc).toString());
+            }
+            boolean resume = code == 206;
             if (code != 200 && code != 206) throw new IOException("HTTP " + code);
             long total = c.getContentLengthLong(); if (total > 0 && resume) total += have; if (!resume) have = 0;
+            if (total > MAX_FILM) throw new IOException("too large");
             InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(part, resume);
             byte[] buf = new byte[256 * 1024]; int n; long last = 0;
             try {
                 while ((n = in.read(buf)) > 0) {
                     if (Thread.currentThread().isInterrupted()) throw new IOException("cancelled");
+                    if (have + n > MAX_FILM) throw new IOException("too large");   // v11: a download cannot fill the phone
                     out.write(buf, 0, n); have += n; long now = System.currentTimeMillis();
                     if (now - last > 400) { last = now; js("window.__lumiereDownload&&window.__lumiereDownload(" + q(name) + "," + have + "," + total + ",'progress')"); }
                 }
@@ -388,9 +408,10 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- navigation, chrome: file chooser, full-screen video
     class Client extends WebViewClient {
         @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
-            Uri u = req.getUrl();
-            if ("127.0.0.1".equals(u.getHost())) return false;
-            try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (ActivityNotFoundException e) { /* no browser: stay */ }
+            Uri u = req.getUrl(); String sc = u.getScheme() == null ? "" : u.getScheme().toLowerCase(java.util.Locale.ROOT);
+            if ("http".equals(sc) && "127.0.0.1".equals(u.getHost()) && server != null && u.getPort() == server.port) return false;
+            // v11: a frame (a video embed) cannot start other apps through intent: or market: links; only the page itself opens web links
+            if (req.isForMainFrame() && ("https".equals(sc) || "http".equals(sc))) { try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (ActivityNotFoundException e) { /* no browser: stay */ } }
             return true;
         }
     }

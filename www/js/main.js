@@ -25,6 +25,7 @@ import { Crowd } from './npc9.js';
 import { Shows } from './film9.js';
 import { Together } from './mpui.js';
 import { Wayfinder } from './wayfind.js';
+import { media } from './bridge.js';
 import { Input } from './input.js';
 import { Director } from './react.js';
 import { Intro, ARRIVAL } from './intro9.js';
@@ -126,7 +127,7 @@ async function boot() {
   const way = new Wayfinder(world, crowd); let wayT = 0;
   const layoutEd = new LayoutEditor(settings, sound, { onModal, save: () => { saveSettings(settings); applyLayout(settings); } });
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
-  const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived(), driver: (k) => { const ln = pick(k); if (ln) { talk.bubble(driverAgent, ln, 2.6); voice.speak(driverAgent, ln, { full: true }); } } });
+  const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived(), driver: (k, cx, cz) => { const ln = pick(k); if (cx != null) { driverAgent.x = cx; driverAgent.z = cz; } if (ln) { talk.bubble(driverAgent, ln, 2.6); voice.speak(driverAgent, ln, { full: true }); } } });
   const driverAgent = { x: 1.6, y: 0, z: 27.9, name: t('role9.driver'), role: 'driver', voice: 'driver', alive: true, ch: { s: { sit: 1 }, scale: 1 }, group: { visible: true }, crowd };
   // the taxi waits at the kerb: it's solid
   for (const [ax, az, bx, bz] of [[-0.75, 26.92, 3.95, 26.92], [3.95, 26.92, 3.95, 28.8], [3.95, 28.8, -0.75, 28.8], [-0.75, 28.8, -0.75, 26.92]]) world.walls.add(ax, az, bx, bz, -0.2, 1.6);
@@ -137,10 +138,10 @@ async function boot() {
     sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd }); sound.surround = !!settings.surround; if (input.vr !== !!settings.vr) input.setVR(!!settings.vr); talk.setOptions(settings); voice.setOptions(settings); applyLayout(settings);
   }
   applyLayout(settings);
-  { const oi = ui.openInfo.bind(ui); ui.openInfo = (kind) => { oi(kind); const M = window.LumiereMedia; if (kind !== 'help' || !M) return; try { const I = JSON.parse(M.info() || '{}'), C = JSON.parse(M.codecs() || '[]'), hw = C.filter((c) => c.hw).map((c) => c.type.replace('video/', '')).filter((v, i, a) => a.indexOf(v) === i);
+  { const oi = ui.openInfo.bind(ui); ui.openInfo = (kind) => { oi(kind); const M = media; if (kind !== 'help' || !M) return; try { const I = JSON.parse(M.info() || '{}'), C = JSON.parse(M.codecs() || '[]'), hw = C.filter((c) => c.hw).map((c) => c.type.replace('video/', '')).filter((v, i, a) => a.indexOf(v) === i);
     $('#infoBody').textContent += `\n\n${t('help9.diag')}\n${I.model || ''} · Android ${I.android || ''} · ${I.webview || ''}\n${t('help9.server')}: ${I.server || ''}\n${t('help9.decoders')}: ${hw.join(', ')}\n${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`; } catch (e) { /* older wrapper */ } }; }
   // ---------- your own video and links ----------
-  function pickOwn() { if (window.LumiereMedia) { tablet.open('mine'); return; } $('#file').click(); }
+  function pickOwn() { if (media) { tablet.open('mine'); return; } $('#file').click(); }
   $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; shows.loadFile(f, cleanTitle(f.name || 'Video')); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); tablet.refresh(); e.target.value = ''; });
   function useLink(u) { const own = shows.loadURL(u, cleanTitle(decodeURIComponent(u.split('/').pop().split('?')[0]) || 'Link')); ui.toast(t(own.kind === 'youtube' ? 'toast9.youtube' : 'toast.ownReady'), 2600); booking.build(); }
   // ---------- conversations ----------
@@ -243,7 +244,7 @@ async function boot() {
   // the best scenes (strong cues only): a seat rumble and a few sparks before the screen, each with its own switch
   const sparks = makeSparks(engine); function bigScene(id, ev) {
     if (!ticket || ticket.hall !== id || room !== ticket.hallKey || !player.seated) return; const strong = (ev.type === 'climax' || ev.type === 'scare') && (ev.k ?? 1) > 0.7; if (!strong) return;
-    if (settings.haptics !== false) { try { if (window.LumiereMedia && window.LumiereMedia.vibrate) window.LumiereMedia.vibrate(JSON.stringify([0, 70, 40, 120, 60, 60]), JSON.stringify([0, 140, 0, 220, 0, 120])); else navigator.vibrate && navigator.vibrate([70, 40, 120]); } catch (e) { /* no vibrator */ } }
+    if (settings.haptics !== false) { try { if (media && media.vibrate) media.vibrate(JSON.stringify([0, 70, 40, 120, 60, 60]), JSON.stringify([0, 140, 0, 220, 0, 120])); else navigator.vibrate && navigator.vibrate([70, 40, 120]); } catch (e) { /* no vibrator */ } }
     if (settings.particles !== false) sparks.burst(world.hallById(id), shows.avg);
   }
   world.onDoor = (open, door) => { const d = Math.hypot(door.x - player.x, door.z - player.z); if (d < 12 && Math.abs(door.y - player.y) < 3) sound.door(open, 1 - d / 12); };
@@ -299,7 +300,7 @@ async function boot() {
     for (const h of world.halls) if (h.room.group.visible) h.updateLOD(cam, false, engine.preset.seatLod * (engine.lodK || 1));
     together.frame(dt); crowd.update(dt, now, player, world.vis); shows.update(dt, now, r, world.vis);
     const lvl = sound.level(); shows.spread += (clamp(((lvl ?? -60) + 30) / 18) - shows.spread) * Math.min(1, dt * 2); director.update(dt, now, lvl, shows.lum);
-    sparks.update(dt); if (world.rooms.street.group.visible) rain.update(now / 1000, cam);
+    sparks.update(dt); rain.mesh.visible = !intro.inCar; if (world.rooms.street.group.visible && !intro.inCar) rain.update(now / 1000, cam);   // no rain falls inside the taxi
     // the film follows you: through the hall's doors, quieter and duller outside
     audT -= dt; if (audT <= 0) { audT = 0.25; let want = null; for (const h of world.halls) if (shows.isOn(h.id) && shows.get(h.id).pic) { const a = h.key === r ? 1 : world.vis.has(h.key) ? 0.22 : 0; if (a > 0 && (!want || a > want.a)) want = { a, h }; }
       const key = want ? want.h.key : null; if (key !== curFilm) { curFilm = key; if (!key) sound.stopFilm(); } curFilm && (sound._aud = want.a); }
@@ -338,6 +339,8 @@ async function boot() {
     const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
     if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
     if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
+    // v11 the ticket machines between the box office and the concessions: the box office sheet without the queue
+    if (r === 'lobby' && player.y < 1 && Math.hypot(player.x - (COUNTERS.boxOffice.x1 + 0.5), player.z - (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2) < 1.6 && ahead(COUNTERS.boxOffice.x1, (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2, 0.35)) { ui.setPrompt(t('goal.ticket'), () => { sound.click(); booking.open({ quick: game === 'quick' }); }); return; }
     const L = world.lift; if (r === 'lobby') { if (L.inside(player.x, player.z)) { const to = L.level ? 0 : 1; ui.setPrompt(t(to ? 'hud9.liftUp' : 'hud9.liftDown'), () => { if (to === 1 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(to); sound.click(); }); return; }
       for (const k of [0, 1]) if (L.atDoor(player.x, player.y, player.z, k) && (L.level !== k || L.state !== 'idle')) { ui.setPrompt(t('hud9.liftCall'), () => { if (k === 0 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(k); sound.click(); }); return; } }
     if (hk) { const h = world.hallByKey(hk); let best = null, bd = 1.5;
