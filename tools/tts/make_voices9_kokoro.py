@@ -9,10 +9,10 @@ import numpy as np, soundfile as sf
 from kokoro_onnx import Kokoro
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-SRC, OUT, CACHE = os.path.join(ROOT, 'tools', 'dev', 'i18n', 'v9-dialogue.json'), os.path.join(ROOT, 'www', 'voice'), os.path.join(ROOT, 'tools', 'tts', '.cache9k')
+SRC, OUT, CACHE = [os.path.join(ROOT, 'tools', 'dev', 'i18n', n) for n in ('v9-dialogue.json', 'v10-cafe.json', 'v11-dialogue.json')], os.path.join(ROOT, 'www', 'voice'), os.path.join(ROOT, 'tools', 'tts', '.cache9k')
 ENV_HZ, B64 = 25, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 G2 = ['guestM', 'guestF']
-WHO = [('host.', ['host']), ('box.', ['box']), ('bar.', ['barM', 'barF']), ('ush.', ['usher']), ('srv.', ['server']), ('drv.', ['driver']), ('pa.', ['pa']), ('guest.', G2), ('aud.', G2), ('chat', None)]
+WHO = [('host.', ['host']), ('box.', ['box']), ('bar.', ['barM', 'barF']), ('ush.', ['usher']), ('srv.', ['server']), ('drv.', ['driver']), ('pa.', ['pa']), ('cafe.', ['barM']), ('guest.', G2), ('aud.', G2), ('chat', None)]
 VOICES = {'es': {'host': ('ef_dora', 1.0), 'box': ('ef_dora', 1.07), 'barM': ('em_alex', 1.0), 'barF': ('ef_dora', 0.95), 'usher': ('em_santa', 1.0), 'server': ('em_alex', 0.94),
                  'guestM': ('em_alex', 1.05), 'guestM2': ('em_santa', 0.93), 'guestF': ('ef_dora', 1.12), 'guestF2': ('ef_dora', 0.9), 'driver': ('em_santa', 0.88), 'pa': ('ef_dora', 1.03)},
           'hi': {'host': ('hf_alpha', 1.0), 'box': ('hf_beta', 1.0), 'barM': ('hm_omega', 1.0), 'barF': ('hf_beta', 1.08), 'usher': ('hm_psi', 1.0), 'server': ('hm_omega', 0.94),
@@ -50,7 +50,9 @@ def envelope(x, sr):
 
 def main():
     a = sys.argv[1:]; k = Kokoro(a[0], a[1]); lang = a[a.index('--lang') + 1] if '--lang' in a else 'es'
-    D = json.load(open(SRC)); table = {key: v[lang] for key, v in D.items()}; os.makedirs(CACHE, exist_ok=True)
+    D = {}
+    for src in SRC: D.update({k: v for k, v in json.load(open(src, encoding='utf8')).items() if isinstance(v.get(lang), list) and not k.startswith(('opt', 'hud', 'toast', 'role', 'price', 'item'))})
+    table = {key: v[lang] for key, v in D.items()}; os.makedirs(CACHE, exist_ok=True)
     cpath = os.path.join(CACHE, lang + '.json'); cache = json.load(open(cpath)) if os.path.exists(cpath) else {}; man = {}; made = kept = 0
     for stem, text, w in clips(table):
         voice, pitch = VOICES[lang][w]; say = text.replace('’', "'").replace('…', '...')

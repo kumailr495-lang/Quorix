@@ -8,7 +8,7 @@ import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
-import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_STAIRS } from './building.js';
+import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_STAIRS } from './building.js';
 import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
@@ -40,8 +40,9 @@ export function roomAt(x, y, z) {
   for (const r of CORR) if (IN(r, x, z)) return 'corridor';
   return null;
 }
-const SHAFT = { x0: LIFT.x0 - 0.15, x1: LIFT.x1 + 0.15, z0: LIFT.z0 - 0.15, z1: LIFT.z1 }, CAB = { x0: LIFT.x0, x1: LIFT.x1, z0: LIFT.z0, z1: LIFT.z1 + 0.01 };
-const onMezz = (x, z) => z >= MEZZ.z0 && z <= MEZZ.z1 && !IN(MEZZ.void, x, z) && !IN(SHAFT, x, z);
+// v11: the lift stands in front of the mezzanine, beside the escalators; on the first floor a gallery joins its rear door to the mezzanine
+const CAB = { x0: LIFT.x0, x1: LIFT.x1, z0: LIFT.z0 - 0.01, z1: LIFT.z1 + 0.01 };
+const onMezz = (x, z) => (z >= MEZZ.z0 && z <= MEZZ.z1 && !IN(MEZZ.void, x, z)) || IN(GALLERY, x, z);
 function stairY(x, z, y) {
   for (const s of EXIT_STAIRS) {
     if (x < Math.min(s.x0, s.x1) || x > Math.max(s.x0, s.x1)) continue;
@@ -203,25 +204,29 @@ class Travelator {
 }
 // the lift: a glass-backed cab between G and L1; its doors open at the floor it stands at while someone is near or inside
 class Lift {
+  // v11: a through car. Lf.face[k] says which end the door is at on stop k (+1: the z1 end, -1: the z0 end): the ground-floor door faces
+  // the landing behind the gate, the first-floor door opens onto the gallery. Both door walls are 0.15 m thick, inside z0 and z1.
   constructor(world, Lf) {
     Object.assign(this, { L: Lf, y: 0, level: 0, target: 0, state: 'idle', doors: [0, 0], hold: 0, t: 0 }); const room = world.rooms.lobby, U = room.U;
-    const a = new Acc(), x0 = Lf.x0 + 0.02, x1 = Lf.x1 - 0.02, z0 = Lf.z0 + 0.02, z1 = Lf.z1 - 0.18, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, W = x1 - x0, D = z1 - z0, H = 2.45;
-    a.add(boxGeo(W, 0.06, D), M(cx, -0.025, cz), '#2a2522', { mat: MAT.granite });   // 5 mm proud of the shaft floor a.add(boxGeo(W, 0.05, D), M(cx, H + 0.025, cz), '#d9d2c5', { mat: MAT.metal });
+    const a = new Acc(), x0 = Lf.x0 + 0.02, x1 = Lf.x1 - 0.02, z0 = Lf.z0 + 0.18, z1 = Lf.z1 - 0.18, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, W = x1 - x0, D = z1 - z0, H = 2.45;
+    a.add(boxGeo(W, 0.06, D), M(cx, -0.025, cz), '#2a2522', { mat: MAT.granite });   // the floor, 5 mm proud of the shaft's
+    a.add(boxGeo(W, 0.05, D), M(cx, H + 0.025, cz), '#d9d2c5', { mat: MAT.metal });   // the ceiling (v9 lost it behind a comment)
     a.add(boxGeo(0.03, H, D), M(x0 + 0.015, H / 2, cz), '#b9bcc2', { mat: MAT.chrome }); a.add(boxGeo(0.03, H, D), M(x1 - 0.015, H / 2, cz), '#b9bcc2', { mat: MAT.chrome });
-    a.add(boxGeo(W, H, 0.03), M(cx, H / 2, z0 + 0.015), '#3b2f25', { mat: MAT.wood }); a.add(boxGeo(W - 0.2, 1.1, 0.01), M(cx, 1.45, z0 + 0.035), '#a8b4bc', { mat: MAT.chrome });
-    a.add(boxGeo(0.05, 0.05, D - 0.1), M(x0 + 0.06, 0.95, cz), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 0.05, D - 0.1), M(x1 - 0.06, 0.95, cz), '#c9a35e', { mat: MAT.brass });
-    for (const sx of [-1, 1]) a.add(boxGeo(0.5, H, 0.06), M(sx < 0 ? x0 + 0.25 : x1 - 0.25, H / 2, z1 - 0.03), '#3b2f25', { mat: MAT.powder });
+    a.add(boxGeo(0.012, 1.1, D - 0.5), M(x0 + 0.036, 1.45, cz), '#a8b4bc', { mat: MAT.chrome });   // a mirror panel on one side
+    a.add(boxGeo(0.05, 0.05, D - 0.1), M(x0 + 0.075, 0.95, cz), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 0.05, D - 0.1), M(x1 - 0.06, 0.95, cz), '#c9a35e', { mat: MAT.brass });
+    for (const zr of [z0 + 0.03, z1 - 0.03]) for (const sx of [-1, 1]) a.add(boxGeo(0.5, H, 0.06), M(sx < 0 ? x0 + 0.25 : x1 - 0.25, H / 2, zr), '#3b2f25', { mat: MAT.powder });   // the returns beside both doors
     const g = toGeometry(a); room.lights.bake(g); const lh = g.attributes.lh.array; for (let i = 0; i < lh.length; i++) lh[i] = lh[i] * 0.4 + 0.35;   // the cab's own ceiling light
     this.cab = new THREE.Mesh(g, world.mats.litFor(U, g)); this.cab.name = 'lift-cab'; room.group.add(this.cab);
     const gl = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.3, D - 0.3), world.mats.glowMat(U)); gl.rotation.x = Math.PI / 2; gl.position.set(cx, H - 0.01, cz);
     gl.geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(12).fill(2.2), 3)); gl.geometry.setAttribute('grp', new THREE.BufferAttribute(new Float32Array(4), 1)); this.cab.add(gl); this.cab.position.y = 0;
-    this.cx = cx; this.zDoor = Lf.z1 - 0.07; this.dw = 1.4;
-    this.leaves = Lf.stops.map((ly) => [-1, 1].map((s) => { const q = new Acc(); q.add(boxGeo(this.dw / 2, 2.3, 0.04), M(0, 1.15, 0), '#9ea2a8', { mat: MAT.metal }); const lg = toGeometry(q); lg.translate(cx, ly, this.zDoor); room.lights.bake(lg); lg.translate(-cx, -ly, -this.zDoor);
-      const m = new THREE.Mesh(lg, world.mats.litFor(U, lg)); m.name = 'lift-door'; m.position.set(cx + s * this.dw / 4, ly, this.zDoor); room.group.add(m); return { m, s }; }));
-    this.inner = { x0: x0 + 0.1, x1: x1 - 0.1, z0: z0 + 0.1, z1: Lf.z1 - 0.1 };
+    this.cx = cx; this.dw = 1.4; this.face = Lf.face || Lf.stops.map(() => 1); this.zDoor = this.face.map((f) => (f > 0 ? Lf.z1 - 0.07 : Lf.z0 + 0.07));
+    this.leaves = Lf.stops.map((ly, k) => [-1, 1].map((sd) => { const zd = this.zDoor[k], q = new Acc(); q.add(boxGeo(this.dw / 2, 2.3, 0.04), M(0, 1.15, 0), '#9ea2a8', { mat: MAT.metal }); const lg = toGeometry(q); lg.translate(cx, ly, zd); room.lights.bake(lg); lg.translate(-cx, -ly, -zd);
+      const m = new THREE.Mesh(lg, world.mats.litFor(U, lg)); m.name = 'lift-door'; m.position.set(cx + sd * this.dw / 4, ly, zd); room.group.add(m); return { m, s: sd }; }));
+    this.inner = { x0: x0 + 0.1, x1: x1 - 0.1, z0: Lf.z0 + 0.1, z1: Lf.z1 - 0.1 };
   }
   inside(x, z) { return IN(this.inner, x, z); }
-  atDoor(x, y, z, k) { return Math.abs(y - this.L.stops[k]) < 1.2 && Math.abs(x - this.cx) < 1.0 && z > this.L.z1 - 0.2 && z < this.L.z1 + 1.6; }
+  // in front of stop k's door, outside the car (up to 1.6 m from it)
+  atDoor(x, y, z, k) { const f = this.face[k], d = f > 0 ? z - this.L.z1 : this.L.z0 - z; return Math.abs(y - this.L.stops[k]) < 1.2 && Math.abs(x - this.cx) < 1.0 && d > -0.2 && d < 1.6; }
   call(k) { if (this.state === 'idle' && this.level === k) { this.hold = 5; return; } if (this.state === 'idle') { this.target = k; this.state = 'closing'; this.t = 0; } }
   update(dt, actors, onEvent) {
     const lv = this.level, near = actors.some((a) => (this.inside(a.x, a.z) && Math.abs((a.y || 0) - this.y) < 1.2) || this.atDoor(a.x, a.y || 0, a.z, lv));
@@ -232,7 +237,9 @@ class Lift {
     this.cab.position.y = this.y;
     this.leaves.forEach((pair, k) => { const o = this.doors[k]; for (const L of pair) L.m.position.x = this.cx + L.s * (this.dw / 4 + o * this.dw * 0.47); });
   }
-  doorSegs() { return this.L.stops.map((ly, k) => ({ seg: [this.cx - this.dw / 2, this.L.z1 - 0.07, this.cx + this.dw / 2, this.L.z1 - 0.07], y0: ly, y1: ly + 2.3, on: this.doors[k] < 0.75 || this.level !== k || this.state !== 'idle' })); }
+  // the closed doors as walls: each stop's own door while it is shut or the car is elsewhere; the car's other end is always shut there
+  doorSegs() { const S = (z, ly, on) => ({ seg: [this.cx - this.dw / 2, z, this.cx + this.dw / 2, z], y0: ly, y1: ly + 2.3, on }), out = [];
+    this.L.stops.forEach((ly, k) => { out.push(S(this.zDoor[k], ly, this.doors[k] < 0.75 || this.level !== k || this.state !== 'idle')); for (const z of this.zDoor) if (z !== this.zDoor[k]) out.push(S(z, ly, true)); }); return out; }
 }
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
 const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192 };   // canvas pixels per metre for boards with text or fine figures
@@ -391,7 +398,9 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const z of [-12.6, -11.7, -10.8, -9.9]) add('lobby', 'bar_stool', -18.72, 0, z, -Math.PI / 2);
   for (const [tx, tz] of [[-15.4, -12.5], [-12.8, -12.5], [-10.2, -12.5], [-14.1, -10.3], [-11.5, -10.3]]) { add('lobby', 'bistro_table', tx, 0, tz); add('lobby', 'bistro_chair', tx - 0.62, 0, tz, Math.PI / 2); add('lobby', 'bistro_chair', tx + 0.62, 0, tz, -Math.PI / 2); }
   add('lobby', 'pendant_cloud', -12.8, L1 - 0.322, -11.4, 0, { collide: false, ground: false, scale: 0.55, detail: 1 });
-  for (const x of [-4.6, 4.6]) add('lobby', 'bench_velvet', x, 0, -13.28);   // velvet benches under the pictures either side of the exit
+  for (const x of [-4.6, 4.6]) add('lobby', 'bench_velvet', x, 0, -13.28);
+  // v11 the alcove under the lift's gallery: a bench against the tower's back, a palm at each end
+  add('lobby', 'bench_velvet', 14.5, 0, LIFT.z0 - 0.4, Math.PI); for (const x of [13.0, 16.0]) add('lobby', 'planter_tall', x, 0, LIFT.z0 - 0.45);   // velvet benches under the pictures either side of the exit
   add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
   add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, 2 cm in front of the gold fins (v10)
   // v10 (the user: "improve the overall look from outside"): a premiere carpet from the kerb to the doors, two light columns flanking them
@@ -439,7 +448,9 @@ function dressRooms(world) {
       ring: (cx, cz, r, y0, y1, n = 16) => { const R = r / Math.cos(Math.PI / n); for (let k = 0; k < n; k++) { const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n; world.walls.add(cx + R * Math.cos(a0), cz + R * Math.sin(a0), cx + R * Math.cos(a1), cz + R * Math.sin(a1), y0, y1); } } };
     const framed = FRAMED.filter((f) => f.room === key); for (const f of framed) framePanel(host.pacc, f);
     const det = world.engine && world.engine.preset ? world.engine.preset.detail ?? 1 : 1;   // v10: the low preset skips purely decorative extras (o.detail 1)
-    for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y; placeAsset(host, p.name, p.x, p.y + lift, p.z, p.yaw, p.o); }
+    const cen = (world.census || (world.census = {}))[key] = {};   // what each room's furniture costs (triangles per asset): the optimiser's map
+    for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y; placeAsset(host, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
+      const e = cen[p.name] || (cen[p.name] = { n: 0, tris: 0 }), ld = p.o.lod ?? 0; e.n++; for (const q of A.parts) if (q.lod === ld && (!p.o.only || q.name.startsWith(p.o.only))) e.tris += (q.geo.index ? q.geo.index.count : q.geo.attributes.position.count) / 3; }
     if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
     if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
     for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });

@@ -49,16 +49,18 @@ const walks = await p.evaluate(async () => {
   const L = window.__lumiere, B = L.B, HM = await import('/js/hallmath.js'), W = L.world, out = [], pt = (o) => [+o.x.toFixed(3), +o.z.toFixed(3)];
   out.push({ label: 'street to lobby (main doors)', start: [0.6, 0, 25.2], pts: [[0.6, 22], [0, 19], [0, 15.5]], room: 'lobby', y: 0 });
   out.push({ label: 'lobby to restrooms and back', start: [18.6, 0, 3.0], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
-  out.push({ label: 'up escalator to the bridge', start: [9.7, 0, 6], pts: [[9.7, 4.6], [9.7, 2.6], [9.7, 0.6], [9.7, -1], [9.7, -6], [9.7, -10.6], [9.7, -12.3], [10.2, -15.5], [0, -18]], room: 'corridor', y: B.L1 });
-  out.push({ label: 'lift up and out on the first floor', start: [14.6, 0, -6.5], pts: [[14.6, -8.8], [14.6, -9.4, 'wait', 4000], [14.6, -11.2], [14.6, -11.4, 'lift:1'], [14.6, -11.4, 'until-lift:1'], [14.6, -9.0], [13, -8.2]], room: 'lobby', y: B.L1 });
-  // v10 ticket zone (both escalators and the lift behind one check): with the gate shut and no pass, no way in from the lobby (the ticket leaf,
-  // round either end, through the exit leaves, behind the lift, under or behind the escalators); from inside, out by the exit leaves
-  for (const [label, start, pts] of [['the ticket leaf', [9.7, 0, 6], [[9.7, 4.6], [9.7, 0.6]]], ['round the west end', [6.5, 0, 2.4], [[8.3, 2.4], [9.7, 0.8], [9.7, -1.5]]],
-    ['the exit leaves from the lobby', [11.7, 0, 5.5], [[11.7, 4.0], [11.7, 1.5]]], ['round the east end', [19.0, 0, 2.0], [[16.0, 1.0], [14.6, -8.8]]],
-    ['behind the lift', [19.5, 0, -12.9], [[16.4, -12.9], [13.0, -12.4], [13.0, -9.0]]], ['under the escalators', [5.0, 0, -8.0], [[8.0, -8.0], [10.7, -8.0], [13.4, -8.0], [14.6, -9.0]]],
-    ['behind the escalators', [5.0, 0, -12.6], [[8.0, -12.6], [12.9, -12.6], [14.6, -9.4]]]]) out.push({ label: 'zone shut: ' + label, start, pts, shut: true, stayOut: true });
-  out.push({ label: 'zone shut: down escalator and out by the exit leaves', start: [11.7, B.L1, -12.8], pts: [[11.7, -11.2], [11.7, -9], [11.7, -4], [11.7, 0.6], [11.7, 2.4], [11.7, 4.8]], room: 'lobby', y: 0, shut: true, exitZone: true });
-  out.push({ label: 'zone shut: lift down and out by the exit leaves', start: [14.6, B.L1, -8.4], pts: [[14.6, -8.8, 'lift:1'], [14.6, -8.8, 'until-lift:1'], [14.6, -11.2], [14.6, -11.4, 'lift:0'], [14.6, -11.4, 'until-lift:0'], [14.6, -9.0], [14.8, 2.2], [11.7, 2.4], [11.7, 4.8]], room: 'lobby', y: 0, shut: true, exitZone: true });
+  out.push({ label: 'up escalator to the bridge', start: [9.7, 0, 6.8], pts: [[9.7, 5.2], [9.7, 2.6], [9.7, 0.6], [9.7, -1], [9.7, -6], [9.7, -10.6], [9.7, -12.3], [10.2, -15.5], [0, -18]], room: 'corridor', y: B.L1 });
+  // v11 the core: the lift's door is on the landing behind the gate; the car opens at its other end onto the first-floor gallery
+  out.push({ label: 'lift up and out along the gallery', start: [14.5, 0, 2.8], pts: [[14.5, 1.9], [14.5, 1.6, 'wait', 4000], [14.5, 0.0], [14.5, -0.4, 'lift:1'], [14.5, -0.4, 'until-lift:1'], [14.5, -2.8], [14.5, -8.4], [13.6, -11.6]], room: 'lobby', y: B.L1 });
+  // the ticket zone (the landing the escalators and the lift share): with the gate shut and no pass there is no way in from the lobby (the
+  // ticket leaf, round either end, the exit leaves, between the escalator and the lift, under the escalators, the lift's back, round the
+  // tower); from inside, out by the exit leaves
+  for (const [label, start, pts] of [['the ticket leaf', [9.7, 0, 6.8], [[9.7, 5.2], [9.7, 2.0]]], ['round the west end', [6.0, 0, 2.6], [[8.3, 2.6], [9.7, 2.0], [9.7, 0.0]]],
+    ['the exit leaves from the lobby', [11.7, 0, 6.4], [[11.7, 4.6], [11.7, 2.0]]], ['round the east end', [19.0, 0, 2.4], [[16.6, 2.4], [14.5, 2.4]]],
+    ['between the escalator and the lift', [12.9, 0, -5.0], [[12.9, -2.2], [12.9, 0.4], [12.9, 2.4]]], ['under the escalators', [5.0, 0, -8.5], [[8.0, -8.5], [10.7, -8.5], [10.7, -5.0], [10.7, -1.0], [10.7, 2.4]]],
+    ['the back of the lift', [14.5, 0, -5.0], [[14.5, -2.2], [14.5, -0.4], [14.5, 2.4]]], ['round the tower from the alcove', [17.5, 0, -3.0], [[16.6, -0.4], [16.6, 2.0], [14.5, 2.4]]]]) out.push({ label: 'zone shut: ' + label, start, pts, shut: true, stayOut: true });
+  out.push({ label: 'zone shut: down escalator and out by the exit leaves', start: [11.7, B.L1, -12.8], pts: [[11.7, -11.2], [11.7, -9], [11.7, -4], [11.7, 0.6], [11.7, 2.8], [11.7, 5.6]], room: 'lobby', y: 0, shut: true, exitZone: true });
+  out.push({ label: 'zone shut: lift down from the gallery and out by the exit leaves', start: [14.5, B.L1, -6.0], pts: [[14.5, -3.0, 'lift:1'], [14.5, -3.0, 'until-lift:1'], [14.5, -0.6], [14.5, -0.4, 'lift:0'], [14.5, -0.4, 'until-lift:0'], [14.5, 1.8], [11.7, 2.8], [11.7, 5.6]], room: 'lobby', y: 0, shut: true, exitZone: true });
   for (const h of Object.values(B.HALL)) {
     const wh = W.hallByKey(h.key), din = B.DOORS.find((d) => d.hall === h.id && d.id.endsWith('In')), side = -h.dir;
     const rows = [...new Set(wh.seats.map((s) => s.row))].sort((a, b) => a - b);

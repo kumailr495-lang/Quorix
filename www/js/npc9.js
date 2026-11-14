@@ -30,6 +30,8 @@ class Agent {
     Object.assign(this, { crowd, id: o.id, role: o.role || 'guest', name: o.name || '', voice: o.voice || null, rec: o.rec, x: o.x, y: o.y || 0, z: o.z, yaw: o.yaw || 0, home: o.home || null,
       path: null, pi: 0, speed: o.speed || rnd(1.15, 1.4), ride: false, sit: 0, sitT: 0, seat: null, hall: null, state: o.state || 'idle', look: { yaw: 0, pitch: 0, amt: 0 }, alive: true,
       gest: null, gestUntil: 0, talkUntil: 0, talkable: !!o.talkable, wait: 0, onArrive: null, items: {}, item: null, r: 0.26 });
+    // how this person takes to a stranger: fixed per person (from the id), so the same guest is the same every time you try
+    { let h = 2166136261; for (const c of String(o.id || '')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } const u = ((h >>> 0) % 1000) / 1000; this.temper = u < 0.45 ? 'curt' : u < 0.8 ? 'plain' : 'warm'; }
     this.light = { amb: new THREE.Color(0.3, 0.3, 0.3), key: new THREE.Color(0.3, 0.3, 0.3), dir: new THREE.Vector3(0, 1, 0), screen: new THREE.Color(0, 0, 0) }; this.lightT = 0; this.ch = null; this.room = null;
   }
   get group() { return this.ch ? this.ch.group : HIDDEN; }

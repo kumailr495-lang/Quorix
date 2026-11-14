@@ -26,7 +26,9 @@ export const TREES = {
     arrive: ['srv.arrive', [['opt9.order', 'menu'], ['opt9.tablet', 'act:tablet'], ['opt9.takeTrash', 'act:trash'], ['opt9.nothing', 'act:serverBye']]],
     menu: ['srv.menu', [['opt9.salted', 'act:buy:salted'], ['opt9.caramel', 'act:buy:caramel'], ['opt9.drink', 'act:buy:cola'], ['opt9.coffee', 'act:buy:coffee'], ['opt9.nachos', 'act:buy:nachos'], ['opt.back', 'arrive']]],
     back: ['srv.back', [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]] } },
-  guest: { start: 'hi', nodes: { hi: ['guest.small', [['opt.bye', 'end']]] } },
+  // v11 (the user: "not every one of them too friendly"): a stranger answers as their temper has it (npc9.js Agent.temper): most are
+  // short with you, some neutral, a few chatty; a curt one ends the talk themselves (main.js startTalk)
+  guest: { start: 'hi', nodes: { hi: ['guest.talk.plain', [['opt.bye', 'end']]], warm: ['guest.talk.warm', [['opt.bye', 'end']]], curt: ['guest.talk.curt', [['opt.bye', 'end']]] } },
 };
 export function treeFor(agent, ctx = {}) {
   const role = TREES[agent.role] ? agent.role : 'guest', tree = TREES[role];
@@ -35,5 +37,6 @@ export function treeFor(agent, ctx = {}) {
   if (role === 'box' && ctx.ticket) start = 'again';
   if (role === 'usher') start = !ctx.ticket ? 'noTicket' : ctx.ticket.checked ? 'locate' : 'ask';
   if (role === 'server' && ctx.serverBack) start = 'back';
+  if (role === 'guest') start = agent.temper === 'warm' ? 'warm' : agent.temper === 'curt' ? 'curt' : 'hi';
   return { ...tree, start };
 }

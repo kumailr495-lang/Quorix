@@ -15,16 +15,17 @@ import sys, os, json, hashlib, subprocess, tempfile, time
 import numpy as np, soundfile as sf, torch
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-SRC, OUT, CACHE = os.path.join(ROOT, 'tools', 'dev', 'i18n', 'v9-dialogue.json'), os.path.join(ROOT, 'www', 'voice'), os.path.join(ROOT, 'tools', 'tts', '.cache9')
+SRC, OUT, CACHE = [os.path.join(ROOT, 'tools', 'dev', 'i18n', n) for n in ('v9-dialogue.json', 'v10-cafe.json', 'v11-dialogue.json')], os.path.join(ROOT, 'www', 'voice'), os.path.join(ROOT, 'tools', 'tts', '.cache9')
 ENV_HZ, B64 = 25, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 G2 = ['guestM', 'guestF']
 G4 = ['guestM', 'guestM2', 'guestF', 'guestF2']
 # who says each key (prefix match, longest first): roles -> voice ids; chats need four voices so two guests never share one
-WHO = [('host.', ['host']), ('box.', ['box']), ('bar.', ['barM', 'barF']), ('ush.', ['usher']), ('srv.', ['server']), ('drv.', ['driver']), ('pa.', ['pa']),
+WHO = [('host.', ['host']), ('box.', ['box']), ('bar.', ['barM', 'barF']), ('ush.', ['usher']), ('srv.', ['server']), ('drv.', ['driver']), ('pa.', ['pa']), ('cafe.', ['barM']),
        ('guest.', G2), ('aud.', G2), ('chat', G4)]
 # delivery per voice: exaggeration (emotion), cfg weight (pacing / closeness to the reference), temperature
-STYLE = {'pa': (0.35, 0.5, 0.7), 'host': (0.55, 0.45, 0.75), 'box': (0.5, 0.45, 0.75), 'usher': (0.5, 0.45, 0.75), 'server': (0.5, 0.45, 0.75),
-         'barM': (0.55, 0.45, 0.8), 'barF': (0.55, 0.45, 0.8), 'driver': (0.5, 0.4, 0.8)}
+# v11 (the user: "not every one of them too friendly"): the staff speak flatter and steadier (less exaggeration), each a little differently
+STYLE = {'pa': (0.35, 0.5, 0.7), 'host': (0.4, 0.5, 0.7), 'box': (0.33, 0.5, 0.7), 'usher': (0.3, 0.5, 0.65), 'server': (0.3, 0.45, 0.65),
+         'barM': (0.38, 0.5, 0.72), 'barF': (0.46, 0.5, 0.75), 'driver': (0.3, 0.45, 0.7)}
 LIVELY = {'aud.scare', 'aud.wow', 'aud.laugh', 'guest.bump'}
 # what the voice says where the subtitle shows a name or a code
 SAY = {
@@ -80,7 +81,9 @@ def main():
     torch.set_num_threads(int(a[a.index('--threads') + 1]) if '--threads' in a else 3)
     from chatterbox.mtl_tts import ChatterboxMultilingualTTS
     m = ChatterboxMultilingualTTS.from_pretrained(device='cpu'); sr = m.sr
-    D = json.load(open(SRC)); os.makedirs(CACHE, exist_ok=True)
+    D = {}
+    for src in SRC: D.update({k: v for k, v in json.load(open(src, encoding='utf8')).items() if speakers(k) is not None and isinstance(v.get('en'), list) and not k.startswith(('opt', 'hud', 'toast', 'role', 'price', 'item'))})   # later files rewrite earlier lines
+    os.makedirs(CACHE, exist_ok=True)
     for lang in langs:
         table = {k: v[lang] for k, v in D.items()}
         cpath = os.path.join(CACHE, lang + '.json'); cache = json.load(open(cpath)) if os.path.exists(cpath) else {}

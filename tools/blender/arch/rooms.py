@@ -224,9 +224,18 @@ def build_lobby(S):
     acc.box(-2.0, 3.0, z1 - 0.21, 2.0, H - 0.8, z1 - 0.19, MAT['glass'], lin('#2a3a44'))
     # mezzanine (L1) over the back of the lobby, with the escalator void; round columns under its edge; glass balustrade
     V = MZ['void']
-    LF = S['LIFT']
-    for (a, b, c, d) in ((x0, z0, V['x0'], MZ['z1']), (V['x1'], z0, LF['x0'] - 0.15, MZ['z1']), (LF['x1'] + 0.15, z0, x1, MZ['z1']), (LF['x0'] - 0.15, LF['z1'], LF['x1'] + 0.15, MZ['z1']), (LF['x0'] - 0.15, z0, LF['x1'] + 0.15, LF['z0'] - 0.15), (V['x0'], z0, V['x1'], V['z0'])):
+    LF = S['LIFT']; GA = S['GALLERY']
+    for (a, b, c, d) in ((x0, z0, V['x0'], MZ['z1']), (V['x1'], z0, x1, MZ['z1']), (V['x0'], z0, V['x1'], V['z0'])):
         slab(acc, a, b, c, d, L1, 0.32, MAT['paint'], mix(P['charcoal'], P['stone'], 0.4), top=MAT['carpet'], topcol=mix(P['velvet'], P['charcoal'], 0.5))
+    # v11 the gallery: the first-floor walk from the lift's rear door back to the mezzanine, beside the escalators; bronze edge beams,
+    # downlights in its soffit for the alcove under it
+    slab(acc, GA['x0'] + 0.12, GA['z0'], GA['x1'] - 0.12, GA['z1'], L1, 0.32, MAT['paint'], mix(P['charcoal'], P['stone'], 0.4), top=MAT['carpet'], topcol=mix(P['velvet'], P['charcoal'], 0.5))
+    for xa_, xb_ in ((GA['x0'], GA['x0'] + 0.12), (GA['x1'] - 0.12, GA['x1'])):
+        acc.box(xa_, L1 - 0.5, GA['z0'] + 0.002, xb_, L1, GA['z1'], MAT['powder'], lin('#3b2f25'))
+    for zc_ in (-6.2, -4.5, -2.8):
+        gx_ = (GA['x0'] + GA['x1']) / 2
+        glow_facing(glow, (gx_ - 0.09, L1 - 0.322, zc_ - 0.09), (gx_ + 0.09, L1 - 0.322, zc_ - 0.09), (gx_ + 0.09, L1 - 0.322, zc_ + 0.09), (gx_ - 0.09, L1 - 0.322, zc_ + 0.09), (0, -1, 0), lin('#ffdcb0'), 2.4)
+        lit.spot((gx_, L1 - 0.36, zc_), lin('#ffd8a8'), 1.5, 5.0, 'h', (0, -1, 0), 24, 52)
     for cx in (-18.0, -10.0, -2.0, 6.0, 18.0):
         acc.cyl(cx, MZ['z1'] - 0.5, 0.3, 0.12, L1 - 0.44, MAT['neroGold'], lin('#ffffff'), n=24)
         acc.cyl(cx, MZ['z1'] - 0.5, 0.36, 0.0, 0.12, MAT['brass'], P['champagne'], n=24); acc.cyl(cx, MZ['z1'] - 0.5, 0.34, L1 - 0.44, L1 - 0.32, MAT['brass'], P['champagne'], n=24)
@@ -234,7 +243,8 @@ def build_lobby(S):
     # the rail runs round the void except where the escalators arrive (its back edge, over the steps: v9 route test found it closed)
     E = S['ESC']
     glass_rail(acc, glow, [(x0, MZ['z1']), (V['x0'], MZ['z1']), (V['x0'], V['z0']), (E['up']['x0'] - 0.02, V['z0'])], L1, led=B['gold'])
-    glass_rail(acc, glow, [(E['down']['x1'] + 0.02, V['z0']), (V['x1'], V['z0']), (V['x1'], MZ['z1']), (x1, MZ['z1'])], L1, led=B['gold'])
+    glass_rail(acc, glow, [(E['down']['x1'] + 0.02, V['z0']), (V['x1'], V['z0']), (V['x1'], GA['z1'] - 0.13)], L1, led=B['gold'])   # on along the gallery's west edge
+    glass_rail(acc, glow, [(GA['x1'], GA['z1'] - 0.13), (GA['x1'], MZ['z1']), (x1, MZ['z1'])], L1, led=B['gold'])                    # the gallery's east edge, then the mezzanine's
     lights_grid(lit, acc, glow, x0 + 1.5, z0 + 1.2, x1 - 1.5, MZ['z1'] - 1.0, L1 - 0.32, 3.0, lin('#ffd8a8'), 1.6, 6)   # under the mezzanine
     # ceiling feature: three concentric light rings ("rounds") over the brand ring, recessed coves with warm light
     for R0, yy in ((9.0, H - 0.02), (6.5, H - 0.32), (4.0, H - 0.62)):
@@ -297,38 +307,63 @@ def build_lobby(S):
     lit.area((0, 6.0, z0 + 0.7), (7.0, 0, 0), (0, 2.2, 0), (0, 0, 1), lin('#c0c8ff'), 6.0, 14, 'f', 4, 2)
     # escalators and the lift shaft
     E = S['ESC']; escalator(acc, glow, lit, E['up']); escalator(acc, glow, lit, E['down'])
-    LF = S['LIFT']
-    for (a, b, c, d) in ((LF['x0'] - 0.15, LF['z0'], LF['x0'], LF['z1'] - 0.15), (LF['x1'], LF['z0'], LF['x1'] + 0.15, LF['z1'] - 0.15), (LF['x0'] - 0.15, LF['z0'] - 0.15, LF['x1'] + 0.15, LF['z0'])):
-        acc.box(a, 0.0, b, c, H, d, MAT['powder'], lin('#3b2f25'))
-    for ly in (0.0, L1):   # front of the shaft: bronze with a door opening at each floor (the doors are the engine's)
-        acc.box(LF['x0'] - 0.15, ly + 2.3, LF['z1'] - 0.15, LF['x1'] + 0.15, ly + (L1 - 0.32 if ly == 0 else 3.6), LF['z1'], MAT['powder'], lin('#3b2f25'))
-        acc.box(LF['x0'] - 0.15, ly, LF['z1'] - 0.15, LF['x0'] + 0.5, ly + 2.3, LF['z1'], MAT['powder'], lin('#3b2f25'))
-        acc.box(LF['x1'] - 0.5, ly, LF['z1'] - 0.15, LF['x1'] + 0.15, ly + 2.3, LF['z1'], MAT['powder'], lin('#3b2f25'))
-        glow.quad((LF['x1'] - 0.42, ly + 1.15, LF['z1'] + 0.002), (LF['x1'] - 0.32, ly + 1.15, LF['z1'] + 0.002), (LF['x1'] - 0.32, ly + 1.3, LF['z1'] + 0.002), (LF['x1'] - 0.42, ly + 1.3, LF['z1'] + 0.002), B['gold'], 1.5)
-        # v9.1: a brass architrave round the lift door and a lit floor indicator over it (the shaft was a plain bronze box)
-        for (ax_, bx_) in ((LF['x0'] + 0.46, LF['x0'] + 0.5), (LF['x1'] - 0.5, LF['x1'] - 0.46)):
-            acc.box(ax_, ly, LF['z1'], bx_, ly + 2.36, LF['z1'] + 0.035, MAT['brass'], P['champagne'])
-        acc.box(LF['x0'] + 0.46, ly + 2.3, LF['z1'], LF['x1'] - 0.46, ly + 2.36, LF['z1'] + 0.035, MAT['brass'], P['champagne'])
-        acc.box((LF['x0'] + LF['x1']) / 2 - 0.3, ly + 2.5, LF['z1'], (LF['x0'] + LF['x1']) / 2 + 0.3, ly + 2.72, LF['z1'] + 0.03, MAT['powder'], lin('#111113'))
-        glow.quad(((LF['x0'] + LF['x1']) / 2 - 0.24, ly + 2.55, LF['z1'] + 0.031), ((LF['x0'] + LF['x1']) / 2 + 0.24, ly + 2.55, LF['z1'] + 0.031), ((LF['x0'] + LF['x1']) / 2 + 0.24, ly + 2.67, LF['z1'] + 0.031), ((LF['x0'] + LF['x1']) / 2 - 0.24, ly + 2.67, LF['z1'] + 0.031), B['gold'], 1.2)
-    acc.box(LF['x0'] - 0.15, L1 + 3.6, LF['z1'] - 0.15, LF['x1'] + 0.15, H, LF['z1'], MAT['powder'], lin('#3b2f25'))
-    # v10 ticket zone (the user: "players can go straight to the lift without showing a ticket; make the escalators and the lift one
-    # area"): one checked zone holds both escalators and the lift. Glass screens close it: the gate line in front (the usher's ticket leaf
-    # and a free-exit leaf for the down escalator and the lift, both the engine's), the east screen back to the rear wall, the west screen
-    # beside the up escalator (where its truss is low, the truss and balustrade are the wall; the screen resumes where you could walk
-    # under them). v9 left the gate line's west end open: you could walk round it onto the escalator.
+    # v11 the lift (the user: "make the escalator and the elevator area connected"): a glass tower in a bronze frame beside the down
+    # escalator, its door on the landing the escalators share. Four corner posts; bands at the foot, at the first floor and at the head;
+    # glass between. Ground floor: the door in the front (z1) wall. First floor: the door in the rear (z0) wall, onto the gallery.
+    BRZ = lin('#3b2f25'); lx0, lx1, lz0, lz1 = LF['x0'], LF['x1'], LF['z0'], LF['z1']; Ht = L1 + 3.3; lcx = (lx0 + lx1) / 2; GLS = lin('#2a3a44')
+    for px in (lx0 - 0.15, lx1):
+        for pz in (lz0, lz1 - 0.15): acc.box(px, 0.0, pz, px + 0.15, Ht, pz + 0.15, MAT['powder'], BRZ)
+    for xa_ in (lx0 - 0.15, lx1):   # side walls between the posts
+        for ya_, yb_ in ((0.0, 0.12), (L1 - 0.4, L1 + 0.12), (Ht - 0.2, Ht)): acc.box(xa_, ya_, lz0 + 0.15, xa_ + 0.15, yb_, lz1 - 0.15, MAT['powder'], BRZ)
+        for ya_, yb_ in ((0.12, L1 - 0.4), (L1 + 0.12, Ht - 0.2)): acc.box(xa_ + 0.065, ya_, lz0 + 0.15, xa_ + 0.085, yb_, lz1 - 0.15, MAT['glass'], GLS)
+    for ly, zf, sg in ((0.0, lz1, 1), (L1, lz0, -1)):   # the door wall at each floor: jambs, a header with the floor indicator, a brass architrave, the call button
+        za_, zb_ = (zf - 0.15, zf) if sg > 0 else (zf, zf + 0.15)
+        acc.box(lx0, ly, za_, lx0 + 0.5, ly + 2.3, zb_, MAT['powder'], BRZ); acc.box(lx1 - 0.5, ly, za_, lx1, ly + 2.3, zb_, MAT['powder'], BRZ)
+        acc.box(lx0, ly + 2.3, za_, lx1, ly + 2.95, zb_, MAT['powder'], BRZ)
+        zo_ = zf + sg * 0.035; zlo, zhi = min(zf, zo_), max(zf, zo_)
+        for (ax_, bx_) in ((lx0 + 0.46, lx0 + 0.5), (lx1 - 0.5, lx1 - 0.46)): acc.box(ax_, ly, zlo, bx_, ly + 2.36, zhi, MAT['brass'], P['champagne'])
+        acc.box(lx0 + 0.46, ly + 2.3, zlo, lx1 - 0.46, ly + 2.36, zhi, MAT['brass'], P['champagne'])
+        zi_ = zf + sg * 0.03; acc.box(lcx - 0.3, ly + 2.5, min(zf, zi_), lcx + 0.3, ly + 2.72, max(zf, zi_), MAT['powder'], lin('#111113'))
+        zg_ = zf + sg * 0.031
+        glow_facing(glow, (lcx - 0.24, ly + 2.55, zg_), (lcx + 0.24, ly + 2.55, zg_), (lcx + 0.24, ly + 2.67, zg_), (lcx - 0.24, ly + 2.67, zg_), (0, 0, sg), B['gold'], 1.2)
+        zc2 = zf + sg * 0.002
+        glow_facing(glow, (lx1 - 0.3, ly + 1.15, zc2), (lx1 - 0.2, ly + 1.15, zc2), (lx1 - 0.2, ly + 1.3, zc2), (lx1 - 0.3, ly + 1.3, zc2), (0, 0, sg), B['gold'], 1.5)
+    # front wall above the ground-floor door: glass to the head; rear wall: walnut on bronze up to the gallery, glass over the first-floor door
+    for ya_, yb_ in ((L1 - 0.4, L1 + 0.12), (Ht - 0.2, Ht)): acc.box(lx0, ya_, lz1 - 0.15, lx1, yb_, lz1, MAT['powder'], BRZ)
+    for ya_, yb_ in ((2.95, L1 - 0.4), (L1 + 0.12, Ht - 0.2)): acc.box(lx0, ya_, lz1 - 0.085, lx1, yb_, lz1 - 0.065, MAT['glass'], GLS)
+    acc.box(lx0, 0.0, lz0, lx1, L1, lz0 + 0.15, MAT['powder'], BRZ)
+    acc.box(lx0 + 0.12, 0.12, lz0 - 0.014, lx1 - 0.12, L1 - 0.5, lz0, MAT['fluted'], lin('#5a3a22')); acc.box(lx0 + 0.12, 0.0, lz0 - 0.02, lx1 - 0.12, 0.12, lz0, MAT['brass'], P['champagne'])
+    acc.box(lx0, Ht - 0.2, lz0, lx1, Ht, lz0 + 0.15, MAT['powder'], BRZ); acc.box(lx0, L1 + 2.95, lz0 + 0.065, lx1, Ht - 0.2, lz0 + 0.085, MAT['glass'], GLS)
+    acc.box(lx0 - 0.22, Ht, lz0 - 0.07, lx1 + 0.22, Ht + 0.2, lz1 + 0.07, MAT['powder'], lin('#16171a'))                       # the cap
+    acc.box(lx0 - 0.2, Ht - 0.03, lz0 - 0.05, lx1 + 0.2, Ht, lz1 + 0.05, MAT['brass'], P['champagne'])
+    glow_facing(glow, (lx0 + 0.3, Ht - 0.201, lz0 + 0.4), (lx1 - 0.3, Ht - 0.201, lz0 + 0.4), (lx1 - 0.3, Ht - 0.201, lz1 - 0.4), (lx0 + 0.3, Ht - 0.201, lz1 - 0.4), (0, -1, 0), lin('#ffe6c4'), 1.4)
+    lit.point((lcx, Ht - 0.7, (lz0 + lz1) / 2), lin('#ffe1b5'), 1.0, 6.0, 'h')
+    for sx_ in (-1, 1): lit.spot((lcx + sx_ * 1.5, 0.06, lz1 + 0.35), lin('#ffd9a8'), 0.7, 8.0, 'h', (-sx_ * 0.1, 1, -0.06), 12, 30)   # two uplights graze the tower's front
+    # the gallery's end beside the tower: low bronze wings close the gaps between the rails and the tower
+    for xa_, xb_ in ((GA['x0'] + 0.03, lx0 - 0.15), (lx1 + 0.15, GA['x1'] - 0.03)): acc.box(xa_, L1, GA['z1'] - 0.12, xb_, L1 + 1.08, GA['z1'], MAT['powder'], BRZ)
+    # a marble pier fills the gap between the down escalator and the tower (the lift's call panel is on it)
+    px0_, px1_ = E['down']['x1'] + 0.06, lx0 - 0.155
+    acc.box(px0_, 0.0, lz0, px1_, 2.6, lz1, MAT['neroGold'], lin('#ffffff')); acc.box(px0_ - 0.012, 0.0, lz0 - 0.012, px1_, 0.1, lz1 + 0.012, MAT['brass'], P['champagne'])
+    # under the escalators' feet, where the trusses hang lower than a head, the space is boxed in (walnut on a brass base, set 2 cm back
+    # from the trusses' sides): nobody walks into a truss, and nobody reaches the landing from behind
+    zi0_, zi1_ = E['up']['profile']['incline']; zk0, zk1 = zi0_ - 0.6, zi0_ - 0.6 - 2.45 / (L1 - 0.85) * (zi0_ - zi1_)
+    ex0, ex1 = E['up']['x0'] + 0.02, E['down']['x1'] - 0.02
+    acc.prism_x([(zk0, 0.0), (zk1, 0.0), (zk1, 2.2 - 0.03)], ex0, ex1, MAT['fluted'], lin('#5a3a22'))
+    acc.box(ex0 - 0.012, 0.0, zk1 - 0.012, ex1 + 0.012, 0.1, zk1, MAT['brass'], P['champagne'])
+    lit.line((ex0 + 0.4, 2.3, zk1 - 0.5), (ex1 - 0.4, 2.3, zk1 - 0.5), lin('#ffd6a8'), 0.45, 4.0, 'h', (0, -1, 0.5))
+    # v11 ticket zone: the landing is closed by glass: the gate line in front (the usher's ticket leaf and the free-exit leaves, both the
+    # engine's), the west screen to the up escalator's newel, the east screen to the tower's corner
     G = S['GATE']
     glass_screen(acc, glow, [(G['x0'], 0.95), (G['x0'], G['z'])], 0.0)                 # the ticket leaf hangs beside its last newel
     glass_screen(acc, glow, [(G['gate'][1], G['z']), (G['exit'][0], G['z'])], 0.0)        # the post between the ticket leaf and the exit leaves
-    glass_screen(acc, glow, [(12.925, G['z']), (16.975, G['z'])], 0.0)                    # between the portal's middle pier and its corner pier
-    glass_screen(acc, glow, [(G['x1'], G['z'] - 0.15), (G['x1'], G['back'])], 0.0)
-    glass_screen(acc, glow, [(G['x0'], G['under']), (G['x0'], G['back'])], 0.0)
-    # v11 the way through the zone reads as one hall: a brass line in the floor from the ticket leaf to the lift's door
-    acc.box(9.7 - 0.02, 0.003, 2.18, 14.62, 0.0046, 2.22, MAT['brass'], P['champagne']); acc.box(14.58, 0.003, -10.1, 14.62, 0.0046, 2.18, MAT['brass'], P['champagne'])
+    glass_screen(acc, glow, [(12.925, G['z']), (G['x1'] - 0.225, G['z'])], 0.0)           # between the portal's middle pier and its corner pier
+    glass_screen(acc, glow, [(G['x1'], G['z'] - 0.225), (G['x1'], lz1 + 0.085)], 0.0)     # the east screen, back to the tower's corner post
+    # one brass line in the floor from the ticket leaf along the landing to the lift's door
+    acc.box(9.7 - 0.02, 0.003, 2.58, lcx + 0.02, 0.0046, 2.62, MAT['brass'], P['champagne']); acc.box(lcx - 0.02, 0.003, lz1 + 0.06, lcx + 0.02, 0.0046, 2.58, MAT['brass'], P['champagne'])
     # v11 the roof stands on four columns round the fountain court (they replace the half-height light pillars)
-    for cx_, cz_ in ((-8.1, 3.3), (8.1, 3.3), (-8.1, 14.2), (8.1, 14.2)): grand_column(acc, glow, lit, cx_, cz_, H)
+    for cx_, cz_ in ((-8.1, G['z']), (8.1, G['z']), (-8.1, 14.2), (8.1, 14.2)): grand_column(acc, glow, lit, cx_, cz_, H)   # the north pair stands on the gate line
     # the zone's own floor (research brief: "its own floor inlay"): black-and-gold marble, 3 mm proud, clear of the landing plates and the lift
-    for (a, b, c, d) in ((G['gate'][0], 1.25, G['x1'] - 0.05, G['z'] - 0.05), (12.62, -10.12, G['x1'] - 0.05, 1.25)):
+    for (a, b, c, d) in ((G['gate'][0], 1.25, G['x1'] - 0.08, G['z'] - 0.08), (lx0 + 0.5, lz1 + 0.04, lx1 - 0.5, 1.25)):
         acc.box(a, 0.0, b, c, 0.003, d, MAT['neroGold'], lin('#ffffff'))
     acc.box(G['podium']['x'] - 0.35, 0.0, G['podium']['z'] - 0.3, G['podium']['x'] + 0.35, 1.12, G['podium']['z'] + 0.3, MAT['fluted'], P['champagne'])
     acc.box(G['podium']['x'] - 0.4, 1.12, G['podium']['z'] - 0.35, G['podium']['x'] + 0.4, 1.16, G['podium']['z'] + 0.35, MAT['nero'], lin('#151517'))
@@ -363,20 +398,20 @@ def build_lobby(S):
     # free-exit leaf
     # v11: the beam runs from the east court column to a pier at the zone's corner, with a pier between the leaves and the glass run; piers in
     # black marble with a brass shoe, the beam in dark bronze with a brass line under it and a light line that washes the gate
-    for xa, xb in ((12.55, 12.85), (17.05, 17.35)):
-        acc.box(xa, 0.0, 3.05, xb, 2.9, 3.35, MAT['neroGold'], lin('#ffffff')); acc.box(xa - 0.012, 0.0, 3.038, xb + 0.012, 0.1, 3.362, MAT['brass'], P['champagne'])
-    acc.box(8.48, 2.9, 3.02, 17.38, 3.4, 3.38, MAT['powder'], lin('#16171a')); acc.box(8.5, 2.875, 3.035, 17.36, 2.9, 3.365, MAT['brass'], P['champagne'])
-    glow_facing(glow, (8.9, 2.874, 3.16), (12.5, 2.874, 3.16), (12.5, 2.874, 3.24), (8.9, 2.874, 3.24), (0, -1, 0), lin('#ffe2b8'), 2.0)
-    lit.line((8.9, 2.8, 3.2), (12.5, 2.8, 3.2), lin('#ffe2b8'), 0.5, 3.2, 'h', (0, -1, 0))
-    signs.append({'id': 'wayfind_zone', 'x': 12.93, 'y': 3.15, 'z': 3.386, 'yaw': 0, 'w': 8.7, 'h': 0.44, 'emit': 1})
-    signs.append({'id': 'exitsign_zone', 'x': (G['exit'][0] + G['exit'][1]) / 2, 'y': 3.15, 'z': 3.014, 'yaw': math.pi, 'w': 1.3, 'h': 0.36, 'emit': 1})
+    gz = G['z']; bx1 = G['x1'] + 0.15
+    for xa, xb in ((12.55, 12.85), (G['x1'] - 0.15, bx1)):
+        acc.box(xa, 0.0, gz - 0.15, xb, 2.9, gz + 0.15, MAT['neroGold'], lin('#ffffff')); acc.box(xa - 0.012, 0.0, gz - 0.162, xb + 0.012, 0.1, gz + 0.162, MAT['brass'], P['champagne'])
+    acc.box(8.48, 2.9, gz - 0.18, bx1 + 0.03, 3.4, gz + 0.18, MAT['powder'], lin('#16171a')); acc.box(8.5, 2.875, gz - 0.165, bx1 + 0.01, 2.9, gz + 0.165, MAT['brass'], P['champagne'])
+    glow_facing(glow, (8.9, 2.874, gz - 0.04), (12.5, 2.874, gz - 0.04), (12.5, 2.874, gz + 0.04), (8.9, 2.874, gz + 0.04), (0, -1, 0), lin('#ffe2b8'), 2.0)
+    lit.line((8.9, 2.8, gz), (12.5, 2.8, gz), lin('#ffe2b8'), 0.5, 3.2, 'h', (0, -1, 0))
+    signs.append({'id': 'wayfind_zone', 'x': (8.48 + bx1 + 0.03) / 2, 'y': 3.15, 'z': gz + 0.186, 'yaw': 0, 'w': 7.2, 'h': 0.44, 'emit': 1})
+    signs.append({'id': 'exitsign_zone', 'x': (G['exit'][0] + G['exit'][1]) / 2, 'y': 3.15, 'z': gz - 0.186, 'yaw': math.pi, 'w': 1.3, 'h': 0.36, 'emit': 1})
     # v11 (the user: "fix the walls"): the whole rear wall under the mezzanine in fluted walnut (it was bare charcoal paint east of the cafe),
-    # with a brass base; the lift's bronze front and the spine doors stay as they are
-    for xa, xb, ya in ((-8.6, -1.75, 0.0), (1.75, 13.2, 0.0), (16.0, x1 - 0.4, 0.0), (-1.75, 1.75, 3.06)):
+    # with a brass base; the spine doors stay as they are (v11: the lift left this wall for the landing behind the gate)
+    for xa, xb, ya in ((-8.6, -1.75, 0.0), (1.75, x1 - 0.4, 0.0), (-1.75, 1.75, 3.06)):
         acc.box(xa, ya, z0 + 0.4, xb, L1 - 0.33, z0 + 0.414, MAT['fluted'], lin('#5a3a22'))
         if ya == 0.0: acc.box(xa, 0.0, z0 + 0.414, xb, 0.1, z0 + 0.43, MAT['brass'], P['champagne'])
-    lit.line((-8.0, L1 - 0.42, z0 + 0.75), (7.0, L1 - 0.42, z0 + 0.75), lin('#ffd6a8'), 0.4, 4.5, 'h', (0, -1, -0.45))
-    lit.line((16.4, L1 - 0.42, z0 + 0.75), (x1 - 0.8, L1 - 0.42, z0 + 0.75), lin('#ffd6a8'), 0.4, 4.5, 'h', (0, -1, -0.45))
+    lit.line((-8.0, L1 - 0.42, z0 + 0.75), (x1 - 0.8, L1 - 0.42, z0 + 0.75), lin('#ffd6a8'), 0.4, 4.5, 'h', (0, -1, -0.45))
     # v10 cafe (the user: "the cafe and the latte much more defined"): a corner kiosk north of the concessions, under the mezzanine. A walnut
     # back counter and fluted walnut wall with lit shelves of jars, the menu board and the name over it (engine panels); the front counter,
     # espresso machine, cake case and seats are props (world9.js DRESS). The concessions' staff side gets an end so you can't walk behind it.

@@ -30,15 +30,22 @@ export function escProfile(e) {
   const run = (e.y1 - e.y0) / Math.tan(Math.PI / 6), a = e.zBot, b = a - 1.2 - 0.8, c = b - run, d = c - 0.8 - 1.2;
   return { plateBot: [a, a - 1.2], flatBot: [a - 1.2, b], incline: [b, c], flatTop: [c, c - 0.8], plateTop: [c - 0.8, d], zTop: d, run };
 }
-export const LIFT = { x0: 13.4, x1: 15.8, z0: -12.6, z1: -10.2, doorZ: -10.2, stops: [0, L1], speed: 1.0, doorW: 1.1 };
+// v11 the core (the user: "make the escalator and the elevator area connected"): the lift stood at the back wall, 13 m down a side corridor
+// from the gate. Now both escalators and the lift stand in one row behind the ticket gate and share one landing (EN 115 asks for 2.5 m
+// clear beyond an escalator's newels; a lift landing wants 1.5 m square: the landing is 2.8 m deep). The lift is a glass tower beside the
+// down escalator. On the ground floor its door faces the landing (face +1: the z1 end); on the first floor the car opens at its other end
+// (face -1) onto a gallery that runs back beside the escalators to the mezzanine. x and z are the tower's clear inside; its side walls
+// stand 0.15 m outside x0 and x1, the two door walls 0.15 m inside z0 and z1.
+export const LIFT = { x0: 13.3, x1: 15.7, z0: -1.6, z1: 0.8, stops: [0, L1], face: [1, -1], speed: 1.0, doorW: 1.1 };
+export const GALLERY = { x0: MEZZ.void.x1, x1: 16.2, z0: MEZZ.z1, z1: LIFT.z0 };   // first floor: from the lift's rear door back to the mezzanine
 export const TRAVELATOR = { x0: -0.8, x1: 0.8, z0: SPINE.z0 + 2.1, z1: -16.5, speed: 0.75 };   // carries you north (+z), towards the lobby
-// v10 ticket zone: both escalators and the lift behind one check (the user: "players can go straight to the lift without a ticket; make the
-// escalators and the lift one area"). Glass screens: the gate line at z (the usher's ticket leaf 'gate', two free-exit half leaves 'exit'
-// in front of the down escalator, for the way out from the escalator and the lift), the east screen x1 to the back wall, the west screen x0
-// beside the up escalator (from the gate line to the escalator's newel, and again from 'under', where you could walk under its truss, to the
-// back wall). The usher's podium stands outside, beside the ticket leaf.
-export const GATE = { z: 3.2, x0: 8.75, x1: 17.2, gate: [8.9, 10.5], exit: [10.9, 12.5], under: -3.2, back: -13.6, podium: { x: 7.0, z: 3.9 } };
-export const ZONE = { x0: GATE.x0, x1: GATE.x1, z0: GATE.back, z1: GATE.z };
+// v11 ticket zone: the landing the escalators and the lift share, closed by glass. The gate line at z (the usher's ticket leaf 'gate' in
+// front of the up escalator, two free-exit half leaves 'exit' in front of the down escalator, glass on to the corner), a west screen x0
+// from the gate line to the up escalator's newel, an east screen x1 from the gate line to the lift tower's corner. Behind the landing the
+// escalators' own trusses and the lift tower close it; a marble pier fills the gap between the down escalator and the tower. The usher's
+// podium stands outside, beside the ticket leaf.
+export const GATE = { z: 4.0, x0: 8.75, x1: 15.775, gate: [8.9, 10.5], exit: [10.9, 12.5], podium: { x: 6.8, z: 4.8 } };
+export const ZONE = { x0: GATE.x0, x1: GATE.x1 + 0.1, z0: -1.7, z1: GATE.z };   // the landing, the escalators' feet and the lift car on the ground floor
 // doors. oneWay: the side you can pass from. kind: slide (auto glass), pair (heavy double doors), push (exit doors with push bars)
 export const DOORS = [
   { id: 'main', rooms: ['street', 'lobby'], kind: 'slide', axis: 'x', x: 0, z: FACADE, w: 4.0, h: 3.0, y: 0 },
@@ -83,7 +90,7 @@ export const POSTS = {
   reception: { x: -15.2, y: 0, z: 9.0, yaw: -Math.PI / 2, room: 'lobby' },
   vendor: { x: -15.4, y: 0, z: -6.0, yaw: -Math.PI / 2, room: 'lobby' },
   vendor2: { x: -15.4, y: 0, z: -2.4, yaw: -Math.PI / 2, room: 'lobby' },
-  usher: { x: 7.0, y: 0, z: 4.6, yaw: Math.PI, room: 'lobby' },
+  usher: { x: 6.8, y: 0, z: 5.6, yaw: Math.PI, room: 'lobby' },
   server: { x: 0, y: L1, z: -23.6, yaw: 0, room: 'corridor' },   // the service pantry (a niche off the bridge, over the spine): the cart waits here
   driver: { x: -6.0, y: 0, z: 27.8, yaw: Math.PI / 2, room: 'street' },
 };
@@ -102,13 +109,12 @@ export const NAV = {
     // v9.1: four nodes round the lounge's sofa ring (centre -1, 1; its sofas reach 3.2 m out): walkers go round it, never through it
     lounge: [-7.0, 0, 1.0], loungeN: [-1.0, 0, 7.0], lounge2: [5.0, 0, 1.0], loungeS: [-1.0, 0, -5.0],
     wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0], wcMa: [23.3, 0, -5.9], wcMg: [24.6, 0, -5.9], wcFg: [24.6, 0, -2.1],
-    // v9.1 (walk.mjs NAV check): walkers cross the lobby in front of the escalator gate (the escalators block z < 3.2), not through them;
-    // the lift on L1 is left by its east side, round the shaft
-    // v10 ticket zone: inside it, a walk along the gate line from the ticket leaf to the lift lobby (exitIn is in front of the exit leaves);
-    // outside it, the way to the restrooms rounds the zone's corner (eastC)
-    gateW: [6.6, 0, 5.6], downOut: [11.7, 0, 4.4], east: [14.5, 0, 3.8], eastC: [18.2, 0, 3.9], exitIn: [11.7, 0, 2.2], liftLob: [14.8, 0, 2.2], liftE: [16.6, L1, -9.2], liftS: [16.6, L1, -13.2], liftP: [12.0, L1, -13.2], flankW3: [BRIDGE.x0 + 3, L1, -56.5],
-    gate: [9.7, 0, 4.6], gateIn: [9.7, 0, 2.2], escBot: [9.7, 0, 0.4], escTop: [9.7, L1, -12.6], mezz: [9.7, L1, -11.6],
-    downTop: [11.7, L1, -12.6], downBot: [11.7, 0, 0.6], liftG: [14.6, 0, -9.2], liftL1: [14.6, L1, -9.2],
+    // v11: walkers cross the lobby in front of the gate line (z 4.0), not through it. Inside the zone: the ticket leaf, the landing, the
+    // escalators' feet and the lift's door (liftG); the exit leaves are in front of the down escalator (exitIn). On the first floor the
+    // lift opens onto the gallery (liftL1), which meets the mezzanine at galS; galB rounds the escalator void's corner
+    gateW: [6.2, 0, 6.6], downOut: [11.7, 0, 5.2], east: [14.5, 0, 5.4], eastC: [18.2, 0, 5.0], exitIn: [11.7, 0, 2.8], liftLob: [14.5, 0, 2.8], flankW3: [BRIDGE.x0 + 3, L1, -56.5],
+    gate: [9.7, 0, 5.4], gateIn: [9.7, 0, 2.8], escBot: [9.7, 0, 0.4], escTop: [9.7, L1, -12.6], mezz: [9.7, L1, -11.6],
+    downTop: [11.7, L1, -12.6], downBot: [11.7, 0, 0.6], liftG: [14.5, 0, 1.6], liftL1: [14.5, L1, -2.6], galS: [14.5, L1, -8.4], galB: [13.6, L1, -11.6],
     portal: [10.2, L1, -15.2], bridgeE: [BRIDGE.x1 - 3, L1, -18.0], bridgeW: [BRIDGE.x0 + 3, L1, -18.0], bridgeC: [0, L1, -18.0], pantry: [0, L1, -23.0],
     flankW1: [BRIDGE.x0 + 3, L1, -24.0], flankW2: [BRIDGE.x0 + 3, L1, FLANK_W.z0 + 2.2], linkW: [BRIDGE.x0 + 9, L1, (LINK_W.z0 + LINK_W.z1) / 2], flankE1: [BRIDGE.x1 - 3, L1, -24.0], flankE2: [BRIDGE.x1 - 3, L1, ENTRY_Z(HALL.X270)],
     spineN: [0, 0, -15.6], spineS: [0, 0, SPINE.z0 + 1.6], lobbyBack: [0, 0, -12.0],
@@ -118,7 +124,7 @@ export const NAV = {
     ['east', 'eastC'], ['eastC', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcIn', 'wcMa'], ['wcMa', 'wcMg'], ['wcMg', 'wcM'], ['wcIn', 'wcFg'], ['wcFg', 'wcF'],
     ['lounge2', 'gateW'], ['gateW', 'gate'], ['foyer', 'gate'], ['gate', 'gateIn'], ['gateIn', 'escBot'], ['escBot', 'escTop'], ['escTop', 'mezz'], ['mezz', 'portal'], ['mezz', 'downTop'],
     ['downTop', 'downBot'], ['downBot', 'downOut'], ['downOut', 'gate'], ['downOut', 'east'], ['gate', 'east'], ['gateIn', 'exitIn'], ['exitIn', 'liftLob'], ['liftLob', 'liftG'], ['exitIn', 'downOut'], ['liftG', 'liftL1'],
-    ['liftL1', 'liftE'], ['liftE', 'liftS'], ['liftS', 'liftP'], ['liftP', 'mezz'], ['liftP', 'portal'], ['portal', 'bridgeC'], ['portal', 'bridgeE'],
+    ['liftL1', 'galS'], ['galS', 'galB'], ['galB', 'mezz'], ['galB', 'portal'], ['portal', 'bridgeC'], ['portal', 'bridgeE'],
     ['bridgeC', 'pantry'], ['bridgeC', 'bridgeW'], ['bridgeW', 'flankW1'], ['flankW1', 'flankW2'], ['flankW2', 'flankW3'], ['flankW3', 'linkW'], ['bridgeE', 'flankE1'], ['flankE1', 'flankE2'],
     ['lobbyBack', 'loungeS'], ['spineN', 'lobbyBack'], ['spineS', 'spineN']],
   // directed edges (one-way): walkers may only use them in this direction

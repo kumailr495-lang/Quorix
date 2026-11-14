@@ -160,7 +160,8 @@ async function boot() {
     if (verb === 'serverBye') { npc.say(pick('srv.bye')); setTimeout(() => crowd.serverLeave(), 600); return false; }
     return false;
   }
-  function startTalk(npc) { crowd.startTalk(npc); talk.start(npc, treeFor(npc, { ticket, game, visits, serverBack: npc.role === 'server' && npc._served })); onModal(true); tut.event('talked'); }
+  function startTalk(npc) { crowd.startTalk(npc); talk.start(npc, treeFor(npc, { ticket, game, visits, serverBack: npc.role === 'server' && npc._served })); onModal(true); tut.event('talked');
+    if (npc.role === 'guest' && npc.temper === 'curt') setTimeout(() => { if (talk.open && talk.npc === npc) talk.close(); }, 2800); }   // a curt stranger says one thing and turns away
   // the usher reads your ticket and tears the stub; the gate opens. The first time he walks you in; later he asks.
   function checkTicket(npc) {
     ticket.shown = true; npc.gesture('read', 1.6); ui.ticketHandoff && ui.ticketHandoff(ticket); sound.ticket();
