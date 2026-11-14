@@ -7,7 +7,7 @@
 // Paths: building.js NAV (lobby, escalators, corridor, spine) and hallmath.seatRoute (door, rear aisle, side aisle, row lane, seat).
 import * as THREE from 'three';
 import { Person, CrowdRenderer, DATA, randomRecipe, staffRecipe, sitHeight } from './people.js';
-import { POSTS, NAV, HALL, L1, ESC, SPINE } from './building.js';
+import { POSTS, NAV, HALL, L1, ESC, SPINE, ZONE, LOBBY } from './building.js';
 import { seatRoute, SEAT, SCREEN_GAP } from './hallmath.js';
 import { pick } from './i18n.js';
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), adiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b)), rnd = (a, b) => a + Math.random() * (b - a);
@@ -24,6 +24,25 @@ export function navPath(from, to) {
   if (dist[to] === undefined) return null; const out = [to]; while (out[0] !== from) out.unshift(prev[out[0]]); return out;
 }
 const ESC_EDGES = new Set(['escBot>escTop', 'downTop>downBot']);
+// v11 (the user's photo, 2026-11-14: a guest half inside the marble pier by the exit leaves): guests milling round the lobby walked a
+// straight line to a random spot, through piers, glass screens, the lift tower, the escalator boxes and sofas. Now they stand only at
+// spots checked against the building (a clear straight leg, 0.3 m from every wall and prop, to a public nav node, never in the ticket
+// zone; 0.85 m from every public nav edge, out of the walkers' way; 1 m from the next spot; one guest a spot) and drift between
+// neighbouring spots along legs checked the same way (Crowd.millNet, mill, millBack).
+// tools/dev/npc-clear.mjs proves it: 10 minutes of a full lobby, nobody inside a wall, a prop or another person, nobody stuck.
+const PUBLIC = new Set(['doorIn', 'greet', 'foyer', 'foyerW', 'foyerE', 'boxQ', 'boxQ2', 'conQ', 'conQ2', 'lounge', 'loungeN', 'lounge2', 'loungeS', 'gateW', 'gate', 'downOut', 'east', 'eastC', 'lobbyBack']);
+const segPt = (px, pz, x0, z0, x1, z1) => { const vx = x1 - x0, vz = z1 - z0, l = vx * vx + vz * vz, t = l > 0 ? clamp(((px - x0) * vx + (pz - z0) * vz) / l, 0, 1) : 0; return Math.hypot(px - x0 - vx * t, pz - z0 - vz * t); };
+const segSeg = (ax, az, bx, bz, cx, cz, dx, dz) => { const cr = (px, pz, qx, qz, rx, rz) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+  if (cr(ax, az, bx, bz, cx, cz) * cr(ax, az, bx, bz, dx, dz) < 0 && cr(cx, cz, dx, dz, ax, az) * cr(cx, cz, dx, dz, bx, bz) < 0) return 0;
+  return Math.min(segPt(ax, az, cx, cz, dx, dz), segPt(bx, bz, cx, cz, dx, dz), segPt(cx, cz, ax, az, bx, bz), segPt(dx, dz, ax, az, bx, bz)); };
+// the clearance of a straight walk from A to B: the nearest active collision segment in the band a body fills (0.4 to 1.75 m over y)
+function walkClear(walls, ax, az, bx, bz, y = 0) {
+  const S = walls.S, K = walls.K, G = walls.B; let best = 9; const seen = new Set();
+  for (let gx = Math.floor((Math.min(ax, bx) - 1) / 2); gx <= Math.floor((Math.max(ax, bx) + 1) / 2); gx++) for (let gz = Math.floor((Math.min(az, bz) - 1) / 2); gz <= Math.floor((Math.max(az, bz) + 1) / 2); gz++) {
+    const l = G.get(gx * 4096 + gz); if (!l) continue;
+    for (const i of l) { if ((K && !K[i]) || seen.has(i)) continue; seen.add(i); const j = i * 6; if (S[j + 5] <= y + 0.4 || S[j + 4] >= y + 1.75) continue; best = Math.min(best, segSeg(ax, az, bx, bz, S[j], S[j + 1], S[j + 2], S[j + 3])); } }
+  return best;
+}
 // ------------------------------------------------------------------ one person
 class Agent {
   constructor(crowd, o) {
@@ -72,8 +91,57 @@ export class Crowd {
     while (this.guests.length < want) this.guests.push(this.newGuest(this.guests.length));
   }
   newGuest(i) {
-    const spots = LOBBY_SPOTS, s = spots[(i + Math.floor(this.seedBase)) % spots.length], rec = randomRecipe(this.seed()), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
-    const a = this.spawn({ rec, role: 'guest', voice, x: s[0] + rnd(-0.4, 0.4), y: 0, z: s[1] + rnd(-0.4, 0.4), yaw: rnd(0, TAU), state: 'mill', talkable: true }); a.spot = s; a.next = this.now + rnd(4000, 14000); a.idle = IDLES[i % IDLES.length]; return a;
+    const M = this.millNet(), free = M.spots.filter((s) => !s.by), s = free.length ? free[(i + Math.floor(this.seedBase)) % free.length] : M.spots[i % M.spots.length], rec = randomRecipe(this.seed()), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
+    const a = this.spawn({ rec, role: 'guest', voice, x: s.x, y: 0, z: s.z, yaw: s.face + rnd(-0.6, 0.6), state: 'mill', talkable: true }); a.spot = [s.x, s.z]; a.millSpot = s; s.by = a; a.next = this.now + rnd(4000, 14000); a.idle = IDLES[i % IDLES.length]; return a;
+  }
+  // the guests' lobby (see PUBLIC): each hand-placed spot is checked against the building; one that fails moves to the nearest place within
+  // 1.5 m that passes, or is dropped. The spot faces the open floor (its way in), as people stand with their backs to a wall or a counter.
+  millNet() {
+    if (this._mill) return this._mill; const W = this.world.walls, edges = [], spots = [], dropped = [];
+    for (const [a, b] of NAV.edges) if (PUBLIC.has(a) && PUBLIC.has(b)) edges.push({ A: NODES[a], B: NODES[b] });
+    const ok = (x, z) => {
+      if (this.world.roomAt(x, 0, z) !== 'lobby' || (x > ZONE.x0 - 0.3 && x < ZONE.x1 + 0.3 && z > ZONE.z0 - 0.3 && z < ZONE.z1 + 0.3)) return null;
+      for (const e of edges) if (segPt(x, z, e.A[0], e.A[2], e.B[0], e.B[2]) < 0.85) return null;
+      for (const s of spots) if (Math.hypot(s.x - x, s.z - z) < 1.0 || segPt(x, z, s.x, s.z, NODES[s.node][0], NODES[s.node][2]) < 0.6) return null;
+      let best = null, bd = 7; for (const n of PUBLIC) { const N = NODES[n], d = Math.hypot(N[0] - x, N[2] - z); if (d < bd && walkClear(W, x, z, N[0], N[2]) >= 0.3) { best = n; bd = d; } }
+      if (!best) return null; const N = NODES[best];
+      for (const s of spots) if (segPt(s.x, s.z, x, z, N[0], N[2]) < 0.6) return null;   // nobody stands on this spot's way in
+      return best; };
+    for (const [x0, z0] of LOBBY_SPOTS) { let got = null;
+      for (let r = 0; r <= 1.5 && !got; r += 0.25) for (let k = 0; k < (r ? 12 : 1) && !got; k++) { const x = x0 + r * Math.cos(k * TAU / 12), z = z0 + r * Math.sin(k * TAU / 12), n = ok(x, z); if (n) got = { x, z, node: n, by: null, face: Math.atan2(NODES[n][0] - x, NODES[n][2] - z) }; }
+      if (got) spots.push(got); else dropped.push([x0, z0]); }
+    // always more spots than guests (DENSITY high is 30): places 0.45 to 1.3 m from a wall, a counter or a sofa, as people stand, spread
+    // over the lobby in a fixed shuffle (every run is the same)
+    if (spots.length < 48) { const cand = []; for (let x = LOBBY.x0 + 0.6; x < LOBBY.x1 - 0.6; x += 0.75) for (let z = LOBBY.z0 + 0.6; z < LOBBY.z1 - 0.6; z += 0.75) { const c = walkClear(W, x, z, x, z); if (c >= 0.45 && c <= 1.3) cand.push([x, z]); }
+      let h = 2166136261; const r2 = () => { h = Math.imul(h ^ (h >>> 13), 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296; };
+      for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(r2() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
+      for (const [x, z] of cand) { if (spots.length >= 48) break; const n = ok(x, z); if (n) spots.push({ x, z, node: n, by: null, face: Math.atan2(NODES[n][0] - x, NODES[n][2] - z) }); } }
+    if (dropped.length) console.info(`[crowd] ${dropped.length} lobby spots dropped (no clear way to the walkers' graph): ${JSON.stringify(dropped)}`);
+    // the spot graph: two spots are neighbours when a straight walk between them (1.5 to 9 m) keeps 0.35 m from every wall and prop and
+    // 0.8 m from every other spot (nobody walks through someone standing there); walkers keep to their right on a leg wide enough for it
+    for (const q of spots) q.next = [];
+    for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) { const A = spots[i], B = spots[j], l = Math.hypot(A.x - B.x, A.z - B.z); if (l > 9 || l < 1.5) continue;
+      if (spots.some((q) => q !== A && q !== B && segPt(q.x, q.z, A.x, A.z, B.x, B.z) < 0.8)) continue;
+      const c = walkClear(W, A.x, A.z, B.x, B.z); if (c < 0.35) continue; const lane = clamp(c - 0.3, 0, 0.25); A.next.push({ s: B, lane }); B.next.push({ s: A, lane }); }
+    return (this._mill = { spots, dropped });
+  }
+  // a guest drifts to a free neighbouring spot (a few people on the move at a time, as in a real foyer); the spot they leave stays theirs
+  // until they arrive, so a guest kept waiting in someone's way walks back to it (step())
+  mill(a, now) {
+    this.millNet(); a.next = now + rnd(14000, 40000); const from = a.millSpot; if (!from) return;
+    if (Math.hypot(a.x - from.x, a.z - from.z) > 0.3) {   // stopped on a leg (a talk): back to the spot they came from, along the same leg
+      if (a.millTo) { a.millTo.by = null; a.millTo = null; } a.go([{ x: from.x, y: 0, z: from.z }], () => { a.yaw = from.face + rnd(-0.6, 0.6); }); return; }
+    if (this.guests.filter((g) => g.path).length >= 5) { a.next = now + rnd(3000, 9000); return; }
+    const opts = from.next.filter((n) => !n.s.by); if (!opts.length) return; const n = opts[Math.floor(Math.random() * opts.length)], to = n.s;
+    const dx = to.x - from.x, dz = to.z - from.z, l = Math.hypot(dx, dz), rx = dz / l * n.lane, rz = -dx / l * n.lane;
+    to.by = a; a.millTo = to;
+    a.go([{ x: from.x + dx * 0.25 + rx, y: 0, z: from.z + dz * 0.25 + rz }, { x: from.x + dx * 0.75 + rx, y: 0, z: from.z + dz * 0.75 + rz }, { x: to.x, y: 0, z: to.z }],
+      () => { from.by = null; a.millSpot = to; a.millTo = null; a.spot = [to.x, to.z]; a.yaw = to.face + rnd(-0.6, 0.6); });
+  }
+  // kept waiting 1.5 s on a leg: back the way they came, to the spot that is still theirs
+  millBack(a, now) {
+    const from = a.millSpot; if (!from || !a.millTo) return false; a.millTo.by = null; a.millTo = null; a.next = now + rnd(3000, 8000);
+    a.go([...a.path.slice(0, a.pi).reverse(), { x: from.x, y: 0, z: from.z }], () => { a.yaw = from.face + rnd(-0.6, 0.6); }); return true;
   }
   // ---------------------------------------------------------- light on a person: the room's lights, dimmed with the house lights,
   // plus the screen's light (capped and eased: v8 faces flashed white in bright scenes)
@@ -224,16 +292,23 @@ export class Crowd {
       if (a.follow && a.state === 'guiding') { const d = Math.hypot(a.follow.x - a.x, a.follow.z - a.z), dy = Math.abs((a.follow.y || 0) - a.y); if (d > 5.5 || dy > 2.5) { a.waitFor = true; } else if (d < 3.2) a.waitFor = false; if (a.waitFor) { a.walkT = 0; a.yaw += adiff(Math.atan2(a.follow.x - a.x, a.follow.z - a.z), a.yaw) * Math.min(1, dt * 3); return; } }
       const t = a.path[a.pi], dx = t.x - a.x, dz = t.z - a.z, d = Math.hypot(dx, dz);
       // keep your distance: wait while someone walks right in front of you
-      let blocked = false; if (a.role !== 'usher' && a.role !== 'server') for (const o of this.agents) { if (o === a || !o.alive || !o.path || o.sit > 0.2) continue; const ox = o.x - a.x, oz = o.z - a.z, od = Math.hypot(ox, oz); if (od < 0.75 && od > 1e-3 && (ox * dx + oz * dz) / (od * (d || 1)) > 0.6 && Math.abs(o.y - a.y) < 0.8) { blocked = true; break; } }
-      const ride = !!t.ride, sp = ride ? (a.state === 'guiding' ? 1.15 : 0.62) : blocked ? 0 : a.speed;   // the guide walks up the moving steps a.walkT = ride || blocked ? 0 : sp;
+      // v11: "in your way" is inside your 0.9 m wide walking corridor and less than 0.8 m ahead (people passing on the other side of an edge
+      // no longer stop each other); a guest kept waiting 1.5 s walks back to the spot they came from, so nobody freezes face to face
+      // in your way: someone walking, a guest standing, or you (the player)
+      const inWay = (ox, oz, oy) => { const ahead = (ox * dx + oz * dz) / (d || 1), side = Math.abs(ox * dz - oz * dx) / (d || 1); return ahead > 0.05 && ahead < 0.8 && side < 0.45 && Math.abs(oy - a.y) < 0.8; };
+      let blocked = false; if (a.role !== 'usher' && a.role !== 'server') { for (const o of this.agents) { if (o === a || !o.alive || o.sit > 0.2 || (!o.path && o.role !== 'guest')) continue; if (inWay(o.x - a.x, o.z - a.z, o.y)) { blocked = true; break; } }
+        if (!blocked && player && !player.seated && inWay(player.x - a.x, player.z - a.z, player.y || 0)) blocked = true; }
+      a.blockT = blocked ? (a.blockT || 0) + dt : 0;
+      if (a.blockT > 1.5 && a.role === 'guest' && a.state === 'mill' && a.millTo) { a.blockT = 0; if (this.millBack(a, now)) return; }
+      const ride = !!t.ride, sp = ride ? (a.state === 'guiding' ? 1.15 : 0.62) : blocked ? 0 : a.speed;   // the guide walks up the moving steps
+      a.walkT = ride || blocked ? 0 : sp;   // v11: this sat at the end of the comment above, so every walker glided in its standing pose
       if (d < 0.08 || (d < sp * dt + 0.02)) { a.x = t.x; a.z = t.z; a.y = t.y ?? a.y; a.pi++; if (a.pi >= a.path.length) { const f = a.onArrive; a.path = null; a.onArrive = null; a.walkT = 0; f && f(); } }
       else { const k = sp * dt / d; a.x += dx * k; a.z += dz * k; const want = Math.atan2(dx, dz); a.yaw += adiff(want, a.yaw) * Math.min(1, dt * 8);
         const fy = ride ? null : this.world.floorY(a.x, a.z, a.y); if (ride) { const p0 = a.path[a.pi - 1] || t, u = 1 - d / (Math.hypot(t.x - p0.x, t.z - p0.z) || 1); a.y = p0.y + (t.y - p0.y) * clamp(u); } else a.y += (fy - a.y) * Math.min(1, dt * 12); }
       return;
     }
     a.walkT = 0;
-    if (a.role === 'guest' && a.state === 'mill' && !a.talking && now > a.next) {   // lobby life: move to another spot now and then
-      a.next = now + rnd(9000, 22000); const s = LOBBY_SPOTS[Math.floor(Math.random() * LOBBY_SPOTS.length)]; a.go([{ x: s[0] + rnd(-0.5, 0.5), y: 0, z: s[1] + rnd(-0.5, 0.5) }], () => { a.yaw = rnd(0, TAU); }); }
+    if (a.role === 'guest' && a.state === 'mill' && !a.talking && now > a.next) this.mill(a, now);   // lobby life: another spot now and then
   }
   draw(a, dt, d, player) {
     const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < 9 ? 0 : d < 20 ? 1 : 2); ch.talking = a.talking || this.now < a.talkUntil;
