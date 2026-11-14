@@ -223,10 +223,13 @@ def build_lobby(S):
     # side of the door and 2.2 m on the other. Now they are laid out from the door outwards: a 0.6 m pier each side, then eight 2 m bays
     bays = [(2.6 + 2.2 * i, 4.6 + 2.2 * i) for i in range(8)]; bays = [(-b_, -a_) for a_, b_ in reversed(bays)] + bays
     acc.wall((x0, z1 - 0.2), (x1, z1 - 0.2), -0.3, H + 0.4, 0.4, MAT['powder'], lin('#3b2f25'),
-             openings=[(a_ - x0, b_ - x0, H - 0.8, 0.35) for a_, b_ in bays] + [(-2.0 - x0, 2.0 - x0, 3.0, -0.3)], trim=(0.4, 0.4))
+             openings=[(a_ - x0, b_ - x0, H - 0.8, 0.35) for a_, b_ in bays] + [(-2.0 - x0, 2.0 - x0, H - 0.8, -0.3)], trim=(0.4, 0.4))
     for a_, b_ in bays:
         acc.box(a_, 0.35, z1 - 0.21, b_, H - 0.8, z1 - 0.19, MAT['glass'], lin('#2a3a44'))
-    acc.box(-2.0, 3.0, z1 - 0.21, 2.0, H - 0.8, z1 - 0.19, MAT['glass'], lin('#2a3a44'))
+    # v11 (the user's photo: a brown block over the doors): the doors' opening now runs up to the glazing's head like every bay, a bronze
+    # transom over the doors (1 mm inside the jambs), glass above it; it was solid wall to the ceiling, its glass hidden inside the wall
+    acc.box(-1.999, 3.0, z1 - 0.4, 1.999, 3.3, z1, MAT['powder'], lin('#3b2f25'))
+    acc.box(-2.0, 3.3, z1 - 0.21, 2.0, H - 0.8, z1 - 0.19, MAT['glass'], lin('#2a3a44'))
     # mezzanine (L1) over the back of the lobby, with the escalator void; round columns under its edge; glass balustrade
     V = MZ['void']
     LF = S['LIFT']; GA = S['GALLERY']
@@ -302,9 +305,11 @@ def build_lobby(S):
     for zz in [co['z0'] + 1.2 + 2.0 * i for i in range(5)]:
         lit.spot((co['x1'] - 0.5, 3.6, zz), lin('#ffe2bc'), 2.2, 5, 'h', (0, -1, 0), 25, 55)
     lit.area((x0 + 0.05, 3.2, (co['z0'] + co['z1']) / 2), (0, 0, (co['z1'] - co['z0']) / 2 - 0.4), (0, 0.6, 0), (1, 0, 0), lin('#fff1dc'), 3.0, 8, 'f', 4, 1)   # menu boards
-    # lounge: a round rug and a curved low bench ring (the sofas are props)
+    # lounge: a round rug (the sofas, chairs and table are props). v11 (the user: "don't leave things in the middle"): moved out of the main
+    # walk between the doors and the escalators to the front-east corner by the windows; the middle of the lobby stays open floor
+    LCX, LCZ = 15.3, 11.0
     for i in range(48):
-        a0, a1 = 2 * math.pi * i / 48, 2 * math.pi * (i + 1) / 48; cx, cz, r0 = -1.0, 1.0, 5.2
+        a0, a1 = 2 * math.pi * i / 48, 2 * math.pi * (i + 1) / 48; cx, cz, r0 = LCX, LCZ, 5.2
         acc.quad((cx, 0.006, cz), (cx + 4.7 * math.cos(a1), 0.006, cz + 4.7 * math.sin(a1)), (cx + 4.7 * math.cos(a0), 0.006, cz + 4.7 * math.sin(a0)), (cx, 0.006, cz), MAT['carpet'], lin('#24343a'))
         acc.quad((cx + 4.7 * math.cos(a0), 0.007, cz + 4.7 * math.sin(a0)), (cx + 4.7 * math.cos(a1), 0.007, cz + 4.7 * math.sin(a1)), (cx + r0 * math.cos(a1), 0.007, cz + r0 * math.sin(a1)), (cx + r0 * math.cos(a0), 0.007, cz + r0 * math.sin(a0)), MAT['carpet'], mix(P['champagne'], P['charcoal'], 0.25))
     # the back wall over the spine door: a big LED wall (the engine plays the brand film on it) framed in champagne
@@ -385,9 +390,9 @@ def build_lobby(S):
     # travertine east wall, deep downlights over the waiting areas by the facade, the torcheres' warm pools, the chandelier's glow
     lit.line((x1 - 0.5, H - 0.3, -12.0), (x1 - 0.5, H - 0.3, -2.6), lin('#ffdcb4'), 0.75, 10, 'h', (0.45, -1, 0))
     lit.line((x1 - 0.5, H - 0.3, 0.6), (x1 - 0.5, H - 0.3, 18.0), lin('#ffdcb4'), 0.75, 10, 'h', (0.45, -1, 0))
-    for cx, cz in ((11.5, 12.6), (16.5, 12.6), (-11.6, 15.2)):   # v11: the west group moved clear of its court column
+    for cx, cz in ((LCX - 2.6, LCZ), (LCX + 2.6, LCZ), (-11.6, 15.2)):   # v11: two over the lounge, one over the west group (clear of its column)
         lit.spot((cx, H - 0.1, cz), lin('#ffdcb0'), 3.2, 13, 'h', (0, -1, 0), 18, 38)
-        lit.point((cx, 2.95, cz + 1.3), lin('#ffcf98'), 0.9, 5, 'h')
+        if cx < 0: lit.point((cx, 2.95, cz + 1.3), lin('#ffcf98'), 0.9, 5, 'h')   # the west group's torchere
         acc.cyl(cx, cz, 0.11, H - 0.03, H + 0.001, MAT['metal'], lin('#2a2a2e'), n=12)
         glow.quad((cx - 0.07, H - 0.032, cz - 0.07), (cx + 0.07, H - 0.032, cz - 0.07), (cx + 0.07, H - 0.032, cz + 0.07), (cx - 0.07, H - 0.032, cz + 0.07), lin('#ffdcb0'), 2.2)
     lit.point((0.0, 6.6, 4.0), lin('#ffe1b5'), 3.0, 14, 'h')
@@ -902,8 +907,22 @@ def build_street(S):
         o = 0.0
         acc.quad((ax_, 5.0, az_), (bx_, 5.0, bz_), (bx_, 7.3, bz_), (ax_, 7.3, az_), MAT['lacquer'], lin('#09090b')) if nx_ * (bz_ - az_) - nz_ * (bx_ - ax_) < 0 else \
             acc.quad((bx_, 5.0, bz_), (ax_, 5.0, az_), (ax_, 7.3, az_), (bx_, 7.3, bz_), MAT['lacquer'], lin('#09090b'))
+        # v11 (the user: "renders inside and outside each other"): the fascia had only its outer face, so from under the canopy or from the
+        # lobby through the glass you looked through it. Now it is a band 8 cm thick: an inner face below the soffit and above the roof,
+        # and a cap on top and at the foot
+        ix, iz = -nx_ * 0.08, -nz_ * 0.08
+        for ya_, yb_ in ((5.0, 5.2), (5.6, 7.3)):
+            acc.quad((ax_ + ix, ya_, az_ + iz), (ax_ + ix, yb_, az_ + iz), (bx_ + ix, yb_, bz_ + iz), (bx_ + ix, ya_, bz_ + iz), MAT['lacquer'], lin('#09090b')) if nx_ * (bz_ - az_) - nz_ * (bx_ - ax_) < 0 else \
+                acc.quad((bx_ + ix, ya_, bz_ + iz), (bx_ + ix, yb_, bz_ + iz), (ax_ + ix, yb_, az_ + iz), (ax_ + ix, ya_, az_ + iz), MAT['lacquer'], lin('#09090b'))
+        for yc_, up_ in ((7.3, True), (5.0, False)):
+            q_ = [(ax_, yc_, az_), (bx_, yc_, bz_), (bx_ + ix, yc_, bz_ + iz), (ax_ + ix, yc_, az_ + iz)]
+            e1_ = (q_[1][0] - q_[0][0], q_[1][2] - q_[0][2]); e2_ = (q_[3][0] - q_[0][0], q_[3][2] - q_[0][2]); ny_ = e1_[1] * e2_[0] - e1_[0] * e2_[1]   # y of (e1 x e2)
+            if (ny_ > 0) != up_: q_ = q_[::-1]
+            acc.quad(*q_, MAT['lacquer'], lin('#09090b'))
         for yb in (5.25, 5.68, 6.11, 6.54, 6.97):   # the LED bands, 4 cm proud
             glow_facing(glow, (ax_ + nx_ * 0.04, yb, az_ + nz_ * 0.04), (bx_ + nx_ * 0.04, yb, bz_ + nz_ * 0.04), (bx_ + nx_ * 0.04, yb + 0.05, bz_ + nz_ * 0.04), (ax_ + nx_ * 0.04, yb + 0.05, az_ + nz_ * 0.04), (nx_, 0, nz_), lin('#fff1dc'), 2.4)
+    # its back against the facade: a strip of soffit and roof from the drum's base line to the facade's face, and the body's back face
+    acc.box(-9.0, 5.2, F + 0.002, 9.0, 5.6, F + 0.4, MAT['powder'], lin('#0d0d10'))
     for i in range(0, NS + 1, 5):
         x_, z_ = arc[i]; lit.spot((x_ * 1.03, 6.2, F + 0.4 + (z_ - F - 0.4) * 1.03), lin('#ffe9cc'), 1.2, 6, 'f', (0, -0.3, 1), 40, 80)
     srnd = random.Random(23)

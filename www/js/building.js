@@ -106,7 +106,8 @@ export const NAV = {
     // v10: the fountain stands on the brand ring (0, 10) on the entrance axis; walkers part round it (foyerW, foyerE)
     kerb: [-2.0, 0, 25.65], plaza: [0, 0, 21.0], doorOut: [0, 0, 19.4], doorIn: [0, 0, 16.6], greet: [2.2, 0, 13.0], foyer: [0, 0, 13.6], foyerW: [-3.2, 0, 10.0], foyerE: [3.2, 0, 10.0],
     boxQ: [-12.6, 0, 9.0], boxQ2: [-10.6, 0, 9.0], conQ: [-12.8, 0, -4.0], conQ2: [-10.8, 0, -4.0],
-    // v9.1: four nodes round the lounge's sofa ring (centre -1, 1; its sofas reach 3.2 m out): walkers go round it, never through it
+    // v9.1: four nodes round the middle of the lobby (v11: the lounge moved to the front-east corner; the middle is open floor, so the
+    // nodes are also joined straight across it)
     lounge: [-7.0, 0, 1.0], loungeN: [-1.0, 0, 7.0], lounge2: [5.0, 0, 1.0], loungeS: [-1.0, 0, -5.0],
     wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0], wcMa: [23.3, 0, -5.9], wcMg: [24.6, 0, -5.9], wcFg: [24.6, 0, -2.1],
     // v11: walkers cross the lobby in front of the gate line (z 4.0), not through it. Inside the zone: the ticket leaf, the landing, the
@@ -120,7 +121,7 @@ export const NAV = {
     spineN: [0, 0, -15.6], spineS: [0, 0, SPINE.z0 + 1.6], lobbyBack: [0, 0, -12.0],
   },
   edges: [['kerb', 'plaza'], ['plaza', 'doorOut'], ['doorOut', 'doorIn'], ['doorIn', 'greet'], ['doorIn', 'foyer'], ['greet', 'foyer'], ['foyer', 'boxQ2'], ['boxQ2', 'boxQ'],
-    ['foyer', 'foyerW'], ['foyerW', 'loungeN'], ['foyer', 'foyerE'], ['foyerE', 'lounge2'], ['loungeN', 'lounge'], ['loungeN', 'lounge2'], ['lounge', 'loungeS'], ['loungeS', 'lounge2'], ['lounge', 'conQ2'], ['conQ2', 'conQ'],
+    ['foyer', 'foyerW'], ['foyerW', 'loungeN'], ['foyer', 'foyerE'], ['foyerE', 'lounge2'], ['loungeN', 'lounge'], ['loungeN', 'lounge2'], ['lounge', 'loungeS'], ['loungeS', 'lounge2'], ['loungeN', 'loungeS'], ['lounge', 'lounge2'], ['lounge', 'conQ2'], ['conQ2', 'conQ'],
     ['east', 'eastC'], ['eastC', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcIn', 'wcMa'], ['wcMa', 'wcMg'], ['wcMg', 'wcM'], ['wcIn', 'wcFg'], ['wcFg', 'wcF'],
     ['lounge2', 'gateW'], ['gateW', 'gate'], ['foyer', 'gate'], ['gate', 'gateIn'], ['gateIn', 'escBot'], ['escBot', 'escTop'], ['escTop', 'mezz'], ['mezz', 'portal'], ['mezz', 'downTop'],
     ['downTop', 'downBot'], ['downBot', 'downOut'], ['downOut', 'gate'], ['downOut', 'east'], ['gate', 'east'], ['gateIn', 'exitIn'], ['exitIn', 'liftLob'], ['liftLob', 'liftG'], ['exitIn', 'downOut'], ['liftG', 'liftL1'],

@@ -364,9 +364,13 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // 2.0 m in front of its origin); yaw -r - 90 deg turns +z towards the table (v9 had them radial, at -r + 180 deg)
   // v9.3 (the user's lounge photos): sapphire velvet, white boucle chairs at the rug's edge, palms between them
   const SAPPHIRE = { velvet_ivory: [MAT.velvet, [0.012, 0.03, 0.17]] }, BOUCLE = { velvet_mustard: [MAT.velvet, [0.72, 0.69, 0.63]] }, EMERALD = { velvet_mustard: [MAT.velvet, [0.012, 0.07, 0.04]] };
-  for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', -1 + 2.4 * Math.cos(r), 0, 1 + 2.4 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }   // square to the axes: their collision boxes stay tight
-  for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'armchair_deco', -1 + 3.3 * Math.cos(r), 0, 1 + 3.3 * Math.sin(r), Math.round((-r - Math.PI / 2) / (Math.PI / 2)) * Math.PI / 2, { swap: BOUCLE }); add('lobby', 'planter_tall', -1 + 5.6 * Math.cos(r), 0, 1 + 5.6 * Math.sin(r)); }
-  add('lobby', 'table_lounge', -1, 0, 1); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
+  // v11 (the user: "don't leave things in the middle"): the set stood in the main walk between the doors and the escalators; it is now in
+  // the front-east corner by the windows (rooms.py LCX, LCZ: its rug), where the two small chair groups were. Pieces are kept apart:
+  // sofas on a 2.4 m circle, chairs on 3.4 m at the diagonals (tools/dev/props-overlap.mjs checks every room's furniture)
+  const LX = 15.3, LZ = 11.0;
+  for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', LX + 2.4 * Math.cos(r), 0, LZ + 2.4 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }   // square to the axes: their collision boxes stay tight
+  for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'armchair_deco', LX + 3.4 * Math.cos(r), 0, LZ + 3.4 * Math.sin(r), Math.round((-r - Math.PI / 2) / (Math.PI / 2)) * Math.PI / 2, { swap: BOUCLE }); }
+  add('lobby', 'table_lounge', LX, 0, LZ); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   add('lobby', 'poster_totem', -6.0, 0, 16.3, 0.35); add('lobby', 'poster_totem', 6.0, 0, 16.3, -0.35);   // v10: out of the fountain court
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
@@ -378,7 +382,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
-  for (const [cx, cz, sw] of [[11.5, 12.6, EMERALD], [16.5, 12.6, SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null], [-11.6, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
+  for (const [cx, cz, sw] of [[-11.6, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
   add('lobby', 'chandelier_cascade', 0, 8.55, 4.0, 0, { collide: false, ground: false });
   // v10 (the user: "the lobby is too big and empty: fill it with lighting, paintings, pillars, sofas, a fountain"; docs/V10-RESEARCH.md):
   // a fountain on the brand ring on the entrance axis (walkers part round it: building.js foyerW/E; v11: the four columns round the court
@@ -386,8 +390,8 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // pendant cloud over the east waiting areas, rugs under the seating groups, a popcorn cart by the box office, film standees facing the
   // doors (their boards are FRAMED panels), a seating corner by the restrooms under its own small cloud
   add('lobby', 'fountain_tier', 0, 0, 10.0, 0, { round: 1.68, grp: 2 });   // grp 2: its lit water shimmers (materials.js GLOW_VERT)
-  add('lobby', 'pendant_cloud', 14.0, LOBBY.ceil - 0.002, 12.8, 0, { collide: false, ground: false, detail: 1 });
-  for (const [cx, cz] of [[11.5, 12.6], [16.5, 12.6], [-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false });
+  add('lobby', 'pendant_cloud', LX, LOBBY.ceil - 0.002, LZ, 0, { collide: false, ground: false, detail: 1 });   // over the lounge
+  for (const [cx, cz] of [[-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false });
   add('lobby', 'popcorn_cart', -12.6, 0, 2.6, Math.PI / 2 + 0.35);
   // the box office queue and the concessions approach each get a patterned runner (the user: "make the reception and the buy area much defined")
   add('lobby', 'rug_runner', -13.7, 0, 9.1, 0, { collide: false, scale: [0.5, 1, 1.75] }); add('lobby', 'rug_runner', -14.75, 0, -4.0, Math.PI / 2, { collide: false, scale: [0.62, 1, 0.92] });
@@ -600,7 +604,7 @@ function captureReflections(world, engine) {
 }
 // ---------------------------------------------------------------- the world
 export async function buildWorld(engine, mats, onProgress = () => {}) {
-  const world = { mats, engine, rooms: {}, doors: [], halls: [], walls: new Walls(), vis: new Set(['lobby']), panels: {}, uses: [], bins: [], sitSpots: [], escalators: [], movers: [] };
+  const world = { mats, engine, rooms: {}, doors: [], halls: [], walls: new Walls(), vis: new Set(['lobby']), panels: {}, uses: [], bins: [], sitSpots: [], escalators: [], movers: [], dress: DRESS };   // dress: for tools/dev/props-overlap.mjs
   engine.scene.background = new THREE.Color(0x07070a);
   world.hallByKey = (k) => world.halls.find((h) => h.key === k); world.hallById = (id) => world.halls.find((h) => h.id === id);
   const keys = Object.keys(ROOMS); let i = 0;
