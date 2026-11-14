@@ -179,6 +179,8 @@ def escalator(acc, glow, lit, e, dirz=-1):
 # ------------------------------------------------------------------------------------------------ lobby
 def build_lobby(S):
     LB, MZ, L1 = S['LOBBY'], S['MEZZ'], S['L1']; x0, x1, z0, z1, H = LB['x0'], LB['x1'], LB['z0'], LB['z1'], LB['ceil']
+    # the court's four columns (grand_column; the widest capital step is r + 0.4): the north pair stands on the ticket gate's line
+    COLS, COL_CAP_R = ((-8.1, S['GATE']['z']), (8.1, S['GATE']['z']), (-8.1, 14.2), (8.1, 14.2)), 0.42 + 0.40
     acc, glow = Acc(), Glow(); lit = Lights([x0, z0, x1, z1], H)
     P = {k: lin(v) for k, v in S['PALETTE']['lobby'].items()}; B = {k: lin(v) for k, v in S['PALETTE']['brand'].items()}
     rnd = random.Random(3)
@@ -254,22 +256,31 @@ def build_lobby(S):
     glass_rail(acc, glow, [(E['down']['x1'] + 0.02, V['z0']), (V['x1'], V['z0']), (V['x1'], GA['z1'] - 0.13)], L1, led=B['gold'])   # on along the gallery's west edge
     glass_rail(acc, glow, [(GA['x1'], GA['z1'] - 0.13), (GA['x1'], MZ['z1']), (x1, MZ['z1'])], L1, led=B['gold'])                    # the gallery's east edge, then the mezzanine's
     lights_grid(lit, acc, glow, x0 + 1.5, z0 + 1.2, x1 - 1.5, MZ['z1'] - 1.0, L1 - 0.32, 3.0, lin('#ffd8a8'), 1.6, 6)   # under the mezzanine
-    # ceiling feature: three concentric light rings ("rounds") over the brand ring, recessed coves with warm light
-    for R0, yy in ((9.0, H - 0.02), (6.5, H - 0.32), (4.0, H - 0.62)):
-        pts = [(R0 * math.cos(2 * math.pi * i / 64), 4.0 + R0 * 0.75 * math.sin(2 * math.pi * i / 64)) for i in range(65)]
+    # ceiling feature: three concentric light rings ("rounds"), recessed coves with warm light.
+    # v11 (the user's photo: a column's capital running into the ceiling): the rings were centred at z 4 and the outer one (9 m) passed
+    # through the two north court columns' capitals (0.27 m into them). They are now centred on the court the four columns enclose
+    # (RCX, RCZ), over the fountain, sized so every cove band stays clear of every capital; the builder refuses a ring that comes closer
+    # than 0.1 m (check below)
+    RCX, RCZ, RZS, RINGS = 0.0, (COLS[0][1] + COLS[2][1]) / 2, 0.75, ((8.2, H - 0.02), (6.0, H - 0.32), (3.8, H - 0.62))
+    for R0, yy in RINGS:
+        pts = [(RCX + R0 * math.cos(2 * math.pi * i / 64), RCZ + R0 * RZS * math.sin(2 * math.pi * i / 64)) for i in range(65)]
+        for (ccx, ccz) in COLS:
+            clear = min(math.hypot(px - ccx, pz - ccz) for px, pz in pts) - 0.35 - COL_CAP_R
+            if clear < 0.1: raise SystemExit(f'ceiling ring {R0} m passes {clear:.2f} m from the column at ({ccx}, {ccz}): move one of them')
         acc.sweep(pts, [(-0.35, yy), (-0.35, yy - 0.28), (0.35, yy - 0.28), (0.35, yy)], MAT['paint'], mix(P['charcoal'], P['stone'], 0.15), closed=True)
+        sc = lambda px, pz, k: (RCX + (px - RCX) * k, RCZ + (pz - RCZ) * k)
         for i in range(64):
-            (ax, az), (bx, bz) = pts[i], pts[i + 1]
-            glow.quad((ax * 0.97, yy - 0.285, 4.0 + (az - 4.0) * 0.97), (bx * 0.97, yy - 0.285, 4.0 + (bz - 4.0) * 0.97), (bx * 0.94, yy - 0.285, 4.0 + (bz - 4.0) * 0.94), (ax * 0.94, yy - 0.285, 4.0 + (az - 4.0) * 0.94), lin('#ffd9a8'), 1.4)
+            (ax, az), (bx, bz) = pts[i], pts[i + 1]; a1, b1, b2, a2 = sc(ax, az, 0.97), sc(bx, bz, 0.97), sc(bx, bz, 0.94), sc(ax, az, 0.94)
+            glow.quad((a1[0], yy - 0.285, a1[1]), (b1[0], yy - 0.285, b1[1]), (b2[0], yy - 0.285, b2[1]), (a2[0], yy - 0.285, a2[1]), lin('#ffd9a8'), 1.4)
         for i in range(0, 64, 8):
-            lit.spot((pts[i][0] * 0.95, yy - 0.3, 4.0 + (pts[i][1] - 4.0) * 0.95), lin('#ffd9a8'), 6.0, 14, 'h', (0, -1, 0), 35, 75)
+            q = sc(pts[i][0], pts[i][1], 0.95); lit.spot((q[0], yy - 0.3, q[1]), lin('#ffd9a8'), 6.0, 14, 'h', (0, -1, 0), 35, 75)
     lit.ambient(lin('#ffe6c8'), lin('#5a4030'), 0.05, 'h')
     # v9.3 (the user's lounge photo, "everything feels so empty"): a fibre-optic star field in the ceiling over the lounge, between the
     # light rings; tiny points of warm and cool white at a few brightnesses
-    srnd = random.Random(11); nst = 0
+    srnd = random.Random(11); nst = 0; RMAX = RINGS[0][0] + 0.4
     while nst < 650:
-        sx_, sz_ = srnd.uniform(-9.4, 9.4), srnd.uniform(4.0 - 7.1, 4.0 + 7.1); re = math.hypot(sx_, (sz_ - 4.0) / 0.75)
-        if re > 9.4 or any(abs(re - R0) < 0.55 for R0 in (9.0, 6.5, 4.0)): continue
+        sx_, sz_ = srnd.uniform(RCX - RMAX, RCX + RMAX), srnd.uniform(RCZ - RMAX * RZS, RCZ + RMAX * RZS); re = math.hypot(sx_ - RCX, (sz_ - RCZ) / RZS)
+        if re > RMAX or any(abs(re - R0) < 0.55 for R0, _ in RINGS): continue
         r_ = srnd.choice((0.012, 0.016, 0.02, 0.026)); col_ = lin('#fff4dc') if srnd.random() < 0.7 else lin('#dfe8ff')
         glow.quad((sx_ - r_, H - 0.004, sz_ - r_), (sx_ + r_, H - 0.004, sz_ - r_), (sx_ + r_, H - 0.004, sz_ + r_), (sx_ - r_, H - 0.004, sz_ + r_), col_, srnd.choice((2.0, 2.8, 3.6)))
         nst += 1
@@ -375,7 +386,7 @@ def build_lobby(S):
     # one brass line in the floor from the ticket leaf along the landing to the lift's door
     acc.box(9.7 - 0.02, 0.003, 2.58, lcx + 0.02, 0.0046, 2.62, MAT['brass'], P['champagne']); acc.box(lcx - 0.02, 0.003, lz1 + 0.06, lcx + 0.02, 0.0046, 2.58, MAT['brass'], P['champagne'])
     # v11 the roof stands on four columns round the fountain court (they replace the half-height light pillars)
-    for cx_, cz_ in ((-8.1, G['z']), (8.1, G['z']), (-8.1, 14.2), (8.1, 14.2)): grand_column(acc, glow, lit, cx_, cz_, H)   # the north pair stands on the gate line
+    for cx_, cz_ in COLS: grand_column(acc, glow, lit, cx_, cz_, H)   # the north pair stands on the gate line
     # the zone's own floor (research brief: "its own floor inlay"): black-and-gold marble, 3 mm proud, clear of the landing plates and the lift
     for (a, b, c, d) in ((G['gate'][0], 1.25, G['x1'] - 0.08, G['z'] - 0.08), (lx0 + 0.5, lz1 + 0.04, lx1 - 0.5, 1.25)):
         acc.box(a, 0.0, b, c, 0.003, d, MAT['neroGold'], lin('#ffffff'))
@@ -395,7 +406,7 @@ def build_lobby(S):
         if cx < 0: lit.point((cx, 2.95, cz + 1.3), lin('#ffcf98'), 0.9, 5, 'h')   # the west group's torchere
         acc.cyl(cx, cz, 0.11, H - 0.03, H + 0.001, MAT['metal'], lin('#2a2a2e'), n=12)
         glow.quad((cx - 0.07, H - 0.032, cz - 0.07), (cx + 0.07, H - 0.032, cz - 0.07), (cx + 0.07, H - 0.032, cz + 0.07), (cx - 0.07, H - 0.032, cz + 0.07), lin('#ffdcb0'), 2.2)
-    lit.point((0.0, 6.6, 4.0), lin('#ffe1b5'), 3.0, 14, 'h')
+    lit.point((RCX, 6.6, RCZ), lin('#ffe1b5'), 3.0, 14, 'h')   # the chandelier's glow (world9.js: it hangs at the rings' centre)
     # v11 the service wall (the user: "do all of that cooking for the others too"): the box office and the concessions under one bronze
     # fascia on black marble piers, in the language of the gate's portal: a brass line under it, a light line washing the counters, the
     # signs on its face; three ticket machines on a walnut panel in the gap between the two counters; a brass waiting line in the floor

@@ -383,7 +383,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
   for (const [cx, cz, sw] of [[-11.6, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
-  add('lobby', 'chandelier_cascade', 0, 8.55, 4.0, 0, { collide: false, ground: false });
+  add('lobby', 'chandelier_cascade', 0, 8.55, (GATE.z + 14.2) / 2, 0, { collide: false, ground: false });   // v11: at the centre of the ceiling rings, over the fountain (rooms.py RCX, RCZ)
   // v10 (the user: "the lobby is too big and empty: fill it with lighting, paintings, pillars, sofas, a fountain"; docs/V10-RESEARCH.md):
   // a fountain on the brand ring on the entrance axis (walkers part round it: building.js foyerW/E; v11: the four columns round the court
   // are the building's own, full height, tools/blender/arch/rooms.py grand_column), a
