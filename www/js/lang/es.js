@@ -81,4 +81,5 @@ export const ES = {
   'goal.enter': "Entra al cine", 'goal.ticket': "Compra tu entrada", 'goal.gate': "Muestra tu entrada", 'goal.up': "Sube por la escalera", 'goal.hall': "A {name}", 'goal.seat': "Butaca {seat}", 'goal.exit': "Salida", 'set.goal': "Mostrar el camino",
   'set.more': "Más", 'set.advanced': "Más opciones",
   'guest.talk.curt': ["Perdona, estoy esperando a alguien.", "Ahora no.", "Estoy bien, gracias.", "Pregunta al personal.", "Prefiero no hablar."], 'guest.talk.plain': ["Buenas. Esperando a que empiece.", "Ni idea, perdona. Pregunta en el mostrador.", "Es mi primera vez aquí.", "Hay gente esta noche.", "La semana pasada había menos cola."], 'guest.talk.warm': ["Hola. ¿También vas a la última?", "Pide las palomitas de caramelo.", "La sala de las reclinables merece la pena.", "Disfruta la película."],
+  'hud.leave': "Salir",
 };

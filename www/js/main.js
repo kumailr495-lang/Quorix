@@ -204,6 +204,8 @@ async function boot() {
   }
   // v9.2 fast exit (the user: "make some illusion so the exit is faster"): through a hall's exit door the view dips to black and you step out
   // of the exit passage at the lobby's back doors, skipping the walk down the spine (the audience still walks it)
+  // after the film: out of the seat and the hall in one fade, to the lobby at the spine's mouth (as fastExit), facing the lobby
+  function leaveHall() { if (fading) return; player.locked = true; fadeTo(0.4, () => { if (sitRelease) sitRelease(); player.place(0, -12.2, Math.PI, 0, 0); player.locked = false; sound.thud && sound.thud(); }); }
   function fastExit() { if (fading) return; player.locked = true; fadeTo(0.3, () => { player.place(0, -12.2, Math.PI, 0, 0); player.locked = false; }); }
   function fadeTo(dur, cb) { if (fading) return; fading = true; ui.fade(1, dur); setTimeout(() => { try { cb(); } finally { setTimeout(() => { ui.fade(0, 0.7); fading = false; }, 200); } }, dur * 1000 + 40); }
   // v9.1b: sitting down, you look at the middle of the picture (the IMAX-shaped MAX picture rises 18 m: level eyes saw its lower half)
@@ -330,7 +332,10 @@ async function boot() {
   // what can I do here? (the crosshair in the middle picks what you look at)
   function prompts(r, hk) {
     if (mode !== 'play' || talk.open || modal || intro.active) { ui.setPrompt(null); return; }
-    if (player.seated) { ui.setPrompt(player.busy ? null : t('hud.stand'), () => stand()); return; }
+    // v11 (the user: "wasn't the exit supposed to be faster"): once your film is over, the plate says Leave and takes you straight to the
+    // lobby (seated or standing anywhere in the hall), instead of walking down to the exit doors by the screen
+    const over = !!(hk && ticket && ticket.watched && ticket.hallKey === hk);
+    if (player.seated) { ui.setPrompt(player.busy ? null : t(over ? 'hud.leave' : 'hud.stand'), () => (over ? leaveHall() : stand())); return; }
     if (player.busy) { ui.setPrompt(null); return; }
     engine.camera.getWorldDirection(fwd); const fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl, ahead = (x, z, k = 0.3) => { const dx = x - player.x, dz = z - player.z, d = Math.hypot(dx, dz) || 1; return (dx * fx + dz * fz) / d > k; };
     // v11: nothing is offered through a wall (world9.js Walls.sees): people at eye height (over counters and their glass), seats and
@@ -346,6 +351,7 @@ async function boot() {
     if (hk) { const h = world.hallByKey(hk); let best = null, bd = 1.5;
       for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.45 || !ahead(s.x, s.z, 0.2) || !sees(s.x, s.z, 1.2, 1.6)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
       if (best) { const mine = ticket && ticket.seat === best.id && ticket.hall === h.id; ui.setPrompt(mine ? t('hud.yourSeat', { seat: best.id }) : t('hud9.sitHere', { seat: best.id }), () => { if (!mine) { const tk = { hall: h.id, hallKey: hk, hallName: h.name, seat: best.id, row: best.id.replace(/\d+/, ''), col: best.col, src: ticket && ticket.src, title: ticket ? ticket.title : '', delay: 0, shown: true, checked: true, tablet: true, quick: true }; const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; } ticket = tk; best.player = true; best.taken = true; } sitSeat(best); }); return; } }
+    if (over) { ui.setPrompt(t('hud.leave'), () => leaveHall()); return; }
     ui.setPrompt(null);
   }
   // warm every room's shaders and textures while the loader is up (no hitch when you walk into a room for the first time)

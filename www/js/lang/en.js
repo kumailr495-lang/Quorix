@@ -94,4 +94,5 @@ export const EN = {
   'goal.enter': "Go inside", 'goal.ticket': "Buy a ticket", 'goal.gate': "Show your ticket", 'goal.up': "Take the escalator", 'goal.hall': "To {name}", 'goal.seat': "Seat {seat}", 'goal.exit': "Way out", 'set.goal': "Show the way",
   'set.more': "More", 'set.advanced': "More options",
   'guest.talk.curt': ["Sorry, I'm waiting for someone.", "Not now.", "I'm fine, thanks.", "Ask the staff.", "I'd rather not talk."], 'guest.talk.plain': ["Evening. Just waiting for it to start.", "No idea, sorry. Try the desk.", "First time here.", "Busy tonight.", "The queue was shorter last week."], 'guest.talk.warm': ["Hi. Seeing the late one too?", "Get the caramel popcorn.", "The recliner screen is worth it.", "Enjoy the film."],
+  'hud.leave': "Leave",
 };

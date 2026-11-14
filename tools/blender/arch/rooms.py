@@ -452,7 +452,9 @@ def build_lobby(S):
     glow_facing(glow, (8.9, 2.874, gz - 0.04), (12.5, 2.874, gz - 0.04), (12.5, 2.874, gz + 0.04), (8.9, 2.874, gz + 0.04), (0, -1, 0), lin('#ffe2b8'), 2.0)
     lit.line((8.9, 2.8, gz), (12.5, 2.8, gz), lin('#ffe2b8'), 0.5, 3.2, 'h', (0, -1, 0))
     signs.append({'id': 'wayfind_zone', 'x': (8.48 + bx1 + 0.03) / 2, 'y': 3.15, 'z': gz + 0.186, 'yaw': 0, 'w': 7.2, 'h': 0.44, 'emit': 1})
-    signs.append({'id': 'exitsign_zone', 'x': (G['exit'][0] + G['exit'][1]) / 2, 'y': 3.15, 'z': gz - 0.186, 'yaw': math.pi, 'w': 1.3, 'h': 0.36, 'emit': 1})
+    # v11 (the user: "the exit thing, what do you mean"): the green emergency EXIT read, from the lobby, as a building exit; over the
+    # one-way leaves out of the ticket area it is now a way-out sign in the house style, facing the people leaving
+    signs.append({'id': 'wayfind_out', 'x': (G['exit'][0] + G['exit'][1]) / 2, 'y': 3.15, 'z': gz - 0.186, 'yaw': math.pi, 'w': 2.2, 'h': 0.4, 'emit': 1})
     # v11 (the user: "fix the walls"): the whole rear wall under the mezzanine in fluted walnut (it was bare charcoal paint east of the cafe),
     # with a brass base; the spine doors stay as they are (v11: the lift left this wall for the landing behind the gate)
     for xa, xb, ya in ((-8.6, -1.75, 0.0), (1.75, x1 - 0.4, 0.0), (-1.75, 1.75, 3.06)):
