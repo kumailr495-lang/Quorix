@@ -125,7 +125,7 @@ body.coaching #toast{top:calc(126px + var(--sat))}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 body.watching #stick,body.watching #sprint,body.watching #hudTL,body.watching #tools,body.watching #goal{opacity:.25;transition:opacity .6s}
 #xhair{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(246,236,216,.8);box-shadow:0 0 0 1.5px rgba(0,0,0,.4);z-index:6;pointer-events:none;transition:transform .15s ease,opacity .2s}
-body.watching #xhair,body.talking #xhair,body.cutscene #xhair{opacity:0}
+body.watching #xhair,body.talking #xhair,body.cutscene #xhair,body.ui-hidden #xhair{opacity:0}
 body.aim #xhair{transform:scale(1.8);background:var(--aisle)}
 /* what you last touched decides the HUD (input.js) */
 body[data-input="kbm"] #stick,body[data-input="pad"] #stick,body[data-input="kbm"] #sprint,body[data-input="pad"] #sprint{display:none}

@@ -31,7 +31,8 @@ export class UI {
   setItem(kind, left, max) { const b = $('#itemBtn'); if (!kind) { b.hidden = true; return; } b.hidden = false; $('#itemLbl').textContent = t(kind === 'drink' || kind === 'coffee' ? 'hud.sip' : 'hud.eat'); b.style.setProperty('--fill', String(Math.max(0, Math.min(1, left / max)))); }
   setButton(id, on) { const b = $(id); if (b && b.hidden === !!on) b.hidden = !on; }
   setFps(text) { const f = $('#fps'); f.hidden = !this.settings.showFps; if (!f.hidden) f.textContent = text; }
-  setHidden(h) { this.hidden = h; $('#hud').hidden = h; $('#bShow').hidden = !h; if (h) this.toast(t('toast.uiHidden'), 2200); this.hooks.onHide && this.hooks.onHide(h); }
+  setHidden(h) { this.hidden = h; $('#hud').hidden = h; $('#bShow').hidden = !h; document.body.classList.toggle('ui-hidden', !!h);   // v11: the crosshair dot goes with the controls
+    if (h) this.toast(t('toast.uiHidden'), 2200); this.hooks.onHide && this.hooks.onHide(h); }
   modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk', '#tablet', '#atm', '#tutAsk', '#layoutEd', '#mpPanel'].some((s) => $(s) && !$(s).hidden) || !$('#menu').hidden; }
   // ---------------- ticket ----------------
   showTicket(tk, quick) {
