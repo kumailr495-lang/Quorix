@@ -33,17 +33,21 @@ def sphere(bm, r, n=10):
 
 
 def ctube(bm, pts, radius, sides=8):
-    """a round tube along an open polyline, capped at both ends (a closed solid: lbl.tube leaves its ends open)"""
+    """a round tube along an open polyline, capped at both ends (a closed solid: lbl.tube leaves its ends open). v11: a polyline that
+    ends where it starts is a closed ring: its seam takes its direction from both neighbours and is welded, with no caps (the bistro
+    chair's ring had two cross-sections and two caps on one spot there, which fought)"""
+    loop = len(pts) > 3 and (Vector(pts[0]) - Vector(pts[-1])).length < 1e-9
+    if loop: pts = pts[:-1]
     n = len(pts); rings = []
     for i, p in enumerate(pts):
-        a = pts[max(0, i - 1)]; b = pts[min(n - 1, i + 1)]
+        a = pts[(i - 1) % n] if loop else pts[max(0, i - 1)]; b = pts[(i + 1) % n] if loop else pts[min(n - 1, i + 1)]
         t = (Vector(b) - Vector(a)).normalized(); up = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0))
         x = t.cross(up).normalized(); y = t.cross(x).normalized()
         rings.append([bm.verts.new(Vector(p) + (x * math.cos(2 * math.pi * k / sides) + y * math.sin(2 * math.pi * k / sides)) * radius) for k in range(sides)])
-    for i in range(n - 1):
-        a, b = rings[i], rings[i + 1]
+    for i in range(n if loop else n - 1):
+        a, b = rings[i], rings[(i + 1) % n]
         for k in range(sides): k2 = (k + 1) % sides; bm.faces.new((a[k], a[k2], b[k2], b[k]))
-    bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
+    if not loop: bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
 
 
 def ring(r0, r1, z0, z1):
@@ -54,22 +58,26 @@ def ring(r0, r1, z0, z1):
 def fountain_tier(lod=0):
     seg = 64 if lod == 0 else 28
     part('Basin', lod, 'stone_light', lambda bm: lathe(bm, [(1e-4, 0.0), (1.55, 0.0), (1.62, 0.40), (1.62, 0.46), (1.40, 0.46), (1.40, 0.15), (1e-4, 0.15)], seg))
-    part('Water', lod, 'glass', lambda bm: lathe(bm, ring(1e-4, 1.392, 0.30, 0.355), seg))
-    part('RimLight', lod, 'glow_warm', lambda bm: lathe(bm, ring(1.622, 1.632, 0.405, 0.43), seg), smooth=False)
-    part('Stem', lod, 'marble_nero', lambda bm: lathe(bm, [(1e-4, 0.30), (0.34, 0.30), (0.27, 0.46), (0.17, 0.86), (0.13, 1.22), (1e-4, 1.22)], seg // 2))
+    # v11 (the user: no floating or disconnected parts): the water fills the basin to its walls and floor (it was a slab 8 mm off the wall and
+    # 15 cm over the floor, the stem standing on the slab's underside), the stem stands on the basin's floor, the rim light is set into the
+    # wall (2 mm off it), the streams start inside the bowls' rims and end in the water and the lower bowl (5 mm and 6 cm short), the
+    # finial rises from the top bowl on a neck (it hung 8 cm over it)
+    part('Water', lod, 'glass', lambda bm: lathe(bm, ring(1e-4, 1.405, 0.148, 0.355), seg))
+    part('RimLight', lod, 'glow_warm', lambda bm: lathe(bm, ring(1.618, 1.632, 0.405, 0.43), seg), smooth=False)
+    part('Stem', lod, 'marble_nero', lambda bm: lathe(bm, [(1e-4, 0.148), (0.34, 0.148), (0.34, 0.30), (0.27, 0.46), (0.17, 0.86), (0.13, 1.22), (1e-4, 1.22)], seg // 2))
     part('Bowl', lod, 'brass', lambda bm: lathe(bm, [(1e-4, 1.18), (0.14, 1.18), (0.78, 1.33), (0.82, 1.39), (0.76, 1.39), (0.14, 1.25), (1e-4, 1.25)], seg))
     part('Stem2', lod, 'marble_nero', lambda bm: lathe(bm, [(1e-4, 1.24), (0.09, 1.24), (0.065, 1.74), (1e-4, 1.74)], seg // 2))
     part('Bowl2', lod, 'brass', lambda bm: lathe(bm, [(1e-4, 1.71), (0.08, 1.71), (0.39, 1.81), (0.42, 1.86), (0.38, 1.86), (0.08, 1.77), (1e-4, 1.77)], seg))
-    part('Finial', lod, 'brass', lambda bm: lathe(bm, [(1e-4, 1.85), (0.05, 1.86), (0.07, 1.93), (0.03, 2.02), (1e-4, 2.05)], seg // 2))
+    part('Finial', lod, 'brass', lambda bm: lathe(bm, [(1e-4, 1.76), (0.03, 1.76), (0.03, 1.85), (0.05, 1.86), (0.07, 1.93), (0.03, 2.02), (1e-4, 2.05)], seg // 2))
     # the water falling from each bowl's lip: thin lit streams (the fountain is lit from below, as at night); a solid lit curtain read
     # as a white drum in the review renders
     for k in range(28 if lod == 0 else 14):
         a = 2 * math.pi * (k + 0.5) / (28 if lod == 0 else 14); r1, r2 = 0.83, 0.88
-        part('Fall', lod, 'glow_ice', lambda bm, a=a: ctube(bm, [(0.81 * math.cos(a), 0.81 * math.sin(a), 1.37), (r1 * math.cos(a), r1 * math.sin(a), 1.0), (r2 * math.cos(a), r2 * math.sin(a), 0.36)], 0.006, 4), smooth=False)
+        part('Fall', lod, 'glow_ice', lambda bm, a=a: ctube(bm, [(0.80 * math.cos(a), 0.80 * math.sin(a), 1.385), (r1 * math.cos(a), r1 * math.sin(a), 1.0), (r2 * math.cos(a), r2 * math.sin(a), 0.35)], 0.006, 4), smooth=False)
     for k in range(16 if lod == 0 else 8):
         a = 2 * math.pi * (k + 0.25) / (16 if lod == 0 else 8)
-        part('Fall2', lod, 'glow_ice', lambda bm, a=a: ctube(bm, [(0.41 * math.cos(a), 0.41 * math.sin(a), 1.84), (0.44 * math.cos(a), 0.44 * math.sin(a), 1.6), (0.47 * math.cos(a), 0.47 * math.sin(a), 1.385)], 0.005, 4), smooth=False)
-    part('Glint', lod, 'glow_ice', lambda bm: lathe(bm, ring(0.875, 0.892, 0.356, 0.359), seg), smooth=False)   # where the streams land
+        part('Fall2', lod, 'glow_ice', lambda bm, a=a: ctube(bm, [(0.40 * math.cos(a), 0.40 * math.sin(a), 1.85), (0.44 * math.cos(a), 0.44 * math.sin(a), 1.6), (0.47 * math.cos(a), 0.47 * math.sin(a), 1.32)], 0.005, 4), smooth=False)
+    part('Glint', lod, 'glow_ice', lambda bm: lathe(bm, ring(0.875, 0.892, 0.353, 0.36), seg), smooth=False)   # where the streams land (2 mm into the water)
 
 
 def pillar_light(lod=0):
@@ -97,19 +105,26 @@ def pendant_cloud(lod=0):
 
 
 def espresso_machine(lod=0):
-    """a two-group espresso machine on the cafe counter: chrome body, red front, group heads with black handles, steam wands, cups"""
+    """a two-group espresso machine on the cafe counter: chrome body, red front, group heads with black handles, steam wands, cups.
+    v11 (the user: no floating parts, no shared faces): the body stands on the counter on four feet (it hovered 4 cm over it with only the
+    drip tray's front under it), the drip tray runs 1 cm into the body, the cups stand on the tray, the cup rail on top is a raised gallery
+    set into the top (it was a plate whose face was the top's own)"""
     part('Body', lod, 'chrome', lambda bm: lbl.rounded_box(bm, (0.5, 0.74, 0.40), 0.03, (2, 3, 2), 2), T(0, 0, 0.24))
-    part('Front', lod, 'lacquer_red', lambda bm: box(bm, 0.25, -0.33, 0.12, 0.262, 0.33, 0.40))
-    part('Tray', lod, 'steel', lambda bm: box(bm, 0.08, -0.33, 0.0, 0.34, 0.33, 0.035))
+    for fx in (-0.2, 0.2):
+        for fy in (-0.32, 0.32):
+            part('Foot', lod, 'paint_black', lambda bm, fx=fx, fy=fy: (lathe(bm, ring(1e-4, 0.022, 0.0, 0.05), 12), bm.transform(T(fx, fy, 0))))   # 1 cm into the body
+    part('Front', lod, 'lacquer_red', lambda bm: box(bm, 0.249, -0.33, 0.12, 0.262, 0.33, 0.40))   # 1 mm into the body's face
+    part('Tray', lod, 'steel', lambda bm: box(bm, 0.24, -0.33, 0.0, 0.36, 0.33, 0.045))   # 1 cm into the body's front and 5 mm into its foot
     for y in (-0.16, 0.16):
         part('Group', lod, 'chrome', lambda bm, y=y: (lathe(bm, [(1e-4, 0.0), (0.045, 0.0), (0.05, 0.08), (1e-4, 0.09)], 16), bm.transform(T(0.3, y, 0.2))))
         part('Handle', lod, 'paint_black', lambda bm, y=y: box(bm, 0.33, y - 0.014, 0.205, 0.48, y + 0.014, 0.235))
-        part('Cup', lod, 'ceramic', lambda bm, y=y: (lathe(bm, [(1e-4, 0.0), (0.035, 0.0), (0.042, 0.065), (1e-4, 0.065)], 14), bm.transform(T(0.3, y, 0.04))))
+        part('Cup', lod, 'ceramic', lambda bm, y=y: (lathe(bm, [(1e-4, 0.0), (0.035, 0.0), (0.042, 0.065), (1e-4, 0.065)], 14), bm.transform(T(0.3, y, 0.043))))   # 2 mm into the tray
     for y in (-0.31, 0.31):
         part('Wand', lod, 'chrome', lambda bm, y=y: ctube(bm, [(0.26, y, 0.33), (0.36, y, 0.26), (0.38, y, 0.1)], 0.007, 6))
     for i in range(6):
-        part('Cup', lod, 'ceramic', lambda bm, i=i: (lathe(bm, [(1e-4, 0.0), (0.035, 0.0), (0.045, 0.07), (1e-4, 0.07)], 14), bm.transform(T(-0.08 + (i % 2) * 0.11, -0.22 + (i // 2) * 0.22, 0.44))))
-    part('Rail', lod, 'chrome', lambda bm: box(bm, -0.24, -0.36, 0.435, 0.24, 0.36, 0.44))
+        part('Cup', lod, 'ceramic', lambda bm, i=i: (lathe(bm, [(1e-4, 0.0), (0.035, 0.0), (0.045, 0.07), (1e-4, 0.07)], 14), bm.transform(T(-0.08 + (i % 2) * 0.11, -0.22 + (i // 2) * 0.22, 0.438))))   # 2 mm into the top
+    for (x0, y0, x1, y1) in ((-0.2, -0.32, 0.2, -0.31), (-0.2, 0.31, 0.2, 0.32), (-0.2, -0.31, -0.19, 0.31), (0.19, -0.31, 0.2, 0.31)):   # the cup warmer's gallery rail
+        part('Rail', lod, 'chrome', lambda bm, a=(x0, y0, x1, y1): box(bm, a[0], a[1], 0.435, a[2], a[3], 0.465))
 
 
 def wedge(bm, r, z0, z1, a0, a1, seg=20):
@@ -135,14 +150,14 @@ def cake_case(lod=0):
         for y in (-0.56, 0.56):
             part('Post', lod, 'brass', lambda bm, x=x, y=y: box(bm, x - 0.012, y - 0.012, 0.12, x + 0.012, y + 0.012, 0.62))
     part('Lid', lod, 'brass', lambda bm: box(bm, -0.3, -0.58, 0.62, 0.3, 0.58, 0.65))
-    part('Light', lod, 'glow_warm', lambda bm: box(bm, -0.2, -0.5, 0.605, 0.2, 0.5, 0.618), smooth=False)
-    part('Shelf', lod, 'lacquer_cream', lambda bm: box(bm, -0.26, -0.54, 0.36, 0.26, 0.54, 0.375))
-    part('ShelfEdge', lod, 'brass', lambda bm: box(bm, 0.26, -0.54, 0.357, 0.268, 0.54, 0.378))
+    part('Light', lod, 'glow_warm', lambda bm: box(bm, -0.2, -0.5, 0.607, 0.2, 0.5, 0.622), smooth=False)   # 2 mm into the lid
+    part('Shelf', lod, 'lacquer_cream', lambda bm: box(bm, -0.275, -0.555, 0.36, 0.275, 0.555, 0.375))   # v11: 7 mm into the four posts (it hung 8 mm clear of them)
+    part('ShelfEdge', lod, 'brass', lambda bm: box(bm, 0.275, -0.555, 0.357, 0.283, 0.555, 0.378))
     def at(x, y, z): return T(x, y, z)
     def ball(name, mat, r, x, y, z, n=4): part(name, lod, mat, lambda bm: (sphere(bm, r, n), bm.transform(at(x, y, z))))
     def cyl(name, mat, r, z0, z1, x, y, z, seg=20, smooth=True): part(name, lod, mat, lambda bm: (lathe(bm, ring(1e-4, r, z0, z1), seg), bm.transform(at(x, y, z))), smooth=smooth)
     def sect(name, mat, r, z0, z1, a0, a1, x, y, z, rot=0.0): part(name, lod, mat, lambda bm: (wedge(bm, r, z0, z1, a0, a1), bm.transform(at(x, y, z) @ RZ(rot))), smooth=False)
-    Z0, Z1 = 0.121, 0.376   # the base's top and the shelf's top
+    Z0, Z1 = 0.118, 0.373   # v11: 2 mm into the base's top and the shelf's top (1 mm over them, every cake floated)
     # ---- lower shelf
     x, y = 0.02, -0.40   # strawberry layer cake, a slice out towards you
     cyl('Plate', 'ceramic', 0.118, 0.0, 0.008, x, y, Z0, 24)
@@ -160,8 +175,8 @@ def cake_case(lod=0):
     part('Tray', lod, 'steel', lambda bm: box(bm, x - 0.115, y - 0.115, Z0, x + 0.115, y + 0.115, Z0 + 0.008))
     for k, mat in enumerate(('candy_pink', 'walnut_dark', 'candy_yellow', 'lacquer_cream')):
         dx, dy = (-0.055 if k % 2 == 0 else 0.055), (-0.055 if k < 2 else 0.055)
-        part('Doughnut', lod, 'oak', lambda bm, dx=dx, dy=dy: (torus(bm, 0.032, 0.017, 0.0), bm.transform(at(x + dx, y + dy, Z0 + 0.025))))
-        part('Icing', lod, mat, lambda bm, dx=dx, dy=dy: (lathe(bm, [(0.019, 0.0), (0.045, 0.0), (0.041, 0.012), (0.023, 0.012)], 10), bm.transform(at(x + dx, y + dy, Z0 + 0.031))))
+        part('Doughnut', lod, 'oak', lambda bm, dx=dx, dy=dy: (torus(bm, 0.032, 0.017, 0.0), bm.transform(at(x + dx, y + dy, Z0 + 0.0215))))   # 1.5 mm into the tray
+        part('Icing', lod, mat, lambda bm, dx=dx, dy=dy: (lathe(bm, [(0.019, 0.0), (0.045, 0.0), (0.041, 0.012), (0.023, 0.012)], 10), bm.transform(at(x + dx, y + dy, Z0 + 0.0275))))
     # ---- upper shelf
     x, y = 0.02, -0.40   # six cupcakes
     for k in range(6):
@@ -170,8 +185,8 @@ def cake_case(lod=0):
         ball('Swirl', ic, 0.027, x + dx, y + dy, Z1 + 0.048); ball('Swirl', ic, 0.018, x + dx, y + dy, Z1 + 0.072); ball('Cherry', 'candy_red', 0.007, x + dx, y + dy, Z1 + 0.092, 3)
     x, y = 0.02, -0.13   # two tiers on a stand
     part('Stand', lod, 'ceramic', lambda bm: (lathe(bm, [(1e-4, 0.0), (0.055, 0.0), (0.05, 0.008), (0.014, 0.014), (0.012, 0.05), (0.1, 0.056), (0.1, 0.062), (1e-4, 0.062)], 24), bm.transform(at(x, y, Z1))))
-    cyl('Tier', 'lacquer_cream', 0.082, 0.062, 0.122, x, y, Z1, 24); cyl('Band', 'candy_pink', 0.0835, 0.062, 0.072, x, y, Z1, 24)
-    cyl('Tier', 'lacquer_cream', 0.052, 0.122, 0.17, x, y, Z1, 20); cyl('Band', 'candy_pink', 0.0535, 0.122, 0.131, x, y, Z1, 20)
+    cyl('Tier', 'lacquer_cream', 0.082, 0.062, 0.122, x, y, Z1, 24); cyl('Band', 'candy_pink', 0.09, 0.061, 0.072, x, y, Z1, 24)   # v11: ribbons 8 mm proud (1.5 mm fought), from 1 mm under the tier's foot
+    cyl('Tier', 'lacquer_cream', 0.052, 0.122, 0.17, x, y, Z1, 20); cyl('Band', 'candy_pink', 0.06, 0.121, 0.131, x, y, Z1, 20)
     for k in range(10): a = 2 * math.pi * k / 10; ball('Pearl', 'candy_pink', 0.007, x + 0.068 * math.cos(a), y + 0.068 * math.sin(a), Z1 + 0.126, 3)
     ball('Topper', 'candy_red', 0.014, x, y, Z1 + 0.183)
     x, y = 0.02, 0.14    # fruit tart
@@ -198,13 +213,13 @@ def cafe_counter(lod=0):
 
 def rug_round(lod=0):
     part('Field', lod, 'carpet_deco', lambda bm: lathe(bm, ring(1e-4, 1.92, 0.0, 0.012), 64))
-    part('Border', lod, 'velvet_navy', lambda bm: lathe(bm, ring(1.9, 2.1, 0.0, 0.014), 64))
+    part('Border', lod, 'velvet_navy', lambda bm: lathe(bm, ring(1.9, 2.1, 0.0, 0.017), 64))   # v11: 5 mm over the field it laps (2 mm fought far off)
 
 
 def rug_runner(lod=0):
     part('Field', lod, 'carpet_deco', lambda bm: box(bm, -1.9, -1.15, 0.0, 1.9, 1.15, 0.012))
     for (x0, y0, x1, y1) in ((-2.0, -1.25, 2.0, -1.13), (-2.0, 1.13, 2.0, 1.25), (-2.0, -1.13, -1.88, 1.13), (1.88, -1.13, 2.0, 1.13)):
-        part('Border', lod, 'velvet_navy', lambda bm, a=(x0, y0, x1, y1): box(bm, a[0], a[1], 0.0, a[2], a[3], 0.014))
+        part('Border', lod, 'velvet_navy', lambda bm, a=(x0, y0, x1, y1): box(bm, a[0], a[1], 0.0, a[2], a[3], 0.017))   # v11: 5 mm over the field it laps
 
 
 def standee_base(lod=0):
@@ -221,9 +236,12 @@ def popcorn_cart(lod=0):
     part('Corn', lod, 'popcorn', lambda bm: box(bm, -0.26, -0.42, 0.96, 0.26, 0.42, 1.12))
     rnd = random.Random(3)
     def kernels(bm):   # a heap of popped kernels on top (the flat block read as cream)
+        got = []
         for _ in range(70):
             u, v = rnd.uniform(-0.24, 0.24), rnd.uniform(-0.4, 0.4); h = 1.12 + 0.06 * (1 - (u / 0.26) ** 2) * (1 - (v / 0.42) ** 2) + rnd.uniform(0, 0.03)
-            r = rnd.uniform(0.018, 0.03); vs0 = len(bm.verts); sphere(bm, r, 4); bm.verts.ensure_lookup_table()
+            r = rnd.uniform(0.018, 0.03)
+            if any((u - a) ** 2 + (v - b) ** 2 + (h - c) ** 2 < (0.7 * (r + q)) ** 2 for a, b, c, q in got): continue   # v11: two on one spot shared facets
+            got.append((u, v, h, r)); vs0 = len(bm.verts); sphere(bm, r, 4); bm.verts.ensure_lookup_table()
             for vv in bm.verts[vs0:]: vv.co += Vector((u, v, h))
     part('Kernels', lod, 'popcorn', kernels)
     for x in (-0.28, 0.28):
@@ -234,6 +252,7 @@ def popcorn_cart(lod=0):
     for y in (-0.56, 0.56):
         part('Wheel', lod, 'paint_black', lambda bm, y=y: (lathe(bm, ring(0.29, 0.33, -0.025, 0.025), 32), bm.transform(T(0, y, 0.33) @ Matrix.Rotation(math.radians(90), 4, 'X'))))
         part('Hub', lod, 'brass', lambda bm, y=y: (lathe(bm, ring(1e-4, 0.05, -0.04, 0.04), 12), bm.transform(T(0, y, 0.33) @ Matrix.Rotation(math.radians(90), 4, 'X'))))
+        part('Axle', lod, 'steel', lambda bm, y=y: (lathe(bm, ring(1e-4, 0.016, -0.06, 0.06), 10), bm.transform(T(0, y * 0.93, 0.33) @ Matrix.Rotation(math.radians(90), 4, 'X'))))   # v11: from 2 cm inside the body into the hub
         for k in range(8):
             a = k * math.pi / 8
             part('Spoke', lod, 'brass', lambda bm, y=y, a=a: ctube(bm, [(-0.29 * math.cos(a), y, 0.33 - 0.29 * math.sin(a)), (0.29 * math.cos(a), y, 0.33 + 0.29 * math.sin(a))], 0.008, 6))

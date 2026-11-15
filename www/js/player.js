@@ -11,16 +11,19 @@ export class Player {
     this.stick = { x: 0, y: 0 }; this._carry = { x: 0, z: 0 }; this.sprint = false; this.keys = {}; this.seated = null; this.anim = null; this.phase = 0; this.radius = 0.24; this.locked = false; this.onStep = null; this.moving = 0; this._near = []; this.bob = 0;
   }
   attach(canvas, stickEl, knobEl, sprintEl) {
-    let lookId = null, lx = 0, ly = 0, stickId = null; const R = 46;
+    let lookId = null, lx = 0, ly = 0, stickId = null, tap = null; const R = 46;
     const setKnob = (dx, dy) => { knobEl.style.transform = `translate(${dx}px,${dy}px)`; };
     const stickMove = (e) => { const r = stickEl.getBoundingClientRect(); let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; } setKnob(dx, dy); this.stick.x = dx / R; this.stick.y = -dy / R; };
     stickEl.addEventListener('pointerdown', (e) => { stickId = e.pointerId; stickEl.setPointerCapture(e.pointerId); stickEl.classList.add('on'); stickMove(e); e.preventDefault(); });
     stickEl.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) stickMove(e); });
     const stickEnd = (e) => { if (e.pointerId === stickId) { stickId = null; this.stick.x = this.stick.y = 0; setKnob(0, 0); stickEl.classList.remove('on'); } };
     stickEl.addEventListener('pointerup', stickEnd); stickEl.addEventListener('pointercancel', stickEnd);
-    canvas.addEventListener('pointerdown', (e) => { if (lookId === null) { lookId = e.pointerId; lx = e.clientX; ly = e.clientY; try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* a pointer the browser no longer tracks */ } } });
-    canvas.addEventListener('pointermove', (e) => { if (e.pointerId !== lookId || this.locked) return; const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY; const s = (this.settings.sensitivity ?? 1) * 0.0042; this.turn(dx * s, dy * s * (this.settings.invertY ? -1 : 1)); });
-    const lookEnd = (e) => { if (e.pointerId === lookId) lookId = null; }; canvas.addEventListener('pointerup', lookEnd); canvas.addEventListener('pointercancel', lookEnd);
+    // v11: a touch that stays put (under 10 px) and lets go within 280 ms is a tap, not a look (main.js presses the lift button tapped)
+    canvas.addEventListener('pointerdown', (e) => { if (lookId === null) { lookId = e.pointerId; lx = e.clientX; ly = e.clientY; tap = { t: performance.now(), m: 0 }; try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* a pointer the browser no longer tracks */ } } });
+    canvas.addEventListener('pointermove', (e) => { if (e.pointerId !== lookId || this.locked) return; const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY; if (tap) tap.m += Math.abs(dx) + Math.abs(dy); const s = (this.settings.sensitivity ?? 1) * 0.0042; this.turn(dx * s, dy * s * (this.settings.invertY ? -1 : 1)); });
+    const lookEnd = (e) => { if (e.pointerId !== lookId) return; lookId = null; const q = tap; tap = null;
+      if (e.type === 'pointerup' && q && q.m < 10 && performance.now() - q.t < 280 && this.onTap) this.onTap(e.clientX, e.clientY, document.pointerLockElement === canvas); };
+    canvas.addEventListener('pointerup', lookEnd); canvas.addEventListener('pointercancel', lookEnd);
     const hold = (on) => { this.sprint = on; sprintEl.classList.toggle('on', on); };
     sprintEl.addEventListener('pointerdown', (e) => { sprintEl.setPointerCapture(e.pointerId); hold(!this.sprint || e.pointerType !== 'touch' ? true : false); e.preventDefault(); });
     sprintEl.addEventListener('pointerup', (e) => { if (e.pointerType !== 'touch') hold(false); }); sprintEl.addEventListener('pointercancel', () => hold(false));

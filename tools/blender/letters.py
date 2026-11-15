@@ -9,6 +9,8 @@ import bpy, bmesh, math, os, sys, json
 from mathutils import Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lbl
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arch'))
+from coplanar import pairs as coplanar_pairs
 
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 OUT = ARGS[ARGS.index('--out') + 1] if '--out' in ARGS else 'www/models'
@@ -51,12 +53,20 @@ def build(name, text, font, face, side, depth, bevel, spacing):
     bm = bmesh.new(); bm.from_mesh(me); bpy.data.meshes.remove(me)
     bm.transform(Matrix.Scale(k, 4)); bm.transform(ROT)
     xmin = min(v.co.x for v in bm.verts); bm.transform(Matrix.Translation((-xmin, 0, 0)))   # back of the letters at X = 0
-    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces)); lbl.box_uv(bm)
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
     out = bpy.data.meshes.new(name + '_LOD0'); bm.to_mesh(out); bm.free()
+    ob = bpy.data.objects.new(name + '_LOD0', out); bpy.context.scene.collection.objects.link(ob)
+    # v11: a glyph drawn as overlapping strokes (Inter's '4': the bar runs through the stem) filled into two solids with their faces in one
+    # plane, which z-fought on the hall numbers; a self union makes such a glyph one closed solid (only where faces overlap: the union
+    # cuts every face it touches into many triangles)
+    tri = [tuple(out.vertices[i].co) for p_ in out.polygons for t in [p_.vertices] for k in range(1, len(t) - 1) for i in (t[0], t[k], t[k + 1])]
+    if coplanar_pairs(tri, None, gap=0.0005):
+        bpy.context.view_layer.objects.active = ob; ob.select_set(True); bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.intersect_boolean(operation='UNION', use_self=True, solver='EXACT'); bpy.ops.object.mode_set(mode='OBJECT'); print('self union:', name)
+    bm = bmesh.new(); bm.from_mesh(out); bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces)); lbl.box_uv(bm); bm.to_mesh(out); bm.free()
     out.materials.append(lbl.material(face)); out.materials.append(lbl.material(side))
     for p in out.polygons: p.material_index = 0 if p.normal.x > 0.92 else 1
-    out.shade_smooth(); out.set_sharp_from_angle(angle=math.radians(40))
-    ob = bpy.data.objects.new(name + '_LOD0', out); bpy.context.scene.collection.objects.link(ob); lbl.PARTS.append(ob)
+    out.shade_smooth(); out.set_sharp_from_angle(angle=math.radians(40)); lbl.PARTS.append(ob)
     return lbl.export(name, OUT)
 
 

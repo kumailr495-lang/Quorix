@@ -14,6 +14,7 @@ import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
 import { makeCanvas, SANS, SERIF } from './textures.js';
 import { posterURL } from './films.js';
+import { Lift } from './lift9.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), IN = (r, x, z, m = 0) => x >= r.x0 - m && x <= r.x1 + m && z >= r.z0 - m && z <= r.z1 + m;
 const b64f = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new Float32Array(u.buffer); };
@@ -47,7 +48,7 @@ function stairY(x, z, y) {
   for (const s of EXIT_STAIRS) {
     if (x < Math.min(s.x0, s.x1) || x > Math.max(s.x0, s.x1)) continue;
     const t = (z - s.zTop) * s.dir, back = (z - s.zDoor) * s.dir;
-    if (t < 0 && back > -0.95) { if (y > s.y0 - 0.8) return s.y0; continue; }
+    if (t < 0 && back > -s.lh) { if (y > s.y0 - 0.8) return s.y0; continue; }
     if (t >= 0 && t < s.n * s.tread) { const ys = s.y0 - (Math.floor(t / s.tread) + 1) * s.rise; if (y > ys - 0.8) return ys; }
   }
   return null;
@@ -148,10 +149,22 @@ function leafGeo(lw, h, kind, s, astragal = 0) {
   const exit = kind === 'push', c = exit ? '#2b2e34' : '#26272b';
   a.add(boxGeo(lw, h, t), m(lw / 2, h / 2, 0), c, { mat: MAT.powder });
   if (astragal) a.add(boxGeo(0.05, h - 0.02, 0.012), m(lw + 0.01, h / 2, astragal * (t / 2 + 0.006)), exit ? '#3a3d44' : '#1c1d20', { mat: MAT.powder });
+  // v11 (the user: no floating or disconnected parts, no shared faces): the vision panel is glass set 4 mm back in a bronze bead ring (the
+  // glass and a plate behind it shared their back faces, the plate's face sat 2 mm behind the glass's); the pull and the push bar stand on
+  // posts set into the leaf and the bar (they floated 2 and 1.5 cm off the leaf with nothing holding them)
+  const ring = (cx, cy, w, h, b, col) => { for (const z of [-1, 1]) { const zc = z * (t / 2 + 0.0045);   // a bead ring b wide round a w x h opening: 1.5 mm inside the leaf to 10.5 mm out
+      a.add(boxGeo(w + 2 * b, b, 0.012), m(cx, cy + h / 2 + b / 2, zc), col, { mat: MAT.powder }); a.add(boxGeo(w + 2 * b, b, 0.012), m(cx, cy - h / 2 - b / 2, zc), col, { mat: MAT.powder });
+      a.add(boxGeo(b, h, 0.012), m(cx - w / 2 - b / 2, cy, zc), col, { mat: MAT.powder }); a.add(boxGeo(b, h, 0.012), m(cx + w / 2 + b / 2, cy, zc), col, { mat: MAT.powder }); } };
+  const glassIn = (cx, cy, w, h, col) => a.add(boxGeo(w + 0.01, h + 0.01, t + 0.01), m(cx, cy, 0), col, { mat: MAT.glass });   // through the leaf, 5 mm proud each side (5.5 mm back in the ring), its edges 5 mm into the ring
+  if (exit) { ring(lw / 2, 1.62, 0.22, 0.38, 0.02, '#3a3d44'); glassIn(lw / 2, 1.62, 0.22, 0.38, '#0a0c0e'); }
+  else { ring(lw * 0.62, 1.55, 0.13, 0.78, 0.02, '#3c3e44'); glassIn(lw * 0.62, 1.55, 0.13, 0.78, '#0b0d10'); }
   for (const z of [-1, 1]) {
-    if (exit) { a.add(boxGeo(lw - 0.3, 0.05, 0.05), m(lw / 2 + 0.05, 1.0, z * (t / 2 + 0.04)), '#c9ccd2', { mat: MAT.chrome }); a.add(boxGeo(0.24, 0.4, 0.006), m(lw / 2, 1.62, z * (t / 2 + 0.002)), '#0a0c0e', { mat: MAT.glass }); }
-    else { a.add(boxGeo(0.13, 0.78, 0.006), m(lw * 0.62, 1.55, z * (t / 2 + 0.002)), '#0b0d10', { mat: MAT.glass }); a.add(boxGeo(0.17, 0.82, 0.004), m(lw * 0.62, 1.55, z * (t / 2 + 0.001)), '#3c3e44', { mat: MAT.powder });
-      a.add(boxGeo(0.028, 0.42, 0.03), m(lw - 0.14, 1.05, z * (t / 2 + 0.035)), '#c9ccd2', { mat: MAT.chrome }); a.add(boxGeo(lw - 0.1, 0.16, 0.006), m(lw / 2, 0.11, z * (t / 2 + 0.003)), '#8d9097', { mat: MAT.chrome }); } }
+    if (exit) { const bl = lw - 0.3, bx = lw / 2 + 0.05;   // the push bar on two posts
+      a.add(boxGeo(bl, 0.05, 0.05), m(bx, 1.0, z * (t / 2 + 0.04)), '#c9ccd2', { mat: MAT.chrome });
+      for (const ex of [bx - bl / 2 + 0.04, bx + bl / 2 - 0.04]) a.add(boxGeo(0.03, 0.036, 0.022), m(ex, 1.0, z * (t / 2 + 0.008)), '#c9ccd2', { mat: MAT.chrome }); }
+    else { a.add(boxGeo(0.028, 0.42, 0.03), m(lw - 0.14, 1.05, z * (t / 2 + 0.035)), '#c9ccd2', { mat: MAT.chrome });
+      for (const ey of [1.05 - 0.16, 1.05 + 0.16]) a.add(boxGeo(0.018, 0.022, 0.026), m(lw - 0.14, ey, z * (t / 2 + 0.011)), '#c9ccd2', { mat: MAT.chrome });   // the pull's two posts
+      a.add(boxGeo(lw - 0.1, 0.16, 0.006), m(lw / 2, 0.11, z * (t / 2 + 0.003)), '#8d9097', { mat: MAT.chrome }); } }
   return toGeometry(a);
 }
 // ---------------------------------------------------------------- escalators (EN 115: 30 deg, 0.4 m steps), travelator, lift
@@ -202,45 +215,7 @@ class Travelator {
   update(dt) { this.phase = (this.phase + this.T.speed * dt) % 0.4; const t = this.tmp, L = this.n * 0.4;
     for (let i = 0; i < this.n; i++) { t.position.set((this.T.x0 + this.T.x1) / 2, 0.108, this.T.z0 + ((i * 0.4 + this.phase) % L)); t.updateMatrix(); this.mesh.setMatrixAt(i, t.matrix); } this.mesh.instanceMatrix.needsUpdate = true; }
 }
-// the lift: a glass-backed cab between G and L1; its doors open at the floor it stands at while someone is near or inside
-class Lift {
-  // v11: a through car. Lf.face[k] says which end the door is at on stop k (+1: the z1 end, -1: the z0 end): the ground-floor door faces
-  // the landing behind the gate, the first-floor door opens onto the gallery. Both door walls are 0.15 m thick, inside z0 and z1.
-  constructor(world, Lf) {
-    Object.assign(this, { L: Lf, y: 0, level: 0, target: 0, state: 'idle', doors: [0, 0], hold: 0, t: 0 }); const room = world.rooms.lobby, U = room.U;
-    const a = new Acc(), x0 = Lf.x0 + 0.02, x1 = Lf.x1 - 0.02, z0 = Lf.z0 + 0.18, z1 = Lf.z1 - 0.18, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, W = x1 - x0, D = z1 - z0, H = 2.45;
-    a.add(boxGeo(W, 0.06, D), M(cx, -0.025, cz), '#2a2522', { mat: MAT.granite });   // the floor, 5 mm proud of the shaft's
-    a.add(boxGeo(W, 0.05, D), M(cx, H + 0.025, cz), '#d9d2c5', { mat: MAT.metal });   // the ceiling (v9 lost it behind a comment)
-    a.add(boxGeo(0.03, H, D), M(x0 + 0.015, H / 2, cz), '#b9bcc2', { mat: MAT.chrome }); a.add(boxGeo(0.03, H, D), M(x1 - 0.015, H / 2, cz), '#b9bcc2', { mat: MAT.chrome });
-    a.add(boxGeo(0.012, 1.1, D - 0.5), M(x0 + 0.036, 1.45, cz), '#a8b4bc', { mat: MAT.chrome });   // a mirror panel on one side
-    a.add(boxGeo(0.05, 0.05, D - 0.1), M(x0 + 0.075, 0.95, cz), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, 0.05, D - 0.1), M(x1 - 0.06, 0.95, cz), '#c9a35e', { mat: MAT.brass });
-    for (const zr of [z0 + 0.03, z1 - 0.03]) for (const sx of [-1, 1]) a.add(boxGeo(0.5, H, 0.06), M(sx < 0 ? x0 + 0.25 : x1 - 0.25, H / 2, zr), '#3b2f25', { mat: MAT.powder });   // the returns beside both doors
-    const g = toGeometry(a); room.lights.bake(g); const lh = g.attributes.lh.array; for (let i = 0; i < lh.length; i++) lh[i] = lh[i] * 0.4 + 0.35;   // the cab's own ceiling light
-    this.cab = new THREE.Mesh(g, world.mats.litFor(U, g)); this.cab.name = 'lift-cab'; room.group.add(this.cab);
-    const gl = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.3, D - 0.3), world.mats.glowMat(U)); gl.rotation.x = Math.PI / 2; gl.position.set(cx, H - 0.01, cz);
-    gl.geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(12).fill(2.2), 3)); gl.geometry.setAttribute('grp', new THREE.BufferAttribute(new Float32Array(4), 1)); this.cab.add(gl); this.cab.position.y = 0;
-    this.cx = cx; this.dw = 1.4; this.face = Lf.face || Lf.stops.map(() => 1); this.zDoor = this.face.map((f) => (f > 0 ? Lf.z1 - 0.07 : Lf.z0 + 0.07));
-    this.leaves = Lf.stops.map((ly, k) => [-1, 1].map((sd) => { const zd = this.zDoor[k], q = new Acc(); q.add(boxGeo(this.dw / 2, 2.3, 0.04), M(0, 1.15, 0), '#9ea2a8', { mat: MAT.metal }); const lg = toGeometry(q); lg.translate(cx, ly, zd); room.lights.bake(lg); lg.translate(-cx, -ly, -zd);
-      const m = new THREE.Mesh(lg, world.mats.litFor(U, lg)); m.name = 'lift-door'; m.position.set(cx + sd * this.dw / 4, ly, zd); room.group.add(m); return { m, s: sd }; }));
-    this.inner = { x0: x0 + 0.1, x1: x1 - 0.1, z0: Lf.z0 + 0.1, z1: Lf.z1 - 0.1 };
-  }
-  inside(x, z) { return IN(this.inner, x, z); }
-  // in front of stop k's door, outside the car (up to 1.6 m from it)
-  atDoor(x, y, z, k) { const f = this.face[k], d = f > 0 ? z - this.L.z1 : this.L.z0 - z; return Math.abs(y - this.L.stops[k]) < 1.2 && Math.abs(x - this.cx) < 1.0 && d > -0.2 && d < 1.6; }
-  call(k) { if (this.state === 'idle' && this.level === k) { this.hold = 5; return; } if (this.state === 'idle') { this.target = k; this.state = 'closing'; this.t = 0; } }
-  update(dt, actors, onEvent) {
-    const lv = this.level, near = actors.some((a) => (this.inside(a.x, a.z) && Math.abs((a.y || 0) - this.y) < 1.2) || this.atDoor(a.x, a.y || 0, a.z, lv));
-    if (this.state === 'idle') { const want = near || this.hold > 0 ? 1 : 0; this.hold -= dt; this.doors[lv] += (want - this.doors[lv]) * (1 - Math.exp(-dt * 3)); }
-    else if (this.state === 'closing') { this.doors[lv] = Math.max(0, this.doors[lv] - dt * 0.9); if (this.doors[lv] <= 0) { this.state = 'moving'; this.t = 0; this.from = this.y; onEvent && onEvent('move'); } }
-    else if (this.state === 'moving') { const d = this.L.stops[this.target] - this.from, T = Math.abs(d) / this.L.speed + 1.2; this.t += dt; const u = Math.min(1, this.t / T), e = u * u * (3 - 2 * u); this.y = this.from + d * e;
-      if (u >= 1) { this.level = this.target; this.state = 'idle'; this.hold = 5; onEvent && onEvent('ding'); } }
-    this.cab.position.y = this.y;
-    this.leaves.forEach((pair, k) => { const o = this.doors[k]; for (const L of pair) L.m.position.x = this.cx + L.s * (this.dw / 4 + o * this.dw * 0.47); });
-  }
-  // the closed doors as walls: each stop's own door while it is shut or the car is elsewhere; the car's other end is always shut there
-  doorSegs() { const S = (z, ly, on) => ({ seg: [this.cx - this.dw / 2, z, this.cx + this.dw / 2, z], y0: ly, y1: ly + 2.3, on }), out = [];
-    this.L.stops.forEach((ly, k) => { out.push(S(this.zDoor[k], ly, this.doors[k] < 0.75 || this.level !== k || this.state !== 'idle')); for (const z of this.zDoor) if (z !== this.zDoor[k]) out.push(S(z, ly, true)); }); return out; }
-}
+// the lift (lift9.js): a through car with its controls in the world
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
 const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192, kiosk: 640 };   // canvas pixels per metre for boards with text or fine figures
 const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -253,17 +228,19 @@ function panelTexture(id, w, h, hooks) {
 const NUDGE = { showtimes: 0.22, menu: 0.22 };
 // v10 the ticket zone's header (rooms.py: one beam across the zone front): the screens, the escalators and the lift under one sign
 function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.fillRect(0, h * 0.92, w, h * 0.08); g.textBaseline = 'middle'; g.textAlign = 'left';
-  const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
-  g.fillStyle = '#f4efe6'; g.font = `600 ${h * 0.4}px ${SANS}`; ls(`${h * 0.05}px`); g.fillText('SCREENS 1 – 4', h * 0.45, h * 0.36); ls('0px');
-  g.fillStyle = 'rgba(244,239,230,.72)'; g.font = `400 ${h * 0.16}px ${SANS}`; g.fillText('TICKETS PLEASE  ·  TICKET HOLDERS BEYOND THIS POINT', h * 0.45, h * 0.73);
-  g.strokeStyle = '#f4efe6'; g.fillStyle = '#f4efe6'; g.lineCap = 'round'; g.lineJoin = 'round';
-  let x = w * 0.52; g.lineWidth = h * 0.08; g.beginPath(); g.moveTo(x, h * 0.74); g.lineTo(x + h * 0.22, h * 0.74); g.lineTo(x + h * 0.62, h * 0.26); g.lineTo(x + h * 0.84, h * 0.26); g.stroke();
+  // v11: the sign hangs over the escalator hall's portal (3.8 m, an 8:1 board); the v10 beam was 7.2 m. Positions in sign heights, measured
+  // so nothing overlaps: the title ends at 3.3 h, the escalator icon starts at 0.42 w, the lift at 0.74 w, the arrow at the right edge
+  const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; }, wide = w / h > 12;
+  g.fillStyle = '#f4efe6'; g.font = `600 ${h * (wide ? 0.4 : 0.36)}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText('SCREENS 1 – 4', h * 0.42, h * 0.36); ls('0px');
+  g.fillStyle = 'rgba(244,239,230,.72)'; g.font = `400 ${h * 0.15}px ${SANS}`; ls(`${h * 0.02}px`); g.fillText(wide ? 'TICKETS PLEASE  ·  TICKET HOLDERS BEYOND THIS POINT' : 'TICKET HOLDERS ONLY', h * 0.42, h * 0.74); ls('0px');
+  g.strokeStyle = '#f4efe6'; g.fillStyle = '#f4efe6'; g.lineCap = 'round'; g.lineJoin = 'round'; const lab = h * (wide ? 0.3 : 0.19);
+  let x = w * (wide ? 0.52 : 0.42); g.lineWidth = h * 0.08; g.beginPath(); g.moveTo(x, h * 0.74); g.lineTo(x + h * 0.22, h * 0.74); g.lineTo(x + h * 0.62, h * 0.26); g.lineTo(x + h * 0.84, h * 0.26); g.stroke();
   g.beginPath(); g.arc(x + h * 0.4, h * 0.22, h * 0.07, 0, Math.PI * 2); g.fill(); g.lineWidth = h * 0.06; g.beginPath(); g.moveTo(x + h * 0.4, h * 0.3); g.lineTo(x + h * 0.34, h * 0.48); g.stroke();
-  g.font = `600 ${h * 0.3}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText('ESCALATORS', x + h * 1.05, h * 0.47); ls('0px');
-  x = w * 0.79; g.lineWidth = h * 0.05; g.strokeRect(x, h * 0.16, h * 0.5, h * 0.64); g.beginPath(); g.moveTo(x + h * 0.25, h * 0.24); g.lineTo(x + h * 0.38, h * 0.42); g.lineTo(x + h * 0.12, h * 0.42); g.closePath(); g.fill();
+  g.font = `600 ${lab}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('ESCALATORS', x + h * 0.98, h * 0.5); ls('0px');
+  x = w * (wide ? 0.79 : 0.765); g.lineWidth = h * 0.05; g.strokeRect(x, h * 0.16, h * 0.5, h * 0.64); g.beginPath(); g.moveTo(x + h * 0.25, h * 0.24); g.lineTo(x + h * 0.38, h * 0.42); g.lineTo(x + h * 0.12, h * 0.42); g.closePath(); g.fill();
   g.beginPath(); g.moveTo(x + h * 0.25, h * 0.72); g.lineTo(x + h * 0.38, h * 0.54); g.lineTo(x + h * 0.12, h * 0.54); g.closePath(); g.fill();
-  g.font = `600 ${h * 0.3}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText('LIFT', x + h * 0.72, h * 0.47); ls('0px');
-  g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.4, h * 0.48); }
+  g.font = `600 ${lab}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('LIFT', x + h * 0.68, h * 0.5); ls('0px');
+  g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.3, h * 0.48); }
 export const PANEL_DRAW = {
   // v11 a ticket machine's screen (rooms.py: three on the walnut panel between the box office and the concessions)
   kiosk: (g, w, h) => { g.fillStyle = '#101225'; g.fillRect(0, 0, w, h); g.textAlign = 'center'; g.textBaseline = 'middle'; const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
@@ -371,7 +348,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', LX + 2.4 * Math.cos(r), 0, LZ + 2.4 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }   // square to the axes: their collision boxes stay tight
   for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'armchair_deco', LX + 3.4 * Math.cos(r), 0, LZ + 3.4 * Math.sin(r), Math.round((-r - Math.PI / 2) / (Math.PI / 2)) * Math.PI / 2, { swap: BOUCLE }); }
   add('lobby', 'table_lounge', LX, 0, LZ); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
-  add('lobby', 'poster_totem', -6.0, 0, 16.3, 0.35); add('lobby', 'poster_totem', 6.0, 0, 16.3, -0.35);   // v10: out of the fountain court
+  for (const [x, yaw] of [[-6.0, 0.35], [6.0, -0.35]]) add('lobby', 'poster_totem', x, 0, 16.3, yaw);   // v10: out of the fountain court; v11 its posters: TOTEM_POSTERS
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
   for (const x of [-14.4, -13.0]) for (let z = 5.6; z < 12.5; z += 1.75) add('lobby', 'rope_velvet', x, 0, z + 0.875, Math.PI / 2, { collide: 0.02 });
@@ -411,7 +388,9 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('lobby', 'pendant_cloud', -12.8, L1 - 0.322, -11.4, 0, { collide: false, ground: false, scale: 0.55, detail: 1 });
   for (const x of [-4.6, 4.6]) add('lobby', 'bench_velvet', x, 0, -13.28);
   // v11 the alcove under the lift's gallery: a bench against the tower's back, a palm at each end
-  add('lobby', 'bench_velvet', 14.5, 0, LIFT.z0 - 0.4, Math.PI); for (const x of [13.0, 16.0]) add('lobby', 'planter_tall', x, 0, LIFT.z0 - 0.45);
+  // v11: the alcove is 3.3 m wide between the escalators' box and the hall's east wall: the 2.06 m bench 17 cm off the wall, one palm at the
+  // other end (two did not fit without touching it)
+  add('lobby', 'bench_velvet', 14.6, 0, LIFT.z0 - 0.4, Math.PI); add('lobby', 'planter_tall', 12.95, 0, LIFT.z0 - 0.45);
   // the first-floor landing between the gallery and the corridor: two benches and palms along the back wall
   for (const x of [16.6, 19.2]) add('lobby', 'bench_velvet', x, L1, -13.28); for (const x of [15.1, 20.7]) add('lobby', 'planter_tall', x, L1, -13.2);   // velvet benches under the pictures either side of the exit
   add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
@@ -468,6 +447,7 @@ function dressRooms(world) {
     if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
     for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });
     for (const f of framed) addPanel(world, room, f);
+    for (const t of TOTEM_POSTERS) if (t.room === key) addPanel(world, room, t);
   }
 }
 // v10 pictures on boards, framed, placed by the engine (no re-bake): the restroom pictograms, the east wall's mural, art over the cafe and
@@ -485,6 +465,10 @@ const FRAMED = [
   ...[[9.85, 'bunny'], [11.55, 'llamigos']].map(([x, f]) => PIC({ id: `poster_${f}_s`, x, y: 1.12, z: ESC_BOX_Z - 0.034, yaw: Math.PI, w: 0.9, h: 1.4, emit: 0.6 })),   // v11 on the walnut under the escalators
   ...[[6.0, 'hero'], [14.5, 'wingit']].map(([x, f]) => PIC({ room: 'corridor', id: `poster_${f}_s`, x, y: L1 + 0.98, z: BRIDGE.z0 + 0.8 + 0.018, yaw: 0, w: 1.1, h: 1.7, emit: 0.6 })),
 ];
+// v11 the lobby's two poster totems (tools/kiln/poster_totem.kiln.js) show a film on each face: inside the totem's brass frame, 7 mm in
+// front of its box (2 mm in front of the poster bed, 3 mm behind the frame's face). They stood blank, the frame floating off the box.
+const TOTEM_POSTERS = [[-6.0, 0.35, 'sintel', 'cosmos'], [6.0, -0.35, 'hero', 'wingit']].flatMap(([x, yaw, a, b], i) => [[a, 1], [b, -1]].map(([f, s]) =>
+  ({ room: 'lobby', id: `poster_${f}_t${i}`, x: x + s * Math.sin(yaw) * 0.087, y: 1.26, z: 16.3 + s * Math.cos(yaw) * 0.087, yaw: s > 0 ? yaw : yaw + Math.PI, w: 0.8, h: 1.22, emit: 0.7 })));
 const UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
 function framePanel(acc, p) {   // the board (front 3 mm behind the picture) and four bars round it, 2.2 cm proud of the picture
   const t = p.frame === 'thin' ? 0.025 : 0.05, d = p.depth ?? 0.03, col = p.frameCol || '#c9a35e', mat = p.frameMat ?? MAT.brass;
@@ -645,9 +629,12 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   world.travelator = new Travelator(world, TRAVELATOR); world.movers.push(world.travelator);
   world.lift = new Lift(world, LIFT);
   // the ticket gate: one glass leaf in the barrier at the foot of the up escalator, hinged at its west post; the usher opens it for you
-  const GH = 1.25;   // the leaves are as tall as the glass screens beside them (rooms.py glass_screen)
-  { const g = world.gate = { x0: GATE.gate[0], x1: GATE.gate[1], z: GATE.z, open: 0, target: 0 }, w = g.x1 - g.x0 - 0.06, grp = new THREE.Group(), a = new Acc();
-    a.add(boxGeo(w, 0.05, 0.05), M(w / 2, GH - 0.025, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, GH - 0.05, 0.05), M(w - 0.025, (GH - 0.05) / 2, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(w - 0.05, 0.04, 0.03), M((w - 0.05) / 2, 0.13, 0), '#c9a35e', { mat: MAT.brass }); const fg = toGeometry(a);
+  // v11: the leaves hang in the escalator hall's portal (rooms.py core_hall): the ticket leaf on the portal's west jamb, the exit leaves on
+  // the gate cabinet and the east jamb. Each leaf has a hinge stile with two pivots on its jamb (the user's photo: frames that hung from
+  // nothing); free edges stop 15 mm short of the cabinet and 20 mm short of each other.
+  const GH = 1.25, hinge = (a, d, x) => { a.add(boxGeo(0.05, GH - 0.05, 0.05), M(x + d * 0.025, (GH - 0.05) / 2, 0), '#c9a35e', { mat: MAT.brass }); for (const y of [0.18, GH - 0.22]) a.add(new THREE.CylinderGeometry(0.022, 0.022, 0.09, 12), M(x - d * 0.012, y, 0), '#b8893c', { mat: MAT.brass }); };
+  { const g = world.gate = { x0: GATE.gate[0], x1: GATE.gate[1], z: GATE.z, open: 0, target: 0 }, w = g.x1 - g.x0 - 0.045, grp = new THREE.Group(), a = new Acc();
+    hinge(a, 1, 0); a.add(boxGeo(w, 0.05, 0.05), M(w / 2, GH - 0.025, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, GH - 0.05, 0.05), M(w - 0.025, (GH - 0.05) / 2, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(w - 0.08, 0.04, 0.03), M(w / 2, 0.13, 0), '#c9a35e', { mat: MAT.brass }); const fg = toGeometry(a);   // the kick rail runs 1 cm into both stiles (v11: its end shared the hinge stile's face)
     fg.translate(g.x0 + 0.03, 0, g.z); world.rooms.lobby.lights.bake(fg); fg.translate(-(g.x0 + 0.03), 0, -g.z); { const gm = new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)); gm.name = 'gate'; grp.add(gm); }
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.06, GH - 0.2), mats.glassMat()); pane.position.set(w / 2, 0.15 + (GH - 0.2) / 2, 0); grp.add(pane); grp.position.set(g.x0 + 0.03, 0, g.z); world.rooms.lobby.group.add(grp); g.group = grp;
     // v10: the leaf also swings for a walker (they hold tickets) but only the usher's pass (or Quick play, 'always') lets the player through:
@@ -655,7 +642,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     g.passUntil = 0; g.npcUntil = 0; g.always = false;
     // v11 a light on the leaf's top rail: red while it is shut to you, green once your ticket (or Quick play) opens it
     const lamp = new THREE.Mesh(new THREE.BoxGeometry(w - 0.3, 0.014, 0.03), new THREE.MeshBasicMaterial({ color: 0xff4d5a })); lamp.position.set(w / 2, GH + 0.007, 0); lamp.name = 'gate-lamp'; grp.add(lamp); g.lamp = lamp;
-    g.update = (dt, actors) => { const now = performance.now(); lamp.material.color.setHex(g.always || g.passUntil > now ? 0x3ecf8e : 0xff4d5a);
+    g.update = (dt, actors) => { const now = performance.now(); if (lamp.material.color) lamp.material.color.setHex(g.always || g.passUntil > now ? 0x3ecf8e : 0xff4d5a);   // (test tools swap materials)
       if (actors) for (const a of actors) if (a.path && a.x > g.x0 - 0.4 && a.x < g.x1 + 0.4 && Math.abs(a.z - g.z) < 1.3 && (a.y || 0) < 1) { g.npcUntil = now + 1200; break; }
       g.target = g.always || g.passUntil > now || g.npcUntil > now ? 1 : 0; g.open += (g.target - g.open) * (1 - Math.exp(-dt * 4)); grp.rotation.y = g.open * 1.5; };   // swings in, towards the escalator
     g.pass = (ms = 9000) => { g.passUntil = performance.now() + ms; };
@@ -664,7 +651,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   // lobby when anyone inside comes near. From the lobby side they never let you in (world.collide).
   { const E = GATE.exit, z = GATE.z, wl = (E[1] - E[0]) / 2 - 0.04, x = world.exitGate = { x0: E[0], x1: E[1], z, open: 0, until: 0, leaves: [] }, grp = new THREE.Group();
     for (const hx of [E[0] + 0.03, E[1] - 0.03]) { const d = hx < (E[0] + E[1]) / 2 ? 1 : -1, a = new Acc();   // d: from the hinge towards the middle
-      a.add(boxGeo(wl, 0.05, 0.05), M(d * wl / 2, GH - 0.025, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, GH - 0.05, 0.05), M(d * (wl - 0.025), (GH - 0.05) / 2, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(wl - 0.05, 0.04, 0.03), M(d * (wl - 0.05) / 2, 0.13, 0), '#c9a35e', { mat: MAT.brass });
+      hinge(a, d, 0); a.add(boxGeo(wl, 0.05, 0.05), M(d * wl / 2, GH - 0.025, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(0.05, GH - 0.05, 0.05), M(d * (wl - 0.025), (GH - 0.05) / 2, 0), '#c9a35e', { mat: MAT.brass }); a.add(boxGeo(wl - 0.08, 0.04, 0.03), M(d * wl / 2, 0.13, 0), '#c9a35e', { mat: MAT.brass });
       const fg = toGeometry(a); fg.translate(hx, 0, z); world.rooms.lobby.lights.bake(fg); fg.translate(-hx, 0, -z);
       const piv = new THREE.Group(); piv.position.set(hx, 0, z); const m = new THREE.Mesh(fg, mats.litFor(world.rooms.lobby.U, fg)); m.name = 'exit-leaf'; piv.add(m);
       const pane = new THREE.Mesh(new THREE.PlaneGeometry(wl - 0.06, GH - 0.2), mats.glassMat()); pane.position.set(d * wl / 2, 0.15 + (GH - 0.2) / 2, 0); piv.add(pane); grp.add(piv); x.leaves.push({ piv, d }); }

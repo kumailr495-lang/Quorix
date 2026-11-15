@@ -99,13 +99,16 @@ export class Crowd {
   millNet() {
     if (this._mill) return this._mill; const W = this.world.walls, edges = [], spots = [], dropped = [];
     for (const [a, b] of NAV.edges) if (PUBLIC.has(a) && PUBLIC.has(b)) edges.push({ A: NODES[a], B: NODES[b] });
+    // v11: the staff standing on the lobby floor (the greeter, the usher) are kept clear like a guest's spot (a walker passed 0.24 m from the greeter)
+    const posts = Object.values(this.staff).map((a) => a.home).filter((h) => h && this.world.roomAt(h.x, h.y || 0, h.z) === 'lobby');
     const ok = (x, z) => {
       if (this.world.roomAt(x, 0, z) !== 'lobby' || (x > ZONE.x0 - 0.3 && x < ZONE.x1 + 0.3 && z > ZONE.z0 - 0.3 && z < ZONE.z1 + 0.3)) return null;
       for (const e of edges) if (segPt(x, z, e.A[0], e.A[2], e.B[0], e.B[2]) < 0.85) return null;
       for (const s of spots) if (Math.hypot(s.x - x, s.z - z) < 1.0 || segPt(x, z, s.x, s.z, NODES[s.node][0], NODES[s.node][2]) < 0.6) return null;
+      for (const p of posts) if (Math.hypot(p.x - x, p.z - z) < 1.0) return null;
       let best = null, bd = 7; for (const n of PUBLIC) { const N = NODES[n], d = Math.hypot(N[0] - x, N[2] - z); if (d < bd && walkClear(W, x, z, N[0], N[2]) >= 0.3) { best = n; bd = d; } }
       if (!best) return null; const N = NODES[best];
-      for (const s of spots) if (segPt(s.x, s.z, x, z, N[0], N[2]) < 0.6) return null;   // nobody stands on this spot's way in
+      for (const s of [...spots, ...posts]) if (segPt(s.x, s.z, x, z, N[0], N[2]) < 0.6) return null;   // nobody stands on this spot's way in
       return best; };
     for (const [x0, z0] of LOBBY_SPOTS) { let got = null;
       for (let r = 0; r <= 1.5 && !got; r += 0.25) for (let k = 0; k < (r ? 12 : 1) && !got; k++) { const x = x0 + r * Math.cos(k * TAU / 12), z = z0 + r * Math.sin(k * TAU / 12), n = ok(x, z); if (n) got = { x, z, node: n, by: null, face: Math.atan2(NODES[n][0] - x, NODES[n][2] - z) }; }
@@ -121,7 +124,7 @@ export class Crowd {
     // 0.8 m from every other spot (nobody walks through someone standing there); walkers keep to their right on a leg wide enough for it
     for (const q of spots) q.next = [];
     for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) { const A = spots[i], B = spots[j], l = Math.hypot(A.x - B.x, A.z - B.z); if (l > 9 || l < 1.5) continue;
-      if (spots.some((q) => q !== A && q !== B && segPt(q.x, q.z, A.x, A.z, B.x, B.z) < 0.8)) continue;
+      if (spots.some((q) => q !== A && q !== B && segPt(q.x, q.z, A.x, A.z, B.x, B.z) < 0.8) || posts.some((p) => segPt(p.x, p.z, A.x, A.z, B.x, B.z) < 0.8)) continue;
       const c = walkClear(W, A.x, A.z, B.x, B.z); if (c < 0.35) continue; const lane = clamp(c - 0.3, 0, 0.25); A.next.push({ s: B, lane }); B.next.push({ s: A, lane }); }
     return (this._mill = { spots, dropped });
   }

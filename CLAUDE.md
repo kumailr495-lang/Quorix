@@ -117,6 +117,40 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v11 (2026-11-14; docs/V11-RESEARCH.md)
+- **Escalator and lift hall** (the user: "make the escalator and the elevator area one and a separate area"): building.js `CORE`, rooms.py
+  `core_hall`. Walls from the floor to the roof slab, from the gate line back to the mezzanine; one portal frames the gates (ticket leaf on
+  the west jamb, a gate cabinet, exit leaves); the NW corner is a marble pier (it replaced a court column). The glass screens, the gate-line
+  piers and the header beam are gone.
+- **No near misses** (the user's photo: a pier, a rail stopping short of it, two posts side by side): parts either embed into each other or
+  stand more than 30 mm apart. geo.Acc records every box (and prism/cylinder envelopes); `tools/blender/arch/connect.py [room]` lists pairs
+  held 1-30 mm apart; `build.py --check` (in run-tests.sh) fails on any. Reveals (thin claddings on one backing plane, up to 13 mm) and gaps
+  another part fills are allowed.
+- **Lift** (www/js/lift9.js): two-speed centre-opening landing doors (a fast and a slow panel each side, 3 cm apart, both inside the jamb
+  when open: one 0.7 m leaf a side stuck out of the tower's post; a dark nosing where they meet), call stations, car panels and header displays are real objects; pressed by tapping them or with the crosshair +
+  E/A/click (main.js `aimBtn`, `pressLift`, player.js `onTap`). Doors open on a call, the open button or an arrival; a safety edge holds them.
+  `lift.call(k)` = a landing call (walk.mjs). No HUD prompt for the lift.
+- **Crowd**: lobby guests stand at checked spots and walk checked legs between neighbouring spots (npc9.js `millNet`, `mill`, `millBack`;
+  legs keep 0.8 m from other spots and from standing staff); `node tools/dev/npc-clear.mjs [seconds]` fails on anyone inside a wall, a prop
+  or another person, or stuck.
+- Comment lint now also catches member assignments swallowed by a comment (it found `a.walkT = ...` and `this.camera.far = ...`).
+- **Zero z-fighting, nothing floating** (the user, 2026-11-15: "i wont accept disconnected models ... neither will i accept z FIGHTNING").
+  The gate is `sh tools/dev/zcheck.sh OUT` (cloud: Playwright + Blender): the engine dumps every reachable eye point and its own meshes, then
+  `tools/blender/arch/zcheck.py` builds all nine rooms and lists every pair of same-facing faces under 5 mm apart that a player can see
+  (BVH rays to the eye points; glass is see-through) from far enough for the depth buffer to merge them (`fight_from`: one plane at any
+  distance, 0.5 mm from 20 m, 2 mm from 41 m, 5 mm from 65 m; near 0.1 m, 24-bit). It must print `TOTAL visible coplanar 0, visible close 0`.
+  Props: `blender ... --python tools/blender/glb_check.py -- www/models/*.glb` (parts must touch: within 1.5 mm or into each other, and reach
+  the floor, the ceiling for hung models or the wall for letters and wall fixtures; no coplanar faces between parts). `--fix OFFS.json` +
+  `node tools/dev/glb-offsets.mjs OFFS.json` move small floating parts into their neighbours as node offsets (check the moves: diagonal ones
+  are wrong, fix those in the source). Rebuild order for a prop: build (Kiln / Blender), `sh tools/optimize-models.sh`, then glb_check.
+  glb_check also counts folds (two faces of a part in one plane facing opposite ways): a TWO_SIDED part's fold fights its own back copy;
+  fix the source, or `node tools/dev/glb-unfold.mjs FILE.glb` removes the folded face (`--dry` lists them).
+- Layering rules that came out of it: parallel layers 5 mm or more apart (floor inlays, borders, brass lines, panel beds, frames); a part set
+  into another goes at least 2 mm in and its faces never end in the other's planes (end caps 1 cm past, jambs under heads, rails between
+  stiles); closed loops in `geo.sweep` and decor10 `ctube` are welded (first point = last point); a tip-up seat stands 30 mm clear of its
+  back and hangs on pivots from the arm standards; a 3D glyph with overlapping strokes gets a self union (letters.py); panels that show a
+  canvas are the front of their plate (lift9.js `FACE = PLATE`, plates without a front face).
+
 ## v10 (2026-11-07; docs/V10-RESEARCH.md, the last entry of docs/V9-AUDIT.md "Development record")
 - **Ticket zone**: both escalators and the lift sit behind one check (building.js `GATE`, `ZONE`; rooms.py glass screens; world9.js
   `world.gate` and `world.exitGate`). The usher's pass (`gate.pass`) or Quick play (`gate.always`) lets the player through the ticket leaf;

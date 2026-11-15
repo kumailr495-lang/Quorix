@@ -340,3 +340,45 @@ frames, draw calls and triangles, with a short code to paste back. The exact com
   - *Inputs and together.* Keyboard and mouse, controller, phone VR; host hand-over, one server queue, hide names, quiet chat.
   - *UI.* Crisper surfaces and contrast; the menu fits the phone's 360 px height (it cut off the wordmark and Credits).
   - Not tested on a phone. Renders are headless SwiftShader.
+- **2026-11-15 (v11, the user: "Fix this issue of the board not being in middle ... i wont accept disconnected models ... neither will i
+  accept z FIGHTNING").**
+  - *The way-out board* in the escalator hall is centred on the portal (it was centred over the exit leaves).
+  - *Z-fighting, measured instead of sampled.* New gate `sh tools/dev/zcheck.sh`: the engine writes every reachable eye point (8,682) and
+    its own meshes as triangles; `tools/blender/arch/zcheck.py` builds the nine rooms, finds every same-facing face pair under 5 mm apart
+    (`coplanar.py`) and keeps those a player can see (BVH rays, glass see-through) from far enough for the 24-bit depth buffer (near
+    0.1 m) to merge them. The render scan had sampled about 40 pairs; the exhaustive count was 299 visible places in the rooms and 130 in
+    the engine's meshes. Rooms now: 0. Fixed in the builder: corridor portal trims (end caps 1 cm past the panels, no edges on the lintel
+    panels, inlays 6 mm proud), hall side walls between the end walls, curtain pelmet bars, ceiling ring seams (`geo.sweep` welds closed
+    loops), star fields with no two stars on one spot, the canopy's mitred band, the core hall's east wall end, the gallery beam, kiosk
+    base, lift architraves, zone inlay and its brass line, floor inlays 5 mm proud, the restroom portal base, the arrival video wall,
+    the exit landings (the frame hung 7 cm past them; building.js `lh`, world9.js stairY).
+  - *Nothing floats.* `tools/blender/glb_check.py` checks every prop model's parts for contact and coplanar faces; 18 placed models had
+    parts standing 1.5-14 mm off their neighbours or hanging free. Remade at the source: hall seats (cushions 5-7.5 mm over their pans, a
+    headrest 10 mm over its back, a pan 10 mm over its pedestal, a tip-up seat 23 mm from its back now 30 mm), armrests (4-12.5 mm over
+    their standards), the chandelier (its core hung on nothing: a centre rod and spokes), the fountain (water slab 15 cm over the basin
+    floor, finial 8 cm over its bowl, streams short of the water), the cake case (every cake 1-2 mm over its shelf, the shelf clear of the
+    posts), the espresso machine (body 4 cm over the counter), the popcorn cart (wheels 2 cm off the body: axles), the poster totems (frame
+    5 mm off the box and 7 cm over its top; real posters now), the candy wall, the bench, the bistro chair ring, the hall number 4.
+    Moved as node offsets (`tools/dev/glb-offsets.mjs`): lamp posts and bollards (5 mm over their collars), bin slats, the popcorn machine's
+    top. Door pulls and push bars got posts; vision panels sit in bead rings; the lift has two-speed doors, returns between its walls,
+    handrails on brackets and display faces that are their plates' fronts; the restroom cubicles stand on feet with a head rail.
+  - *The lift's landing doors* close on a dark nosing (12 mm wide, 5 mm back from both faces): closed, the middle reads as two doors
+    (same material, a dark tint: no extra draw).
+  - *Every model in www/models checked, not only the placed ones* (85 files): the round mirror's stand-off stood 4 mm off the wall (now on
+    it, 2 mm into the glass; glb_check measures wall fixtures from the wall). Three models were loaded at boot but never placed since v9
+    (sconce_deco, mirror_round, restroom_set): no longer loaded or packed. Still open: the taxi (rims 3 mm inside their tyres, a body
+    with nothing under it), the next item (W5).
+  - *Guests keep clear of the staff.* The crowd test caught a guest walking 0.24 m past the greeter: guest spots and walking legs now keep
+    1.0 m and 0.8 m from the greeter and the usher, as from another guest's spot (npc9.js `millNet`).
+  - *The last eight spots in the engine's meshes.* The hedge planters were a core and 105 clumps whose facets lay 0.2-3 mm apart: the
+    hedge is now one closed surface meshed from a field (Kiln `implicitSurface`, 10k triangles as before). Hall numbers and two lit
+    signs had folded triangles (an outline doubling back): drawn from both sides (TWO_SIDED) each fought its own back copy, the sliver on
+    the hall number 3. `tools/dev/glb-unfold.mjs` removes the folded face of each such pair (7 in 5 models) and keeps everything else in
+    the file; glb_check now counts folds. The torchere's bowl had its inner face written mirrored, across the outer one (48 folded
+    faces): fixed in fixtures.py.
+  - *Validation (headless):* `zcheck.sh` TOTAL visible coplanar 0, visible close 0 (nine rooms and the engine's meshes, 8,692 eye
+    points); `build.py --check` and `run-tests.sh` pass (nine bakes current); walk.mjs 26/26; npc-clear 600 s: nobody inside a wall, a
+    prop or another person, nobody walked through anyone; props-overlap 0 of 166; the lift's 3D controls check passes; renders of the
+    centred way-out board, the lift doors, the totems, the cafe, the fountain, the chandelier, the restrooms, the hedge and the torchere.
+  - Known and left: four chandelier ribbons turn back on themselves at a small angle (a twist, not coincident faces: nothing fights).
+  - Not tested on a phone. Renders and checks are headless SwiftShader and Blender.

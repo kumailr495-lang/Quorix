@@ -110,7 +110,7 @@ def mirror_round():
     """Round back-lit mirror: silvered disc on a 3 cm stand-off, its halo glowing on the wall round the edge. Facing +X; origin = wall."""
     lod = 0
     part('Halo', lod, 'glow_warm', lambda bm: lathe(bm, [(0.34, 0.0), (0.372, 0.0), (0.372, 0.004), (0.34, 0.004)], 48), Matrix.Rotation(math.radians(90), 4, 'Y'), smooth=False)
-    part('Standoff', lod, 'blackmetal', lambda bm: disc(bm, 0.3, 0.004, 0.03, 32), Matrix.Rotation(math.radians(90), 4, 'Y'))
+    part('Standoff', lod, 'blackmetal', lambda bm: disc(bm, 0.3, 0.0, 0.032, 32), Matrix.Rotation(math.radians(90), 4, 'Y'))   # from the wall, 2 mm into the glass
     part('Glass', lod, 'mirror', lambda bm: disc(bm, 0.36, 0.03, 0.036, 48), Matrix.Rotation(math.radians(90), 4, 'Y'))
 
 
@@ -126,7 +126,7 @@ def torchere_deco():
         part(f'Collar{k}', lod, 'brass', lambda bm, zc=zc: lathe(bm, [(1e-4, zc - 0.02), (0.135, zc - 0.02), (0.14, zc), (0.135, zc + 0.02), (1e-4, zc + 0.02)], 32))
     part('Cup', lod, 'brass', lambda bm: lathe(bm, [(1e-4, 2.84), (0.12, 2.84), (0.2, 2.92), (1e-4, 2.95)], 32))
     bowl = [(0.18, 2.9)] + [(0.18 + 0.4 * math.sin(math.pi / 2 * k / 8), 2.9 + 0.3 * (1 - math.cos(math.pi / 2 * k / 8))) for k in range(1, 9)] + [(0.56, 3.2), (0.54, 3.2)] + \
-           [(0.54 - 0.38 * math.sin(math.pi / 2 * (8 - k) / 8), 2.93 + 0.27 * (1 - math.cos(math.pi / 2 * (8 - k) / 8))) for k in range(0, 9)]
+           [(0.16 + 0.38 * math.sin(math.pi / 2 * (8 - k) / 8), 2.93 + 0.27 * (1 - math.cos(math.pi / 2 * (8 - k) / 8))) for k in range(0, 9)]   # v11: the inner face from the lip down to the foot (it ran mirrored, across the outer face: 48 folded faces)
     part('Bowl', lod, 'glow_opal', lambda bm: lathe(bm, bowl, 48), smooth=False)
     part('Rim', lod, 'brass', lambda bm: lathe(bm, [(0.55, 3.19), (0.585, 3.19), (0.585, 3.215), (0.55, 3.215)], 48))
 

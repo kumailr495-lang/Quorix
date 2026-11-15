@@ -57,7 +57,7 @@ def ear_clip(pts):
 class Acc:
     """triangle soup with flat or given normals, per-vertex tint and material id"""
     def __init__(s):
-        s.P, s.N, s.C, s.M = [], [], [], []; s.T = None
+        s.P, s.N, s.C, s.M = [], [], [], []; s.T = None; s.boxes = []; s.fill = []   # world AABBs for connect.py: boxes, and other solids' envelopes
     # ---- frames: T maps local (x, y, z) -> world; R rotates normals
     def frame(s, T=None, R=None): s.T, s.R = T, R
     def _tp(s, p): return s.T(p) if s.T else p
@@ -85,6 +85,11 @@ class Acc:
         for a, b, c in ear_clip(p2): s.tri(pts[a], pts[b], pts[c], mat, col)
     def box(s, x0, y0, z0, x1, y1, z1, mat, col, skip='', top=None, topcol=None):
         if x1 - x0 < 1e-5 or y1 - y0 < 1e-5 or z1 - z0 < 1e-5: return
+        if s.T is None: s.boxes.append((x0, y0, z0, x1, y1, z1, mat))
+        else:   # v11: in a frame (the halls, turned by a quarter turn): the box's world bounds, exact for right-angle turns
+            W = [s.T(p) for p in ((x0, y0, z0), (x1, y1, z1), (x0, y1, z1), (x1, y0, z0))]
+            if all(abs(a - round(a / (math.pi / 2)) * (math.pi / 2)) < 1e-6 for a in [math.atan2(*s.R((1, 0, 0))[::-2])]):
+                s.boxes.append(tuple(min(q[k] for q in W) for k in range(3)) + tuple(max(q[k] for q in W) for k in range(3)) + (mat,))
         P = [(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0), (x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1)]
         F = {'nz': (1, 0, 3, 2), 'pz': (4, 5, 6, 7), 'nx': (0, 4, 7, 3), 'px': (5, 1, 2, 6), 'ny': (0, 1, 5, 4), 'py': (3, 7, 6, 2)}
         for k, (a, b, c, d) in F.items():
@@ -93,6 +98,7 @@ class Acc:
             s.quad(P[a], P[b], P[c], P[d], m, cc)
     def prism(s, poly, y0, y1, mat, col, caps=True, capmat=None, capcol=None, bottom=True):
         """vertical extrusion of a 2D polygon [(x, z)] from y0 to y1: walls outward, caps on top (and bottom)"""
+        if s.T is None: s.fill.append((min(x for x, z in poly), y0, min(z for x, z in poly), max(x for x, z in poly), y1, max(z for x, z in poly), mat))
         n = len(poly); area = sum(poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1] for i in range(n)) / 2
         pts = poly if area < 0 else poly[::-1]   # clockwise in (x, z) seen from +y = counter-clockwise seen from above (z points to the viewer)
         for i in range(n):
@@ -104,6 +110,7 @@ class Acc:
             if bottom: s.poly([(x, y0, z) for x, z in pts[::-1]], cm, cc)
     def prism_x(s, poly, x0, x1, mat, col):
         """extrusion along x of a polygon given in (z, y): closed, faces outward"""
+        if s.T is None: s.fill.append((x0, min(y for z, y in poly), min(z for z, y in poly), x1, max(y for z, y in poly), max(z for z, y in poly), mat))
         n = len(poly); area = sum(poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1] for i in range(n))
         pts = poly if area > 0 else poly[::-1]   # counter-clockwise in (z, y) = seen from -x looking to +x... sides checked below
         for i in range(n):
@@ -137,6 +144,7 @@ class Acc:
             s.quad(q[0], q[3], q[7], q[4], cm, cc); s.quad(q[2], q[1], q[5], q[6], cm, cc)   # ends
             s.quad(q[4], q[7], q[6], q[5], cm, cc); s.quad(q[0], q[1], q[2], q[3], cm, cc)   # top, bottom
     def cyl(s, cx, cz, r, y0, y1, mat, col, n=16, caps=True, a0=0.0, a1=2 * math.pi, smooth=True):
+        if s.T is None: s.fill.append((cx - r, y0, cz - r, cx + r, y1, cz + r, mat))
         full = abs(a1 - a0 - 2 * math.pi) < 1e-6
         for i in range(n):
             t0, t1 = a0 + (a1 - a0) * i / n, a0 + (a1 - a0) * (i + 1) / n
@@ -165,9 +173,11 @@ class Acc:
             s.poly(rings[0][0][::-1], mat, col); s.poly(rings[-1][0], mat, col)
     def sweep(s, path, profile, mat, col, closed=False, cap=True):
         """sweep a 2D profile [(o, y)] (o = offset to the left of the path, y = height) along a horizontal 2D path [(x, z)]"""
-        rings = []
-        for i in range(len(path)):
+        rings = []; loop = len(path) > 3 and math.hypot(path[0][0] - path[-1][0], path[0][1] - path[-1][1]) < 1e-9
+        for i in range(len(path)):   # v11: a path that closes on itself (a ring) takes its seam's direction from both neighbours; ended at
+            # the seam with each end's own segment, the first and last cross-sections were not the same: the ring overlapped itself there
             p0, p1 = path[max(i - 1, 0)], path[min(i + 1, len(path) - 1)]
+            if loop and i in (0, len(path) - 1): p0, p1 = path[-2], path[1]
             tx, tz = p1[0] - p0[0], p1[1] - p0[1]; L = math.hypot(tx, tz) or 1; nx, nz = -tz / L, tx / L
             rings.append([(path[i][0] + nx * o, y, path[i][1] + nz * o) for o, y in profile])
         m = len(profile)
@@ -175,7 +185,7 @@ class Acc:
             A, Bq = rings[i], rings[i + 1]
             for k in range(m - 1 + (1 if closed else 0)):
                 k1 = (k + 1) % m; s.quad(A[k], Bq[k], Bq[k1], A[k1], mat, col)
-        if cap and closed:   # end caps facing out of the ends (back along the path at its start, on along it at its end)
+        if cap and closed and not loop:   # end caps facing out of the ends (back along the path at its start, on along it at its end)
             t0 = norm(sub(rings[1][0], rings[0][0])); t1 = norm(sub(rings[-1][0], rings[-2][0]))
             s.poly(rings[0], mat, col, normal=scl(t0, -1)); s.poly(rings[-1], mat, col, normal=t1)
     # ---- export

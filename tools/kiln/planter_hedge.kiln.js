@@ -13,11 +13,14 @@ async function build() {
   const root = createRoot('PlanterHedge'), bronze = mat('bronze', 0x5a4330, 0.45, 1), brass = mat('brass', 0xc9a061, 0.26, 1), hedge = mat('hedge', 0x2a4122, 0.95);
   createPart('Trough', uv(await roundedBoxGeo(P.W, P.H, P.L, 0.02, { segments: 3 })), bronze, { position: [0, P.H / 2, 0], parent: root });
   createPart('Lip', uv(await roundedBoxGeo(P.W + 0.03, 0.035, P.L + 0.03, 0.01, { segments: 2 })), brass, { position: [0, P.H + 0.0075, 0], parent: root });   // its underside sits inside the trough
-  // hedge: a rounded core block plus leaf clumps (small flattened blobs) scattered over its top and sides, so the silhouette breaks up
-  createPart('HedgeCore', uv(await roundedBoxGeo(P.W - 0.1, P.hedgeH - 0.08, P.L - 0.12, 0.12, { segments: 3 })), hedge, { position: [0, P.H + (P.hedgeH - 0.08) / 2, 0], parent: root });
-  const rnd = (k) => hash(k * 1.7, k * 3.1, 0.5), blob = sphereGeo(1, 9, 6); let k = 0;
-  for (let z = -P.L / 2 + 0.12; z <= P.L / 2 - 0.1; z += 0.13) for (const [x, y] of [[0, P.hedgeH - 0.06], [-0.18, P.hedgeH - 0.12], [0.18, P.hedgeH - 0.12], [-0.25, 0.22], [0.25, 0.22]]) {
-    k++; const r = 0.085 + 0.05 * rnd(k), jx = (rnd(k + 9) - 0.5) * 0.06, jz = (rnd(k + 17) - 0.5) * 0.08, jy = (rnd(k + 23) - 0.5) * 0.05;
-    createPart('Clump' + k, uv(blob), hedge, { position: [x + jx, P.H + y + jy, z + jz], scale: [r * (Math.abs(x) > 0.2 ? 0.75 : 1.1), r * 0.8, r * 1.15], rotation: [0, rnd(k + 31) * 180, 0], parent: root }); }
+  // v11: the hedge is one closed surface: a rounded block with two octaves of leaf-clump noise pushed out along it, meshed from the
+  // field (Kiln implicitSurface). It was a core plus 105 separate clumps, and neighbouring clumps laid facets 0.2-3 mm apart that the
+  // z-fighting gate (tools/dev/zcheck.sh) found from the street and the lobby. Its foot stands 3 cm into the lip.
+  const R = 0.12, HW = (P.W - 0.1) / 2, HH = (P.hedgeH + 0.02) / 2, HL = (P.L - 0.12) / 2, cy = P.H - 0.03 + HH;
+  const box = (x, y, z) => { const qx = Math.abs(x) - (HW - R), qy = Math.abs(y - cy) - (HH - R), qz = Math.abs(z) - (HL - R);
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qy, qz), 0) - R; };
+  const field = ([x, y, z]) => -box(x, y, z) + 0.034 * (vnoise(x * 9 + 3.1, y * 9, z * 9) - 0.5) + 0.016 * (vnoise(x * 14, y * 14 + 5.3, z * 14) - 0.5);
+  const geo = await implicitSurface(field, { bounds: { min: [-HW - 0.06, P.H - 0.06, -HL - 0.06], max: [HW + 0.06, cy + HH + 0.06, HL + 0.06] }, edgeLength: 0.05 });
+  createPart('Hedge', uv(geo), hedge, { parent: root });
   return root;
 }

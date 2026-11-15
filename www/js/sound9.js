@@ -58,6 +58,9 @@ export class Sound9 extends Sound {
   carRide(on) { if (on && !this._ride) this._ride = this.play('car_ride', { gain: 0.35, fadeIn: 1.2, dur: 22 }); else if (!on && this._ride) { try { this._ride.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5); } catch (e) { /* ended */ } this._ride = null; } }
   liftHum() { this.play('lift', { gain: 0.35, dur: 6 }); }
   ding() { this.chime(); }
+  // v11 the lift's buttons: a short beep on a press, two low notes when a press is refused (no ticket for the screens)
+  liftBeep() { if (this.ready && !this.muted) this._tone(this.master, 1046.5, 0.07, 0.035, 'sine', 5000); }
+  liftDeny() { if (!this.ready || this.muted) return; this._tone(this.master, 392, 0.12, 0.04, 'triangle', 2000); this._tone(this.master, 330, 0.16, 0.04, 'triangle', 2000, 1, 0.14); }
   // ---------------- crowd: recorded applause and cheering, a recorded gasp; laughs and screams stay synthetic and quieter ----------------
   crowd(type, n, k, x, z, inRoom) {
     if (!this.ready || this.muted) return; const lvl = 0.6 + 0.4 * (k ?? 1), bus = this.crowdIn;

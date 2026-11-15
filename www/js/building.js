@@ -37,15 +37,21 @@ export function escProfile(e) {
 // (face -1) onto a gallery that runs back beside the escalators to the mezzanine. x and z are the tower's clear inside; its side walls
 // stand 0.15 m outside x0 and x1, the two door walls 0.15 m inside z0 and z1.
 export const LIFT = { x0: 13.3, x1: 15.7, z0: -1.6, z1: 0.8, stops: [0, L1], face: [1, -1], speed: 1.0, doorW: 1.1 };
-export const GALLERY = { x0: MEZZ.void.x1, x1: 16.2, z0: MEZZ.z1, z1: LIFT.z0 };   // first floor: from the lift's rear door back to the mezzanine
+// v11 (the user, 2026-11-14: "make the escalator and the elevator area one and a separate area rather than it being so open"): the
+// escalators and the lift stand in a hall of their own, walled from the floor to the ceiling, from the gate line back to the mezzanine.
+// x: outer and inner faces of the west wall (inner 80 mm clear of the up escalator's handrail, EN 115) and of the east wall (inner face
+// 50 mm into the lift tower's posts, which it embeds). z: the front wall's outer and inner faces, with the gates in its one portal; the
+// west wall runs on to the mezzanine void's back edge (it is the void's side), the east wall to the mezzanine's edge (the gallery's end).
+// The NW corner is a marble pier (it takes the place of the court column that stood there). docs/V11-RESEARCH.md section 1.
+export const CORE = { x0: 7.95, xi0: 8.78, xi1: 15.80, x1: 16.10, z1: 4.15, zi1: 3.85, zWest: MEZZ.void.z0, zEast: MEZZ.z1, pier: { x: 8.1, z: 4.0, half: 0.42 }, portal: { x0: 8.9, x1: 12.5, h: 3.0 }, cabinet: { x0: 10.5, x1: 10.9 } };
+export const GALLERY = { x0: MEZZ.void.x1, x1: CORE.xi1 + 0.05, z0: MEZZ.z1, z1: LIFT.z0 };   // first floor: the lift's rear door back to the mezzanine (its edge beam 5 cm into the hall's east wall)
 export const TRAVELATOR = { x0: -0.8, x1: 0.8, z0: SPINE.z0 + 2.1, z1: -16.5, speed: 0.75 };   // carries you north (+z), towards the lobby
-// v11 ticket zone: the landing the escalators and the lift share, closed by glass. The gate line at z (the usher's ticket leaf 'gate' in
-// front of the up escalator, two free-exit half leaves 'exit' in front of the down escalator, glass on to the corner), a west screen x0
-// from the gate line to the up escalator's newel, an east screen x1 from the gate line to the lift tower's corner. Behind the landing the
-// escalators' own trusses and the lift tower close it; a marble pier fills the gap between the down escalator and the tower. The usher's
-// podium stands outside, beside the ticket leaf.
-export const GATE = { z: 4.0, x0: 8.75, x1: 15.775, gate: [8.9, 10.5], exit: [10.9, 12.5], podium: { x: 6.8, z: 4.8 } };
-export const ZONE = { x0: GATE.x0, x1: GATE.x1 + 0.1, z0: -1.7, z1: GATE.z };   // the landing, the escalators' feet and the lift car on the ground floor
+// v11 ticket zone: the landing the escalators and the lift share, inside the hall (CORE). The gate line at z, in the hall's portal: the
+// usher's ticket leaf 'gate' in front of the up escalator, a gate cabinet, two free-exit half leaves 'exit' in front of the down
+// escalator. Behind the landing the escalators' own trusses and the lift tower close it; a marble pier fills the gap between the down
+// escalator and the tower. The usher's podium stands outside, beside the ticket leaf.
+export const GATE = { z: 4.0, x0: CORE.xi0, x1: CORE.xi1, gate: [8.9, 10.5], exit: [10.9, 12.5], podium: { x: 6.8, z: 4.8 } };
+export const ZONE = { x0: CORE.xi0, x1: CORE.xi1, z0: -1.7, z1: GATE.z };   // the landing, the escalators' feet and the lift car on the ground floor
 // doors. oneWay: the side you can pass from. kind: slide (auto glass), pair (heavy double doors), push (exit doors with push bars)
 export const DOORS = [
   { id: 'main', rooms: ['street', 'lobby'], kind: 'slide', axis: 'x', x: 0, z: FACADE, w: 4.0, h: 3.0, y: 0 },
@@ -65,10 +71,11 @@ for (const h of Object.values(HALL)) {
     const w = h.toWorld(x.u, 0), id = h.id + 'Out' + i;
     DOORS.push({ id, rooms: [h.key, 'spine'], kind: 'push', axis: 'z', x: h.xScreenWall + 0.2 * h.dir, z: w.z, w: 1.8, h: 2.4, y: h.y0, oneWay: h.key, hall: h.id });
     if (h.y0 > 0.02) {
-      // the landing spans the door's width (+-0.95 m) and the first step starts after it (at 0.85 m the two overlapped: z-fighting)
-      const n = Math.ceil(h.y0 / 0.172 - 1e-6), toC = Math.sign(h.zc - w.z), wallX = h.side < 0 ? SPINE.x0 : SPINE.x1, inX = -Math.sign(wallX);
-      EXIT_STAIRS.push({ door: id, hall: h.id, x0: wallX, x1: wallX + inX * 1.7, zDoor: w.z, landing: 1.7, dir: toC, n, rise: h.y0 / n, tread: 0.3, y0: h.y0,
-        zTop: w.z + toC * 0.95, zBot: w.z + toC * (0.95 + n * 0.3) });
+      // the landing spans the door, its frame and 3 cm (lh = 0.9 + 0.12 + 0.03; v11: at +-0.95 m the frame hung 7 cm past it) and the
+      // first step starts after it (at 0.85 m the two overlapped: z-fighting)
+      const n = Math.ceil(h.y0 / 0.172 - 1e-6), toC = Math.sign(h.zc - w.z), wallX = h.side < 0 ? SPINE.x0 : SPINE.x1, inX = -Math.sign(wallX), lh = 1.05;
+      EXIT_STAIRS.push({ door: id, hall: h.id, x0: wallX, x1: wallX + inX * 1.7, zDoor: w.z, landing: 2 * lh, lh, dir: toC, n, rise: h.y0 / n, tread: 0.3, y0: h.y0,
+        zTop: w.z + toC * lh, zBot: w.z + toC * (lh + n * 0.3) });
     }
   });
 }

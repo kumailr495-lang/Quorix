@@ -16,11 +16,11 @@ async function build() {
   part('Header', await rbox(0.34, 0.23, W - 0.004, 0.02, 2), walnut, [-0.125, H - 0.12, 0], root);
   part('HeaderGlow', uv(boxGeo(0.01, 0.1, W - 0.2)), glow('glow_white', 0xfff2dc), [0.045, H - 0.12, 0], root);
   const rng = seededRandom(23), r = () => rng.range(0, 1);
-  for (let row = 0; row < 4; row++) { const y = 0.35 + row * 0.36; part('Ledge' + row, uv(boxGeo(0.3, 0.025, W - 0.12)), walnut, [-0.13, y - 0.02, 0], root);
+  for (let row = 0; row < 4; row++) { const y = 0.35 + row * 0.36; part('Ledge' + row, uv(boxGeo(0.3, 0.025, W - 0.12)), walnut, [-0.13, y - 0.0105, 0], root);   // v11: its top 2 mm into the bins (they stood 7.5 mm over it)
     for (let i = 0; i < 5; i++) { const z = -W / 2 + 0.17 + i * ((W - 0.34) / 4), c = candies[Math.floor(r() * candies.length)];
       const m = mat(c[0], c[1], 0.3), fh = 0.08 + r() * 0.05; part(`Fill${row}_${i}`, uv(boxGeo(0.22, fh, 0.25)), m, [-0.12, y + fh / 2, z], root);
       for (let k = 0; k < 3; k++) part(`Heap${row}_${i}_${k}`, uv(sphereGeo(0.075 + r() * 0.02, 8, 5)), m, [-0.12 + (r() - 0.5) * 0.08, y + fh, z + (k - 1) * 0.075], root, [0, r() * 360, 0], [1, 0.55, 1]);   // heaped sweets above the rim
-      part(`Lip${row}_${i}`, uv(boxGeo(0.01, 0.07, 0.27)), brass, [0.0, y + 0.035, z], root); } }   // bins open to the front: the sweets show, a brass lip holds them
+      part(`Lip${row}_${i}`, uv(boxGeo(0.01, 0.07, 0.27)), brass, [-0.007, y + 0.035, z], root); } }   // v11: 2 mm into the bin's front (5 mm off it)   // bins open to the front: the sweets show, a brass lip holds them
   part('ScoopRail', cyl(cylinderGeo(0.012, 0.012, W - 0.06, 8)), brass, [0.0, 0.2, 0], root, [90, 0, 0]);
   return root;
 }

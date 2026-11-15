@@ -49,6 +49,18 @@ async function build() {
     createPart('Cup' + i, cyl(cylinderGeo(0.035, 0.045, 0.03, 16)), brass, { position: [x, -0.025, z], parent: root }); }
   const cl = -P.coreTop - 0.06;
   createPart('CoreCable', cyl(cylinderGeo(0.004, 0.004, cl, 6)), black, { position: [0, -cl / 2 - 0.03, 0], parent: root });
+  // v11 (the user: no floating or disconnected parts): the core hangs from its cable on a centre rod, and four fine spokes from the rod hold
+  // each ring (the cable stopped 3 cm over the core and the top ring and the three lowest touched nothing: the ribbons end mid-core)
+  const rodTop = P.coreTop + 0.04, rodBot = P.coreBot - 0.02;
+  createPart('CoreRod', cyl(cylinderGeo(0.006, 0.006, rodTop - rodBot, 8)), black, { position: [0, (rodTop + rodBot) / 2, 0], parent: root });
+  for (let k = 0; k < P.rings; k++) {
+    const u = (k + 0.5) / P.rings, y0 = P.coreTop + (P.coreBot - P.coreTop) * u, r0 = 0.22 + P.coreR * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.8)), 0.9);
+    for (let q = 0; q < 4; q++) {
+      const a = 0.3 + k * 0.7 + (q * TAU) / 4, r = r0 * (1 + 0.16 * Math.sin(4 * a + k * 0.9)), y = y0 + 0.07 * Math.sin(3 * a + k * 1.3), x = r * Math.cos(a), z = r * 0.82 * Math.sin(a);
+      const len = Math.hypot(x, z) + 0.006, phi = Math.atan2(z, x);   // from inside the rod to the ring's centre line (inside its band)
+      createPart(`CoreSpoke${k}_${q}`, cyl(cylinderGeo(0.0025, 0.0025, len, 6)), black, { position: [x / 2 - 0.003 * Math.cos(phi), y, z / 2 - 0.003 * Math.sin(phi)], rotation: [0, (-phi * 180) / Math.PI, 90], parent: root });
+    }
+  }
   createPart('CoreCup', cyl(cylinderGeo(0.05, 0.06, 0.035, 16)), brass, { position: [0, -0.0275, 0], parent: root });
   return root;
 }

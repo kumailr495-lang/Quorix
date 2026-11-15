@@ -14,6 +14,7 @@ async function build() {
   part('Base', await rbox(D, 0.16, L, 0.02, 2), walnut, [0, 0.27, 0], root);
   const n = 6; for (let i = 0; i < n; i++) part('Cushion' + i, await rbox(D - 0.04, 0.12, L / n - 0.008, 0.05, 3), v, [0, 0.4, -L / 2 + (i + 0.5) * L / n], root);
   for (const x of [-D / 2 + 0.06, D / 2 - 0.06]) for (const z of [-L / 2 + 0.08, L / 2 - 0.08]) part(`Leg${x > 0 ? 'F' : 'B'}${z > 0 ? 'R' : 'L'}`, cyl(cylinderGeo(0.022, 0.012, 0.19, 10)), brass, [x, 0.095, z], root);
-  for (const z of [-L / 2 - 0.004, L / 2 + 0.004]) part(z < 0 ? 'EndL' : 'EndR', uv(boxGeo(D - 0.02, 0.012, 0.008)), brass, [0, 0.35, z], root);
+  // v11: the brass end bands sit on the base's flat end, 2 mm into it (at the top edge they stood 14 mm off its rounded corner)
+  for (const z of [-L / 2 - 0.002, L / 2 + 0.002]) part(z < 0 ? 'EndL' : 'EndR', uv(boxGeo(D - 0.06, 0.012, 0.008)), brass, [0, 0.30, z], root);
   return root;
 }

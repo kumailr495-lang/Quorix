@@ -88,7 +88,7 @@ def build_hall(h, L1):
     acc.wall((-W2 - WALL, depth + WALL / 2), (W2 + WALL, depth + WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'],
              openings=[(WALL + W2 + ent - 0.95, WALL + W2 + ent + 0.95, top + 2.5, top)])
     for sg in (-1, 1):
-        acc.wall((sg * (W2 + WALL / 2), Dw - WALL), (sg * (W2 + WALL / 2), depth + WALL), -0.35, ceil + 0.36, WALL, MAT['acoustic'], th['wall'])
+        acc.wall((sg * (W2 + WALL / 2), Dw - WALL), (sg * (W2 + WALL / 2), depth + WALL), -0.35, ceil + 0.36, WALL, MAT['acoustic'], th['wall'], trim=(WALL, WALL))   # v11: between the end walls (over their corners they shared their faces)
     # ---------------------------------------------------------------- the rake
     n = len(rows)
     for r in range(1, n):
@@ -189,7 +189,8 @@ def build_hall(h, L1):
             ua, ub = -Wp - 0.4 + (2 * Wp + 0.8) * i / 24, -Wp - 0.4 + (2 * Wp + 0.8) * (i + 1) / 24
             pa, pb = (ua, md(ua) + 0.45), (ub, md(ub) + 0.45)
             acc.prism([(ua, md(ua) + 0.05), (ub, md(ub) + 0.05), (ub, md(ub) + 0.5), (ua, md(ua) + 0.5)], hB + Hp + 0.12, hB + Hp + 0.62, MAT['velvet'], th['mask'])
-            acc.quad((ub, hB + Hp + 0.5, pb[1] + 0.051), (ub, hB + Hp + 0.54, pb[1] + 0.051), (ua, hB + Hp + 0.54, pa[1] + 0.051), (ua, hB + Hp + 0.5, pa[1] + 0.051), MAT['brass'], th['trim'])
+            qa, qb = max(ua, -Wp - 0.39), min(ub, Wp + 0.39)   # v11: a bar set 1 cm into the pelmet, 8 mm proud, ending 1 cm inside its ends (a sheet 1 mm off it fought)
+            acc.prism([(qa, md(qa) + 0.49), (qb, md(qb) + 0.49), (qb, md(qb) + 0.508), (qa, md(qa) + 0.508)], hB + Hp + 0.5, hB + Hp + 0.54, MAT['brass'], th['trim'])
     # ---- the exit bays
     yaw0 = -f * math.pi / 2   # three.js yaw of something in the hall that faces the audience (+d)
     def gq(a, b, c, d_, want, col, k):   # a glow quad facing `want` whatever its corner order
@@ -284,17 +285,20 @@ def build_hall(h, L1):
     # ---------------------------------------------------------------- ceilings and house lights
     cy = ceil - 0.01
     if h['format'] == 'max':
+        stars = []
         for i in range(260):   # tiny warm points in the black ceiling (inspiration: "IMAX 70mm all to yourself")
-            u, d = rnd.uniform(-W2 + 0.8, W2 - 0.8), rnd.uniform(1.0, depth - 1.0); s_ = rnd.uniform(0.025, 0.05)
-            glow.quad((u - s_, cy, d - s_), (u + s_, cy, d - s_), (u + s_, cy, d + s_), (u - s_, cy, d + s_), th['warm'], rnd.uniform(0.6, 1.6))
+            u, d = rnd.uniform(-W2 + 0.8, W2 - 0.8), rnd.uniform(1.0, depth - 1.0); s_ = rnd.uniform(0.025, 0.05); k_ = rnd.uniform(0.6, 1.6)
+            if any(abs(u - qu) < s_ + qs + 0.02 and abs(d - qd) < s_ + qs + 0.02 for qu, qd, qs in stars): continue   # v11: two on one spot fought
+            stars.append((u, d, s_))
+            glow.quad((u - s_, cy, d - s_), (u + s_, cy, d - s_), (u + s_, cy, d + s_), (u - s_, cy, d + s_), th['warm'], k_)
         for dd in [3 + 4.2 * i for i in range(int((depth - 4) / 4.2) + 1)]:
-            acc.box(-W2 + 1.0, ceil - 0.9, dd, W2 - 1.0, ceil - 0.02, dd + 0.12, MAT['acoustic'], lin('#0a0c10'))
+            acc.box(-W2 + 1.0, ceil - 0.9, dd, W2 - 1.0, ceil + 0.01, dd + 0.12, MAT['acoustic'], lin('#0a0c10'))   # v11: 1 cm into the ceiling (they hung 2 cm under it)
         lit.ambient(lin('#3a5aa0'), lin('#1a2440'), 0.004, 'f')
     elif h['format'] == 'curve':
         for e in (6.5, 10.5, 14.5, 18.5, 22.5):   # coves that follow the screen's curve (photo 9: lights not curved, placed wrong)
             if e > depth - 0.8: continue
             pts = [(u, e + sd(u)) for u in [(-W2 + 0.6) + (2 * W2 - 1.2) * i / 30 for i in range(31)]]
-            acc.sweep(pts, [(-0.18, ceil - 0.02), (-0.18, ceil - 0.3), (0.18, ceil - 0.3), (0.18, ceil - 0.02)], MAT['paint'], lin('#10162a'), closed=True)
+            acc.sweep(pts, [(-0.18, ceil + 0.01), (-0.18, ceil - 0.3), (0.18, ceil - 0.3), (0.18, ceil + 0.01)], MAT['paint'], lin('#10162a'), closed=True)   # v11: into the ceiling (2 cm under it)
             for i in range(len(pts) - 1):
                 (ua, da), (ub, db) = pts[i], pts[i + 1]
                 glow.quad((ua, ceil - 0.302, da + 0.1), (ub, ceil - 0.302, db + 0.1), (ub, ceil - 0.302, db + 0.16), (ua, ceil - 0.302, da + 0.16), th['warm'], 1.3)
@@ -305,7 +309,7 @@ def build_hall(h, L1):
             for j in range(int((depth - 4) / 4.0)):
                 u, d = i * 3.2, 4.0 + j * 4.0
                 for b in ((u - 1.35, d - 1.6, u + 1.35, d - 1.5), (u - 1.35, d + 1.5, u + 1.35, d + 1.6), (u - 1.45, d - 1.6, u - 1.35, d + 1.6), (u + 1.35, d - 1.6, u + 1.45, d + 1.6)):
-                    acc.box(b[0], ceil - 0.28, b[1], b[2], ceil - 0.02, b[3], MAT['paint'], th['cream'])
+                    acc.box(b[0], ceil - 0.28, b[1], b[2], ceil + 0.01, b[3], MAT['paint'], th['cream'])   # v11: into the ceiling (2 cm under it)
                 lit.line((u - 1.2, ceil - 0.3, d - 1.45), (u + 1.2, ceil - 0.3, d - 1.45), th['warm'], 0.12, 3, 'h', (0, 1, 0.3))
     else:
         for u in (-W2 * 0.5, 0.0, W2 * 0.5):
@@ -315,7 +319,7 @@ def build_hall(h, L1):
     for u in [-h['blockHalf'] + 1.0 + i * (2 * h['blockHalf'] - 2.0) / nu for i in range(nu + 1)]:
         for d in [h['rows'][0]['X'] + j * 4.5 for j in range(int((depth - h['rows'][0]['X'] - 1.0) / 4.5) + 1)]:
             lit.spot((u, ceil - 0.05, d), th['warm'], 1.6 if h['format'] == 'max' else 1.9, ceil + 3, 'h', (0, -1, 0), 25, 60)
-            acc.cyl(u, d, 0.09, ceil - 0.025, ceil - 0.002, MAT['metal'], lin('#2a2a2e'), n=12)
+            acc.cyl(u, d, 0.09, ceil - 0.025, ceil + 0.005, MAT['metal'], lin('#2a2a2e'), n=12)   # v11: into the ceiling (2 mm under it)
             glow.quad((u - 0.06, ceil - 0.027, d - 0.06), (u + 0.06, ceil - 0.027, d - 0.06), (u + 0.06, ceil - 0.027, d + 0.06), (u - 0.06, ceil - 0.027, d + 0.06), th['warm'], 2.0)
     for sg in (-1, 1):   # aisle step light as light (fixed layer)
         pA, pB = P(sg * (a0w + aW) / 2, rows[1]['pf']), P(sg * (a0w + aW) / 2, depth - 0.4)

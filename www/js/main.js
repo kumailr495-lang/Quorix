@@ -109,7 +109,10 @@ async function boot() {
     order: (seat) => crowd.callServer(seat, (npc) => { npc.gesture('give', 1.2); npc.say(pick('srv.hand')); setTimeout(() => crowd.serverLeave(), 2600); }) });
   // the film's controls (tablet remote, keys): the host's in a room, and the host's reach every phone
   // touch, keyboard + mouse, controller, phone VR: whatever you last used (input.js)
-  const input = new Input({ player, engine, canvas: engine.renderer.domElement, action: () => ui.promptFn && ui.promptFn(), back: () => history.back(), tablet: () => tablet.open('remote'), bell: () => ringBell(),
+  // v11 the lift's buttons are in the world (lift9.js): the one under the crosshair is aimed at (aimBtn); E, A or a click press it, and a tap
+  // presses the button under your finger. Every other action stays on the plate.
+  let aimBtn = null;
+  const input = new Input({ player, engine, canvas: engine.renderer.domElement, action: () => (aimBtn ? pressLift(aimBtn) : ui.promptFn && ui.promptFn()), back: () => history.back(), tablet: () => tablet.open('remote'), bell: () => ringBell(),
     pause: () => { if (mode !== 'play') return; if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); }, chat: () => together.active && together.chatBox(), modal: () => modal || mode !== 'play' });
   input.setVR(!!settings.vr);
   { const ctl0 = shows.control.bind(shows); shows.control = (cmd, arg) => { if (!together.canControl() && cmd !== 'speed') { ui.toast(t('mp.hostOnly'), 2200); return false; } const r = ctl0(cmd, arg); if (r) together.onControl(cmd, arg); return r; }; }
@@ -250,7 +253,15 @@ async function boot() {
     if (settings.particles !== false) sparks.burst(world.hallById(id), shows.avg);
   }
   world.onDoor = (open, door) => { const d = Math.hypot(door.x - player.x, door.z - player.z); if (d < 12 && Math.abs(door.y - player.y) < 3) sound.door(open, 1 - d / 12); };
-  world.onLift = (ev) => { if (Math.hypot(LIFT.x0 - player.x, LIFT.z0 - player.z) < 8) { if (ev === 'move') sound.liftHum(); else sound.ding(); } };
+  // the lift's sounds near it: the motor while it moves; on arrival one chime at G (it goes up from there), two upstairs (it goes down)
+  world.onLift = (ev) => { const d = Math.hypot((LIFT.x0 + LIFT.x1) / 2 - player.x, (LIFT.z0 + LIFT.z1) / 2 - player.z); if (d > 9) return;
+    if (ev === 'move') sound.liftHum(); else if (ev === 'ding') { sound.ding(); if (world.lift.level) setTimeout(() => sound.ding(), 420); } else sound.door(ev === 'open', 0.5 * (1 - d / 9)); };
+  function pressLift(b) {
+    if (b.id === 'car1' && game === 'flow' && !(ticket && ticket.checked) && !world.gate.always) { sound.liftDeny && sound.liftDeny(); ui.toast(t('toast9.liftTicket'), 3000); return; }
+    world.lift.press(b.id); sound.liftBeep ? sound.liftBeep() : sound.click(); if (b.id === 'alarm') setTimeout(() => sound.bell(), 160);
+  }
+  player.onTap = (x, y, locked) => { if (mode !== 'play' || modal || talk.open || intro.active || input.vr || player.seated) return;
+    const b = locked ? aimBtn : (world.roomAt(player.x, player.y, player.z) === 'lobby' ? world.lift.pick(engine.camera, player.y, x, y, innerWidth, innerHeight, 44) : null); if (b) pressLift(b); };
   addEventListener('pointerdown', () => sound.unlock(), { capture: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } });
   window.__lumiereLifecycle = (s) => { if (s === 'pause') { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } };
@@ -314,7 +325,9 @@ async function boot() {
     if (itemMesh) { lightT -= dt; if (lightT <= 0) { lightT = 0.3; crowd.lightAt(player.x, player.y + 1.3, player.z, itemLight); } itemIn = Math.min(1, itemIn + dt * 3); itemAnim = Math.max(0, itemAnim - dt * 1.6); const e = Math.sin(itemAnim * Math.PI);
       itemMesh.position.set(0.27 - e * 0.1, -0.3 - (1 - itemIn) * 0.3 + e * 0.17, -0.55 + e * 0.2); itemMesh.rotation.set(0.22 + e * 0.75, -0.35, e * 0.15); itemMesh.scale.setScalar(1.25); }
     if (glowSeat) { glowT -= dt; seatGlow.material.opacity = 0.45 + 0.4 * Math.sin(now * 0.006); if (glowT <= 0 || player.seated) { glowSeat = null; seatGlow.visible = false; } }
-    prompts(r, hk);
+    const nearLift = mode === 'play' && !modal && !talk.open && !intro.active && !player.seated && !player.busy && r === 'lobby' && Math.hypot(player.x - (LIFT.x0 + LIFT.x1) / 2, player.z - (LIFT.z0 + LIFT.z1) / 2) < 4.5;
+    aimBtn = nearLift ? world.lift.pick(cam, player.y, innerWidth / 2, innerHeight / 2, innerWidth, innerHeight, 26) : null; world.lift.setHover(aimBtn && aimBtn.id); document.body.classList.toggle('aim', !!aimBtn);
+    if (aimBtn) ui.setPrompt(null); else prompts(r, hk);
     // where to next (wayfind.js): the route a few times a second, the arrow every frame
     if (mode !== 'play' || modal || talk.open || intro.active || watching || settings.goal === false || dbg) { way.cur = null; ui.setGoal(null); }
     else { wayT -= dt; if (wayT <= 0) { wayT = 0.2; way.update({ game, ticket, room: r, player }); } const g = way.cur;
@@ -346,8 +359,6 @@ async function boot() {
     if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
     // v11 the ticket machines between the box office and the concessions: the box office sheet without the queue
     if (r === 'lobby' && player.y < 1 && Math.hypot(player.x - (COUNTERS.boxOffice.x1 + 0.5), player.z - (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2) < 1.6 && ahead(COUNTERS.boxOffice.x1, (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2, 0.35)) { ui.setPrompt(t('goal.ticket'), () => { sound.click(); booking.open({ quick: game === 'quick' }); }); return; }
-    const L = world.lift; if (r === 'lobby') { if (L.inside(player.x, player.z)) { const to = L.level ? 0 : 1; ui.setPrompt(t(to ? 'hud9.liftUp' : 'hud9.liftDown'), () => { if (to === 1 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(to); sound.click(); }); return; }
-      for (const k of [0, 1]) if (L.atDoor(player.x, player.y, player.z, k) && (L.level !== k || L.state !== 'idle')) { ui.setPrompt(t('hud9.liftCall'), () => { if (k === 0 && game === 'flow' && !(ticket && ticket.checked)) { ui.toast(t('toast9.liftTicket'), 3000); return; } L.call(k); sound.click(); }); return; } }
     if (hk) { const h = world.hallByKey(hk); let best = null, bd = 1.5;
       for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.45 || !ahead(s.x, s.z, 0.2) || !sees(s.x, s.z, 1.2, 1.6)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
       if (best) { const mine = ticket && ticket.seat === best.id && ticket.hall === h.id; ui.setPrompt(mine ? t('hud.yourSeat', { seat: best.id }) : t('hud9.sitHere', { seat: best.id }), () => { if (!mine) { const tk = { hall: h.id, hallKey: hk, hallName: h.name, seat: best.id, row: best.id.replace(/\d+/, ''), col: best.col, src: ticket && ticket.src, title: ticket ? ticket.title : '', delay: 0, shown: true, checked: true, tablet: true, quick: true }; const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; } ticket = tk; best.player = true; best.taken = true; } sitSeat(best); }); return; } }

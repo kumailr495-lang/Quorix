@@ -11,8 +11,9 @@ const part = (name, geo, m, position, parent, rotation, scale) => createPart(nam
 async function build() {
   const root = createRoot('DrinksFountain'), steel = mat('steel', 0x9a9ca2, 0.35, 1), black = mat('plastic_black', 0x18181a, 0.4), chrome = mat('chrome', 0xe8e8e8, 0.1, 1);
   part('Tower', await rbox(0.6, 0.8, 0.9, 0.03, 2), steel, [-0.1, 0.4, 0], root);
-  part('Panel', uv(boxGeo(0.01, 0.34, 0.82)), glow('glow_red', 0xff3d4a), [0.205, 0.6, 0], root);
-  part('PanelFrame', await rbox(0.03, 0.38, 0.86, 0.01, 1), black, [0.19, 0.6, 0], root);
+  // v11: the frame stays on the tower's flat front (at 0.86 m wide its chamfers lay 2 mm off the tower's rounded edges and fought)
+  part('Panel', uv(boxGeo(0.01, 0.34, 0.76)), glow('glow_red', 0xff3d4a), [0.205, 0.6, 0], root);
+  part('PanelFrame', await rbox(0.03, 0.38, 0.8, 0.01, 1), black, [0.19, 0.6, 0], root);
   for (let i = 0; i < 6; i++) { const z = -0.33 + i * 0.132;
     part('Valve' + i, await rbox(0.12, 0.1, 0.1, 0.02, 2), black, [0.24, 0.36, z], root);
     part('Nozzle' + i, cyl(cylinderGeo(0.012, 0.016, 0.05, 8)), chrome, [0.26, 0.29, z], root); }

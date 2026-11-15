@@ -100,6 +100,30 @@
     return rep;
   };
 
+  // v11: every mesh the engine adds to the bakes (props, panels, signs, the lift, doors, gates, escalators, seats), as world triangles for
+  // tools/blender/arch/zcheck.py --engine (coplanar pairs against each other and against the builder's rooms, kept when a player can see
+  // them). Skips the bakes' own shell, glass and glow (the builder's geometry: zcheck builds those itself), people, and see-through or
+  // depth-less materials (they cannot fight). Double-sided meshes are written both ways round; glow meshes are flagged (they draw with a
+  // polygon offset over the walls, so they only fight other glow)
+  st.dumpTris = (o = {}) => {
+    const { W, S } = st; S.updateMatrixWorld(true); const names = [], P = [], M = [], v = [new T.Vector3(), new T.Vector3(), new T.Vector3()];
+    const skip = (nm) => /-(shell|glass|glow)$/.test(nm), MAXI = o.maxInstances || 4000;
+    S.traverse((ob) => { if (!ob.isMesh || ob.isSkinnedMesh || !ob.visible) return; let vis = true; for (let p = ob; p; p = p.parent) if (p.visible === false) vis = false; if (!vis && !o.hidden) return;
+      const mm = [].concat(ob.material)[0]; if (!mm || mm.transparent || mm.depthWrite === false || mm.depthTest === false || mm.colorWrite === false) return;
+      const nm = ob.name || (ob.parent && ob.parent.name) || ob.type; if (skip(nm)) return;
+      const glow = !!(mm.polygonOffset && mm.polygonOffsetUnits < 0), dbl = mm.side === T.DoubleSide, ni = names.length; names.push({ name: pathOf(ob), glow, dbl });
+      const g = ob.geometry, PA = g.attributes.position, MI = g.attributes.matid, I = g.index ? g.index.array : null, n = I ? I.length : PA.count;
+      const inst = ob.isInstancedMesh ? Math.min(ob.count, MAXI) : 1, im = new T.Matrix4(), mw = new T.Matrix4();
+      let r0 = 0, r1 = n; if (g.drawRange && g.drawRange.count !== Infinity) { r0 = g.drawRange.start; r1 = Math.min(n, r0 + g.drawRange.count); }
+      for (let q = 0; q < inst; q++) { if (ob.isInstancedMesh) { ob.getMatrixAt(q, im); mw.multiplyMatrices(ob.matrixWorld, im); } else mw.copy(ob.matrixWorld);
+        for (let t = r0; t + 2 < r1; t += 3) { const id = [0, 1, 2].map((k) => (I ? I[t + k] : t + k));
+          for (let k = 0; k < 3; k++) v[k].fromBufferAttribute(PA, id[k]).applyMatrix4(mw);
+          const mat = MI ? Math.round(MI.getX(id[0])) : -1;
+          P.push(v[0].x, v[0].y, v[0].z, v[1].x, v[1].y, v[1].z, v[2].x, v[2].y, v[2].z); M.push(ni, mat);
+          if (dbl) { P.push(v[0].x, v[0].y, v[0].z, v[2].x, v[2].y, v[2].z, v[1].x, v[1].y, v[1].z); M.push(ni, mat); } } } });
+    const b64 = (ta) => { const u = new Uint8Array(ta.buffer); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+    return { names, tris: b64(new Float32Array(P)), meta: b64(new Int32Array(M)), n: M.length / 2, mats: st.MATN };
+  };
   // ------------------------------------------------------------------ where a player can really be: a flood fill over a 0.4 m grid from
   // the arrival and the Quick-play spawn, moving like player.js (the game's own wall bands, closed doors opened, the ticket gate open,
   // a floor change over 0.42 m per step is a wall, the escalators as ramps, the lift between its floors). Returns the reached cells.
@@ -170,7 +194,7 @@
   function place(pt) {
     const { W, L } = st, actor = { x: pt.x, y: pt.y, z: pt.z }, lf = W.lift;
     for (let i = 0; i < 3; i++) W.update(1.0, [actor], 0);
-    if (pt.liftY !== undefined) { lf.y = pt.liftY; lf.state = 'idle'; lf.doors = [0, 0]; lf.cab.position.y = lf.y; for (const pair of lf.leaves) for (const q of pair) q.m.position.x = lf.cx + q.s * lf.dw / 4; }
+    if (pt.liftY !== undefined) { lf.y = pt.liftY; lf.state = 'idle'; lf.doors = [0, 0]; lf.cab.position.y = lf.y; lf.placeLeaves(0); lf.placeLeaves(1); }
     else { const inShaft = pt.x > BLD.LIFT.x0 && pt.x < BLD.LIFT.x1 && pt.z > BLD.LIFT.z0 && pt.z < BLD.LIFT.z1, k = inShaft && pt.y > 1 ? 1 : 0;   // inside the cab: the cab is at that floor
       if (inShaft) lf.level = k; const ty = lf.L.stops[lf.level]; if (lf.y !== ty) { lf.y = ty; lf.cab.position.y = ty; } }
     const it = L.intro; if (it && it.mesh) { if (pt.taxi) { it._place(4.2 + 1); if (!it.mesh.visible) { it.mesh.visible = true; st.taxiOn = true; } } else if (st.taxiOn) { it.mesh.visible = false; st.taxiOn = false; } }

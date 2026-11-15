@@ -50,8 +50,9 @@ const walks = await p.evaluate(async () => {
   out.push({ label: 'street to lobby (main doors)', start: [0.6, 0, 25.2], pts: [[0.6, 22], [0, 19], [0, 15.5]], room: 'lobby', y: 0 });
   out.push({ label: 'lobby to restrooms and back', start: [18.6, 0, 3.0], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
   out.push({ label: 'up escalator to the bridge', start: [9.7, 0, 6.8], pts: [[9.7, 5.2], [9.7, 2.6], [9.7, 0.6], [9.7, -1], [9.7, -6], [9.7, -10.6], [9.7, -12.3], [10.2, -15.5], [0, -18]], room: 'corridor', y: B.L1 });
-  // v11 the core: the lift's door is on the landing behind the gate; the car opens at its other end onto the first-floor gallery
-  out.push({ label: 'lift up and out along the gallery', start: [14.5, 0, 2.8], pts: [[14.5, 1.9], [14.5, 1.6, 'wait', 4000], [14.5, 0.0], [14.5, -0.4, 'lift:1'], [14.5, -0.4, 'until-lift:1'], [14.5, -2.8], [14.5, -8.4], [13.6, -11.6]], room: 'lobby', y: B.L1 });
+  // v11 the core: the lift's door is on the landing behind the gate; the car opens at its other end onto the first-floor gallery (v11: its
+  // doors open on a call, so the walk calls it first, as the player presses the button)
+  out.push({ label: 'lift up and out along the gallery', start: [14.5, 0, 2.8], pts: [[14.5, 1.9], [14.5, 1.6, 'lift:0'], [14.5, 1.6, 'until-lift:0'], [14.5, 0.0], [14.5, -0.4, 'lift:1'], [14.5, -0.4, 'until-lift:1'], [14.5, -2.8], [14.5, -8.4], [13.6, -11.6]], room: 'lobby', y: B.L1 });
   // the ticket zone (the landing the escalators and the lift share): with the gate shut and no pass there is no way in from the lobby (the
   // ticket leaf, round either end, the exit leaves, between the escalator and the lift, under the escalators, the lift's back, round the
   // tower); from inside, out by the exit leaves
