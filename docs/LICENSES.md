@@ -28,7 +28,7 @@ non-commercial clause, and no real person's voice or likeness.
 | People bodies, faces, hair | `www/models/people_*.glb`, `www/models/people/` | Quaternius, Universal Base Characters | CC0 1.0 |
 | People animation | `www/models/anims.glb` | Quaternius, Universal Animation Library | CC0 1.0 |
 | Clothes on the people | inside `people_*.glb` | made from the body surface by `tools/blender/people.py` | the project's own |
-| Crowd and room recordings | `www/snd/*.ogg` | BigSoundBank (Joseph Sardin), items 19, 20, 236, 237, 413, 480, 505, 557, 655, 664, 680, 1026, 1417, 1526, 1711, 3064, 3065, 3264, 3515, 3522, 3534, 141; v10: 2561 (cafe room tone), 913 (fountain), 3049 (the espresso pump), 410 (a cup) | CC0 1.0 |
+| Crowd and room recordings | `www/snd/*.ogg` | BigSoundBank (Joseph Sardin), items 19, 20, 236, 237, 413, 480, 505, 557, 655, 664, 680, 1026, 1417, 1526, 1711, 3064, 3065, 3264, 3515, 3522, 3534, 141; v10: 2561 (cafe room tone), 913 (fountain), 3049 (the espresso pump), 410 (a cup); v11: 1293 (rain on a car roof, recorded inside the car: `car_rain.ogg`, 24 s from 0:12, loudness-normalised) | CC0 1.0 |
 | Spoken lines, English | `www/voice/en/` | Chatterbox Multilingual (Resemble AI), cloning reference clips made by Kokoro; every clip carries Resemble's inaudible PerTh watermark | model MIT; reference voices Apache-2.0 (synthetic, no real person) |
 | Spoken lines, Spanish and Hindi (Urdu plays Hindi) | `www/voice/es/`, `www/voice/hi/` | Kokoro-82M through kokoro-onnx | Apache-2.0 (model and voices), MIT (kokoro-onnx) |
 | Dialogue text, all four languages | `www/js/lang/*.js`, `tools/dev/i18n/` | written for this project | the project's own |

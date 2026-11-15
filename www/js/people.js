@@ -82,6 +82,7 @@ export const STAFF = {
   vendor2: { kind: 'm', outfit: 'staff', over: { rb: 'Business_Male_02', top: '#121214', bottom: '#151518', outer: '#7a1f28', shoes: '#141414', hair: '#3d2817', hairStyle: 1, beard: true, pattern: 0, skin: '#a8704a' } },
   bartender: { kind: 'f', outfit: 'staff', over: { rb: 'Business_Female_03', top: '#f1f0ec', bottom: '#151518', outer: '#121214', shoes: '#141414', hair: '#5a3a1f', hairStyle: 0, pattern: 0, skin: '#f2d0b6' } },
   server: { kind: 'm', outfit: 'staff', over: { rb: 'Business_Male_03', top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#2b1d14', hairStyle: 1, beard: false, pattern: 0, skin: '#8a5538' } },
+  driver: { kind: 'm', outfit: 'jacket', over: { rb: 'Male_Adult_04', top: '#26313a', bottom: '#1d1f24', outer: '#2a2d33', shoes: '#141414', hair: '#141010', hairStyle: 0, beard: false, pattern: 0, skin: '#7a5236' } },   // v11 the taxi driver (intro9.js)
   greeter: { kind: 'f', outfit: 'staff', over: { rb: 'Business_Female_04', top: '#121214', bottom: '#151518', outer: '#6e1622', shoes: '#141414', hair: '#1c1410', hairStyle: 0, pattern: 0, skin: '#c68b62' } },
 };
 export const staffRecipe = (look, seed = 7) => randomRecipe(seed, STAFF[look] || STAFF.usher);
@@ -251,6 +252,7 @@ const GEST = {
   wave: (t) => ({ R: [-0.32 + 0.07 * Math.sin(t * 9), 0.52, 0.1], from: 'chest' }),
   read: (t) => ({ L: [0.08, -0.12, 0.3], R: [-0.08, -0.12, 0.3], from: 'chest', head: 0.38 }),
   hold: (t) => ({ R: [-0.17, -0.3, 0.24], from: 'chest' }),
+  drive: (t) => ({ L: [0.16, -0.08 + 0.005 * Math.sin(t * 0.9), 0.245], R: [-0.16, -0.08 - 0.005 * Math.sin(t * 0.9), 0.245], from: 'chest' }),   // v11 hands at ten to two on the taxi's wheel (measured: intro9.js DRV)
   type: (t) => ({ L: [0.13, -0.3, 0.4 + 0.02 * Math.sin(t * 13)], R: [-0.13, -0.3, 0.4 + 0.02 * Math.sin(t * 11 + 2)], from: 'chest', head: 0.25 }),
   point: (t) => ({ R: [-0.42, 0.06, 0.48], from: 'chest' }),
   give: (t) => ({ R: [-0.08, -0.12, 0.46], from: 'chest' }),

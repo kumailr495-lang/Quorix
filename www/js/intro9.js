@@ -10,12 +10,17 @@ import * as THREE from 'three';
 import { assetGeometry } from './assets.js';
 import { Acc, toGeometry } from './geom.js';
 import { MAT } from './library.js';
+import { Person, staffRecipe, sitHeight, DATA } from './people.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, ease = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
 const KERB = 26.0, LANE_IN = 27.85, LANE_OUT = 31.6, STOP_X = 1.6, ROAD_Y = -0.15, ARRIVE = 8.4, LEAVE = 1e9;
 const SHOT_B = 9.3, END_T = SHOT_B + 4.3;   // the door opens and you get out; hand over control
 export const ARRIVAL = { x: 0.6, z: 25.2, yaw: 0, pitch: 0.06 };   // on the pavement at the kerb, facing the doors
 // the cabin, in the car's own frame (nose +z, kerb side +x, up +y, origin on the road under the middle): what you see from the back seat
 const SEAT_EYE = [0.07, 1.235, -0.6];   // leaning a little to the middle: you see the road between the front headrests
+// v11 the driver (people.js, look 'driver', gesture 'drive'): sitting on the right-hand front seat, the car's floor at 0.30, its cushion at 0.585
+const DRV = { x: -0.36, y: 0.30, z: 0.47, seat: 0.285, yaw: 0 };
+const NIGHT = [0.17, 0.15, 0.13];   // the cabin's own glow at night (the dash, the meter); the street light comes in through the glass
+const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 function cabin() {
   const acc = new Acc(), E = (rx = 0, ry = 0, rz = 0) => new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), ONE = new THREE.Vector3(1, 1, 1), Y = new THREE.Vector3(0, 1, 0);
   // the instanced lit shader shades by an 'occ' attribute (assets.js assetGeometry): undersides a little darker
@@ -65,6 +70,46 @@ function cabinGlow() {
   quad(-0.43, 1.03, 0.618, 0.1, 0.065, 0.1, [0.5, 0.55, 0.6]); quad(-0.29, 1.03, 0.618, 0.1, 0.065, 0.1, [0.5, 0.55, 0.6]); quad(0.25, 1.03, 0.634, 0.1, 0.03, 0, [1.6, 0.12, 0.08]);
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('grp', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3), 1)); return g;
 }
+// v11 wet glass: the windscreen and the four door windows, drawn over the street. Raindrops land on a 2.2 cm grid at their own size and
+// moment; the wipers (the same angle as the blades: 0.15 to 1.4 rad from up, sin(4.2 t)) clear the windscreen and the drops come back
+// over the next 1.4 s; on the side glass the drops stretch back with the speed. Each drop catches the light passing through the cabin.
+const GLASS_V = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+const GLASS_F = `precision highp float;
+uniform float uT; uniform float uSide; uniform float uSpeed; uniform vec2 uSize; uniform vec4 uPv; uniform vec3 uLit; uniform vec3 uTint;
+varying vec2 vUv;
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float wipeAge(vec2 q, vec2 pv) {
+  vec2 d = q - pv; float r = length(d); if (r > 0.52 || d.y < -0.01) return 99.0;
+  float phi = atan(d.x, d.y); float s0 = (phi - 0.15) / 1.25 * 2.0 - 1.0; if (s0 < -1.0 || s0 > 1.0) return 99.0;
+  float a = asin(s0); float ph = uT * 4.2; float k1 = floor((ph - a) / 6.28318); float k2 = floor((ph - 3.14159 + a) / 6.28318);
+  return uT - max((a + 6.28318 * k1) / 4.2, (3.14159 - a + 6.28318 * k2) / 4.2);
+}
+void main() {
+  vec2 q = vUv * uSize; float age = 99.0;
+  if (uSide < 0.5) age = min(wipeAge(q, uPv.xy), wipeAge(q, uPv.zw));
+  float st = uSide > 0.5 ? 1.0 + uSpeed * 0.12 : 1.0;
+  vec2 g = vec2(q.x / st, q.y) * 45.0; vec2 c = floor(g); vec2 f = fract(g) - 0.5;
+  float n = h21(c); float rr = 0.14 + 0.2 * h21(c + 7.1); float land = h21(c + 3.7) * 1.4;
+  vec2 o = vec2(h21(c + 1.3), h21(c + 2.9)) - 0.5; vec2 e = f - o * (0.5 - rr); e.x *= st;
+  float d = length(e); float on = step(0.4, n) * smoothstep(land, land + 0.15, age);
+  float m = (1.0 - smoothstep(rr * 0.62, rr, d)) * on; float rim = smoothstep(rr * 0.4, rr * 0.85, d) * m;
+  float hl = (1.0 - smoothstep(0.0, rr * 0.42, length(e - vec2(-0.32, 0.36) * rr))) * m;
+  gl_FragColor = vec4(uTint + uLit * max(0.0, 0.5 * m - 0.42 * rim + 1.7 * hl), 0.045 + 0.46 * m + 0.35 * hl);
+}`;
+function pane(P) {   // four corners in the car's frame (bottom left, bottom right, top right, top left): u runs left to right, v up
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P.flat(), 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)); g.setIndex([0, 1, 2, 0, 2, 3]); return g;
+}
+function wetGlass() {
+  const mk = (side, size, pv = [0, 0, 0, 0]) => new THREE.ShaderMaterial({ vertexShader: GLASS_V, fragmentShader: GLASS_F, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uT: { value: 0 }, uSide: { value: side }, uSpeed: { value: 0 }, uSize: { value: new THREE.Vector2(...size) }, uPv: { value: new THREE.Vector4(...pv) }, uLit: { value: new THREE.Color(0.5, 0.45, 0.4) }, uTint: { value: new THREE.Color(0.012, 0.016, 0.02) } } });
+  const out = [new THREE.Mesh(pane([[-0.70, 0.965, 1.06], [0.70, 0.965, 1.06], [0.62, 1.43, 0.45], [-0.62, 1.43, 0.45]]), mk(0, [1.40, 0.77], [0.38, 0.02, 1.06, 0.02]))];   // the wipers pivot at x -0.32 and 0.36
+  for (const x of [0.765, -0.765]) {
+    out.push(new THREE.Mesh(pane([[x, 0.965, -1.10], [x, 0.965, -0.03], [x, 1.40, -0.03], [x, 1.40, -1.10]]), mk(1, [1.07, 0.435])));
+    out.push(new THREE.Mesh(pane([[x, 0.965, 0.07], [x, 0.965, 1.00], [x, 1.40, 0.43], [x, 1.40, 0.07]]), mk(1, [0.93, 0.435])));
+  }
+  for (const m of out) { m.frustumCulled = false; m.renderOrder = 5; m.name = 'taxi-glass'; }
+  return out;
+}
 export class Intro {
   constructor(engine, world, mats, sound, hooks = {}) {
     this.engine = engine; this.world = world; this.sound = sound; this.hooks = hooks; this.active = false; this.inCar = false; this.t = 0; this.carOn = false; this.mesh = null;
@@ -73,11 +118,40 @@ export class Intro {
     const m = new THREE.InstancedMesh(inst(g), mats.litFor(room.U, g, true), 1); m.frustumCulled = false; m.visible = false; room.group.add(m);
     this.mesh = m; this.room = room; this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._up = new THREE.Vector3(0, 1, 0); this._H = [0, 0, 0]; this._F = [0, 0, 0];
     // the cabin (drawn only while you ride): its lit parts as one instance, its screens as a glow mesh, two wiper blades
-    const cg = inst(cabin()); this.cab = new THREE.InstancedMesh(cg, mats.litFor(room.U, cg, true), 1); this.cab.frustumCulled = false; this.cab.visible = false; this.cab.name = 'taxi-cabin'; room.group.add(this.cab);
+    // v11: the modelled cabin (tools/blender/cabin.py, a real driver beside it); the box-built cabin only if that model failed to load
+    const ca = assetGeometry('taxi_cabin', 0, null, toGeometry, Acc); this.modelled = !!ca;
+    const cg = inst(ca || cabin()); this.cab = new THREE.InstancedMesh(cg, mats.litFor(room.U, cg, true), 1); this.cab.frustumCulled = false; this.cab.visible = false; this.cab.name = 'taxi-cabin'; room.group.add(this.cab);
     this.rig = new THREE.Group(); this.rig.matrixAutoUpdate = false; this.rig.visible = false; room.group.add(this.rig);
     const gl = new THREE.Mesh(cabinGlow(), mats.glowMat(room.U)); gl.frustumCulled = false; this.rig.add(gl);
     this.wipers = [-0.32, 0.36].map((x) => { const piv = new THREE.Group(); piv.position.set(x, 0.975, 1.04); piv.rotation.x = -1.02; const bl = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.012), new THREE.MeshBasicMaterial({ color: 0x050506 })); bl.position.y = 0.25; const arm = new THREE.Group(); arm.add(bl); piv.add(arm); this.rig.add(piv); return arm; });
+    this.glass = this.modelled ? wetGlass() : []; for (const g of this.glass) this.rig.add(g);
     this._eye = new THREE.Vector3(); this._look = new THREE.Vector3();
+    // the street's screen-light uniforms carry the light sliding through the cabin while you ride (no street surface uses them); kept to restore
+    const U = room.U; this._u0 = { s: U.uScreen.value.clone(), d: U.uScreenD.value.clone(), x: U.uScreenX.value.clone(), n: U.uScreenN.value.clone() };
+    this._sw = { k: 0, c: new THREE.Color(1, 0.85, 0.65), dir: new THREE.Vector3(0, 1, 0) }; this.driver = null;
+    this._dl = { amb: new THREE.Color(), key: new THREE.Color(), dir: new THREE.Vector3(), screen: new THREE.Color(0, 0, 0) };
+  }
+  // the driver: a seated person with hands on the wheel, riding in the cabin's frame (made when the avatars are ready)
+  _mkDriver() {
+    if (this.driver || !this.modelled || !DATA.ready) return this.driver;
+    const rec = staffRecipe('driver', 23), p = new Person(rec, { staff: true }); p.s.sit = 1; p.s.drop = DRV.seat - sitHeight(rec); p.s.recline = 0.2; p.gestT = 'drive'; p.snap = true;
+    p.group.position.set(DRV.x, DRV.y, DRV.z); p.group.rotation.y = DRV.yaw; this.rig.add(p.group); this.driver = p; return p;
+  }
+  // the strongest street light reaching the cabin through the glass (lights above the windows' sill; spots and signs by their aim): it
+  // slides through the cabin as the taxi passes, front to back, along the shader's directional term
+  _sweep(x, z, dt) {
+    const L = this.room.lights.L, n = L.length / 14, cy = 1.2; let best = 0, j0 = -1, bd = null;
+    for (let k = 0; k < n; k++) {
+      const j = k * 14; if (L[j + 1] < 1.6) continue; const dx = L[j] - x, dy = L[j + 1] - cy, dz = L[j + 2] - z, d2 = dx * dx + dy * dy + dz * dz, r = L[j + 6]; if (d2 > r * r) continue;
+      const d = Math.sqrt(d2) || 1e-4, ux = dx / d, uy = dy / d, uz = dz / d, type = L[j + 13];
+      let w = Math.max(L[j + 3], L[j + 4], L[j + 5]) / (1 + d2) * (1 - (d2 / (r * r)) ** 2) ** 2;
+      if (type === 1) w *= smoothstep(L[j + 12], L[j + 11], -(ux * L[j + 8] + uy * L[j + 9] + uz * L[j + 10]));
+      else if (type === 2) { const c = -(ux * L[j + 8] + uy * L[j + 9] + uz * L[j + 10]); if (c <= 0) continue; w *= c; }
+      if (w > best) { best = w; j0 = j; bd = [ux, uy, uz]; }
+    }
+    const S = this._sw, f = Math.min(1, dt * 9);
+    if (j0 >= 0) { const m = Math.max(L[j0 + 3], L[j0 + 4], L[j0 + 5]) || 1; S.c.lerp(new THREE.Color(L[j0 + 3] / m, L[j0 + 4] / m, L[j0 + 5] / m), f); S.dir.lerp(new THREE.Vector3(bd[0], bd[1], bd[2]), f).normalize(); }
+    S.k += (Math.min(best, 1.6) - S.k) * f; return S;
   }
   // the taxi's ground point at time t: in on the outer lane from the west, across into the kerb lane, a gentle stop at the carpet
   pos(t) {
@@ -90,30 +164,43 @@ export class Intro {
     this._q.setFromAxisAngle(this._up, yaw); this._m.compose(new THREE.Vector3(x, ROAD_Y, z), this._q, new THREE.Vector3(1, 1, 1)); this.mesh.setMatrixAt(0, this._m); this.mesh.instanceMatrix.needsUpdate = true;
     const L = this.room.lights, G = this.mesh.geometry.attributes; L.at(x, 0.9, z, 0, 1, 0, this._H, this._F); G.iLh.array.set(this._H); G.iLf.array.set(this._F); G.iLh.needsUpdate = G.iLf.needsUpdate = true;
     if (this.inCar) { this.cab.setMatrixAt(0, this._m); this.cab.instanceMatrix.needsUpdate = true; this.rig.matrix.copy(this._m); this.rig.matrixWorldNeedsUpdate = true;
-      const C = this.cab.geometry.attributes; const DOME = [0.3, 0.26, 0.21]; for (let i = 0; i < 3; i++) { C.iLh.array[i] = this._H[i] * 0.7 + DOME[i]; C.iLf.array[i] = this._F[i] * 0.7; } C.iLh.needsUpdate = C.iLf.needsUpdate = true; }   // the street's light through the glass plus the cabin's own low warm glow
+      // v11 night: the street's light through the glass (dimmer, it comes in sideways), the cabin's own low glow, and the light of the
+      // nearest street lamp or sign sliding through the cabin as you pass it (iLs with the street's screen-light uniforms)
+      const C = this.cab.geometry.attributes, S = this._sweep(x, z, this._dt || 0.016), U = this.room.U;
+      for (let i = 0; i < 3; i++) { C.iLh.array[i] = this._H[i] * 0.6 + NIGHT[i]; C.iLf.array[i] = this._F[i] * 0.6; } C.iLs.array[0] = S.k; C.iLh.needsUpdate = C.iLf.needsUpdate = C.iLs.needsUpdate = true;
+      U.uScreen.value.copy(S.c); U.uScreenD.value.set(0, 0, 0); U.uScreenN.value.copy(S.dir); }
     return [x, z];
   }
   // in the cabin or out of it: the cabin and the taxi's outside are never drawn together
-  _ride(on) { this.inCar = on; this.cab.visible = on; this.rig.visible = on; this.mesh.visible = !on; }
+  _ride(on) {
+    this.inCar = on; this.cab.visible = on; this.rig.visible = on; this.mesh.visible = !on;
+    if (!on) { const U = this.room.U, o = this._u0; U.uScreen.value.copy(o.s); U.uScreenD.value.copy(o.d); U.uScreenX.value.copy(o.x); U.uScreenN.value.copy(o.n); }
+  }
   start(o = {}) {
     if (!this.mesh) { this.hooks.done && this.hooks.done(); return false; }
-    this.active = true; this.t = 0; this.skippable = !!o.skippable; this.carOn = true; this._door = 0; this._said = 0; this._cut = false; this._ride(true); document.body.classList.add('cutscene');
+    this.active = true; this.t = 0; this.skippable = !!o.skippable; this.carOn = true; this._door = 0; this._said = 0; this._cut = false; this._mkDriver(); this._ride(true); document.body.classList.add('cutscene');
+    this._inside(true);
     const b = document.querySelector('#skipCut'); if (b) { b.hidden = !this.skippable; b.onclick = () => this.finish(); }
     this.hooks.fade && this.hooks.fade(0, 0.9); return true;
   }
+  // the ride's sound from inside: the interior recording and the rain on the roof; both stop when the door opens
+  _inside(on) { const S = this.sound; if (S.carRide) S.carRide(on); if (S.carRain) S.carRain(on); }
   finish() {
-    if (!this.active) return; this.active = false; document.body.classList.remove('cutscene'); const b = document.querySelector('#skipCut'); if (b) b.hidden = true;
+    if (!this.active) return; this.active = false; this._inside(false); document.body.classList.remove('cutscene'); const b = document.querySelector('#skipCut'); if (b) b.hidden = true;
     this._ride(false); this.t = Math.max(this.t, SHOT_B + 3.1); this._door = 3; this.sound.carOff && this.sound.carOff(); this._place(this.t);   // skipped: the taxi waits at the kerb
     this.hooks.done && this.hooks.done();
   }
   // per frame: the taxi (also after you have control), and the camera while the scene runs
   update(dt, player) {
-    if (!this.carOn) return; this.t += dt; const t = this.t, [cx, cz] = this._place(t);
-    const rev = t < ARRIVE ? 0.5 + 0.5 * (1 - t / ARRIVE) : 0.3; if (this._door < 3) this.sound.car && this.sound.car(rev, cx, cz);
+    if (!this.carOn) return; this.t += dt; this._dt = dt; const t = this.t, [cx, cz] = this._place(t);
+    if (this.driver && this.inCar) {   // lit like the cabin: its ambient, and the passing light as the key
+      const D = this._dl, S = this._sw, a = (i) => Math.min(0.55, this._H[i] * 0.5 + NIGHT[i] * 1.6); D.amb.setRGB(a(0), a(1), a(2)); D.key.copy(S.c).multiplyScalar(Math.min(0.75, S.k * 0.8)); D.dir.copy(S.dir);
+      this.rig.updateMatrixWorld(true); this.driver.update(dt, D); }
+    const rev = (t < ARRIVE ? 0.5 + 0.5 * (1 - t / ARRIVE) : 0.3) * (this.inCar ? 0.55 : 1); if (this._door < 3) this.sound.car && this.sound.car(rev, cx, cz);   // inside, the recording carries most of it
     const say = (k) => this.hooks.driver && this.hooks.driver(k, cx, cz);
     if (t > 2.2 && this._said < 1 && this.active) { this._said = 1; say('drv.ride'); }
     if (t > ARRIVE + 0.1 && this._said < 2 && this.active) { this._said = 2; say('drv.arrive'); }
-    if (t > SHOT_B && this._door < 1) { this._door = 1; if (this.sound.carDoor) this.sound.carDoor(true); else this.sound.door(true, 0.9); }
+    if (t > SHOT_B && this._door < 1) { this._door = 1; this._inside(false); if (this.sound.carDoor) this.sound.carDoor(true); else this.sound.door(true, 0.9); }
     if (t > SHOT_B + 1.75 && this._door < 2) { this._door = 2; if (this.sound.carDoor) this.sound.carDoor(false); else { this.sound.door(false, 1.2); this.sound.thud && this.sound.thud(); } say('drv.bye'); }
     if (t > SHOT_B + 3.0 && this._door < 3) { this._door = 3; this.sound.carOff && this.sound.carOff(); }
     if (!this.active) return;
@@ -126,6 +213,8 @@ export class Intro {
       const k = ease((t - 4.4) / 3.2), ax = this._look.set(0.0, 1.16, 9).applyMatrix4(this._m);
       cam.lookAt(lerp(ax.x, 0.6, k), lerp(ax.y, 1.95, k), lerp(ax.z, 18.5, k));
       const w = Math.sin(t * 4.2) * 0.5 + 0.5; this.wipers[0].rotation.z = -0.15 - w * 1.25; this.wipers[1].rotation.z = -0.15 - w * 1.25;
+      const [px, pz] = this.pos(Math.max(0, t - 0.1)), spd = Math.hypot(cx - px, cz - pz) / 0.1, S = this._sw;
+      for (const g of this.glass) { const u = g.material.uniforms; u.uT.value = t; u.uSpeed.value = spd; u.uLit.value.copy(S.c).multiplyScalar(Math.min(1.2, 0.3 + S.k)); }
       if (t > SHOT_B - 0.3 && !this._cut) { this._cut = true; this.hooks.fade && this.hooks.fade(1, 0.26); }
     } else {
       if (this._cut) { this._cut = false; this._ride(false); this.hooks.fade && this.hooks.fade(0, 0.5); }

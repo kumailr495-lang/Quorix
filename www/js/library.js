@@ -76,6 +76,8 @@ export const NAMED = {
   glass: [10, '#2a3036'], glass_amber: [10, '#6a4a22'], bottle_green: [10, '#1f4a2a'], bottle_clear: [10, '#9aa8ae'], rubber: [13, '#1a1a1a'], plastic_black: [15, '#18181a'], paint_black: [0, '#121214'], paint_cream: [0, '#e7dfd0'], paint_red: [0, '#9e1c26'],
   fabric_black: [9, '#141416'], brick: [28, '#ffffff'], stone: [18, '#8a7d6c'], stone_dark: [18, '#4a4038'], awning_red: [1, '#7a1622'], awning_green: [1, '#1d4a3a'], tyre: [13, '#141414'], car_red: [15, '#7a1c24'], car_blue: [15, '#22324a'], car_silver: [4, '#b8bcc2'], car_yellow: [15, '#e0a20e'], mirror: [14, '#d8dce0'],
   candy_pink: [15, '#e0558a'], candy_yellow: [15, '#f2c230'], candy_green: [15, '#4caf50'], candy_blue: [15, '#3a7bd5'], candy_orange: [15, '#f07a2a'], candy_red: [15, '#c62a36'], screen_black: [15, '#0a0a0c'], acoustic: [9, '#2a2a30'], carpet_deco: [22, '#ffffff'], plant: [0, '#2f5a2a'], soil: [18, '#2b2119'], ceramic: [15, '#e6e0d6'], popcorn: [6, '#f2dca0'], paper_red: [0, '#c4202c'],
+  // v11 the taxi's cabin (tools/blender/cabin.py): tan leather seats, matte plastics, a woven headliner, cabin carpet, piano-black bezels
+  leather_tan: [8, '#7a6652'], plastic_matte: [13, '#3a3a40'], plastic_dark: [13, '#1e1e22'], headliner: [9, '#9a9388'], carpet_cabin: [5, '#2c2c30'], gloss_black: [15, '#0b0b0d'],
 };
 const _c = new THREE.Color();
 export function named(name) { const k = String(name || '').toLowerCase().replace(/[^a-z_]/g, '').replace(/_+$/, ''); const e = NAMED[k] || NAMED[k.replace(/_lod\d$/, '')]; return e ? { id: e[0], tint: _c.set(e[1]).toArray() } : null; }

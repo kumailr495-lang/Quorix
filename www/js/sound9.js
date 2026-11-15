@@ -10,7 +10,7 @@
 //    2561, 0913, 3049, 0410; CC0), each heard by how near you are
 import { Sound } from './sound.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), rnd = (a, b) => a + Math.random() * (b - a);
-const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge', 'cafe', 'fountain', 'espresso', 'cup'];
+const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_rain', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge', 'cafe', 'fountain', 'espresso', 'cup'];
 export class Sound9 extends Sound {
   constructor() { super(); this.buf = {}; this.loops = {}; this.sphere = null; this.boost = 1; }
   _build() {
@@ -56,6 +56,8 @@ export class Sound9 extends Sound {
   ticket() { if (!this.play('ticket', { gain: 0.45 })) super.ticket(); }
   carDoor(inside) { this.play(inside ? 'car_door_in' : 'car_door', { gain: 0.6 }); }
   carRide(on) { if (on && !this._ride) this._ride = this.play('car_ride', { gain: 0.35, fadeIn: 1.2, dur: 22 }); else if (!on && this._ride) { try { this._ride.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5); } catch (e) { /* ended */ } this._ride = null; } }
+  // v11 rain on the taxi's roof, heard from inside (BigSoundBank 1293, CC0), for the night ride
+  carRain(on) { if (on && !this._rain) this._rain = this.play('car_rain', { gain: 0.5, fadeIn: 0.8, dur: 24 }); else if (!on && this._rain) { try { this._rain.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.35); } catch (e) { /* ended */ } this._rain = null; } }
   liftHum() { this.play('lift', { gain: 0.35, dur: 6 }); }
   ding() { this.chime(); }
   // v11 the lift's buttons: a short beep on a press, two low notes when a press is refused (no ticket for the screens)

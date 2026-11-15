@@ -382,3 +382,28 @@ frames, draw calls and triangles, with a short code to paste back. The exact com
     centred way-out board, the lift doors, the totems, the cafe, the fountain, the chandelier, the restrooms, the hedge and the torchere.
   - Known and left: four chandelier ribbons turn back on themselves at a small angle (a twist, not coincident faces: nothing fights).
   - Not tested on a phone. Renders and checks are headless SwiftShader and Blender.
+- **2026-11-15 (v11 W5, the taxi at night; the same day's rule: no poorly made models).**
+  - *The cabin is modelled* (`tools/blender/cabin.py` -> `taxi_cabin.glb`, 17.6k triangles, 113 parts in one connected group, no
+    coplanar faces, no folds): a dashboard lofted from one section with a binnacle pod, a piano-black screen bezel, vents with chrome
+    slats, the meter on a stand; a steering wheel (a true torus rim, three spokes, hub, column, stalks); a console with the gear selector,
+    two cup holders and an armrest; leather seats from subdivided cages (bolsters, wings, rounded headrests on chrome posts, upholstered
+    backs with map pockets); door cards with ledges, armrests, pulls and speakers; pillars, roof rails, grab handles, headliner, visors,
+    a rear-view mirror, the scuttle with the wiper pivots and the yellow bonnet on the taxi's own lines. The box-built cabin with its
+    ball-headed driver is only the fallback if the model fails to load.
+  - *A real driver*: a seated Rocketbox avatar (people.js `STAFF.driver`) with his hands at ten to two (`GEST.drive`, aimed from his
+    measured skeleton: they had landed 7 cm past the rim), lit like the cabin.
+  - *Night light*: the cabin's own fill drops to a night level, and the strongest street light near the taxi (from the street's own light
+    list: lamps, canopy spots, signs) lights the cabin along its real direction, so it slides across the seats and doors as you pass it
+    (intro9.js `_sweep`: iLs with the street's screen-light uniforms, which no street surface uses; restored when you get out).
+  - *Wet glass*: the windscreen and four door windows draw raindrops (a 2.2 cm grid, each drop its own size and landing time) that catch
+    the passing light; the wipers clear the windscreen in step with the blades and the drops come back over 1.4 s; on the side glass the
+    drops stretch back with the speed (intro9.js `wetGlass`).
+  - *Sound*: rain on the roof from inside the car (BigSoundBank 1293, CC0) and the interior ride recording (`car_ride`, loaded but never
+    played until now) while you ride; both stop as the door opens; the synthesised engine drops to 55 % inside.
+  - *The taxi's body*: the rims sit 2 mm into the tyres (they stood 3 mm clear), knuckles and struts hold the wheels to the body (it stood
+    on nothing), the TAXI letters are one solid each (crossing strokes stepped 1.2 mm in depth), one folded triangle removed from the far
+    LOD: 69 parts, one group, no coplanar faces, no folds.
+  - *Validation (headless):* glb_check on both models (one group each, no floating parts, coplanar faces or folds); zcheck.sh still
+    TOTAL visible coplanar 0, visible close 0; run-tests.sh passes; the Story arrival runs through to control on the pavement at (0.6,
+    25.2) with the cabin hidden and the taxi shown; ride renders at 1, 2.6, 4.6 and 7.4 s.
+  - Not tested on a phone. Renders are headless SwiftShader (the light sweep and the drops move; stills show one moment).

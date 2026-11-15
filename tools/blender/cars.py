@@ -228,7 +228,7 @@ def build_car(name, lod, taxi):
         for s in (1, -1):
             M = T(wx, s * TRACK, wr) @ Matrix.Rotation(math.radians(-90 * s), 4, 'X')   # lathe +Z -> outward (+y on the left, -y on the right)
             obj('Tyre', lod, ['tyre'], lambda bm: lathe(bm, [(0.215, -0.11), (0.305, -0.113), (0.333, -0.096), (wr, -0.05), (wr, 0.05), (0.333, 0.096), (0.305, 0.113), (0.215, 0.11)], seg), M)
-            obj('Barrel', lod, ['plastic_black'], lambda bm: lathe(bm, [(1e-4, 0.03), (0.212, 0.03), (0.212, 0.07), (1e-4, 0.07)], seg), M)
+            obj('Barrel', lod, ['plastic_black'], lambda bm: lathe(bm, [(1e-4, 0.03), (0.217, 0.03), (0.217, 0.07), (1e-4, 0.07)], seg), M)   # v11: 2 mm into the tyre's bead (it stood 3 mm clear)
             obj('Lip', lod, ['car_silver'], lambda bm: lathe(bm, [(0.19, 0.088), (0.218, 0.088), (0.222, 0.1), (0.2, 0.106), (0.19, 0.1)], seg), M)
             if lod == 0:
                 for k in range(5):
@@ -237,6 +237,10 @@ def build_car(name, lod, taxi):
             else:
                 obj('Spoke', lod, ['car_silver'], lambda bm: lathe(bm, [(1e-4, 0.09), (0.19, 0.09), (0.19, 0.1), (1e-4, 0.1)], 10), M)
             obj('Hub', lod, ['chrome'], lambda bm: lathe(bm, [(1e-4, 0.092), (0.05, 0.092), (0.045, 0.108), (1e-4, 0.112)], 16), M)
+            # v11: what holds the wheel to the car (the body stood on nothing): a knuckle from 4 mm inside the barrel to 0.25 m inboard, and
+            # a strut from inside the knuckle up through the arch liner, 3.5 cm into the body; dark, seen through the gap round the tyre
+            obj('Knuckle', lod, ['plastic_black'], lambda bm: lathe(bm, [(1e-4, -0.25), (0.05, -0.25), (0.05, 0.034), (1e-4, 0.034)], 16 if lod == 0 else 8), M)
+            obj('Strut', lod, ['plastic_black'], lambda bm: lathe(bm, [(1e-4, 0.30), (0.025, 0.30), (0.025, 0.78), (1e-4, 0.78)], 12 if lod == 0 else 6), T(wx, s * 0.56, 0))
     if taxi:
         # roof sign: black base, a lit box, TAXI in dark strokes on its front and back
         rz = gh_z(-0.32, 0.0)
@@ -246,12 +250,12 @@ def build_car(name, lod, taxi):
             def letters(bm):
                 h, w, st = 0.058, 0.042, 0.0095
                 nb = [0]
-                def bar(x, y0, z0, y1, z1):   # crossing strokes get different depths, so their faces never share a plane
+                def bar(x, y0, z0, y1, z1):
                     L = math.hypot(y1 - y0, z1 - z0); a = math.atan2(z1 - z0, y1 - y0); b = bmesh.new(); nb[0] += 1
-                    lbl.rounded_box(b, (0.004 + 0.0024 * (nb[0] % 3), L + st * 0.6, st), 0.0015, (1, 1, 1), 1)   # ends stop inside the crossing stroke
+                    lbl.rounded_box(b, (0.007, L + st * 0.6, st), 0.0015, (1, 1, 1), 1)   # ends stop inside the crossing stroke
                     b.transform(T(x, (y0 + y1) / 2, (z0 + z1) / 2) @ Matrix.Rotation(a, 4, 'X'))
                     me = bpy.data.meshes.new('tmp'); b.to_mesh(me); b.free(); bm.from_mesh(me); bpy.data.meshes.remove(me)
-                for fx in (-0.32 + 0.0775, -0.32 - 0.0775):
+                for fx in (-0.32 + 0.0755, -0.32 - 0.0755):   # 4 mm proud of the sign's faces, 3 mm into them
                     d = 1 if fx > -0.32 else -1; z0, z1 = rz + 0.08 - h / 2, rz + 0.08 + h / 2
                     ys = [-0.105, -0.035, 0.035, 0.1]; ys = ys if d > 0 else [-v for v in ys]   # read left to right from either end
                     yT, yA, yX, yI = ys
@@ -259,7 +263,13 @@ def build_car(name, lod, taxi):
                     bar(fx, yA - w / 2, z0, yA, z1); bar(fx, yA, z1, yA + w / 2, z0); bar(fx, yA - w / 4, (z0 + z1) / 2, yA + w / 4, (z0 + z1) / 2)
                     bar(fx, yX - w / 2, z0, yX + w / 2, z1); bar(fx, yX - w / 2, z1, yX + w / 2, z0)
                     bar(fx, yI, z0, yI, z1)
-            obj('SignText', lod, ['plastic_black'], letters, smooth=False)
+            st_ = obj('SignText', lod, ['plastic_black'], letters, smooth=False)
+            # v11: crossing strokes used to differ in depth (1.2 mm steps) to keep their faces apart, which still fought from a distance; one
+            # depth and a self union make each letter one closed solid
+            for o in list(bpy.context.selected_objects): o.select_set(False)
+            bpy.context.view_layer.objects.active = st_; st_.select_set(True); bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.intersect_boolean(operation='UNION', use_self=True, solver='EXACT'); bpy.ops.object.mode_set(mode='OBJECT'); st_.select_set(False)
+            bm_ = bmesh.new(); bm_.from_mesh(st_.data); bmesh.ops.recalc_face_normals(bm_, faces=list(bm_.faces)); box_uv(bm_); bm_.to_mesh(st_.data); bm_.free()
             # chequer band along both sides under the beltline
             def checks(bm, colour):
                 sq = 0.046; x0 = -1.05; n = int(2.0 / sq)

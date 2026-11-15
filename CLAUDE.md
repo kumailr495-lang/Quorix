@@ -133,6 +133,10 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - **Crowd**: lobby guests stand at checked spots and walk checked legs between neighbouring spots (npc9.js `millNet`, `mill`, `millBack`;
   legs keep 0.8 m from other spots and from standing staff); `node tools/dev/npc-clear.mjs [seconds]` fails on anyone inside a wall, a prop
   or another person, or stuck.
+- **Taxi arrival (W5)**: the cabin is `tools/blender/cabin.py` -> `taxi_cabin.glb` in the car's frame (Blender +X the nose, +Y the kerb;
+  the eye, wheel, screen, meter and dial glows sit where intro9.js expects them); the driver is a seated Person (people.js `STAFF.driver`,
+  `GEST.drive`, intro9.js `DRV`); the passing light is intro9.js `_sweep` (the street's light list -> iLs and the street's `uScreen`,
+  `uScreenN`, restored in `_ride(false)`); wet glass is intro9.js `wetGlass` (drops, wipers in step with the blades); sound9.js `carRain`.
 - Comment lint now also catches member assignments swallowed by a comment (it found `a.walkT = ...` and `this.camera.far = ...`).
 - **Zero z-fighting, nothing floating** (the user, 2026-11-15: "i wont accept disconnected models ... neither will i accept z FIGHTNING").
   The gate is `sh tools/dev/zcheck.sh OUT` (cloud: Playwright + Blender): the engine dumps every reachable eye point and its own meshes, then
