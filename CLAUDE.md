@@ -133,6 +133,8 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - **Crowd**: lobby guests stand at checked spots and walk checked legs between neighbouring spots (npc9.js `millNet`, `mill`, `millBack`;
   legs keep 0.8 m from other spots and from standing staff); `node tools/dev/npc-clear.mjs [seconds]` fails on anyone inside a wall, a prop
   or another person, or stuck.
+- **QA skill**: `.claude/skills/lumiere-qa` (which gate for which change, commands, pass lines, pitfalls). Use it before calling geometry,
+  models, placement, NPC routes or the taxi done.
 - **Taxi arrival (W5)**: the cabin is `tools/blender/cabin.py` -> `taxi_cabin.glb` in the car's frame (Blender +X the nose, +Y the kerb;
   the eye, wheel, screen, meter and dial glows sit where intro9.js expects them); the driver is a seated Person (people.js `STAFF.driver`,
   `GEST.drive`, intro9.js `DRV`); the passing light is intro9.js `_sweep` (the street's light list -> iLs and the street's `uScreen`,
@@ -140,7 +142,8 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - Comment lint now also catches member assignments swallowed by a comment (it found `a.walkT = ...` and `this.camera.far = ...`).
 - **Zero z-fighting, nothing floating** (the user, 2026-11-15: "i wont accept disconnected models ... neither will i accept z FIGHTNING").
   The gate is `sh tools/dev/zcheck.sh OUT` (cloud: Playwright + Blender): the engine dumps every reachable eye point and its own meshes, then
-  `tools/blender/arch/zcheck.py` builds all nine rooms and lists every pair of same-facing faces under 5 mm apart that a player can see
+  `tools/blender/arch/zcheck.py` builds all nine rooms (the Story taxi parked at the kerb; its cabin in a second pass from the back seat)
+  and lists every pair of same-facing faces under 5 mm apart that a player can see
   (BVH rays to the eye points; glass is see-through) from far enough for the depth buffer to merge them (`fight_from`: one plane at any
   distance, 0.5 mm from 20 m, 2 mm from 41 m, 5 mm from 65 m; near 0.1 m, 24-bit). It must print `TOTAL visible coplanar 0, visible close 0`.
   Props: `blender ... --python tools/blender/glb_check.py -- www/models/*.glb` (parts must touch: within 1.5 mm or into each other, and reach

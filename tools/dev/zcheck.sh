@@ -10,6 +10,12 @@ cd "$(dirname "$0")/../.."
 OUT=${1:-/tmp/lumiere-zcheck}; B=${BLENDER:-blender}; mkdir -p "$OUT"
 node tools/dev/export-spec.mjs > /dev/null
 node tools/dev/seethru.mjs "$OUT" --no-static --step 1.0 --dump-points "$OUT/eyes.json"
-node tools/dev/seethru.mjs "$OUT" --no-static --grid --dump-tris "$OUT/engine.json"
+node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi kerb --dump-tris "$OUT/engine.json"
 "$B" --background --factory-startup --python tools/blender/arch/zcheck.py -- --eyes "$OUT/eyes.json" --engine "$OUT/engine.json" --json "$OUT/z.json" \
   2>&1 | grep -vE '^(Blender|Read |$)'
+# v11 W5: the taxi's cabin, seen from the back seat during the Story arrival (never drawn with the taxi's outside)
+node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi cabin --dump-points "$OUT/cabin_eyes.json"
+node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi cabin --dump-tris "$OUT/cabin.json"
+echo "== the taxi's cabin"
+"$B" --background --factory-startup --python tools/blender/arch/zcheck.py -- --engine-only --eyes "$OUT/cabin_eyes.json" --engine "$OUT/cabin.json" \
+  --json "$OUT/zcab.json" 2>&1 | grep -vE '^(Blender|Read |$)'

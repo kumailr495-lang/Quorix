@@ -100,6 +100,17 @@
     return rep;
   };
 
+  // v11 W5: the Story taxi for the z-fighting gate (quick play never shows it): 'kerb' parks it where the arrival leaves it, for the rest of
+  // the session; 'cabin' shows its cabin (the ride's model, its glows and wipers) at the stop instead, and returns eye points round the
+  // back-seat eye (intro9.js SEAT_EYE) for zcheck.py --engine-only
+  st.taxi = (mode) => {
+    const I = window.__lumiere && window.__lumiere.intro; if (!I || !I.mesh) return { ok: false, eyes: [] };
+    I.active = false; I.carOn = true; I._door = 3;
+    if (mode === 'cabin') { I.t = 8.6; I._ride(true); I._place(I.t); } else { I.t = 99; I._ride(false); I._place(I.t); }
+    const eyes = mode !== 'cabin' ? [] : [[0.07, 1.235, -0.6], [0.0, 1.2, -0.5], [0.16, 1.25, -0.7], [-0.12, 1.22, -0.55], [0.07, 1.3, -0.62], [0.24, 1.2, -0.6], [0.07, 1.16, -0.42]]
+      .map(([x, y, z]) => { const v = new T.Vector3(x, y, z).applyMatrix4(I._m); return { tag: 'street:taxi', x: +v.x.toFixed(3), y: +v.y.toFixed(3), z: +v.z.toFixed(3), eye: +v.y.toFixed(3) }; });
+    return { ok: true, eyes };
+  };
   // v11: every mesh the engine adds to the bakes (props, panels, signs, the lift, doors, gates, escalators, seats), as world triangles for
   // tools/blender/arch/zcheck.py --engine (coplanar pairs against each other and against the builder's rooms, kept when a player can see
   // them). Skips the bakes' own shell, glass and glow (the builder's geometry: zcheck builds those itself), people, and see-through or

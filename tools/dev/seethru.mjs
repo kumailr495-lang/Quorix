@@ -3,6 +3,7 @@
 // usage: node tools/dev/seethru.mjs OUT_DIR [--rooms lobby,spine] [--step 1.5] [--px 64] [--limit N] [--no-static] [--views 16] [--zfight] [--assets] [--grid]
 //        [--dump-points FILE]   (writes the eye points as JSON and stops: the input of tools/blender/arch/zcheck.py)
 //        [--dump-tris FILE]     (writes the engine's own meshes as world triangles and stops: zcheck.py --engine)
+//        [--taxi kerb|cabin]    (v11: the Story taxi parked at the kerb, or its cabin at the stop with eye points round the back seat)
 // eye points: every floor cell a player can reach (a flood fill with the game's movement rules) thinned to --step; --grid uses a plain grid
 // writes OUT_DIR/static.json, OUT_DIR/views.json, OUT_DIR/summary.md and PNGs of the worst views (test colours and game look side by side)
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
@@ -33,7 +34,9 @@ if (has('assets')) { const A = await p.evaluate(() => window.__st.assets()); fs.
   for (const l of log.filter((x) => x.includes('[assetcheck]')).slice(0, 10)) console.log('  ', l); await b.close(); srv.close(); process.exit(0); }
 if (!has('no-static')) { const S = await p.evaluate(() => window.__st.static()); fs.writeFileSync(path.join(OUT, 'static.json'), JSON.stringify(S, null, 1)); console.log('static done', ((Date.now() - t0) / 1000).toFixed(0) + ' s'); }
 if (!has('grid')) { const t1 = Date.now(), R = await p.evaluate(() => window.__st.reach()); console.log('reachable cells', R.cells, JSON.stringify(R.per), ((Date.now() - t1) / 1000).toFixed(0) + ' s'); fs.writeFileSync(path.join(OUT, 'reach.json'), JSON.stringify(R)); }
-if (opt('dump-tris', null)) { const D = await p.evaluate(() => window.__st.dumpTris()); fs.writeFileSync(opt('dump-tris'), JSON.stringify(D)); console.log('engine triangles', D.n, 'meshes', D.names.length, '->', opt('dump-tris')); await b.close(); srv.close(); process.exit(0); }   // v11: input of tools/blender/arch/zcheck.py --engine
+const TX = opt('taxi', null) ? await p.evaluate((m) => window.__st.taxi(m), opt('taxi')) : null;   // v11 W5: --taxi kerb|cabin (zcheck.sh)
+if (TX && opt('dump-points', null) && opt('taxi') === 'cabin') { fs.writeFileSync(opt('dump-points'), JSON.stringify(TX.eyes)); console.log('taxi cabin eye points', TX.eyes.length, '->', opt('dump-points')); await b.close(); srv.close(); process.exit(0); }
+if (opt('dump-tris', null)) { if (TX) await new Promise((r) => setTimeout(r, 600)); const D = await p.evaluate(() => window.__st.dumpTris()); fs.writeFileSync(opt('dump-tris'), JSON.stringify(D)); console.log('engine triangles', D.n, 'meshes', D.names.length, '->', opt('dump-tris')); await b.close(); srv.close(); process.exit(0); }   // v11: input of tools/blender/arch/zcheck.py --engine
 const rooms = opt('rooms', null), pts = await p.evaluate((o) => window.__st.points(o), { rooms: rooms ? rooms.split(',') : null, step: +opt('step', 1.5), limit: +opt('limit', 0) || 0, reach: !has('grid') });
 console.log('points', pts.length); const px = +opt('px', 64), res = [];
 if (opt('dump-points', null)) { fs.writeFileSync(opt('dump-points'), JSON.stringify(pts)); console.log('eye points written to', opt('dump-points')); await b.close(); srv.close(); process.exit(0); }   // v11: tools/blender/arch/zcheck.py tests every coplanar pair's visibility from these

@@ -193,6 +193,7 @@ export class Intro {
   // per frame: the taxi (also after you have control), and the camera while the scene runs
   update(dt, player) {
     if (!this.carOn) return; this.t += dt; this._dt = dt; const t = this.t, [cx, cz] = this._place(t);
+    if (this.inCar && !this.driver) this._mkDriver();   // the avatars may finish loading after the ride starts: seat him as soon as they do
     if (this.driver && this.inCar) {   // lit like the cabin: its ambient, and the passing light as the key
       const D = this._dl, S = this._sw, a = (i) => Math.min(0.55, this._H[i] * 0.5 + NIGHT[i] * 1.6); D.amb.setRGB(a(0), a(1), a(2)); D.key.copy(S.c).multiplyScalar(Math.min(0.75, S.k * 0.8)); D.dir.copy(S.dir);
       this.rig.updateMatrixWorld(true); this.driver.update(dt, D); }

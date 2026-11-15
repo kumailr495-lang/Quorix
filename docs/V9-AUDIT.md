@@ -403,7 +403,14 @@ frames, draw calls and triangles, with a short code to paste back. The exact com
   - *The taxi's body*: the rims sit 2 mm into the tyres (they stood 3 mm clear), knuckles and struts hold the wheels to the body (it stood
     on nothing), the TAXI letters are one solid each (crossing strokes stepped 1.2 mm in depth), one folded triangle removed from the far
     LOD: 69 parts, one group, no coplanar faces, no folds.
-  - *Validation (headless):* glb_check on both models (one group each, no floating parts, coplanar faces or folds); zcheck.sh still
-    TOTAL visible coplanar 0, visible close 0; run-tests.sh passes; the Story arrival runs through to control on the pavement at (0.6,
-    25.2) with the cabin hidden and the taxi shown; ride renders at 1, 2.6, 4.6 and 7.4 s.
+  - *Validation (headless):* glb_check on both models (one group each, no floating parts, coplanar faces or folds). The z-fighting gate
+    did not see the taxi at first (quick play never shows it): zcheck.sh now parks the taxi at the kerb for the world pass (262,364 engine
+    triangles) and checks the cabin in a second pass from seven eye points round the back seat; both print TOTAL visible coplanar 0,
+    visible close 0. run-tests.sh passes; the Story arrival runs through to control on the pavement at (0.6, 25.2) with the cabin hidden
+    and the taxi shown; ride renders at 1, 2.6, 4.6 and 7.4 s. The light sweep cannot tint the street: its shell's screen-light factor
+    is 0 (`uLmK.z`), and no street surface carries screen light per vertex.
+  - Fixed after review: the driver is seated as soon as the avatars are ready (he could stay missing if they loaded after the ride began);
+    the cabin went through the optimiser (32,346 -> 20,680 triangles, 942 -> 710 KB, still one group, no fights or folds).
+  - Limits: the cabin model loads at boot in every mode, Quick included (710 KB); the five glass panes run a per-pixel drop shader over
+    much of the screen, a fill-rate cost not measured on a Mali GPU; the Low preset's ride was not rendered.
   - Not tested on a phone. Renders are headless SwiftShader (the light sweep and the drops move; stills show one moment).
