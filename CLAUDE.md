@@ -73,8 +73,8 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `threejs-api-*`, `animation-forge`). Sources, licences, why chosen and which skill for which job: `docs/SKILLS.md`.
 - `.claude/hooks/session-start.sh` installs Kiln 1.6.0, acorn and gltf-transform, Blender 5.2.3 (headless, with software EGL for EEVEE) and
   graphify 0.9.99 in cloud sessions, builds the code graph, and exports `KILN_WS`, `ACORN`, `BLENDER`.
-- Blender: start at `blender-core` (24 `blender-*` skills for Blender 5.2 with headless scripts: `blender-clothing`, `blender-facial-shapekeys`,
-  `blender-hair-grooming`, `blender-character-rigging` for people; `blender-asset-qa` before any model is done), plus `blender-web-3d` and the
+- Blender: start at `blender-core` (18 `blender-*` skills for Blender 5.2 with headless scripts; `blender-asset-qa` before any model is
+  done; the people, hair, clothing, weather and terrain ones were removed on 2026-11-15: docs/SKILLS.md), plus `blender-web-3d` and the
   kept cc-blender recipes (modeling, materials, lighting, cameras, export, uv-texturing, pro-workflow). No Blender MCP here: run them as
   `blender --background --python` scripts.
 - Code graph: `graphify-out/` is rebuilt at session start (code only, `.graphifyignore`). Before grepping for a codebase question run

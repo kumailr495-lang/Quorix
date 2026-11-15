@@ -90,7 +90,7 @@ Measured first: this session's transcript (every Skill call and every SKILL.md r
 
 ## Using them (rule for every future task)
 - Finding code: `graphify query` / `graphify explain` first, then read only the located lines. Writing code: `karpathy-guidelines`.
-- Blender work: `blender-core` first; people: `blender-clothing`, `blender-facial-shapekeys`, `blender-hair-grooming`; every model: `blender-asset-qa`.
+- Blender work: `blender-core` first; every model: `blender-asset-qa`, then the project's own gates (`lumiere-qa`).
 - Phone feedback about speed or flicker: `threejs-performance`, `threejs-debugging`, then `threejs-api-performance`.
 - Shaders, materials, video picture: `threejs-shaders`, `threejs-materials`, `threejs-api-textures`.
 - People and crowd motion: `threejs-animation`, `threejs-api-animation`; particles (popcorn, money): `threejs-particles`.
@@ -111,9 +111,9 @@ Each repo was cloned into the scratchpad, its SKILL.md and scripts read, and its
 | pbakaus/impeccable | Apache-2.0 | Installed (`impeccable`) without its launcher scripts, which download a prebuilt engine binary. Docs only. |
 | heydamir/unslop | CC BY 4.0 | Installed (`unslop`). Credit: heydamir, CC BY 4.0. |
 | nextlevelbuilder/ui-ux-pro-max-skill | MIT | Installed (`ui-ux-pro-max`, local CSV search). Its `design` skill (logo generation through a paid image API) not installed. |
-| cathrynlavery/diagram-design | MIT | Installed (`diagram-design`): flow and plan diagrams. |
-| Nutlope/hallmark | MIT | Installed (`hallmark`); its optional image step needs a paid key and is not used. |
-| RobLe3/cc-blender-skill | MIT | Restored `quality-refinement-autoloop`, `reference-look-calibration`, `animation-quality-gate`. |
+| cathrynlavery/diagram-design | MIT | Installed, removed 2026-11-15 (business diagrams, never used). |
+| Nutlope/hallmark | MIT | Installed, removed 2026-11-15 (website design; its image step needs a paid key). |
+| RobLe3/cc-blender-skill | MIT | Restored `quality-refinement-autoloop`, `reference-look-calibration`; `animation-quality-gate` removed 2026-11-15. |
 | DietrichGebert/ponytail | MIT | Installed `ponytail`, `ponytail-audit`, `ponytail-review`. |
 | emilkowalski/skills (apple-design) | MIT | Installed as `apple-motion` (the Notion page's motion skill). |
 | dickwu/apple-design-skill | none; text is Apple's HIG | Used for this session only from `~/.claude/skills/apple-look`, not committed (Apple's copyright). |
@@ -125,3 +125,12 @@ Each repo was cloned into the scratchpad, its SKILL.md and scripts read, and its
 | guillaumemeyer/watermarks-remover | n/a | Not used: removing other people's watermarks conflicts with their licences. |
 | genai-skills/prima-memory | n/a | Not installed: the repository is not public (clone asks for a login). |
 | growthforge pre-launch security kit (PDF) | n/a | Read (fetched without its token). Applicable checks applied in v9: no secrets in the app, no wildcard CORS, path traversal blocked in the local server, debug off. Finding: the APK signing key is committed in this public repository (see the v9 release notes). |
+
+## 2026-11-15: project skill added, nine removed (the user: "you do everything, don't ask me")
+
+- **Added `lumiere-qa`** (written here, no outside source): which gate to run for which change (z-fighting, loose parts, folds, near
+  misses, walks, crowd, prop overlaps), the commands, the pass lines and the pitfalls found in v11.
+- **Removed**, with the reason: `blender-environment-kits` (no terrain or modular biome kits here), `blender-weather-fx` (the rain is the
+  engine's, not Blender's), `blender-hair-grooming`, `blender-facial-shapekeys`, `blender-clothing`, `blender-character-rigging` (the
+  people are ready-made Rocketbox avatars since v9.3), `animation-quality-gate` (no Blender animation renders), `diagram-design`,
+  `hallmark` (see the table above). Restore any of them with `git checkout 1e125c2 -- .claude/skills/<name>`.

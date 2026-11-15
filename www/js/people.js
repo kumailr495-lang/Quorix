@@ -252,7 +252,6 @@ const GEST = {
   wave: (t) => ({ R: [-0.32 + 0.07 * Math.sin(t * 9), 0.52, 0.1], from: 'chest' }),
   read: (t) => ({ L: [0.08, -0.12, 0.3], R: [-0.08, -0.12, 0.3], from: 'chest', head: 0.38 }),
   hold: (t) => ({ R: [-0.17, -0.3, 0.24], from: 'chest' }),
-  drive: (t) => ({ L: [0.16, -0.08 + 0.005 * Math.sin(t * 0.9), 0.245], R: [-0.16, -0.08 - 0.005 * Math.sin(t * 0.9), 0.245], from: 'chest' }),   // v11 hands at ten to two on the taxi's wheel (measured: intro9.js DRV)
   type: (t) => ({ L: [0.13, -0.3, 0.4 + 0.02 * Math.sin(t * 13)], R: [-0.13, -0.3, 0.4 + 0.02 * Math.sin(t * 11 + 2)], from: 'chest', head: 0.25 }),
   point: (t) => ({ R: [-0.42, 0.06, 0.48], from: 'chest' }),
   give: (t) => ({ R: [-0.08, -0.12, 0.46], from: 'chest' }),
@@ -261,6 +260,8 @@ const GEST = {
   scoop: (t) => ({ R: [-0.12, -0.34 + 0.08 * Math.abs(Math.sin(t * 3)), 0.44], from: 'chest', head: 0.32 }),
 };
 export const GESTURES = Object.keys(GEST);
+// v12: a gesture defined by its user (the taxi driver's hands on the wheel, in the car's own measures: intro9.js). from: 'root' = targets in the person's own frame, not from the chest
+export function setGesture(name, fn) { GEST[name] = fn; }
 class Rig {   // bone lookups for one skeleton
   constructor(root) { const B = {}; root.traverse((o) => { if (o.isBone) B[o.name] = o; }); this.B = B; this.root = root;
     // v9 (phone feedback: "their eyes spin"): the clips don't animate the eyes or the jaw, so the per-frame turn added up; they now
@@ -277,7 +278,7 @@ function poseLayers(rig, frame, g, gt, w, face) {
   if (spec && w > 0) {
     if (spec.lean) rotWorld(B.spine_02, new THREE.Quaternion().setFromAxisAngle(_fx, spec.lean), w);
     if (spec.tilt) rotWorld(B.Head, new THREE.Quaternion().setFromAxisAngle(_fz, spec.tilt), w);
-    B.spine_03.getWorldPosition(_o); _o.addScaledVector(_fy, 0.05);
+    if (spec.from === 'root') _o.setFromMatrixPosition(frame); else { B.spine_03.getWorldPosition(_o); _o.addScaledVector(_fy, 0.05); }
     for (const side of ['L', 'R']) { const v = spec[side]; if (!v) continue; const s = side === 'L' ? 'l' : 'r';
       _t.copy(_o).addScaledVector(_fx, v[0]).addScaledVector(_fy, v[1]).addScaledVector(_fz, v[2]);
       const ua = B['upperarm_' + s]; ua.getWorldPosition(_p); _p.addScaledVector(_fx, side === 'L' ? 0.25 : -0.25).addScaledVector(_fy, -0.35).addScaledVector(_fz, -0.1);

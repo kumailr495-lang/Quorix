@@ -10,15 +10,18 @@ import * as THREE from 'three';
 import { assetGeometry } from './assets.js';
 import { Acc, toGeometry } from './geom.js';
 import { MAT } from './library.js';
-import { Person, staffRecipe, sitHeight, DATA } from './people.js';
+import { Person, staffRecipe, DATA, setGesture } from './people.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, ease = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
 const KERB = 26.0, LANE_IN = 27.85, LANE_OUT = 31.6, STOP_X = 1.6, ROAD_Y = -0.15, ARRIVE = 8.4, LEAVE = 1e9;
 const SHOT_B = 9.3, END_T = SHOT_B + 4.3;   // the door opens and you get out; hand over control
 export const ARRIVAL = { x: 0.6, z: 25.2, yaw: 0, pitch: 0.06 };   // on the pavement at the kerb, facing the doors
 // the cabin, in the car's own frame (nose +z, kerb side +x, up +y, origin on the road under the middle): what you see from the back seat
 const SEAT_EYE = [0.07, 1.235, -0.6];   // leaning a little to the middle: you see the road between the front headrests
-// v11 the driver (people.js, look 'driver', gesture 'drive'): sitting on the right-hand front seat, the car's floor at 0.30, its cushion at 0.585
-const DRV = { x: -0.36, y: 0.30, z: 0.47, seat: 0.285, yaw: 0 };
+// v12 the driver (people.js, look 'driver'), seated by the car's measures (tools/blender/cabin.py: cushion top 0.455, roof lining 1.41, the
+// wheel's centre at y 0.97, z 0.56, its rim 0.185 m, leaning 23 degrees). The avatars stand 1.9 m with their hair: he is scaled to 1.67 m,
+// his hip 0.33 m behind the wheel, his back along the seat's 18 degrees, his head 5 cm under the lining; hands at ten to two on the rim
+const DRV = { x: -0.36, y: 0.30, z: 0.28, seat: 0.155, scale: 0.88, recline: 0.3, yaw: 0 };   // measured: hip at z 0.23, head top 1.36, upper back on the seat's back
+setGesture('drive', (t) => { const w = 0.004 * Math.sin(t * 0.9); return { L: [0.16, 0.77 + w, 0.559 - DRV.z], R: [-0.16, 0.77 - w, 0.559 - DRV.z], from: 'root' }; });
 const NIGHT = [0.17, 0.15, 0.13];   // the cabin's own glow at night (the dash, the meter); the street light comes in through the glass
 const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 function cabin() {
@@ -102,10 +105,10 @@ function pane(P) {   // four corners in the car's frame (bottom left, bottom rig
 function wetGlass() {
   const mk = (side, size, pv = [0, 0, 0, 0]) => new THREE.ShaderMaterial({ vertexShader: GLASS_V, fragmentShader: GLASS_F, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     uniforms: { uT: { value: 0 }, uSide: { value: side }, uSpeed: { value: 0 }, uSize: { value: new THREE.Vector2(...size) }, uPv: { value: new THREE.Vector4(...pv) }, uLit: { value: new THREE.Color(0.5, 0.45, 0.4) }, uTint: { value: new THREE.Color(0.012, 0.016, 0.02) } } });
-  const out = [new THREE.Mesh(pane([[-0.70, 0.965, 1.06], [0.70, 0.965, 1.06], [0.62, 1.43, 0.45], [-0.62, 1.43, 0.45]]), mk(0, [1.40, 0.77], [0.38, 0.02, 1.06, 0.02]))];   // the wipers pivot at x -0.32 and 0.36
+  const out = [new THREE.Mesh(pane([[-0.70, 0.965, 1.06], [0.70, 0.965, 1.06], [0.62, 1.405, 0.45], [-0.62, 1.405, 0.45]]), mk(0, [1.40, 0.77], [0.38, 0.02, 1.06, 0.02]))];   // the wipers pivot at x -0.32 and 0.36
   for (const x of [0.765, -0.765]) {
-    out.push(new THREE.Mesh(pane([[x, 0.965, -1.10], [x, 0.965, -0.03], [x, 1.40, -0.03], [x, 1.40, -1.10]]), mk(1, [1.07, 0.435])));
-    out.push(new THREE.Mesh(pane([[x, 0.965, 0.07], [x, 0.965, 1.00], [x, 1.40, 0.43], [x, 1.40, 0.07]]), mk(1, [0.93, 0.435])));
+    out.push(new THREE.Mesh(pane([[x, 0.965, -1.10], [x, 0.965, -0.03], [x, 1.38, -0.03], [x, 1.38, -1.10]]), mk(1, [1.07, 0.415])));
+    out.push(new THREE.Mesh(pane([[x, 0.965, 0.07], [x, 0.965, 1.00], [x, 1.38, 0.43], [x, 1.38, 0.07]]), mk(1, [0.93, 0.415])));
   }
   for (const m of out) { m.frustumCulled = false; m.renderOrder = 5; m.name = 'taxi-glass'; }
   return out;
@@ -134,7 +137,8 @@ export class Intro {
   // the driver: a seated person with hands on the wheel, riding in the cabin's frame (made when the avatars are ready)
   _mkDriver() {
     if (this.driver || !this.modelled || !DATA.ready) return this.driver;
-    const rec = staffRecipe('driver', 23), p = new Person(rec, { staff: true }); p.s.sit = 1; p.s.drop = DRV.seat - sitHeight(rec); p.s.recline = 0.2; p.gestT = 'drive'; p.snap = true;
+    const rec = staffRecipe('driver', 23), p = new Person(rec, { staff: true }); p.scale = DRV.scale; p.model.scale.setScalar(DRV.scale);
+    p.s.sit = 1; p.s.drop = DRV.seat - p.sitH * DRV.scale; p.s.recline = DRV.recline; p.gestT = 'drive'; p.snap = true;
     p.group.position.set(DRV.x, DRV.y, DRV.z); p.group.rotation.y = DRV.yaw; this.rig.add(p.group); this.driver = p; return p;
   }
   // the strongest street light reaching the cabin through the glass (lights above the windows' sill; spots and signs by their aim): it

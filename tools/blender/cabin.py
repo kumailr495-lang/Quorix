@@ -143,46 +143,50 @@ def build():
     part('GearKnob', L0, 'leather_black', lambda bm: lathe(bm, [(1e-4, 0.705)] + [(0.026 * math.sin(math.pi * k / 10), 0.73 - 0.026 * math.cos(math.pi * k / 10)) for k in range(1, 10)] + [(1e-4, 0.756)], 16), T(0.42, 0, 0))
     for x in (0.19, 0.29): lbl.cup_holder(L0, x, 0.0, 0.64, 'chrome', r_out=0.04, name='Cup')
     part('Armrest', L0, 'leather_tan', pillow((0.36, 0.20, 0.06), e=0.015, crown=[(2, 1, 0.008)]), T(-0.02, 0, 0.665))
-    # front seats: base, cushion with side bolsters, back leaning 11.5 degrees with wings, its moulded rear shell and a map pocket (what the
-    # back seat sees), a headrest on two chrome posts
+    # front seats, on a real sedan's package (v12, the user: "his head is sticking up through the taxi"): the roof lining is at 1.41 (3.5 cm of
+    # roof under the taxi's 1.445 m top; it was 1.438), a 1.67 m man (the avatars are 1.9 m: the driver is scaled, intro9.js DRV) measures
+    # 0.80 m from his hip joint to the top of his head with the back at 18 degrees, his hip sits 8 cm over the compressed cushion and he
+    # needs 6 cm of headroom, so the cushion's top is at 0.455 (it was 0.60); the hip point sits 0.40 m behind the wheel's centre (it was 0.18), so the
+    # seat is 12 cm further back. Base, cushion with side bolsters, back leaning 18 degrees with wings, its upholstered rear shell and a map
+    # pocket (what the back seat sees), a headrest on two chrome posts
     for s in (1, -1):
         y0 = 0.36 * s
-        part('SeatBase', L0, 'plastic_dark', rb((0.44, 0.44, 0.17), 0.02, at=(0.44, y0, 0.375)))
-        part('Cushion', L0, 'leather_tan', pillow((0.50, 0.50, 0.13), e=0.02, crown=[(2, 1, 0.012)], shape=lambda c: (c.x, c.y, c.z + 0.022 * (abs(c.y) / 0.25) ** 4 * (c.z > 0)), extra=((), (-0.16, 0.16), ())), T(0.44, y0, 0.52))
-        B = T(0.145, y0, 0.86) @ RY(-11.5)
+        part('SeatBase', L0, 'plastic_dark', rb((0.44, 0.44, 0.09), 0.02, at=(0.32, y0, 0.345)))
+        part('Cushion', L0, 'leather_tan', pillow((0.50, 0.50, 0.13), e=0.02, crown=[(2, 1, 0.012)], shape=lambda c: (c.x, c.y, c.z + 0.022 * (abs(c.y) / 0.25) ** 4 * (c.z > 0)), extra=((), (-0.16, 0.16), ())), T(0.32, y0, 0.385))
+        B = T(0.025, y0, 0.744) @ RY(-18)
         part('Back', L0, 'leather_tan', pillow((0.12, 0.50, 0.64), e=0.02, crown=[(0, 1, 0.015)], shape=lambda c: (c.x + 0.03 * (abs(c.y) / 0.25) ** 4, c.y, c.z), extra=((), (-0.16, 0.16), (-0.1, 0.1))), B)
         part('BackShell', L0, 'leather_tan', pillow((0.03, 0.46, 0.56), e=0.012, crown=[(0, -1, 0.006)]), B @ T(-0.065, 0, -0.01))
         part('Pocket', L0, 'leather_chocolate', pillow((0.02, 0.36, 0.20), e=0.008), B @ T(-0.084, 0, -0.14))
-        part('Headrest', L0, 'leather_tan', pillow((0.11, 0.27, 0.20), e=0.05, crown=[(0, 1, 0.012), (0, -1, 0.006), (2, 1, 0.01)], levels=2), T(0.04, y0, 1.30) @ RY(-6))
-        for dy in (-0.07, 0.07): part('Post', L0, 'chrome', lambda bm: lathe(bm, [(1e-4, 1.12), (0.0065, 1.12), (0.0065, 1.24), (1e-4, 1.24)], 10), T(0.06, y0 + dy, 0))
+        part('Headrest', L0, 'leather_tan', pillow((0.11, 0.27, 0.20), e=0.05, crown=[(0, 1, 0.012), (0, -1, 0.006), (2, 1, 0.01)], levels=2), T(-0.117, y0, 1.181) @ RY(-10))
+        for dy in (-0.07, 0.07): part('Post', L0, 'chrome', lambda bm: lathe(bm, [(1e-4, 1.00), (0.0065, 1.00), (0.0065, 1.13), (1e-4, 1.13)], 10), T(-0.085, y0 + dy, 0))
     # the rear bench you sit on
     part('RearBase', L0, 'plastic_dark', rb((0.48, 1.38, 0.17), 0.02, at=(-0.76, 0, 0.375)))
     part('RearCushion', L0, 'leather_tan', pillow((0.52, 1.40, 0.14), e=0.02, crown=[(2, 1, 0.012)], creases=[(2, 1, 1, -0.23, 0.008, 0.012), (2, 1, 1, 0.23, 0.008, 0.012)]), T(-0.76, 0, 0.525))
     part('RearBack', L0, 'leather_tan', pillow((0.13, 1.40, 0.62), e=0.02, crown=[(0, 1, 0.015)]), T(-1.07, 0, 0.87) @ RY(-14))
     # doors: a card each (front and rear), the soft ledge under the glass, an armrest, a chrome pull, a speaker; the switch pack up front
     for s in (1, -1):
-        for xc, ln, arm in ((0.545, 0.96, 0.45), (-0.625, 1.20, -0.55)):
+        for xc, ln, arm in ((0.545, 0.96, 0.36), (-0.625, 1.20, -0.55)):
             part('DoorCard', L0, 'plastic_matte', rb((ln, 0.05, 0.66), 0.012, at=(xc, s * 0.76, 0.61)))
             part('Ledge', L0, 'leather_black', rb((ln - 0.02, 0.08, 0.04), 0.012, at=(xc, s * 0.745, 0.945)))
             part('DoorArm', L0, 'leather_tan', pillow((0.40, 0.08, 0.05), e=0.015, crown=[(2, 1, 0.006)]), T(arm, s * 0.71, 0.74))
             part('Pull', L0, 'chrome', rb((0.12, 0.03, 0.025), 0.008, at=(arm + 0.12, s * 0.725, 0.84)))
             part('Speaker', L0, 'plastic_dark', lambda bm: lathe(bm, [(1e-4, 0.0), (0.075, 0.0), (0.075, 0.012), (1e-4, 0.012)], 24), frame((arm, s * 0.741, 0.45), (0, -s, 0)))   # 6 mm into the card, 6 mm proud
-        part('Switches', L0, 'gloss_black', rb((0.10, 0.05, 0.012), 0.004, at=(0.52, s * 0.71, 0.767)))
+        part('Switches', L0, 'gloss_black', rb((0.10, 0.05, 0.012), 0.004, at=(0.43, s * 0.71, 0.767)))
     # pillars, roof rails, headliner, header over the windscreen, sun visors, grab handles, rear-view mirror, the map light
     for s in (1, -1):
-        part('APillar', L0, 'plastic_matte', lambda bm, s=s: rod(bm, (1.03, s * 0.70, 0.94), (0.41, s * 0.62, 1.445), 0.035, 10))
+        part('APillar', L0, 'plastic_matte', lambda bm, s=s: rod(bm, (1.03, s * 0.70, 0.94), (0.41, s * 0.62, 1.417), 0.035, 10))
         part('BPillar', L0, 'plastic_matte', rb((0.10, 0.08, 0.56), 0.02, at=(0.02, s * 0.735, 1.19)))
         part('CPillar', L0, 'plastic_matte', rb((0.30, 0.09, 0.56), 0.03, at=(-1.25, s * 0.72, 1.19)))
-        part('RoofRail', L0, 'headliner', rb((2.0, 0.09, 0.07), 0.02, at=(-0.45, s * 0.705, 1.44)))
-        part('Visor', L0, 'headliner', pillow((0.16, 0.36, 0.022), e=0.008), T(0.36, s * 0.36, 1.436))
-        part('GripBar', L0, 'plastic_dark', rb((0.20, 0.03, 0.03), 0.012, at=(-0.55, s * 0.665, 1.38)))
-        for dx in (-0.08, 0.08): part('GripLeg', L0, 'plastic_dark', rb((0.02, 0.02, 0.055), 0.006, at=(-0.55 + dx, s * 0.665, 1.4025)))   # 5 mm inside the bar's sides, 1 cm inside its ends
-    part('Headliner', L0, 'headliner', pillow((1.95, 1.40, 0.04), e=0.015, crown=[(2, -1, 0.012)]), T(-0.48, 0, 1.47))
-    part('Header', L0, 'headliner', rb((0.16, 1.36, 0.06), 0.02, at=(0.45, 0, 1.44)))
-    part('MirrorStalk', L0, 'plastic_dark', rb((0.03, 0.03, 0.08), 0.008, at=(0.50, 0, 1.42)))
-    part('MirrorBody', L0, 'plastic_dark', rb((0.035, 0.24, 0.07), 0.02, at=(0.50, 0, 1.36)))
-    part('MirrorGlass', L0, 'gloss_black', rb((0.008, 0.22, 0.055), 0.015, at=(0.4805, 0, 1.36)))   # at night it shows the dark rear window
-    part('MapLight', L0, 'plastic_matte', rb((0.10, 0.16, 0.02), 0.006, at=(0.30, 0, 1.445)))
+        part('RoofRail', L0, 'headliner', rb((2.0, 0.09, 0.07), 0.02, at=(-0.45, s * 0.705, 1.412)))
+        part('Visor', L0, 'headliner', pillow((0.16, 0.36, 0.022), e=0.008), T(0.36, s * 0.36, 1.408))
+        part('GripBar', L0, 'plastic_dark', rb((0.20, 0.03, 0.03), 0.012, at=(-0.55, s * 0.665, 1.352)))
+        for dx in (-0.08, 0.08): part('GripLeg', L0, 'plastic_dark', rb((0.02, 0.02, 0.055), 0.006, at=(-0.55 + dx, s * 0.665, 1.3745)))   # 5 mm inside the bar's sides, 1 cm inside its ends
+    part('Headliner', L0, 'headliner', pillow((1.95, 1.40, 0.04), e=0.015, crown=[(2, -1, 0.012)]), T(-0.48, 0, 1.442))
+    part('Header', L0, 'headliner', rb((0.16, 1.36, 0.06), 0.02, at=(0.45, 0, 1.412)))
+    part('MirrorStalk', L0, 'plastic_dark', rb((0.03, 0.03, 0.08), 0.008, at=(0.50, 0, 1.392)))
+    part('MirrorBody', L0, 'plastic_dark', rb((0.035, 0.24, 0.07), 0.02, at=(0.50, 0, 1.332)))
+    part('MirrorGlass', L0, 'gloss_black', rb((0.008, 0.22, 0.055), 0.015, at=(0.4805, 0, 1.332)))   # at night it shows the dark rear window
+    part('MapLight', L0, 'plastic_matte', rb((0.10, 0.16, 0.02), 0.006, at=(0.30, 0, 1.417)))
     # beyond the glass: the scuttle under the wipers and the yellow bonnet on the taxi's own lines
     part('Scuttle', L0, 'plastic_dark', rb((0.10, 1.46, 0.04), 0.01, at=(1.11, 0, 0.92)))
     for y in (-0.32, 0.36): part('WiperPivot', L0, 'plastic_dark', lambda bm: lathe(bm, [(1e-4, 0.95), (0.02, 0.95), (0.02, 0.982), (0.012, 0.99), (1e-4, 0.99)], 16), T(1.04, y, 0))   # the blades (intro9.js) turn on these

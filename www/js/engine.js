@@ -3,9 +3,12 @@
 import * as THREE from 'three';
 import { G } from './materials.js';
 export const PRESETS = {
-  low: { scale: 0.75, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 5, aa: false },
-  medium: { scale: 1.0, people: 10, crowd: 140, peopleFar: 12, detail: 1, seatLod: 7, aa: true },
-  high: { scale: 1.3, people: 16, crowd: 220, peopleFar: 16, detail: 1, seatLod: 9, aa: true },
+  // v12 (the user: "cheap and blocky"): scale is canvas pixels per CSS pixel. A 720 x 1600 phone has 2 device pixels per CSS pixel, so the
+  // old ceilings (0.75 / 1.0 / 1.3) drew a quarter to a half of the screen's pixels and the browser stretched them. The ceiling is now the
+  // screen's own pixels on High and three quarters of them on Medium; `start` is where the governor begins, `floor` where it stops
+  low: { scale: 1.0, start: 0.8, floor: 0.6, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 5, aa: false },
+  medium: { scale: 1.5, start: 1.15, floor: 0.8, people: 10, crowd: 140, peopleFar: 12, detail: 1, seatLod: 7, aa: true },
+  high: { scale: 2.0, start: 1.5, floor: 1.0, people: 16, crowd: 220, peopleFar: 16, detail: 1, seatLod: 9, aa: true },
 };
 const LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0];
 export class Engine {
@@ -19,14 +22,15 @@ export class Engine {
     // (phone feedback: "items I hold go through walls when I go close")
     this.vm = new THREE.Scene(); this.vmCam = new THREE.PerspectiveCamera(60, 1, 0.02, 5);
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 160); this.camera.rotation.order = 'YXZ'; this.scene.add(this.camera);
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2); this.maxScale = Math.min(P.scale, this.dpr); this.minScale = Math.max(0.5, this.maxScale * 0.6); this.scale = this.maxScale;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2); this.maxScale = Math.min(P.scale, this.dpr); this.minScale = Math.min(P.floor, this.maxScale); this.scale = Math.min(P.start, this.maxScale);
     const fs = +new URLSearchParams(location.search).get('fixscale'); this.fixed = fs > 0; if (this.fixed) this.scale = this.maxScale = this.minScale = fs;
-    this.ema = 16.7; this._tAdj = 0; this._calm = 0; this.stats = { scale: this.scale, ms: 16.7, cpu: 0, fps: 60 };
+    this.ema = 16.7; this._tAdj = 0; this._calm = 0; this._born = performance.now(); this._ceil = 0; this._ceilUntil = 0; this._trial = false; this.stats = { scale: this.scale, ms: 16.7, cpu: 0, fps: 60 };
     this.resize(); addEventListener('resize', () => this.resize()); addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250));
   }
   applySettings(s) {
-    this.settings = s; const P = PRESETS[s.graphics] || PRESETS.medium; this.preset = P; this.maxScale = Math.min(P.scale, this.dpr); this.minScale = Math.max(0.5, this.maxScale * 0.6);
-    if (!this.fixed) this.scale = this.maxScale; this.auto = s.autoRes !== false; G.uDetail.value = P.detail; G.uBright.value = s.brightness ?? 1;
+    this.settings = s; const P = PRESETS[s.graphics] || PRESETS.medium, same = this.preset === P; this.preset = P; this.maxScale = Math.min(P.scale, this.dpr); this.minScale = Math.min(P.floor, this.maxScale);
+    // a new preset starts its own search for the sharpest smooth level; other settings keep the level found
+    if (!this.fixed && !same) { this.scale = Math.min(P.start, this.maxScale); this._ceil = 0; this._born = performance.now(); } this.auto = s.autoRes !== false; G.uDetail.value = P.detail; G.uBright.value = s.brightness ?? 1;
     // v8 switches: LOD distances, render distance, reflection strength (Off also drops the reflection lookup: Materials.setReflections)
     this.lodK = { aggressive: 0.65, normal: 1, far: 1.45 }[s.lod] || 1; this.viewFar = { near: 95, medium: 120, far: 170 }[s.viewDist] || 120;   // near >= the 84 m bridge: at 70 m its far end was cut off
     this.camera.far = this.viewFar; this.camera.updateProjectionMatrix();   // v11: this sat at the end of the comment above (the setting did nothing)
@@ -43,18 +47,26 @@ export class Engine {
   governor(dt, now) {
     this.ema = this.ema * 0.94 + Math.min(dt, 0.2) * 1000 * 0.06; this.stats.ms = this.ema; this.stats.fps = 1000 / this.ema; if (this.fixed || this.auto === false) return;
     const lv = LEVELS.filter((l) => l >= this.minScale - 1e-6 && l <= this.maxScale + 1e-6), i = lv.reduce((b, l, k) => (Math.abs(l - this.scale) < Math.abs(lv[b] - this.scale) ? k : b), 0);
-    this._slow = this.ema > 36 ? (this._slow || now) : 0; this._fast = this.ema < 21 ? (this._fast || now) : 0;
+    this._slow = this.ema > 36 ? (this._slow || now) : 0; this._fast = this.ema < 19 ? (this._fast || now) : 0;
+    // v12: a step up is a trial. If the new level cannot hold about 50 frames a second for 2.5 s it goes back, and that level is not
+    // tried again for five minutes (v5.10 hopped between levels for ever). In the first minute the search is quick (4 s of fast frames
+    // per step, mostly behind the menu), afterwards slow (12 s), so the picture settles at the sharpest level the phone holds smoothly
+    if (this._trial && !this._show) { if (now - this._tAdj > 9000) this._trial = false; else { this._lag = this.ema > 21.5 ? (this._lag || now) : 0;
+      if (this._lag && now - this._lag > 2500 && i > 0) { this._ceil = lv[i - 1]; this._ceilUntil = now + 300000; this.scale = lv[i - 1]; this._tAdj = now; this._trial = false; this._lag = 0; this._fast = 0; this.resize(); } return; } }
     // v10 (the user: glitches and stutters during the film): every resize reallocates the canvas, a visible hitch. In show mode the scale
     // settles in its first 12 s (the countdown, lights going down: steps down after 1.5 s of slowness, 2.5 s apart) and is then frozen
     // until you leave your seat; it never climbs back mid-film
     if (this._show) { if (now - this._showAt > 12000 || now - this._tAdj < 2500) return; if (this._slow && now - this._slow > 1500 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); } return; }
-    if (now - this._tAdj < 6000) return;
+    const early = now - (this._born || 0) < 60000, capped = this._ceil && now < this._ceilUntil && i < lv.length - 1 && lv[i + 1] > this._ceil + 1e-6;
+    if (now - this._tAdj < (early ? 3000 : 6000)) return;
     if (this._slow && now - this._slow > 2000 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); }
-    else if (this._fast && now - this._fast > 12000 && i < lv.length - 1) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this.resize(); }
+    else if (this._fast && now - this._fast > (early ? 4000 : 12000) && i < lv.length - 1 && !capped) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this._trial = true; this._lag = 0; this.resize(); }
   }
   // v9 show mode: watching the film you get the screen's full resolution (up to the device's pixels); the governor still steps down
   // if the phone can't keep up, and leaving your seat returns to the preset
-  showMode(on) { if (on === !!this._show) return; this._show = on; this._showAt = performance.now(); const P = this.preset; this.maxScale = on ? Math.min(this.dpr, Math.max(P.scale, P.scale < 0.9 ? 0.9 : P.scale < 1.2 ? 1.3 : 1.5)) : Math.min(P.scale, this.dpr); if (!this.fixed) { this.scale = this.maxScale; this._tAdj = performance.now(); this.resize(); } }
+  showMode(on) { if (on === !!this._show) return; this._show = on; this._showAt = performance.now(); const P = this.preset; if (on) this._preShow = this.scale;
+    this.maxScale = on ? Math.min(this.dpr, Math.max(P.scale, 1.5)) : Math.min(P.scale, this.dpr);
+    if (!this.fixed) { this.scale = on ? this.maxScale : Math.min(this._preShow || P.start, this.maxScale); this._trial = false; this._tAdj = performance.now(); this.resize(); } }   // leaving the seat: back to the level the governor had found
   // seated in a hall the view narrows a little (like your attention does), so the screen fills the picture the way it does in a real cinema
   setZoom(z, dt) { const k = this.zoom || 1, n = k + (z - k) * (1 - Math.exp(-dt * 2.5)); if (Math.abs(n - k) < 1e-4) return; this.zoom = n; this.camera.fov = this.baseFov * n; this.camera.updateProjectionMatrix(); }
   render() {
