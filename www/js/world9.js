@@ -4,6 +4,7 @@
 // screens and the curtains. Floors are computed from building.js and hallmath.js (the numbers the model was built from); the walls you
 // bump into are read from the shell itself (every near-vertical face, cut into 0.5 m height bands), so you collide with what you see.
 import * as THREE from 'three';
+import { dressStreet } from './street12.js';
 import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
@@ -400,7 +401,10 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const x of [-3.1, 3.1]) add('street', 'planter_tall', x, 0, FACADE_Z + 0.95);   // v11: palms flank the doors (the half-height light pillars are gone)
   for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
-  for (let x = -40; x <= 40; x += 10) if (Math.abs(x) > 12) add('street', 'lamp_post', x, 0, 25.55, Math.PI / 2, { collide: 0.05 });   // v11 (the user: "a pole is blocking the view"): none in front of the canopy
+  // v11 (the user: "a pole is blocking the view"): none in front of the canopy. v12: each lamp's arm reaches over the kerb (it lay along the
+  // pavement); the light and its halo are at the head (tools/blender/arch/rooms.py); a clipped hedge stands in every bronze trough
+  for (let x = -40; x <= 40; x += 10) if (Math.abs(x) > 12) add('street', 'lamp_post', x, 0, 25.55, 0, { collide: 0.05 });
+  for (let x = -44; x < 42; x += 8) if (Math.abs(x) >= 4) add('street', 'hedge_block', x, 0, 24.9, 0, { collide: false, ground: false });
   for (let x = -14; x <= 14; x += 2.8) if (Math.abs(x) > 2.5) add('street', 'bollard_light', x, 0, 25.6);
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
@@ -578,12 +582,16 @@ void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = step(0.0, q.x) 
 }`;
 export function pictureMat(map = null) { return new THREE.ShaderMaterial({ vertexShader: PIC_VERT, fragmentShader: PIC_FRAG, uniforms: { map: { value: map }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uSrc: { value: new THREE.Vector4(0, 0, 1, 1) }, uGain: { value: 1 }, uExt: { value: null }, uExtOn: { value: 0 }, uExtW: { value: 10 } } }); }   // uSrc: the part of the frame shown (the 270 hall's split mode shows the middle third)
 // ---------------------------------------------------------------- reflections: one 128 px cube per room
-const PROBE_AT = { lobby: [0, 2.2, 6], street: [0, 2, 24], wc: [27, 1.6, -4], corridor: [0, L1 + 1.6, -18], spine: [0, 1.6, -40] };
+const PROBE_AT = { lobby: [0, 2.2, 6], street: [0, 2.2, 30], wc: [27, 1.6, -4], corridor: [0, L1 + 1.6, -18], spine: [0, 1.6, -40] };
+// v12: rooms whose reflections are looked up where the ray meets the room's own box (materials.js uEnvBox): the street (a wet road that
+// mirrors the shop fronts where they stand) and the lobby (polished marble under the ceiling's lights); min x y z, max x y z
+const ENV_BOX = { street: [STREET.x0 - 6, -0.2, STREET.z0, STREET.x1 + 6, 26, STREET.far], lobby: [LOBBY.x0, 0, LOBBY.z0, LOBBY.x1, LOBBY.ceil, LOBBY.z1] };
 function captureReflections(world, engine) {
   if (!('USE_ENV' in world.mats.defines)) return; const r = engine.renderer, prev = new Set(world.vis); G.uEnvOn.value = 0;
   for (const key in world.rooms) { const room = world.rooms[key], h = HALL_BY_KEY[key], at = h ? (() => { const w = h.toWorld(0, h.depthIn - 1.6); return [w.x, h.y0 + h.total + 1.6, w.z]; })() : PROBE_AT[key] || [0, 2, 0];
-    const rt = new THREE.WebGLCubeRenderTarget(128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }), cam = new THREE.CubeCamera(0.1, 90, rt);
-    cam.position.set(...at); world.setVisibility(key, at[0], at[1], at[2], true); cam.update(r, engine.scene); room.U.uEnvMap.value = rt.texture; room.probe = { rt, at }; }
+    const bx = ENV_BOX[key], rt = new THREE.WebGLCubeRenderTarget(bx ? 256 : 128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }), cam = new THREE.CubeCamera(0.1, bx ? 130 : 90, rt);
+    cam.position.set(...at); world.setVisibility(key, at[0], at[1], at[2], true); cam.update(r, engine.scene); room.U.uEnvMap.value = rt.texture; room.probe = { rt, at };
+    if (bx) { room.U.uEnvPos.value.set(...at); room.U.uEnvMin.value.set(bx[0], bx[1], bx[2]); room.U.uEnvMax.value.set(bx[3], bx[4], bx[5]); room.U.uEnvBox.value = 1; } }
   G.uEnvOn.value = 1; world.vis = prev;
 }
 // ---------------------------------------------------------------- the world
@@ -716,6 +724,8 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
       for (const m of c.meshes) { const cw = m.userData.cw || 1; m.scale.x = 1 - (1 - 0.5 / cw) * e; m.scale.z = 1 + 2.2 * e; m.visible = c.open < 0.995; } } }
   };
   world.probe = (x, y, z) => { const r = world.rooms[roomAt(x, y, z) || 'lobby']; return r ? r.lights.probe(x, y, z) : null; };
+  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* the pictures fall back to system type */ } }
+  world.street = dressStreet(world);   // v12: the far side's windows, shop signs and interiors, halos, the night sky (before the reflections are taken)
   onProgress(0.9, 'reflections'); await texturesReady(); await frame(); captureReflections(world, engine);
   world.setVisibility('lobby', 0, 0, 8, true); for (const h of world.halls) { const w = h.cfg.toWorld(0, h.cfg.depthIn); h.updateLOD({ position: { x: w.x, z: w.z } }, true); }
   onProgress(1, 'ready');

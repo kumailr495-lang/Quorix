@@ -109,6 +109,7 @@ void main() {
 const LIT_FRAG = COMMON_FRAG + `
 uniform float uSoft;
 uniform sampler2DArray uMaps; uniform sampler2DArray uNmaps; uniform samplerCube uEnvMap; uniform float uEnvK; uniform float uEnvOn; uniform float uReflK; uniform float uWet; uniform sampler2D uNoise;
+uniform vec3 uEnvPos; uniform vec3 uEnvMin; uniform vec3 uEnvMax; uniform float uEnvBox;
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm; varying vec2 vVar;
 #ifdef USE_LIGHTMAP
 uniform sampler2D uLmH; uniform sampler2D uLmF; uniform sampler2D uLmS; uniform vec3 uLmK; uniform float uHouse; uniform float uFix; uniform vec3 uScreen; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform vec3 uScreenN; uniform float uFill; varying vec2 vLm;
@@ -203,8 +204,11 @@ void main() {
   float lumL = dot(Lt, vec3(0.3, 0.55, 0.15));
 #ifdef USE_ENV
   vec3 R = reflect(-V, N);
+  // v12: the reflection is looked up where the ray meets the room's box (the cube is taken at one point: without this a sign's
+  // reflection lay metres from the sign), and a wet surface mirrors what is lit even where it is dark itself (a wet road at night)
+  if (uEnvBox > 0.5) { vec3 Rs = R + vec3(1e-5); vec3 ta = (uEnvMax - vWP) / Rs; vec3 tb = (uEnvMin - vWP) / Rs; vec3 tm = max(ta, tb); R = vWP + Rs * min(min(tm.x, tm.y), tm.z) - uEnvPos; }
   vec3 env = textureLod(uEnvMap, R, rough * 6.0).rgb;
-  col += env * envBRDF(F0, rough, NoV) * clamp(lumL * uEnvK, 0.0, 2.0) * uSpec * uEnvOn * uReflK;
+  col += env * envBRDF(F0, rough, NoV) * mix(clamp(lumL * uEnvK, 0.0, 2.0), 1.1, wet * 0.9) * uSpec * uEnvOn * uReflK;
 #else
   col += alb * uMetal * Lt * (0.45 + 0.5 * pow(1.0 - NoV, 2.0));
   col += envBRDF(F0, rough, NoV) * lumL * uSpec * 0.35 * pow(max(reflect(-V, N).y, 0.0), 6.0);
@@ -364,7 +368,7 @@ void main() { vec3 V = normalize(cameraPosition - vWP); float f = pow(1.0 - abs(
 }`;
 // one set of per-room uniforms: house light level (1 = full), screen light colour, fixed lights multiplier, environment tint for sheen
 // uWet: rain on up-facing surfaces (the street): darker, glossier paving with puddles
-export function roomUniforms() { return { uSoft: { value: 0.7 }, uFill: { value: 0 }, uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uScreenN: { value: new THREE.Vector3(0, 0.29, -0.96) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
+export function roomUniforms() { return { uEnvPos: { value: new THREE.Vector3() }, uEnvMin: { value: new THREE.Vector3(-1, -1, -1) }, uEnvMax: { value: new THREE.Vector3(1, 1, 1) }, uEnvBox: { value: 0 }, uSoft: { value: 0.7 }, uFill: { value: 0 }, uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uScreenN: { value: new THREE.Vector3(0, 0.29, -0.96) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
 export class Materials {
   constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; if (opts.macro) this.defines.USE_MACRO = ''; if (opts.detile) this.defines.USE_DETILE = ''; this._lit = new WeakMap(); }
   // one library material per room (and one for its instanced props): every material id draws in the same call (texture arrays)

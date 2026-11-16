@@ -4,6 +4,7 @@ curves, rounded corners and diamond relief), spine (G: the bright way out with a
 Palettes: docs/V9-DESIGN.md section 5 (3-4 colours per space, dim variants of the same hues)."""
 import math, random
 from geo import Acc, Glow, Lights, MAT, lin, mix, cross, sub
+import street12
 
 def build(key, S):
     fn = globals().get('build_' + key)
@@ -956,16 +957,21 @@ def build_street(S):
     FC = {k: lin(v) for k, v in S['PALETTE']['facade'].items()}; B = {k: lin(v) for k, v in S['PALETTE']['brand'].items()}
     acc, glow = Acc(), Glow(); lit = Lights([x0, F, x1, ST['z1']], 30.0); rnd = random.Random(9)
     k, r0, r1, far = ST['kerb'], ST['road'][0], ST['road'][1], ST['far']
-    slab(acc, x0, F, x1, k - 0.18, 0.0, 0.3, MAT['plaza'], lin('#b8b0a4'))
-    acc.box(x0, -0.45, k, x1, -0.15, r0, MAT['asphalt'], lin('#4a4a4e'))   # drop-off bay, 15 cm below the kerb
-    acc.box(x0, -0.3, k - 0.18, x1, 0.0, k, MAT['granite'], lin('#9a958e'))   # kerb stone
-    acc.box(x0, -0.15 - 0.3, r0, x1, -0.15, r1, MAT['asphalt'], lin('#3a3a3e'), top=MAT['asphalt'], topcol=lin('#3c3c40'))
-    acc.box(x0, -0.3, r1, x1, 0.0, far, MAT['paving'], lin('#a49d93'))
-    for i in range(int((x1 - x0) / 4)):   # lane dashes and the bay's yellow edge
-        xx = x0 + 2 + i * 4.0; glow_facing(glow, (xx, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 + 0.06), (xx, -0.148, (r0 + r1) / 2 + 0.06), (0, 1, 0), lin('#d8d4c8'), 0.25)   # they faced down
+    # v12: the ground and both sides run 6 m past the walkable street, up to the buildings that close its ends (street12.py)
+    E = 6.0; xw, xe = x0 - E, x1 + E; extras = {}
+    slab(acc, xw, F, xe, k - 0.18, 0.0, 0.3, MAT['plaza'], lin('#b8b0a4'))
+    acc.box(xw, -0.45, k, xe, -0.15, r0, MAT['asphalt'], lin('#4a4a4e'))   # drop-off bay, 15 cm below the kerb
+    acc.box(xw, -0.3, k - 0.18, xe, 0.0, k, MAT['granite'], lin('#9a958e'))   # kerb stone
+    acc.box(xw, -0.15 - 0.3, r0, xe, -0.15, r1, MAT['asphalt'], lin('#3a3a3e'), top=MAT['asphalt'], topcol=lin('#3c3c40'))
+    acc.box(xw, -0.3, r1 + 0.18, xe, 0.0, far, MAT['paving'], lin('#a49d93'))
+    acc.box(xw, -0.3, r1, xe, 0.0, r1 + 0.18, MAT['granite'], lin('#9a958e'))   # the far kerb stone
+    for i in range(int((xe - xw) / 4)):   # lane dashes
+        xx = xw + 2 + i * 4.0
+        if -4.4 < xx + 1.1 < 4.4: continue   # the crossing in front of the entrance
+        glow_facing(glow, (xx, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 + 0.06), (xx, -0.148, (r0 + r1) / 2 + 0.06), (0, 1, 0), lin('#d8d4c8'), 0.25)   # they faced down
     # the cinema's facade: sandstone cladding with dark bronze bands and gold fins (no white panels, photo 10)
     fz = F + 0.4
-    for (a, b) in ((x0, -22.0), (22.0, x1)):   # to the street's ends: nothing open behind the facade line
+    for (a, b) in ((xw, -22.0), (22.0, xe)):   # to the street's ends: nothing open behind the facade line
         acc.box(a, -0.3, F, b, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
         for yy in (4.2, 8.4, 12.6):
             acc.box(a, yy, F + 0.4, b, yy + 0.35, F + 0.55, MAT['powder'], FC['bronze'])
@@ -1032,24 +1038,45 @@ def build_street(S):
         if i % 4 == 0: lit.spot((xx, 5.15, zz), lin('#ffd8a8'), 2.4, 8, 'h', (0, -1, 0), 25, 60)
     for xx in (-6.2, 6.2):
         acc.cyl(xx, F + 5.2, 0.24, 0.0, 5.2, MAT['lacquer'], lin('#0b0b0d'), n=24)
-    # planters and bollards along the kerb, street lamps
+    # v12 planters along the kerb: a bronze trough with a brass lip and soil 6 cm under it (the hedge on each is an engine prop,
+    # world9.js; they were stone crates with a flat green top)
     for xx in range(-44, 42, 8):
         if abs(xx) < 4: continue
-        acc.box(xx - 0.9, 0.0, k - 1.6, xx + 0.9, 0.55, k - 0.6, MAT['stone'], FC['sandstone'])
-        acc.box(xx - 0.82, 0.55, k - 1.52, xx + 0.82, 0.62, k - 0.68, MAT['carpet'], lin('#2e4a2a'))
-    for xx in range(-42, 42, 14):
-        if xx == 0: continue   # v11 (the user: "a pole is blocking the view" of the entrance): nothing stands on the entrance axis
-        acc.cyl(xx, k - 0.4, 0.07, 0.0, 6.2, MAT['powder'], FC['bronze'], n=12)
-        acc.box(xx - 0.25, 6.2, k - 0.65, xx + 0.25, 6.35, k - 0.15, MAT['powder'], FC['bronze'])
-        lit.spot((xx, 6.15, k - 0.4), lin('#ffdcae'), 9.0, 16, 'h', (0, -1, 0.15), 40, 75)
-        glow.quad((xx - 0.2, 6.199, k - 0.6), (xx + 0.2, 6.199, k - 0.6), (xx + 0.2, 6.199, k - 0.2), (xx - 0.2, 6.199, k - 0.2), lin('#ffdcae'), 2.2)
-    # the block across the street: brick with lit windows and shopfronts (a backdrop)
-    acc.box(x0, -0.3, far, x1, 16.0, far + 0.6, MAT['brick'], lin('#7a4a38'))
-    for xx in range(int(x0) + 2, int(x1) - 2, 4):
-        for fl in range(1, 4):
-            yy = fl * 4.0 + 0.8; lit_ = rnd.random() < 0.6
-            glow.quad((xx + 2.2, yy, far - 0.01), (xx + 0.6, yy, far - 0.01), (xx + 0.6, yy + 2.0, far - 0.01), (xx + 2.2, yy + 2.0, far - 0.01), lin('#ffcf8f') if lit_ else lin('#24303a'), 1.4 if lit_ else 0.15)
-        glow.quad((xx + 3.6, 0.3, far - 0.01), (xx + 0.4, 0.3, far - 0.01), (xx + 0.4, 2.8, far - 0.01), (xx + 3.6, 2.8, far - 0.01), mix(lin('#ffd9a8'), lin('#9ad0ff'), rnd.random() * 0.4), 0.9)
+        pa, pb, pz0, pz1 = xx - 0.9, xx + 0.9, k - 1.6, k - 0.6; br = lin('#3a2c20')
+        acc.box(pa, 0.0, pz0, pb, 0.50, pz0 + 0.06, MAT['powder'], br); acc.box(pa, 0.0, pz1 - 0.06, pb, 0.50, pz1, MAT['powder'], br)
+        acc.box(pa, 0.0, pz0 + 0.06, pa + 0.06, 0.50, pz1 - 0.06, MAT['powder'], br); acc.box(pb - 0.06, 0.0, pz0 + 0.06, pb, 0.50, pz1 - 0.06, MAT['powder'], br)   # between the long walls
+        acc.box(pa + 0.04, 0.0, pz0 + 0.04, pb - 0.04, 0.44, pz1 - 0.04, MAT['concrete'], lin('#2a2018'))                       # soil
+        acc.box(pa - 0.015, 0.47, pz0 - 0.015, pb + 0.015, 0.515, pz0 + 0.075, MAT['brass'], FC['gold']); acc.box(pa - 0.015, 0.47, pz1 - 0.075, pb + 0.015, 0.515, pz1 + 0.015, MAT['brass'], FC['gold'])
+        acc.box(pa - 0.015, 0.47, pz0 + 0.075, pa + 0.075, 0.515, pz1 - 0.075, MAT['brass'], FC['gold']); acc.box(pb - 0.075, 0.47, pz0 + 0.075, pb + 0.015, 0.515, pz1 - 0.075, MAT['brass'], FC['gold'])
+    # street lamps: the posts are engine props (world9.js, every 10 m, none before the canopy); here their light, on both pavements
+    halos = extras.setdefault('halos', [])
+    for xx in range(-40, 41, 10):
+        if abs(xx) > 12:
+            lit.spot((xx, 5.7, k + 0.45), lin('#ffdcae'), 9.0, 16, 'h', (0, -1, -0.1), 40, 76)   # under the head, 0.9 m out over the kerb
+            halos.append({'x': xx, 'y': 5.76, 'z': k + 0.45, 'r': 1.5, 'c': list(lin('#ffdcae')), 'k': 0.55})
+    for xx in range(-37, 46, 15):   # the far pavement's lamps: a slim post with an arm over the road (none on the entrance's axis)
+        acc.cyl(xx, r1 + 0.6, 0.06, 0.0, 6.4, MAT['powder'], lin('#1a1a1e'), n=10)
+        acc.box(xx - 0.04, 6.3, r1 - 1.0, xx + 0.04, 6.4, r1 + 0.62, MAT['powder'], lin('#1a1a1e'))
+        acc.box(xx - 0.11, 6.22, r1 - 1.45, xx + 0.11, 6.36, r1 - 0.98, MAT['powder'], lin('#1a1a1e'))
+        glow.quad((xx - 0.08, 6.215, r1 - 1.4), (xx + 0.08, 6.215, r1 - 1.4), (xx + 0.08, 6.215, r1 - 1.04), (xx - 0.08, 6.215, r1 - 1.04), lin('#ffe2b8'), 3.0)
+        lit.spot((xx, 6.1, r1 - 1.2), lin('#ffdcae'), 8.0, 16, 'h', (0, -1, 0), 42, 78)
+        halos.append({'x': xx, 'y': 6.2, 'z': r1 - 1.22, 'r': 1.4, 'c': list(lin('#ffdcae')), 'k': 0.5})
+    # the block across the street and the buildings at the street's ends (v12: real buildings with shopfronts, tools/blender/arch/street12.py)
+    atlas, _ = street12.far_side(acc, glow, lit, S, extras)
+    # the cinema's blade sign: a fin standing 2 m off the stone band beside the canopy, LUMIERE down both faces (atlas quads, a chase of
+    # bulbs round them), a brass edge and cap
+    bx0, bx1, bz0, bz1, by0, by1 = -10.95, -10.55, F + 0.38, F + 2.45, 6.1, 15.4
+    acc.box(bx0, by0, bz0, bx1, by1, bz1, MAT['lacquer'], lin('#0b0d14'))
+    acc.box(bx0 - 0.03, by0 - 0.03, bz1 - 0.02, bx1 + 0.03, by1 + 0.03, bz1 + 0.04, MAT['brass'], FC['gold'])
+    acc.box(bx0 - 0.03, by1 - 0.02, bz0, bx1 + 0.03, by1 + 0.06, bz1 - 0.02, MAT['brass'], FC['gold'])
+    for yb in (10.2, 13.0): acc.box(bx0 + 0.1, yb, F + 0.2, bx1 - 0.1, yb + 0.14, bz0 + 0.02, MAT['powder'], FC['bronze'])
+    for s_, xf in ((1, bx1 + 0.012), (-1, bx0 - 0.012)):
+        atlas.append({'k': 'blade', 'v': 'lumiere', 'x': xf, 'y': (by0 + by1) / 2, 'z': (bz0 + bz1) / 2 + 0.01, 'yaw': s_ * math.pi / 2, 'w': bz1 - bz0 - 0.12, 'h': by1 - by0 - 0.1, 'e': 1.35, 'fx': 2})
+    halos.append({'x': (bx0 + bx1) / 2, 'y': 10.8, 'z': F + 1.5, 'r': 3.4, 'c': list(lin('#ffcf8a')), 'k': 0.16})
+    lit.line((bx1 + 0.3, by0, F + 1.4), (bx1 + 0.3, by1, F + 1.4), lin('#ffcf8a'), 0.5, 7.0, 'f', (1, -0.2, 0.3))
+    # road markings from the atlas: the crossing in front of the doors, TAXI in the bay
+    atlas.append({'k': 'road', 'v': 'zebra', 'x': 0.0, 'y': -0.144, 'z': (r0 + r1) / 2, 'yaw': 0, 'w': 5.2, 'h': r1 - r0 - 0.5, 'e': 0.16, 'flat': 1})
+    atlas.append({'k': 'road', 'v': 'taxi', 'x': 9.0, 'y': -0.144, 'z': (k + r0) / 2, 'yaw': 0, 'w': 5.0, 'h': 1.5, 'e': 0.14, 'flat': 1})
     lit.ambient(lin('#30384a'), lin('#141418'), 0.06, 'h')
     # v9.1 (the user: "the theatre's outside texture", "empty spaces"): lit poster cases on the facade's flanks at eye level (bronze frames,
     # a gooseneck spot over each), warm uplights washing the stone cladding every 4 m, so the building reads at night
@@ -1061,9 +1088,10 @@ def build_street(S):
         panels.append({'id': 'poster_' + films[i] + '_f' + str(i), 'x': xx, 'y': pyc, 'z': zf + 0.086, 'yaw': 0, 'w': pw, 'h': ph, 'emit': 1})
         acc.box(xx - 0.02, pyc + ph / 2 + 0.1, zf + 0.08, xx + 0.02, pyc + ph / 2 + 0.14, zf + 0.6, MAT['powder'], FC['bronze'])
         lit.spot((xx, pyc + ph / 2 + 0.12, zf + 0.6), lin('#ffe3be'), 1.6, 5, 'h', (0, -1, -0.35), 25, 50)
-    for xx in [x0 + 2.0 + 4.0 * i for i in range(int((x1 - x0) / 4.0))]:
+    for xx in [xw + 2.0 + 4.0 * i for i in range(int((xe - xw) / 4.0))]:
         if abs(xx) < 22.5: continue   # the glass front has the canopy
         lit.spot((xx, 0.15, F + 0.75), lin('#ffd2a0'), 2.2, 14, 'h', (0, 1, -0.12), 12, 30)
         acc.box(xx - 0.12, 0.0, F + 0.62, xx + 0.12, 0.12, F + 0.86, MAT['powder'], lin('#1a1a1c'))
         glow.quad((xx - 0.08, 0.121, F + 0.66), (xx - 0.08, 0.121, F + 0.82), (xx + 0.08, 0.121, F + 0.82), (xx + 0.08, 0.121, F + 0.66), lin('#ffd2a0'), 1.6)
-    return acc, glow, lit, {'panels': panels}
+    extras['panels'] = panels
+    return acc, glow, lit, extras

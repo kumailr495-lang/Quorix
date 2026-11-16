@@ -313,6 +313,7 @@ async function boot() {
     for (const h of world.halls) if (h.room.group.visible) h.updateLOD(cam, false, engine.preset.seatLod * (engine.lodK || 1));
     together.frame(dt); crowd.update(dt, now, player, world.vis); shows.update(dt, now, r, world.vis);
     const lvl = sound.level(); shows.spread += (clamp(((lvl ?? -60) + 30) / 18) - shows.spread) * Math.min(1, dt * 2); director.update(dt, now, lvl, shows.lum);
+    if (world.street) world.street.update(dt, cam);
     sparks.update(dt); rain.mesh.visible = !intro.inCar; if (world.rooms.street.group.visible && !intro.inCar) rain.update(now / 1000, cam);   // no rain falls inside the taxi
     // the film follows you: through the hall's doors, quieter and duller outside
     audT -= dt; if (audT <= 0) { audT = 0.25; let want = null; for (const h of world.halls) if (shows.isOn(h.id) && shows.get(h.id).pic) { const a = h.key === r ? 1 : world.vis.has(h.key) ? 0.22 : 0; if (a > 0 && (!want || a > want.a)) want = { a, h }; }
