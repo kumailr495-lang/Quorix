@@ -370,16 +370,19 @@ void main() { vec3 V = normalize(cameraPosition - vWP); float f = pow(1.0 - abs(
 // uWet: rain on up-facing surfaces (the street): darker, glossier paving with puddles
 export function roomUniforms() { return { uEnvPos: { value: new THREE.Vector3() }, uEnvMin: { value: new THREE.Vector3(-1, -1, -1) }, uEnvMax: { value: new THREE.Vector3(1, 1, 1) }, uEnvBox: { value: 0 }, uSoft: { value: 0.7 }, uFill: { value: 0 }, uHouse: { value: 1 }, uScreen: { value: new THREE.Color(0, 0, 0) }, uScreenD: { value: new THREE.Color(0, 0, 0) }, uScreenX: { value: new THREE.Vector2(0, 1) }, uScreenN: { value: new THREE.Vector3(0, 0.29, -0.96) }, uFix: { value: 1 }, uEnv: { value: new THREE.Color(0.25, 0.22, 0.2) }, uGlow: { value: 1 }, uEnvMap: { value: null }, uEnvK: { value: 1 }, uWet: { value: 0 } }; }
 export class Materials {
-  constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; if (opts.macro) this.defines.USE_MACRO = ''; if (opts.detile) this.defines.USE_DETILE = ''; this._lit = new WeakMap(); }
+  constructor(opts = {}) { G.uNoise.value = noiseTexture(); this.all = []; this.renderer = opts.renderer || null; this.texSize = opts.texSize || 512; this.defines = {}; if (opts.normalMaps !== false) this.defines.USE_NMAP = ''; if (opts.reflections !== false) this.defines.USE_ENV = ''; if (opts.macro) this.defines.USE_MACRO = ''; if (opts.detile) this.defines.USE_DETILE = ''; this._lit = new WeakMap();
+    // v12 heroOnly (the medium preset): only the rooms marked U.hero look up reflections (the street's wet road, the lobby's polished floor);
+    // the halls and corridors, dark and matt, keep the cheaper shader
+    this.heroOnly = !!opts.heroOnly; }
   // one library material per room (and one for its instanced props): every material id draws in the same call (texture arrays)
   // bake (lightmap.js): the room's solid mesh reads its light from Cycles light maps (house; halls add fixed and screen layers)
   litRoom(U, inst = false, bake = null) {
     let per = this._lit.get(U); if (!per) this._lit.set(U, per = {}); const key = bake ? 'l' : inst ? 'i' : 's'; if (per[key]) return per[key];
-    const A = libArrays(this.renderer, this.texSize, 'USE_NMAP' in this.defines), defines = { ...this.defines }, lm = {};
+    const A = libArrays(this.renderer, this.texSize, 'USE_NMAP' in this.defines), defines = { ...this.defines }, lm = {}; if (this.heroOnly && !U.hero) delete defines.USE_ENV;
     if (bake) { const [h, f, s] = bake.maps; defines.USE_LIGHTMAP = ''; if (bake.hall) defines.LM_HALL = ''; if (bake.hall && U.uSpill) defines.LM_SPILL = '';
       Object.assign(lm, { uLmH: { value: h }, uLmF: { value: f || h }, uLmS: { value: s || h }, uLmK: { value: new THREE.Vector3(...bake.scale) } }); }
     const m = mk(LIT_VERT, LIT_FRAG, { ...G, ...U, ...lm, uMaps: { value: A.a }, uNmaps: { value: A.n || A.a }, uP: { value: PARAMS } }, { defines });
-    m.name = 'lit-' + key; per[key] = m; return this._t(m);
+    m.name = 'lit-' + key; m.userData.hero = !!U.hero; per[key] = m; return this._t(m);
   }
   litFor(U, geo, inst = false) { return this.litRoom(U, inst); }
   staticMat(U) { return this._t(mk(STATIC_VERT, STATIC_FRAG, { ...G, ...U })); }
@@ -396,5 +399,6 @@ export class Materials {
   crowdMat(U) { return this._t(mk(CROWD_VERT, CROWD_FRAG, { ...G, uHouse: U.uHouse, uScreen: U.uScreen })); }
   _t(m) { this.all.push(m); return m; }
   // Settings > Reflections Off drops the reflection lookup from every lit material (one recompile; Soft/Full only scale it, G.uReflK)
-  setReflections(on) { if (('USE_ENV' in this.defines) === !!on) return; if (on) this.defines.USE_ENV = ''; else delete this.defines.USE_ENV; for (const m of this.all) { if (!m.defines || !m.name || !m.name.startsWith('lit-')) continue; if (on) m.defines.USE_ENV = ''; else delete m.defines.USE_ENV; m.needsUpdate = true; } }
+  setReflections(on, heroOnly = this.heroOnly) { if (('USE_ENV' in this.defines) === !!on && heroOnly === this.heroOnly) return; this.heroOnly = heroOnly; if (on) this.defines.USE_ENV = ''; else delete this.defines.USE_ENV;
+    for (const m of this.all) { if (!m.defines || !m.name || !m.name.startsWith('lit-')) continue; const want = on && (!heroOnly || m.userData.hero); if (('USE_ENV' in m.defines) === want) continue; if (want) m.defines.USE_ENV = ''; else delete m.defines.USE_ENV; m.needsUpdate = true; } }
 }

@@ -1076,8 +1076,10 @@ def build_street(S):
     lit.line((bx1 + 0.3, by0, F + 1.4), (bx1 + 0.3, by1, F + 1.4), lin('#ffcf8a'), 0.5, 7.0, 'f', (1, -0.2, 0.3))
     # road markings from the atlas: the crossing in front of the doors, TAXI in the bay
     atlas.append({'k': 'road', 'v': 'zebra', 'x': 0.0, 'y': -0.144, 'z': (r0 + r1) / 2, 'yaw': 0, 'w': 5.2, 'h': r1 - r0 - 0.5, 'e': 0.16, 'flat': 1})
-    atlas.append({'k': 'road', 'v': 'taxi', 'x': 9.0, 'y': -0.144, 'z': (k + r0) / 2, 'yaw': 0, 'w': 5.0, 'h': 1.5, 'e': 0.14, 'flat': 1})
-    lit.ambient(lin('#30384a'), lin('#141418'), 0.06, 'h')
+    atlas.append({'k': 'road', 'v': 'taxi', 'x': 9.0, 'y': -0.144, 'z': (k + r0) / 2, 'yaw': math.pi, 'w': 5.0, 'h': 1.5, 'e': 0.14, 'flat': 1})   # read from the cinema's pavement
+    # v12 (the user: "make the buildings and the street much more visible"): the night sky's own light, sixteen times what it was. Nothing
+    # outside is black any more: fronts the lamps do not reach are a cool blue with their own shading (the bake multiplies this by AO)
+    lit.ambient(lin('#3a4660'), lin('#1c1c24'), 0.9, 'h')
     # v9.1 (the user: "the theatre's outside texture", "empty spaces"): lit poster cases on the facade's flanks at eye level (bronze frames,
     # a gooseneck spot over each), warm uplights washing the stone cladding every 4 m, so the building reads at night
     panels = [{'id': 'marquee', 'x': 0, 'y': 6.1, 'z': F + 7.11, 'yaw': 0, 'w': 14.0, 'h': 0.9, 'emit': 1}]

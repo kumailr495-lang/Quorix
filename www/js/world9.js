@@ -26,7 +26,7 @@ export const STEP_UP = 0.4, HEAD = 1.75;
 const FILL = { corridor: 0.42, street: 0.03 };
 // v10 softer light per room (materials.js uSoft): how much of the soft curve each room takes; halls less (their dark is the point)
 const SOFT = { lobby: 0.85, corridor: 0.8, spine: 0.75, wc: 0.75, street: 0.6 };
-export const LEVEL = { hallMax: 0.5, hallCurve: 0.5, hallClassic: 0.55, hall270: 0.5, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.25 };
+export const LEVEL = { hallMax: 0.5, hallCurve: 0.5, hallClassic: 0.55, hall270: 0.5, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.3 };
 function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 14) { A[i + 3] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 4] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 5] *= A[i + 7] ? Math.min(k, 10) : k; }
   for (const ch of ['h', 'f']) for (const s of ['up', 'down']) L.amb[ch][s] = L.amb[ch][s].map((v) => v * (ch === 'h' ? k : Math.min(k, 10))); }   // a face lower than STEP_UP above your feet is a step you walk over; above HEAD it is overhead
 
@@ -586,13 +586,14 @@ const PROBE_AT = { lobby: [0, 2.2, 6], street: [0, 2.2, 30], wc: [27, 1.6, -4], 
 // v12: rooms whose reflections are looked up where the ray meets the room's own box (materials.js uEnvBox): the street (a wet road that
 // mirrors the shop fronts where they stand) and the lobby (polished marble under the ceiling's lights); min x y z, max x y z
 const ENV_BOX = { street: [STREET.x0 - 6, -0.2, STREET.z0, STREET.x1 + 6, 26, STREET.far], lobby: [LOBBY.x0, 0, LOBBY.z0, LOBBY.x1, LOBBY.ceil, LOBBY.z1] };
+// Called again when Settings turns reflections on or widens them: rooms that have their cube are left alone.
 function captureReflections(world, engine) {
-  if (!('USE_ENV' in world.mats.defines)) return; const r = engine.renderer, prev = new Set(world.vis); G.uEnvOn.value = 0;
-  for (const key in world.rooms) { const room = world.rooms[key], h = HALL_BY_KEY[key], at = h ? (() => { const w = h.toWorld(0, h.depthIn - 1.6); return [w.x, h.y0 + h.total + 1.6, w.z]; })() : PROBE_AT[key] || [0, 2, 0];
+  if (!('USE_ENV' in world.mats.defines)) return; const r = engine.renderer, prev = new Set(world.vis), room0 = [...prev][0], rtPrev = r.getRenderTarget(); G.uEnvOn.value = 0;
+  for (const key in world.rooms) { const room = world.rooms[key]; if (room.probe || (world.mats.heroOnly && !room.U.hero)) continue; const h = HALL_BY_KEY[key], at = h ? (() => { const w = h.toWorld(0, h.depthIn - 1.6); return [w.x, h.y0 + h.total + 1.6, w.z]; })() : PROBE_AT[key] || [0, 2, 0];
     const bx = ENV_BOX[key], rt = new THREE.WebGLCubeRenderTarget(bx ? 256 : 128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }), cam = new THREE.CubeCamera(0.1, bx ? 130 : 90, rt);
     cam.position.set(...at); world.setVisibility(key, at[0], at[1], at[2], true); cam.update(r, engine.scene); room.U.uEnvMap.value = rt.texture; room.probe = { rt, at };
     if (bx) { room.U.uEnvPos.value.set(...at); room.U.uEnvMin.value.set(bx[0], bx[1], bx[2]); room.U.uEnvMax.value.set(bx[3], bx[4], bx[5]); room.U.uEnvBox.value = 1; } }
-  G.uEnvOn.value = 1; world.vis = prev;
+  G.uEnvOn.value = 1; r.setRenderTarget(rtPrev); world.vis = prev; for (const k in world.rooms) world.rooms[k].group.visible = prev.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => prev.has(k));
 }
 // ---------------------------------------------------------------- the world
 export async function buildWorld(engine, mats, onProgress = () => {}) {
@@ -603,7 +604,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   const X = Object.fromEntries(await Promise.all(keys.map(async (k) => { try { const r = await fetch(`./bake/${k}_x.json`); return [k, r.ok ? await r.json() : null]; } catch (e) { return [k, null]; } })));
   for (const key of keys) {
     onProgress(0.05 + 0.5 * i++ / keys.length, key); await frame();
-    const x = X[key], def = ROOMS[key], U = roomUniforms(), group = new THREE.Group(); group.name = key; engine.scene.add(group);
+    const x = X[key], def = ROOMS[key], U = roomUniforms(), group = new THREE.Group(); group.name = key; engine.scene.add(group); if (key in ENV_BOX) Object.defineProperty(U, 'hero', { value: true });   // not enumerable: U is spread into uniforms
     const lights = new Lights({ ceil: def.ceil || 4, rect: def.rect }); if (x) { lights.L = x.lights.L; lights.shapes = x.lights.shapes; lights.amb = x.lights.amb; }
     const room = { key, def, U, group, lights, x, gain: 1 }; world.rooms[key] = room; U.uFill.value = FILL[key] || 0; U.uSoft.value = SOFT[key] ?? 0.5;
     // spill (materials.js LM_SPILL): a hall samples a small blurred copy of its picture by where a surface is, across and up the screen
@@ -726,7 +727,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   world.probe = (x, y, z) => { const r = world.rooms[roomAt(x, y, z) || 'lobby']; return r ? r.lights.probe(x, y, z) : null; };
   if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* the pictures fall back to system type */ } }
   world.street = dressStreet(world);   // v12: the far side's windows, shop signs and interiors, halos, the night sky (before the reflections are taken)
-  onProgress(0.9, 'reflections'); await texturesReady(); await frame(); captureReflections(world, engine);
+  onProgress(0.9, 'reflections'); await texturesReady(); await frame(); captureReflections(world, engine); world.captureReflections = () => captureReflections(world, engine);
   world.setVisibility('lobby', 0, 0, 8, true); for (const h of world.halls) { const w = h.cfg.toWorld(0, h.cfg.depthIn); h.updateLOD({ position: { x: w.x, z: w.z } }, true); }
   onProgress(1, 'ready');
   return world;

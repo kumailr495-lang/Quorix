@@ -8,14 +8,15 @@
 import * as THREE from 'three';
 import { G, COMMON_FRAG } from './materials.js';
 
-const AW = 2048, AH = 1024, SERIF = "'Cormorant Garamond', 'Times New Roman', serif", SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
-const SHOPS = ['books', 'cafe', 'florist', 'records', 'ramen', 'chemist', 'pixel', 'hotel', 'bakery'];
+const AW = 2048, AH = 2048, SW = 334, SH = 238, SERIF = "'Cormorant Garamond', 'Times New Roman', serif", SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
+const SHOPS = ['books', 'cafe', 'florist', 'records', 'ramen', 'chemist', 'pixel', 'hotel', 'bakery', 'diner', 'jazz', 'gallery'];
 // where each picture lives in the atlas (pixels: x, y, w, h)
 const CELL = {};
-SHOPS.forEach((k, i) => { CELL['shop:' + k] = [(i % 5) * 338 + 2, Math.floor(i / 5) * 242 + 2, 334, 238]; CELL['sign:' + k] = [(i % 3) * 564 + 2, 486 + Math.floor(i / 3) * 74, 560, 70]; });
-for (let i = 0; i < 8; i++) CELL['win:' + i] = [i * 114 + 2, 710, 110, 150];
-Object.assign(CELL, { 'bill:a': [916, 710, 368, 200], 'bill:b': [1288, 710, 404, 136], 'blade:lumiere': [1702, 2, 164, 776], 'blade:hotel': [1872, 2, 132, 728], 'blade:cross': [1872, 736, 100, 100],
-  'road:zebra': [2, 866, 124, 154], 'road:taxi': [132, 866, 420, 126] });
+// a shop's back wall is drawn in a 334 x 238 design space and stored at 506 x 360: you can walk up to the glass (at 334 px it was a blur)
+SHOPS.forEach((k, i) => { CELL['shop:' + k] = [(i % 4) * 510 + 2, Math.floor(i / 4) * 364 + 2, 506, 360]; CELL['sign:' + k] = [(i % 4) * 510 + 2, 1096 + Math.floor(i / 4) * 68, 506, 64]; });
+for (let i = 0; i < 8; i++) CELL['win:' + i] = [310 + i * 114, 1304, 110, 150];
+Object.assign(CELL, { 'bill:a': [1228, 1304, 368, 200], 'bill:b': [1600, 1304, 404, 136], 'blade:lumiere': [2, 1304, 150, 710], 'blade:hotel': [158, 1304, 120, 662], 'blade:cross': [1600, 1446, 100, 100],
+  'road:zebra': [310, 1460, 124, 154], 'road:taxi': [440, 1460, 420, 126], 'blade:diner': [870, 1512, 330, 110], 'blade:jazz': [1228, 1512, 330, 110] });
 
 // ------------------------------------------------------------------ small drawing helpers
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -59,6 +60,29 @@ const SHOP_DRAW = {
   bakery: (g, w, h, R) => { wallFill(g, w, h, '#f4ead6', '#d8c8a8'); const loaf = (gg, x, y, hh) => { const lw = 16 + R() * 14; gg.fillStyle = ['#c88a48', '#b06a30', '#d8a868', '#9a5a28'][Math.floor(R() * 4)]; gg.beginPath(); gg.ellipse(x + lw / 2, y - 7, lw / 2, 7 + R() * 3, 0, 0, 7); gg.fill(); return lw + 4; };
     shelves(g, w * 0.04, h * 0.3, w * 0.56, h * 0.5, 4, '#8a6238', loaf, R); g.fillStyle = '#1c2220'; rr(g, w * 0.66, h * 0.12, w * 0.28, h * 0.5, 4); g.fill(); g.fillStyle = '#efe6d0'; g.font = `italic 600 15px ${SERIF}`; g.fillText('fresh daily', w * 0.69, h * 0.24);
     for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(239,230,208,0.7)'; g.fillRect(w * 0.69, h * (0.3 + i * 0.045), w * (0.1 + R() * 0.1), 2); } glowDot(g, w * 0.3, 0, 120, 'rgba(255,220,160,0.5)'); },
+  // the all-night diner: mint tiles over a chequered dado, menu boards, the pass to the kitchen, pies under glass
+  diner: (g, w, h, R) => { wallFill(g, w, h, '#cfe0d8', '#a8c0b6'); const ts = 9; for (let y = 0; y < h * 0.62; y += ts) for (let x = 0; x < w; x += ts) { g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 0.6; g.strokeRect(x, y, ts, ts); }
+    for (let y = 0; y < 3; y++) for (let x = 0; x < w / 10 + 1; x++) { g.fillStyle = (x + y) % 2 ? '#16181a' : '#eef2ee'; g.fillRect(x * 10, h * 0.62 + y * 10, 10, 10); }
+    g.fillStyle = '#7a8a84'; g.fillRect(0, h * 0.62 + 30, w, h);
+    for (let i = 0; i < 3; i++) { const x = w * (0.05 + i * 0.2); g.fillStyle = '#15191a'; rr(g, x, h * 0.07, w * 0.17, h * 0.26, 3); g.fill(); g.fillStyle = '#ffd98a'; g.font = `700 9px ${SANS}`; g.fillText(['BURGERS', 'PIES', 'SHAKES'][i], x + 6, h * 0.07 + 13);
+      for (let k = 0; k < 5; k++) { g.fillStyle = 'rgba(238,242,238,0.8)'; g.fillRect(x + 6, h * 0.07 + 20 + k * 8, w * (0.07 + R() * 0.05), 1.6); g.fillRect(x + w * 0.14, h * 0.07 + 20 + k * 8, 8, 1.6); } }
+    g.fillStyle = '#2a2420'; rr(g, w * 0.66, h * 0.12, w * 0.29, h * 0.3, 3); g.fill(); glowDot(g, w * 0.8, h * 0.27, 70, 'rgba(255,170,90,0.75)'); g.fillStyle = '#c8ccd0'; g.fillRect(w * 0.65, h * 0.42, w * 0.31, 4);
+    for (let i = 0; i < 4; i++) { const x = w * (0.1 + i * 0.13); g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(x, h * 0.52, 15, 13, 0, Math.PI, 0); g.fill(); g.fillStyle = ['#c88a48', '#d24a3a', '#e8d8a8', '#8a4a2a'][i]; g.beginPath(); g.ellipse(x, h * 0.53, 12, 5, 0, 0, 7); g.fill(); g.fillStyle = '#c8ccd0'; g.fillRect(x - 15, h * 0.54, 30, 2); }
+    g.textAlign = 'center'; neon(g, 'OPEN 24 HRS', w * 0.5, h * 0.5, `700 15px ${SANS}`, '#ff5a6a', 9); g.textAlign = 'left'; },
+  // the jazz room: a small stage against indigo drapes, a piano and a bass in outline, footlights
+  jazz: (g, w, h, R) => { wallFill(g, w, h, '#1a1640', '#0c0a1e'); for (let x = 0; x < w; x += 7) { g.fillStyle = `rgba(${40 + R() * 30},${30 + R() * 25},${110 + R() * 50},0.35)`; g.fillRect(x, 0, 3.5, h); }
+    for (const sx of [0, 1]) { g.fillStyle = '#5a1420'; g.beginPath(); g.moveTo(sx ? w : 0, 0); g.lineTo(sx ? w * 0.84 : w * 0.16, 0); g.quadraticCurveTo(sx ? w * 0.9 : w * 0.1, h * 0.5, sx ? w * 0.93 : w * 0.07, h); g.lineTo(sx ? w : 0, h); g.fill(); }
+    const sp = g.createLinearGradient(0, 0, 0, h * 0.8); sp.addColorStop(0, 'rgba(255,214,150,0.55)'); sp.addColorStop(1, 'rgba(255,214,150,0)'); g.fillStyle = sp; g.beginPath(); g.moveTo(w * 0.44, 0); g.lineTo(w * 0.56, 0); g.lineTo(w * 0.74, h * 0.8); g.lineTo(w * 0.26, h * 0.8); g.fill();
+    g.fillStyle = '#0a0810'; g.fillRect(w * 0.14, h * 0.78, w * 0.72, h * 0.22); g.fillStyle = '#08070c'; g.beginPath(); g.moveTo(w * 0.24, h * 0.78); g.lineTo(w * 0.24, h * 0.56); g.quadraticCurveTo(w * 0.33, h * 0.5, w * 0.43, h * 0.58); g.lineTo(w * 0.43, h * 0.78); g.fill(); g.fillRect(w * 0.26, h * 0.5, 2, h * 0.08);
+    g.beginPath(); g.ellipse(w * 0.66, h * 0.62, 13, 21, 0, 0, 7); g.fill(); g.fillRect(w * 0.656, h * 0.33, 4, h * 0.3); g.beginPath(); g.arc(w * 0.662, h * 0.32, 5, 0, 7); g.fill();
+    for (let i = 0; i < 9; i++) glowDot(g, w * (0.18 + i * 0.08), h * 0.785, 7, 'rgba(255,200,120,0.9)');
+    g.textAlign = 'center'; neon(g, 'live tonight', w * 0.5, h * 0.2, `italic 600 19px ${SERIF}`, '#ff7ad0', 10); g.textAlign = 'left'; },
+  // the gallery: white walls, five canvases under picture lights
+  gallery: (g, w, h, R) => { wallFill(g, w, h, '#f2f0ea', '#d8d4ca'); const P = [['#c8402a', '#1e2c4a'], ['#e6b83c', '#2a2a2e'], ['#2f5d8c', '#e8e0d0'], ['#3d6b4a', '#d86a3a'], ['#16161a', '#c9a35e']];
+    for (let i = 0; i < 5; i++) { const pw = w * (0.11 + (i % 2) * 0.04), ph = h * (0.36 + ((i + 1) % 2) * 0.1), x = w * (0.045 + i * 0.19), y = h * 0.24; glowDot(g, x + pw / 2, y - 6, pw * 0.9, 'rgba(255,240,210,0.55)');
+      g.fillStyle = '#1a1a1c'; g.fillRect(x - 3, y - 3, pw + 6, ph + 6); g.fillStyle = P[i][0]; g.fillRect(x, y, pw, ph); g.fillStyle = P[i][1];
+      if (i % 3 === 0) g.fillRect(x, y + ph * 0.55, pw, ph * 0.45); else if (i % 3 === 1) { g.beginPath(); g.arc(x + pw / 2, y + ph * 0.45, pw * 0.3, 0, 7); g.fill(); } else { g.beginPath(); g.moveTo(x, y + ph); g.lineTo(x + pw, y + ph * 0.3); g.lineTo(x + pw, y + ph); g.fill(); }
+      g.fillStyle = '#2a2a2e'; g.fillRect(x + pw / 2 - 9, y - 12, 18, 3); g.fillStyle = 'rgba(40,40,44,0.7)'; g.fillRect(x + pw + 8, y + ph - 9, 12, 7); } g.fillStyle = '#b8b2a6'; g.fillRect(0, h * 0.93, w, h * 0.07); },
 };
 const SIGN_DRAW = {
   books: (g, w, h) => { g.fillStyle = '#e8c98a'; g.font = `600 ${h * 0.56}px ${SERIF}`; g.textAlign = 'center'; g.fillText('PAGES & CO.', w / 2, h * 0.58); g.font = `500 ${h * 0.17}px ${SANS}`; g.fillStyle = '#b89a66'; g.fillText('B O O K S E L L E R S', w / 2, h * 0.86); },
@@ -70,6 +94,9 @@ const SIGN_DRAW = {
   pixel: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#ffffff'; g.font = `800 ${h * 0.6}px ${SANS}`; g.fillText('PIXEL', w / 2, h * 0.6); g.fillStyle = '#58b0ff'; g.fillRect(w * 0.38, h * 0.7, w * 0.24, 3); g.font = `500 ${h * 0.16}px ${SANS}`; g.fillStyle = '#a8c8e8'; g.fillText('PHONES  ·  SOUND  ·  PLAY', w / 2, h * 0.94); },
   hotel: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#e8c98a'; g.font = `600 ${h * 0.56}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.14}px`; g.fillText('HOTEL ASTOR', w / 2, h * 0.7); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   bakery: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#f2e6c8'; g.font = `italic 600 ${h * 0.62}px ${SERIF}`; g.fillText('Daily Bread', w / 2, h * 0.66); g.font = `500 ${h * 0.16}px ${SANS}`; g.fillStyle = '#c8b890'; g.fillText('B A K E R Y', w / 2, h * 0.92); },
+  diner: (g, w, h) => { g.textAlign = 'center'; neon(g, 'ALL NIGHT DINER', w / 2, h * 0.72, `800 ${h * 0.58}px ${SANS}`, '#ff5a6a', 14); },
+  jazz: (g, w, h) => { g.textAlign = 'center'; neon(g, 'Indigo Room', w * 0.4, h * 0.74, `italic 600 ${h * 0.74}px ${SERIF}`, '#8aa0ff', 13); g.font = `500 ${h * 0.2}px ${SANS}`; g.fillStyle = '#ff9ad8'; g.fillText('JAZZ  ·  SUPPER', w * 0.8, h * 0.62); },
+  gallery: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#f0ece2'; g.font = `300 ${h * 0.5}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.22}px`; g.fillText('GALERIE NORD', w / 2, h * 0.68); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
 };
 // eight windows of other people's evenings
 function winDraw(g, v, w, h, R) {
@@ -86,6 +113,11 @@ function winDraw(g, v, w, h, R) {
   const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
 }
 function bladeDraw(g, k, w, h) {
+  if (k === 'diner' || k === 'jazz') {   // the wall signs on the buildings at the street's ends: a tube outline, a word, a star or a note
+    g.fillStyle = '#08080a'; g.fillRect(0, 0, w, h); const col = k === 'diner' ? '#ff4a5a' : '#7a90ff', c2 = k === 'diner' ? '#ffd26a' : '#ff8ad4';
+    g.shadowColor = col; g.shadowBlur = 12; g.strokeStyle = col; g.lineWidth = 4; rr(g, 8, 8, w - 16, h - 16, h * 0.3); g.stroke(); g.shadowBlur = 0; g.textAlign = 'center'; g.textBaseline = 'middle';
+    neon(g, k === 'diner' ? 'DINER' : 'JAZZ', w * 0.56, h * 0.53, `800 ${h * 0.56}px ${SANS}`, col, 14);
+    g.shadowColor = c2; g.shadowBlur = 10; g.fillStyle = c2; g.font = `700 ${h * 0.5}px ${SANS}`; g.fillText(k === 'diner' ? '★' : '♪', w * 0.14, h * 0.52); g.shadowBlur = 0; g.textBaseline = 'alphabetic'; return; }
   if (k === 'cross') { g.fillStyle = '#050806'; g.fillRect(0, 0, w, h); g.shadowColor = '#40ff90'; g.shadowBlur = 10; g.fillStyle = '#30e080'; g.fillRect(w * 0.38, h * 0.14, w * 0.24, h * 0.72); g.fillRect(w * 0.14, h * 0.38, w * 0.72, h * 0.24); g.shadowBlur = 0; return; }
   const lum = k === 'lumiere'; wallFill(g, w, h, lum ? '#0c1630' : '#141416', lum ? '#080e20' : '#0a0a0c');
   g.strokeStyle = lum ? '#c9a35e' : '#8a8a90'; g.lineWidth = 2; g.strokeRect(w * 0.1, w * 0.1, w * 0.8, h - w * 0.2);
@@ -112,12 +144,13 @@ function roadDraw(g, k, w, h) {
   if (k === 'zebra') { g.fillStyle = '#e8e6de'; const n = 7; for (let i = 0; i < n; i++) g.fillRect(i * w / n + w / n * 0.2, 0, w / n * 0.6, h); }
   else { g.fillStyle = '#e6c84a'; g.textAlign = 'center'; g.font = `800 ${h * 0.9}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.2}px`; g.fillText('TAXI', w / 2 + h * 0.1, h * 0.84); if ('letterSpacing' in g) g.letterSpacing = '0px'; }
 }
-function drawAtlas() {
-  const c = document.createElement('canvas'); c.width = AW; c.height = AH; const g = c.getContext('2d'); g.clearRect(0, 0, AW, AH);
+function drawAtlas(k = 1) {
+  // k: the canvas's share of the design size (the low preset draws it at half: a quarter of the memory)
+  const c = document.createElement('canvas'); c.width = AW * k; c.height = AH * k; const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.scale(k, k);
   const cell = (key, fn) => { const [x, y, w, h] = CELL[key]; g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; fn(w, h); g.restore(); };
-  SHOPS.forEach((k, i) => { cell('shop:' + k, (w, h) => SHOP_DRAW[k](g, w, h, rng(101 + i * 7))); cell('sign:' + k, (w, h) => { g.fillStyle = '#121316'; g.fillRect(0, 0, w, h); SIGN_DRAW[k](g, w, h); }); });
+  SHOPS.forEach((k, i) => { cell('shop:' + k, (w, h) => { g.scale(w / SW, h / SH); SHOP_DRAW[k](g, SW, SH, rng(101 + i * 7)); }); cell('sign:' + k, (w, h) => { g.fillStyle = '#121316'; g.fillRect(0, 0, w, h); SIGN_DRAW[k](g, w, h); }); });
   for (let i = 0; i < 8; i++) cell('win:' + i, (w, h) => winDraw(g, i, w, h, rng(977 + i * 13)));
-  for (const k of ['lumiere', 'hotel', 'cross']) cell('blade:' + k, (w, h) => bladeDraw(g, k, w, h));
+  for (const k of ['lumiere', 'hotel', 'cross', 'diner', 'jazz']) cell('blade:' + k, (w, h) => bladeDraw(g, k, w, h));
   for (const k of ['a', 'b']) cell('bill:' + k, (w, h) => billDraw(g, k, w, h));
   for (const k of ['zebra', 'taxi']) cell('road:' + k, (w, h) => roadDraw(g, k, w, h));
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.flipY = false; return t;
@@ -172,7 +205,7 @@ function haloMesh(list, extra = 16) {
 function skyTexture() {
   const w = 2048, h = 512, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'), R = rng(4242);
   // v runs from the zenith (0) down to a little under the horizon (h): deep blue overhead, the city's glow low down
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#04060c'); gr.addColorStop(0.55, '#0a1020'); gr.addColorStop(0.82, '#1a1c2c'); gr.addColorStop(0.93, '#3a2c2a'); gr.addColorStop(1, '#4a3428'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#060a16'); gr.addColorStop(0.45, '#0e1830'); gr.addColorStop(0.75, '#1e2642'); gr.addColorStop(0.9, '#4a3a44'); gr.addColorStop(1, '#6a4a3c'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 520; i++) { const y = Math.pow(R(), 1.6) * h * 0.8, a = 0.25 + R() * 0.75; g.fillStyle = `rgba(${220 + R() * 35},${220 + R() * 35},255,${a * (1 - y / h)})`; const s = R() < 0.06 ? 2 : 1; g.fillRect(R() * w, y, s, s); }
   // thin cloud, lit from below
   for (let i = 0; i < 70; i++) { const x = R() * w, y = h * (0.45 + R() * 0.42), rw = 80 + R() * 220, rh = 8 + R() * 22; const cg = g.createRadialGradient(x, y, 0, x, y, rw); cg.addColorStop(0, `rgba(${90 + R() * 40},${78 + R() * 30},${84 + R() * 30},0.10)`); cg.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(x, y); g.scale(1, rh / rw); g.translate(-x, -y); g.fillStyle = cg; g.fillRect(x - rw, y - rw, 2 * rw, 2 * rw); g.restore(); }
@@ -182,12 +215,15 @@ function skyTexture() {
   let x = 0; while (x < w) { const bw = 14 + R() * 46, bh = 16 + Math.pow(R(), 2.2) * 120, y = h * 0.93 - bh; g.fillStyle = `rgb(${10 + R() * 8},${11 + R() * 8},${16 + R() * 10})`; g.fillRect(x, y, bw, h - y);
     for (let j = 0; j < bw * bh / 60; j++) if (R() < 0.3) { g.fillStyle = R() < 0.75 ? 'rgba(255,214,150,0.8)' : 'rgba(170,210,255,0.8)'; g.fillRect(x + 2 + Math.floor(R() * (bw - 4) / 3) * 3, y + 3 + Math.floor(R() * (bh - 4) / 4) * 4, 1.6, 2); }
     if (bh > 100) { glowDot(g, x + bw / 2, y - 2, 6, 'rgba(255,60,40,0.95)'); } x += bw + R() * 4; }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; return t;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; t.wrapS = THREE.RepeatWrapping; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; return t;
 }
+// drawn at the far plane (z = w) whatever the camera's far distance is: as an ordinary sphere of 120 m the far plane cut a round hole in it
+const SKY_VERT = `varying vec2 vUv; void main() { vUv = uv; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`;
+const SKY_FRAG = `uniform sampler2D map; uniform float uBright; varying vec2 vUv; void main() { gl_FragColor = vec4(texture2D(map, vUv).rgb * uBright, 1.0); }`;
 function skyDome() {
   // from straight up down to 8 degrees under the horizon; v = 0 at the zenith
-  const geo = new THREE.SphereGeometry(120, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.14);
-  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false, toneMapped: false }));
+  const geo = new THREE.SphereGeometry(40, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.14);
+  const m = new THREE.Mesh(geo, new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: SKY_FRAG, uniforms: { map: { value: skyTexture() }, uBright: G.uBright }, side: THREE.BackSide, depthWrite: false, depthTest: false }));
   // three's sphere runs v from 1 at the top to 0 at the bottom: the picture has its zenith at the top row
   m.name = 'street-sky'; m.frustumCulled = false; m.renderOrder = -10; m.rotation.y = Math.PI / 2; return m;
 }
@@ -195,7 +231,7 @@ function skyDome() {
 // ------------------------------------------------------------------ put it all on the street
 export function dressStreet(world) {
   const room = world.rooms.street; if (!room || !room.x) return null; const x = room.x, out = { halos: null, sky: null, atlas: null };
-  if (x.atlas && x.atlas.length) { out.tex = drawAtlas(); out.atlas = atlasMesh(x.atlas, out.tex); room.group.add(out.atlas); }
+  if (x.atlas && x.atlas.length) { out.tex = drawAtlas(world.mats.texSize < 512 ? 0.5 : 1); out.atlas = atlasMesh(x.atlas, out.tex); room.group.add(out.atlas); }
   out.halos = haloMesh(x.halos || [], 24); room.group.add(out.halos.mesh);
   out.sky = skyDome(); room.group.add(out.sky);
   out.update = (dt, cam) => { out.sky.position.copy(cam.position); out.sky.position.y -= 2; };

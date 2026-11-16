@@ -34,6 +34,8 @@ import { makeHeld, setHeldMaterial } from './held.js';
 import { cleanTitle } from './films.js';
 import { ledWall, showtimes, menuBoard } from './panels9.js';
 import { makeRain } from './rain.js';
+// v12 medium draws reflections in the rooms that live on them only (the street's wet road, the lobby's floor); high, or Reflections: Full, in every room
+const heroRefl = (s) => s.graphics !== 'high' && s.reflections !== 'full';
 import { loadSettings, saveSettings, presetFor } from './settings.js';
 import { setLang, t, pick, fmtTime } from './i18n.js';
 import { SPAWN, GATE, LIFT, ESC, COUNTERS, HALL, L1 } from './building.js';
@@ -61,7 +63,7 @@ async function boot() {
   const prog = (p) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; };
   try { await Promise.race([Promise.all([document.fonts.load('600 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* fonts later */ }
   const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low';
-  const mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', texSize: lowG ? 256 : 512, macro: !lowG, detile: settings.graphics === 'high' }); engine.applySettings(settings);
+  const mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', heroOnly: heroRefl(settings), texSize: lowG ? 256 : 512, macro: !lowG, detile: settings.graphics === 'high' }); engine.applySettings(settings);
   // v9: every room is a baked model; its light maps are its look on every device (the vertex-light fallback stays for ?nobake=1 only)
   mats.lightMaps = !Q.get('nobake');
   const t0 = performance.now(); let done = 0; const tick = () => prog(0.05 + 0.4 * (++done / 3));
@@ -136,7 +138,7 @@ async function boot() {
   for (const [ax, az, bx, bz] of [[-0.75, 26.92, 3.95, 26.92], [3.95, 26.92, 3.95, 28.8], [3.95, 28.8, -0.75, 28.8], [-0.75, 28.8, -0.75, 26.92]]) world.walls.add(ax, az, bx, bz, -0.2, 1.6);
   bill.onChange = () => ui.setWallet(game === 'flow' && bill.total ? t('hud9.bill', { total: bill.fmt(bill.total) }) : null);
   function applySettings(gfx) {
-    saveSettings(settings); engine.applySettings(settings); mats.setReflections && mats.setReflections(settings.reflections !== 'off' && settings.graphics !== 'low'); crowd.setDensity(DENS[settings.npcs] || 'medium');
+    saveSettings(settings); engine.applySettings(settings); { const on = settings.reflections !== 'off' && settings.graphics !== 'low'; mats.setReflections(on, heroRefl(settings)); if (on && world.captureReflections) world.captureReflections(); } crowd.setDensity(DENS[settings.npcs] || 'medium');
     if (settings.npcs === 'off') for (const h of world.halls) crowd.clearAudience(h.id);   // off means an empty hall, now
     sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd }); sound.surround = !!settings.surround; if (input.vr !== !!settings.vr) input.setVR(!!settings.vr); talk.setOptions(settings); voice.setOptions(settings); applyLayout(settings);
   }

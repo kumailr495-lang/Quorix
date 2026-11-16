@@ -31,8 +31,10 @@ def window(acc, atlas, rnd, o0, o1, ys, yh, far, P, sill_mat, sill_col, lit_p, f
                   'e': (0.75 + rnd.random() * 0.5) if on else 0.07, 'tint': tint if (tint and on) else None})
 
 
-def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tcol, win_h=1.75, sill_h=0.85, pier_w=0.7, cor=0.5, lit_p=0.5, depth=7.6, tint=None, balcony=()):
-    """the floors over the shops, from y0 up to the cornice at H - 0.5: the mass, piers, spandrels, windows, cornice, parapet and coping"""
+def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tcol, win_h=1.75, sill_h=0.85, pier_w=0.7, cor=0.5, lit_p=0.5, depth=7.6, tint=None, balcony=(), glow=None, lit=None, wash=None, wash_last=True):
+    """the floors over the shops, from y0 up to the cornice at H - 0.5: the mass, piers, spandrels, windows under lintels, a string course
+    over the shop fronts, cornice, parapet and coping. wash = (colour, strength): a small uplight on the string course at each pier, so the
+    front reads at night (the user: "make the buildings much more visible")"""
     top = H - 0.5; n = max(1, int((top - 0.35 - y0) / fh)); bay = (xb - xa) / bays; xs = [xa + i * bay for i in range(bays + 1)]
     acc.box(xa, y0, far, xb, top + 0.03, far + depth, wall, wcol)
     sp = mix(wcol, BLACK, 0.1)
@@ -48,6 +50,7 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
             ys = y0 + k * fh + sill_h; yh = ys + win_h
             acc.box(o0 - 0.02, prev, far - P + 0.06, o1 + 0.02, ys - 0.03, far + 0.05, wall, sp)
             window(acc, atlas, rnd, o0, o1, ys, yh, far, P, trim, tcol, lit_p, tint=tint); prev = yh
+            acc.box(o0 - 0.03, yh - 0.01, far - P + 0.02, o1 + 0.03, yh + 0.17, far + 0.04, trim, tcol)   # the lintel: 4 cm proud of the spandrel, 2 cm behind the piers
             if k in balcony:   # a shallow balcony: a slab under the sill, a rail on balusters (each set 2 cm into the slab and the rail)
                 bz0, bz1 = far - P - 0.62, far - P + 0.02
                 acc.box(o0 - 0.1, ys - 0.2, bz0, o1 + 0.1, ys - 0.07, bz1, trim, tcol)   # 2 cm up into the sill
@@ -58,6 +61,15 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
                     bxx = o0 - 0.1 + 0.012 + j * (o1 - o0 + 0.2 - 0.024 - 0.02) / nb
                     acc.box(bxx, ys - 0.09, bz0 + 0.015, bxx + 0.02, ys + 0.8, bz0 + 0.035, MAT['powder'], FRAME)
         acc.box(o0 - 0.02, prev, far - P + 0.06, o1 + 0.02, top + 0.03, far + 0.05, wall, sp)
+    acc.box(xa, y0 - 0.02, far - P - 0.10, xb, y0 + 0.20, far - P, trim, tcol)   # the string course: against the piers' faces (not into them: its end would lie in the end pier's side), 5 cm down over the fascias
+    if wash and lit is not None:
+        wc_, wI = wash
+        for i, xp in enumerate(xs):
+            if i == bays and not wash_last: continue   # the row's last pier stands in the corner with the building across the street's end
+            xl = xa + pier_w / 4 if i == 0 else (xb - pier_w / 4 if i == bays else xp)
+            acc.box(xl - 0.07, y0 + 0.19, far - P - 0.085, xl + 0.07, y0 + 0.27, far - P + 0.02, MAT['powder'], FRAME)   # the fitting: on the course, 2 cm into the pier
+            if glow is not None: glow.quad((xl - 0.05, y0 + 0.271, far - P - 0.07), (xl + 0.05, y0 + 0.271, far - P - 0.07), (xl + 0.05, y0 + 0.271, far - P - 0.01), (xl - 0.05, y0 + 0.271, far - P - 0.01), wc_, 2.2)
+            lit.spot((xl, y0 + 0.32, far - P - 0.22), wc_, wI, (top - y0) * 1.15, 'h', (0, 1, 0.13), 13, 36)
     acc.box(xa - 0.08, top, far - P - cor, xb + 0.08, top + 0.32, far + 0.1, trim, tcol)
     acc.box(xa, top + 0.29, far - P, xb, top + 0.75, far + 0.35, wall, wcol)
     acc.box(xa - 0.03, top + 0.72, far - P - 0.04, xb + 0.03, top + 0.80, far + 0.39, trim, tcol)
@@ -103,8 +115,8 @@ def fit_out(kind, W, D, g):
         C(W - 2.2, 0.03, D - 1.0, W - 0.3, 1.0, D - 0.5, 'paint', '#f0f2f4')
     elif kind == 'pixel':
         for j in range(int((W - 0.9) / 1.3)):
-            u = 0.6 + j * 1.3; C(u, 0.03, 0.7, u + 0.8, 0.9, 1.3, 'lacquer', '#f2f2f4'); C(u + 0.1, 0.9, 0.9, u + 0.7, 0.93, 1.1, 'tblack', '#101014')            # white plinths, a device on each
-        C(0.4, 0.03, D - 0.8, W - 0.4, 0.95, D - 0.4, 'lacquer', '#f2f2f4')
+            u = 0.6 + j * 1.3; C(u, 0.03, 0.7, u + 0.8, 0.9, 1.3, 'lacquer', '#d9dce2'); C(u + 0.1, 0.9, 0.9, u + 0.7, 0.93, 1.1, 'tblack', '#101014')            # pale plinths, a device on each
+        C(0.4, 0.03, D - 0.8, W - 0.4, 0.92, D - 0.4, 'wood', '#4a3626'); C(0.36, 0.92, D - 0.84, W - 0.36, 0.96, D - 0.36, 'lacquer', '#e4e6ea')   # the service counter: walnut under a white top
     elif kind == 'hotel':
         C(W / 2 - 1.5, 0.03, D - 0.95, W / 2 + 1.5, 1.08, D - 0.45, 'nero', '#2a2426'); C(W / 2 - 1.55, 1.08, D - 1.0, W / 2 + 1.55, 1.12, D - 0.4, 'brass', '#c9a35e')   # the desk, a brass top
         C(0.5, 0.03, 0.6, 1.3, 0.42, 1.4, 'velvet', '#1e2c4a'); C(0.5, 0.42, 1.22, 1.3, 0.85, 1.4, 'velvet', '#1e2c4a')                                                   # an armchair each side
@@ -113,20 +125,61 @@ def fit_out(kind, W, D, g):
         C(0.4, 0.03, 0.7, W - 1.5, 0.95, 1.35, 'oak', '#9a7248'); C(0.38, 0.95, 0.68, W - 1.48, 1.0, 1.37, 'calacatta', '#ece6da')                                 # the display counter
         for j in range(int((W - 2.2) / 0.36)): u = 0.55 + j * 0.36; C(u, 1.0, 0.82, u + 0.26, 1.09 + 0.03 * (j % 2), 1.22, 'travertine', ['#c88a48', '#b06a30', '#d8a868'][j % 3])   # loaves
         C(W - 1.2, 0.03, D - 0.9, W - 0.3, 1.5, D - 0.45, 'oak', '#7a5630')
+    elif kind == 'diner':
+        C(0.5, 0.03, D - 1.15, W - 0.5, 1.02, D - 0.65, 'porcelain', '#e8ecea'); C(0.45, 1.02, D - 1.2, W - 0.45, 1.07, D - 0.6, 'chrome', '#c8ccd0')   # the counter, a steel top
+        for j in range(int((W - 1.6) / 0.75)): u = 0.9 + j * 0.75; C(u - 0.03, 0.03, D - 1.58, u + 0.03, 0.62, D - 1.52, 'chrome', '#c0c4c8'); C(u - 0.17, 0.62, D - 1.72, u + 0.17, 0.7, D - 1.38, 'leather', '#b02a2a')   # stools on a post
+        for j in range(int((W - 0.8) / 2.3)):   # booths along the window: two red benches and a table between
+            u = 0.6 + j * 2.3
+            for bu in (u, u + 1.45): C(bu, 0.03, 0.45, bu + 0.42, 0.46, 1.15, 'leather', '#b02a2a'); C(bu + (0.0 if bu == u else 0.3), 0.46, 0.45, bu + (0.12 if bu == u else 0.42), 1.02, 1.15, 'leather', '#9a2222')
+            C(u + 0.62, 0.7, 0.5, u + 1.25, 0.74, 1.1, 'lacquer', '#e8e8e4'); C(u + 0.9, 0.03, 0.76, u + 0.97, 0.71, 0.84, 'chrome', '#c0c4c8')
+    elif kind == 'jazz':
+        C(0.9, 0.03, D - 1.05, W - 0.9, 0.3, D - 0.2, 'wood', '#2a1c16')                                                                                           # the stage
+        C(1.3, 0.3, D - 0.85, 2.7, 1.1, D - 0.35, 'tblack', '#0c0c10'); C(1.25, 1.1, D - 0.88, 2.75, 1.14, D - 0.32, 'tblack', '#141418')                          # an upright piano
+        C(1.5, 0.3, D - 1.02, 2.0, 0.72, D - 0.9, 'leather', '#3a1418')                                                                                             # its stool
+        for j in range(int((W - 1.4) / 1.5)):   # small round-ish tables, a candle on each
+            u = 0.9 + j * 1.5; C(u - 0.03, 0.03, 0.87, u + 0.03, 0.72, 0.93, 'powder', '#1a1a1c'); C(u - 0.3, 0.72, 0.6, u + 0.3, 0.75, 1.2, 'tblack', '#16121c'); C(u - 0.03, 0.75, 0.87, u + 0.03, 0.83, 0.93, 'brass', '#ffcf8a')
+            C(u - 0.72, 0.03, 0.72, u - 0.42, 0.46, 1.02, 'velvet', '#2a2a5a'); C(u + 0.42, 0.03, 0.72, u + 0.72, 0.46, 1.02, 'velvet', '#2a2a5a')
+    elif kind == 'gallery':
+        for j in range(int((W - 1.0) / 2.6)):   # plinths, a piece on each (a block, a slab on edge, a stack)
+            u = 0.9 + j * 2.6; C(u, 0.03, 0.8, u + 0.5, 1.0, 1.3, 'lacquer', '#ecebe6')
+            if j % 3 == 0: C(u + 0.1, 1.0, 0.9, u + 0.4, 1.42, 1.2, 'nero', '#1a1a1e')
+            elif j % 3 == 1: C(u + 0.2, 1.0, 0.85, u + 0.28, 1.6, 1.25, 'brass', '#c9a35e')
+            else: C(u + 0.08, 1.0, 0.88, u + 0.42, 1.14, 1.22, 'travertine', '#c8402a'); C(u + 0.14, 1.14, 0.94, u + 0.36, 1.3, 1.16, 'travertine', '#2f5d8c')
+        C(W - 1.5, 0.03, D - 0.8, W - 0.4, 0.78, D - 0.4, 'oak', '#b89a6a')                                                                                         # the desk
     return B
 
 
-LOOK = {   # per shop kind: interior wall and floor, light colour and strength, sign colour for its halo, awning (or None)
-    'books': ('#6a4a30', 'oak', '#8a6a48', '#ffd9a8', 1.0, '#ffd08a', '#23412f'),
-    'cafe': ('#3a3028', 'travertine', '#cdbfa8', '#ffcf96', 1.1, '#ffb060', '#5a1c22'),
-    'florist': ('#e6e2d8', 'concrete', '#b8b4ac', '#fff0dc', 1.2, '#ff9ac0', None),
-    'records': ('#221a2c', 'concrete', '#3a3a40', '#c8a0ff', 0.9, '#b070ff', None),
-    'ramen': ('#3a1c14', 'wood', '#3a2a1e', '#ffb070', 1.0, '#ff4030', None),
-    'chemist': ('#eef2f4', 'porcelain', '#e8eaec', '#eaf4ff', 1.3, '#40e080', None),
-    'pixel': ('#f4f4f6', 'microcement', '#c8c8cc', '#dcecff', 1.4, '#58b0ff', None),
-    'hotel': ('#2c2420', 'lobbyMarble', '#d8cdb8', '#ffd6a0', 1.2, '#ffd08a', '#16161a'),
-    'bakery': ('#f0e6d2', 'oak', '#a88458', '#ffd8a0', 1.2, '#ffc878', '#7a3a1e'),
+LOOK = {   # per shop kind: interior wall and floor, light colour and strength, sign colour for its halo, awning (or None), the front's frame
+    'books': ('#6a4a30', 'oak', '#8a6a48', '#ffd9a8', 1.0, '#ffd08a', '#23412f', '#1f3a2c'),
+    'cafe': ('#3a3028', 'travertine', '#cdbfa8', '#ffcf96', 1.1, '#ffb060', '#5a1c22', '#2e1d16'),
+    'florist': ('#e6e2d8', 'concrete', '#b8b4ac', '#fff0dc', 1.2, '#ff9ac0', None, '#d9d2c2'),
+    'records': ('#221a2c', 'concrete', '#3a3a40', '#c8a0ff', 0.9, '#b070ff', None, '#1c1a22'),
+    'ramen': ('#3a1c14', 'wood', '#3a2a1e', '#ffb070', 1.0, '#ff4030', None, '#3a1612'),
+    'chemist': ('#eef2f4', 'porcelain', '#e8eaec', '#eaf4ff', 1.3, '#40e080', None, '#dfe6e8'),
+    'pixel': ('#e9eaee', 'microcement', '#c8c8cc', '#dcecff', 1.2, '#58b0ff', None, '#23262c'),
+    'hotel': ('#2c2420', 'lobbyMarble', '#d8cdb8', '#ffd6a0', 1.2, '#ffd08a', '#16161a', '#6a5230'),
+    'bakery': ('#f0e6d2', 'oak', '#a88458', '#ffd8a0', 1.2, '#ffc878', '#7a3a1e', '#6a3a22'),
+    'diner': ('#cfe0d8', 'porcelain', '#d8dcd8', '#fff0e0', 1.3, '#ff5a6a', None, '#b8bcc0'),
+    'jazz': ('#161232', 'wood', '#2a1c16', '#b8a0ff', 0.8, '#8aa0ff', '#1a1640', '#15132a'),
+    'gallery': ('#f2f0ea', 'oak', '#c8b08a', '#fff4e4', 1.3, '#f0ece2', None, '#1c1c1e'),
 }
+SHUT = lin('#5a5e64')
+
+
+def shutter(acc, a, b, g, zf, far, wall, wcol):
+    """a unit closed for the night: roller shutters between steel posts (each no wider than 4 m), their box under a dark fascia"""
+    acc.box(a - 0.02, g - 0.80, zf - 0.06, b + 0.02, g + 0.03, far + 0.02, MAT['powder'], lin('#121316'))
+    acc.box(a - 0.02, g - 1.12, zf + 0.02, b + 0.02, g - 0.78, far, MAT['powder'], lin('#2a2c30'))                         # the shutter box
+    n = max(1, math.ceil((b - a) / 4.0)); w = (b - a) / n
+    for i in range(n + 1):
+        px = a + i * w; acc.box(px - 0.06, 0.0, zf + 0.04, px + 0.06, g - 1.10, zf + 0.21, MAT['powder'], lin('#2a2c30'))    # guide posts (1 cm into the wall behind, 2 cm up into the box)
+    for i in range(n):
+        s0, s1 = a + i * w + 0.04, a + (i + 1) * w - 0.04
+        acc.box(s0, 0.0, zf + 0.10, s1, g - 1.10, zf + 0.14, MAT['metal'], SHUT)                                             # the curtain
+        k = int((g - 1.3) / 0.11)
+        for j in range(k): acc.box(s0, 0.10 + j * 0.11, zf + 0.086, s1, 0.145 + j * 0.11, zf + 0.105, MAT['metal'], mix(SHUT, BLACK, 0.12))   # its slats' ribs
+        acc.box(s0, 0.0, zf + 0.075, s1, 0.055, zf + 0.15, MAT['powder'], lin('#1c1d20'))                                    # the bottom bar
+
 
 
 def ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, wall, wcol, trim, tcol, depth=7.6, D=2.4):
@@ -134,9 +187,11 @@ def ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, wall, wcol, t
     on some, and a fitted room behind the glass with its own light. shops = [(x0, x1, kind, door side -1/+1)] between the lot's ends"""
     acc.box(xa, 0.0, far - P, xa + 0.45, g, far + depth, wall, wcol); acc.box(xb - 0.45, 0.0, far - P, xb, g, far + depth, wall, wcol)   # end pilasters, and party walls to the back; they carry the mass above
     for i, (s0, s1, kind, side) in enumerate(shops):
-        iw, fl, fc, lc, LI, hc, aw = LOOK[kind]
         if i > 0: acc.box(s0 - 0.25, 0.0, far - P, s0 + 0.25, g, far + D + 0.3, wall, wcol)   # a pilaster and party wall between two shops
         a = (xa + 0.45) if i == 0 else s0 + 0.25; b = (xb - 0.45) if i == len(shops) - 1 else s1 - 0.25; W = b - a
+        if kind == 'shut': shutter(acc, a, b, g, far - P, far, wall, wcol); continue
+        if kind == 'wall': plain_bay(acc, glow, lit, a, b, g, far - P, far, wall, wcol, trim, tcol); continue
+        iw, fl, fc, lc, LI, hc, aw, frc = LOOK[kind]; FR = lin(frc)
         # the room: floor (a 3 cm step up, from under the door's frame), back wall, ceiling
         zf = far - P
         acc.box(a - 0.02, -0.3, zf + 0.12, b + 0.02, 0.03, far + D + 0.02, MAT[fl], lin(fc))
@@ -148,27 +203,84 @@ def ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, wall, wcol, t
         acc.box(a - 0.02, g - 0.80, zf - 0.06, b + 0.02, g + 0.03, far + 0.02, MAT['powder'], lin('#121316'))
         atlas.append({'k': 'sign', 'v': kind, 'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.072, 'yaw': math.pi, 'w': min(W - 0.5, 4.6), 'h': 0.52, 'e': 1.25, 'fx': 1 if kind in ('ramen', 'records') else 0})
         halos.append({'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.25, 'r': 1.5, 'c': list(lin(hc)), 'k': 0.22})
-        d0, d1 = (a, a + 1.0) if side < 0 else (b - 1.0, b)                       # the door's bay; the window takes the rest
+        # v12 (the user's arrows: a door that read as a wire outline, a front with no structure): the front is a frame in the shop's
+        # own colour. Posts run from the pavement into the fascia, a transom crosses the whole front at the door's head, mullions
+        # divide the window, a sill caps the riser; the door is a framed leaf (stiles, a kick rail, a top rail) on a stone threshold
+        d0, d1 = (a, a + 1.1) if side < 0 else (b - 1.1, b)                       # the door's bay; the window takes the rest
         w0_, w1_ = (d1, b) if side < 0 else (a, d0)
-        for dx in (d0, d1 - 0.06): acc.box(dx, 0.0, zf + 0.06, dx + 0.06, 2.28, zf + 0.16, MAT['powder'], FRAME)
-        acc.box(d0 + 0.05, 2.2, zf + 0.07, d1 - 0.05, 2.27, zf + 0.15, MAT['powder'], FRAME)   # the head, a centimetre inside the posts' top and back
-        acc.box(d0 + 0.04, 0.0, zf + 0.10, d1 - 0.04, 2.22, zf + 0.12, MAT['glass'], lin('#9fb4c0'))          # the leaf
-        acc.box(d0 + 0.04, 2.26, zf + 0.10, d1 - 0.04, g - 0.78, zf + 0.12, MAT['glass'], lin('#9fb4c0'))      # the light over it
-        hx = d1 - 0.16 if side < 0 else d0 + 0.13
-        acc.box(hx, 0.9, zf + 0.06, hx + 0.03, 1.3, zf + 0.085, MAT['brass'], lin('#c9a35e'))                    # the pull, 3.5 cm off the glass on two posts
-        for hy in (0.94, 1.24): acc.box(hx + 0.005, hy, zf + 0.08, hx + 0.025, hy + 0.02, zf + 0.105, MAT['brass'], lin('#c9a35e'))
-        acc.box(w0_ - 0.02, 0.0, zf + 0.04, w1_ + 0.02, 0.45, far + 0.02, trim, mix(tcol, BLACK, 0.35))        # stall riser
-        acc.box(w0_ - 0.02, 0.43, zf + 0.10, w1_ + 0.02, g - 0.78, zf + 0.12, MAT['glass'], lin('#9fb4c0'))     # the shop window
+        for dx in (d0, d1 - 0.07): acc.box(dx, 0.0, zf + 0.05, dx + 0.07, g - 0.78, zf + 0.17, MAT['powder'], FR)             # the door's posts
+        acc.box(a - 0.02, 2.22, zf + 0.055, b + 0.02, 2.30, zf + 0.165, MAT['powder'], FR)                                    # the transom, 2 cm into the pilasters
+        acc.box(d0 + 0.06, -0.02, zf - 0.03, d1 - 0.06, 0.015, zf + 0.14, trim, mix(tcol, lin('#ffffff'), 0.25))              # the threshold (2 cm into the room's floor)
+        for sx0 in (d0 + 0.05, d1 - 0.19): acc.box(sx0, 0.0, zf + 0.085, sx0 + 0.14, 2.24, zf + 0.135, MAT['powder'], FR)     # the leaf's stiles (2 cm into the posts and the transom)
+        acc.box(d0 + 0.17, -0.01, zf + 0.09, d1 - 0.17, 0.26, zf + 0.13, MAT['powder'], FR)                                   # kick rail
+        acc.box(d0 + 0.17, 2.11, zf + 0.09, d1 - 0.17, 2.235, zf + 0.13, MAT['powder'], FR)                                   # top rail
+        acc.box(d0 + 0.17, 0.24, zf + 0.105, d1 - 0.17, 2.13, zf + 0.115, MAT['glass'], lin('#9fb4c0'))                       # the leaf's glass
+        acc.box(d0 + 0.05, 2.28, zf + 0.10, d1 - 0.05, g - 0.78, zf + 0.12, MAT['glass'], lin('#9fb4c0'))                     # the light over the door
+        hx = d1 - 0.155 if side < 0 else d0 + 0.125   # on the stile, 5.5 cm clear of the post
+        acc.box(hx, 0.8, zf + 0.025, hx + 0.03, 1.4, zf + 0.05, MAT['brass'], lin('#c9a35e'))                                 # a long pull, 3.5 cm off the stile on two posts
+        for hy in (0.86, 1.32): acc.box(hx + 0.005, hy, zf + 0.045, hx + 0.025, hy + 0.02, zf + 0.09, MAT['brass'], lin('#c9a35e'))
+        acc.box(w0_ - 0.02, 0.0, zf + 0.04, w1_ + 0.02, 0.45, far + 0.02, trim, mix(tcol, BLACK, 0.35))                       # stall riser
+        acc.box(w0_ - 0.04, 0.45, zf + 0.01, w1_ + 0.04, 0.49, zf + 0.19, MAT['powder'], FR)                                  # its sill
+        acc.box(w0_ - 0.02, 0.43, zf + 0.10, w1_ + 0.02, g - 0.78, zf + 0.12, MAT['glass'], lin('#9fb4c0'))                   # the shop window
+        nm = max(0, math.ceil((w1_ - w0_) / 1.9) - 1)
+        for j in range(nm):
+            xm = w0_ + (j + 1) * (w1_ - w0_) / (nm + 1); acc.box(xm - 0.025, 0.47, zf + 0.06, xm + 0.025, g - 0.78, zf + 0.16, MAT['powder'], FR)   # mullions
+        for lx0, lx1 in ((a - 0.02, a + 0.03), (b - 0.03, b + 0.02)): acc.box(lx0, 0.01, zf + 0.16, lx1, g - 0.12, far + D + 0.02, MAT['plaster'], lin(iw))   # the room's side walls, lined
         if aw:
             acc.prism_x([(zf - 0.05, g - 0.86), (zf - 1.35, g - 1.38), (zf - 1.35, g - 1.46), (zf - 0.05, g - 0.98)], a + 0.1, b - 0.1, MAT['fabric'], lin(aw))
             for bx in (a + 0.4, b - 0.4): acc.box(bx - 0.015, g - 1.47, zf - 1.30, bx + 0.015, g - 1.40, zf + 0.02, MAT['powder'], FRAME)   # its two arms
         # light: the ceiling inside, and what falls through the glass on the pavement
         cx = (a + b) / 2
-        lit.area((cx, g - 0.2, far + D * 0.5), (W / 2 - 0.4, 0, 0), (0, 0, D * 0.35), (0, -1, 0), lin(lc), 5.0 * LI * max(1.0, W / 4), 9, 'f', 3, 2)
-        lit.spot((cx, 2.4, far + 0.3), lin(lc), 3.2 * LI * max(1.0, W / 4), 11, 'f', (0, -0.55, -1), 38, 72)
+        lit.area((cx, g - 0.2, far + D * 0.5), (W / 2 - 0.4, 0, 0), (0, 0, D * 0.35), (0, -1, 0), lin(lc), 6.5 * LI * max(1.0, W / 4), 9, 'f', 3, 2)
+        lit.spot((cx, 2.4, far + 0.3), lin(lc), 4.0 * LI * max(1.0, W / 4), 12, 'f', (0, -0.55, -1), 38, 72)
         for j in range(max(1, int(W / 1.6))):   # downlights you can see in the ceiling
             lx = a + (j + 0.5) * W / max(1, int(W / 1.6))
             glow.quad((lx - 0.07, g - 0.141, far + 1.0), (lx + 0.07, g - 0.141, far + 1.0), (lx + 0.07, g - 0.141, far + 1.14), (lx - 0.07, g - 0.141, far + 1.14), lin(lc), 2.4)
+
+
+def plain_bay(acc, glow, lit, a, b, g, zf, far, wall, wcol, trim, tcol):
+    """a ground-floor bay with no shop: the wall 12 cm behind the pilasters on a plinth, a blind panel, a lantern"""
+    acc.box(a - 0.02, 0.0, zf + 0.12, b + 0.02, g + 0.0, far + 0.3, wall, wcol)
+    acc.box(a - 0.02, 0.0, zf + 0.06, b + 0.02, 0.55, zf + 0.14, trim, mix(tcol, BLACK, 0.3))                       # plinth, 2 cm into the wall
+    acc.box(a - 0.02, g - 0.80, zf - 0.06, b + 0.02, g + 0.03, far + 0.02, trim, mix(tcol, BLACK, 0.15))          # the band the fascias make next door
+    px0, px1 = a + 0.7, b - 0.7
+    if px1 - px0 > 1.2:   # a blind panel in a raised frame (the frame's four sides, uprights between the rails)
+        for py0, py1 in ((1.0, 1.1), (g - 1.5, g - 1.4)): acc.box(px0, py0, zf + 0.085, px1, py1, zf + 0.14, trim, tcol)
+        for qx0, qx1 in ((px0 + 0.005, px0 + 0.1), (px1 - 0.1, px1 - 0.005)): acc.box(qx0, 1.08, zf + 0.09, qx1, g - 1.48, zf + 0.14, trim, tcol)
+    cx = (a + b) / 2   # the lantern: a back plate, a lit box under a cap
+    acc.box(cx - 0.08, 2.28, zf + 0.09, cx + 0.08, 2.77, zf + 0.14, MAT['powder'], FRAME)
+    acc.box(cx - 0.11, 2.72, zf - 0.1, cx + 0.11, 2.76, zf + 0.1, MAT['powder'], FRAME)
+    acc.box(cx - 0.07, 2.38, zf - 0.07, cx + 0.07, 2.74, zf + 0.1, MAT['lacquer'], lin('#ffe9c4'))
+    for q in (((cx - 0.07, 2.4, zf - 0.071), (cx - 0.07, 2.7, zf - 0.071), (cx + 0.07, 2.7, zf - 0.071), (cx + 0.07, 2.4, zf - 0.071)),
+              ((cx - 0.071, 2.4, zf + 0.08), (cx - 0.071, 2.7, zf + 0.08), (cx - 0.071, 2.7, zf - 0.06), (cx - 0.071, 2.4, zf - 0.06)),
+              ((cx + 0.071, 2.4, zf - 0.06), (cx + 0.071, 2.7, zf - 0.06), (cx + 0.071, 2.7, zf + 0.08), (cx + 0.071, 2.4, zf + 0.08))): glow.quad(*q, lin('#ffcf8a'), 2.6)
+    lit.point((cx, 2.5, zf - 0.3), lin('#ffcf8a'), 2.4, 7, 'h')
+    return cx
+
+
+def end_block(acc, glow, lit, atlas, halos, rnd, xe, sx, za, zb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint, wash, sign):
+    """a building across the street's end, facing down it: the row's own builders in a frame turned a quarter turn (local x runs along
+    the front, local z back into the building). sx -1: the west end (faces east), +1: the east end. sign: its roof sign's picture"""
+    L = zb - za
+    if sx < 0: T = lambda p: (xe - p[2], p[1], za + p[0]); R = lambda n: (-n[2], n[1], n[0]); dyaw = -math.pi / 2
+    else: T = lambda p: (xe + p[2], p[1], zb - p[0]); R = lambda n: (n[2], n[1], -n[0]); dyaw = math.pi / 2
+    na, nh = len(atlas), len(halos); wall, wcol, trim, tcol = MAT[wm], lin(wc), MAT[tm], lin(tc)
+    for o in (acc, glow, lit): o.frame(T, R)
+    venue = [q for q in shops if q[2] != 'wall']
+    # the plain bays first (ground() builds the pilasters and the shops between them; a 'wall' unit is built here)
+    ground(acc, glow, lit, atlas, halos, 0.0, L, g, 0.0, P, shops, wall, wcol, trim, tcol, D=4.4)   # a deeper room than the row's: a counter, an aisle and booths, or a stage and tables
+    top = upper(acc, atlas, rnd, 0.0, L, g, H, 0.0, P, bays, fh, wall, wcol, trim, tcol, lit_p=lp, tint=tint, glow=glow, lit=lit, wash=(lin(wash[0]), wash[1]) if wash else None)
+    # the roof sign over the venue: a box on two posts behind the parapet, its picture on the front
+    v0, v1 = venue[0][0], venue[0][1]; cx = (v0 + v1) / 2; sw, sh = 7.8, 2.6; rt = top - 0.5
+    for px in (cx - 2.6, cx + 2.6): acc.box(px - 0.07, rt - 0.02, 0.62, px + 0.07, top + 0.55 + sh, 0.76, MAT['powder'], FRAME)
+    acc.box(cx - sw / 2 - 0.1, top + 0.5, 0.44, cx + sw / 2 + 0.1, top + 0.7 + sh, 0.64, MAT['powder'], lin('#0c0c0e'))
+    atlas.append({'k': 'blade', 'v': sign, 'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.428, 'yaw': math.pi, 'w': sw, 'h': sh, 'e': 1.5, 'fx': 1})
+    halos.append({'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.2, 'r': 4.2, 'c': list(lin('#ff5a6a' if sign == 'diner' else '#8aa0ff')), 'k': 0.22})
+    lit.area((cx, top + 0.6 + sh / 2, 0.2), (sw / 2, 0, 0), (0, sh / 2, 0), (0, -0.35, -1), lin('#ff7a84' if sign == 'diner' else '#98aaff'), 7.0, 26, 'f', 3, 2)
+    for o in (acc, glow, lit): o.frame()
+    for q in atlas[na:]: x_, _, z_ = T((q['x'], q['y'], q['z'])); q['x'], q['z'] = x_, z_; q['yaw'] = q.get('yaw', 0) + dyaw
+    for q in halos[nh:]: x_, _, z_ = T((q['x'], q['y'], q['z'])); q['x'], q['z'] = x_, z_
+    return top
 
 
 def far_side(acc, glow, lit, S, extras):
@@ -184,13 +296,15 @@ def far_side(acc, glow, lit, S, extras):
         (-11.2, 3.2, 16.8, 4.4, 3.4, 0.32, 5, 'stone', '#b09a7a', 'travertine', '#d8ccb4', 0.5, [(-11.2, -3.6, 'books', 1), (-3.6, 3.2, 'florist', -1)], None),
         (3.2, 15.2, 21.2, 4.6, 3.3, 0.22, 4, 'microcement', '#4a4e56', 'chrome', '#8a9098', 0.7, [(3.2, 15.2, 'pixel', -1)], '#cfe2ff'),
         (15.2, 27.4, 13.4, 4.2, 3.3, 0.30, 4, 'brick', '#6e3a2c', 'concrete', '#8a8478', 0.5, [(15.2, 21.6, 'ramen', 1), (21.6, 27.4, 'chemist', -1)], None),
-        (27.4, x1 + E, 17.4, 4.4, 3.4, 0.28, 6, 'plaster', '#8e949a', 'stone', '#b0a898', 0.5, [(27.4, 36.0, 'bakery', -1), (36.0, x1 + E, 'books', 1)], None),
+        (27.4, x1 + E, 17.4, 4.4, 3.4, 0.28, 6, 'plaster', '#8e949a', 'stone', '#b0a898', 0.5, [(27.4, 38.0, 'gallery', -1), (38.0, x1 + E, 'shut', 1)], None),
     ]
+    WASH = {-36.0: ('#ffd9a8', 2.6), -11.2: ('#ffe2bc', 2.0), 3.2: ('#cfe0ff', 2.2), 27.4: ('#ffe6c8', 1.4), -24.0: ('#ffdcb0', 1.2)}   # by a lot's west end: colour, strength
     tops = {}
     for (xa, xb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint) in LOTS:
         ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, MAT[wm], lin(wc), MAT[tm], lin(tc))
+        wsh = WASH.get(xa)
         tops[xa] = upper(acc, atlas, rnd, xa, xb, g, H, far, P, bays, fh, MAT[wm], lin(wc), MAT[tm], lin(tc), lit_p=lp, tint=tint,
-                         balcony=(0, 1) if wm == 'plaster' and xa == -24.0 else ((1,) if xa == -11.2 else ()))
+                         balcony=(0, 1) if wm == 'plaster' and xa == -24.0 else ((1,) if xa == -11.2 else ()), glow=glow, lit=lit, wash=(lin(wsh[0]), wsh[1]) if wsh else None, wash_last=xa != 27.4)
         # a rainwater pipe down the lot's east edge (5 cm off the piers' face on two brackets), and what stands on the roof
         px = xb - 0.2; pz = far - P - 0.11
         acc.cyl(px, pz, 0.05, 0.02, tops[xa] - 0.9, MAT['powder'], lin('#26272b'), n=8)
@@ -215,6 +329,13 @@ def far_side(acc, glow, lit, S, extras):
     lit.spot((-30.07, 6.0, far - 1.05), lin('#ffd08a'), 2.2, 9, 'f', (0, -1, -0.1), 40, 80)
     # the modern block's LED screen over its shop, and a rooftop billboard on the brick block at the east
     acc.box(4.4, 9.2, far - 0.36, 14.0, 14.6, far - 0.2, MAT['powder'], lin('#0c0c0e'))
+    BZ = lin('#6a6e76')   # the bezel: 4 cm proud of the screen, its uprights 5 mm shy of the rails' faces; a walkway on brackets under it
+    for by0, by1 in ((9.08, 9.22), (14.58, 14.72)): acc.box(4.28, by0, far - 0.40, 14.12, by1, far - 0.135, MAT['metal'], BZ)   # back into the piers, the lintels and the spandrels
+    for bx0, bx1 in ((4.285, 4.42), (13.98, 14.115)): acc.box(bx0, 9.2, far - 0.395, bx1, 14.6, far - 0.14, MAT['metal'], BZ)
+    acc.box(4.2, 8.70, far - 1.0, 14.2, 8.76, far - 0.2, MAT['metal'], lin('#3a3c42'))
+    for bx in (4.9, 9.2, 13.5): acc.box(bx - 0.04, 8.36, far - 0.9, bx + 0.04, 8.72, far - 0.2, MAT['powder'], FRAME)
+    acc.box(4.2, 9.70, far - 0.99, 14.2, 9.75, far - 0.94, MAT['powder'], FRAME)
+    for j in range(6): bx = 4.22 + j * (9.96 - 0.05) / 5; acc.box(bx, 8.74, far - 0.985, bx + 0.05, 9.72, far - 0.945, MAT['powder'], FRAME)
     atlas.append({'k': 'bill', 'v': 'a', 'x': 9.2, 'y': 11.9, 'z': far - 0.372, 'yaw': math.pi, 'w': 9.2, 'h': 5.0, 'e': 1.0, 'fx': 0})
     lit.area((9.2, 11.9, far - 0.6), (4.4, 0, 0), (0, 2.4, 0), (0, -0.25, -1), lin('#9ec8ff'), 9.0, 22, 'f', 3, 2)
     tE = tops[15.2]
@@ -227,13 +348,11 @@ def far_side(acc, glow, lit, S, extras):
         atlas.append({'k': 'blade', 'v': 'cross', 'x': xf, 'y': 4.2, 'z': far - 0.75, 'yaw': s * math.pi / 2, 'w': 0.7, 'h': 0.7, 'e': 1.5, 'fx': 1})
     acc.box(26.2, 3.85, far - 1.1, 26.28, 4.6, far - 0.4, MAT['powder'], lin('#101114'))
     halos.append({'x': 26.24, 'y': 4.2, 'z': far - 0.75, 'r': 1.1, 'c': list(lin('#40e080')), 'k': 0.4})
-    # the street's ends: a building across each, its windows and one big poster
-    for sx, xe, yaw in ((-1, x0 - E, math.pi / 2), (1, x1 + E, -math.pi / 2)):
-        xa_, xb_ = (xe - 0.6, xe) if sx < 0 else (xe, xe + 0.6)
-        acc.box(xa_, -0.3, F - 1.0, xb_, 23.0, far + 8.0, MAT['microcement'], lin('#3c3f46'))
-        xf = xe + (0.012 if sx < 0 else -0.012)
-        for fl in range(5):
-            for j in range(4):
-                zc = ST['kerb'] + 2.4 + j * 3.4; yc = 4.4 + fl * 3.6
-                atlas.append({'k': 'win', 'v': rnd.randrange(8), 'x': xf, 'y': yc, 'z': zc, 'yaw': yaw, 'w': 2.2, 'h': 1.9, 'e': (0.7 + rnd.random() * 0.5) if rnd.random() < 0.55 else 0.07})
+    # the street's ends (the user's arrow: a black wall with windows pasted on it): a building across each, built by the same hands
+    # as the row and turned a quarter turn. A jazz room closes the west vista, an all-night diner the east; each has a roof sign
+    F1 = F - 1.0
+    end_block(acc, glow, lit, atlas, halos, rnd, x0 - E, -1, F1, far + 0.5, 18.6, 4.6, 3.4, 0.30, 6, 'stone', '#b9a888', 'travertine', '#ded2ba', 0.6,
+              [(0.0, 6.2, 'wall', 1), (6.2, 18.2, 'jazz', 1), (18.2, far + 0.5 - F1, 'wall', 1)], '#ffd9a8', ('#ffe0b8', 2.4), 'jazz')
+    end_block(acc, glow, lit, atlas, halos, rnd, x1 + E, 1, F1, far + 0.5, 15.2, 4.5, 3.5, 0.26, 6, 'plaster', '#b6a48c', 'stone', '#8e8676', 0.6,
+              [(0.0, 5.0, 'wall', 1), (5.0, 17.5, 'diner', -1), (17.5, far + 0.5 - F1, 'wall', 1)], None, ('#ffe6c8', 2.0), 'diner')
     return atlas, halos
