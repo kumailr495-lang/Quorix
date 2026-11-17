@@ -54,6 +54,27 @@ def ear_clip(pts):
     if len(idx) == 3: out.append(tuple(idx))
     return out
 
+def arc(cx, cz, r, a0, a1, n=16):
+    """v12 points on a circle in plan (x, z), from angle a0 to a1 (radians: 0 = +x, pi/2 = +z), n segments, both ends included"""
+    return [(cx + r * math.cos(a0 + (a1 - a0) * i / n), cz + r * math.sin(a0 + (a1 - a0) * i / n)) for i in range(n + 1)]
+
+def offset(path, d, closed=False):
+    """v12 a plan polyline [(x, z)] moved d to the left of travel (geo.sweep's sense), mitred at every joint (the miter is capped at
+    4 d, so a hairpin does not shoot off)"""
+    m = len(path); out = []
+    for i in range(m):
+        prev = path[i - 1] if (closed or i > 0) else None; nxt = path[(i + 1) % m] if (closed or i < m - 1) else None
+        ns = []
+        for a, b in ((prev, path[i]), (path[i], nxt)):
+            if a is None or b is None: continue
+            tx, tz = b[0] - a[0], b[1] - a[1]; L = math.hypot(tx, tz) or 1.0; ns.append((-tz / L, tx / L))
+        if len(ns) == 1: nx, nz = ns[0]; k = d
+        else:
+            nx, nz = ns[0][0] + ns[1][0], ns[0][1] + ns[1][1]; L = math.hypot(nx, nz) or 1.0; nx, nz = nx / L, nz / L
+            c = nx * ns[0][0] + nz * ns[0][1]; k = d / max(c, 0.25)
+        out.append((path[i][0] + nx * k, path[i][1] + nz * k))
+    return out
+
 class Acc:
     """triangle soup with flat or given normals, per-vertex tint and material id"""
     def __init__(s):
@@ -96,14 +117,21 @@ class Acc:
             if k in skip: continue
             m, cc = (top if (k == 'py' and top is not None) else mat), (topcol if (k == 'py' and topcol is not None) else col)
             s.quad(P[a], P[b], P[c], P[d], m, cc)
-    def prism(s, poly, y0, y1, mat, col, caps=True, capmat=None, capcol=None, bottom=True):
-        """vertical extrusion of a 2D polygon [(x, z)] from y0 to y1: walls outward, caps on top (and bottom)"""
+    def prism(s, poly, y0, y1, mat, col, caps=True, capmat=None, capcol=None, bottom=True, smooth=0.0):
+        """vertical extrusion of a 2D polygon [(x, z)] from y0 to y1: walls outward, caps on top (and bottom).
+        smooth (degrees, v12): walls meeting at less than this angle share a normal at their joint (a curved wall shades round, its
+        corners stay sharp)"""
         if s.T is None: s.fill.append((min(x for x, z in poly), y0, min(z for x, z in poly), max(x for x, z in poly), y1, max(z for x, z in poly), mat))
         n = len(poly); area = sum(poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1] for i in range(n)) / 2
         pts = poly if area < 0 else poly[::-1]   # clockwise in (x, z) seen from +y = counter-clockwise seen from above (z points to the viewer)
+        sn = [norm((-(pts[(i + 1) % n][1] - pts[i][1]), 0.0, pts[(i + 1) % n][0] - pts[i][0])) for i in range(n)]   # each wall's outward normal
+        cs = math.cos(math.radians(smooth)) if smooth else 2.0
+        vn = [norm(add(sn[i - 1], sn[i])) if sn[i - 1][0] * sn[i][0] + sn[i - 1][2] * sn[i][2] > cs else None for i in range(n)]
         for i in range(n):
-            a, b = pts[i], pts[(i + 1) % n]
-            s.quad((a[0], y0, a[1]), (b[0], y0, b[1]), (b[0], y1, b[1]), (a[0], y1, a[1]), mat, col)
+            a, b = pts[i], pts[(i + 1) % n]; A0, B0, B1, A1 = (a[0], y0, a[1]), (b[0], y0, b[1]), (b[0], y1, b[1]), (a[0], y1, a[1])
+            if not smooth: s.quad(A0, B0, B1, A1, mat, col); continue
+            na, nb = vn[i] or sn[i], vn[(i + 1) % n] or sn[i]
+            s.tri(A0, B0, B1, mat, col, na, nb, nb); s.tri(A0, B1, A1, mat, col, na, nb, na)
         if caps:
             cm, cc = capmat if capmat is not None else mat, capcol or col
             s.poly([(x, y1, z) for x, z in pts], cm, cc)
@@ -117,6 +145,42 @@ class Acc:
             (za, ya), (zb, yb) = pts[i], pts[(i + 1) % n]
             s.quad((x0, ya, za), (x1, ya, za), (x1, yb, zb), (x0, yb, zb), mat, col)
         s.poly([(x1, y, z) for z, y in pts[::-1]], mat, col); s.poly([(x0, y, z) for z, y in pts], mat, col)
+    def prism_z(s, poly, z0, z1, mat, col):
+        """v12 extrusion along z of a polygon given in (x, y), from z0 to z1: closed, faces outward (chevrons, fins, gables drawn in
+        elevation)"""
+        if s.T is None: s.fill.append((min(x for x, y in poly), min(y for x, y in poly), z0, max(x for x, y in poly), max(y for x, y in poly), z1, mat))
+        n = len(poly); area = sum(poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1] for i in range(n))
+        pts = poly if area > 0 else poly[::-1]   # counter-clockwise seen from +z
+        for i in range(n):
+            (xa, ya), (xb, yb) = pts[i], pts[(i + 1) % n]
+            s.quad((xa, ya, z0), (xb, yb, z0), (xb, yb, z1), (xa, ya, z1), mat, col)
+        s.poly([(x, y, z1) for x, y in pts], mat, col); s.poly([(x, y, z0) for x, y in pts[::-1]], mat, col)
+    def band(s, path, y0, y1, d0, d1, mat, col, smooth=30.0, closed=False):
+        """v12 a solid band along a plan path [(x, z)]: from offset d0 to d1 (to the left of travel), y0 to y1, mitred at the joints, its
+        curved faces smooth: cornices, speed lines, sills and fascias that wrap round a curved corner as one piece (boxes per segment
+        overlapped at the joints: the v11 drum's z-fighting)"""
+        a, b = offset(path, d0, closed), offset(path, d1, closed)
+        if closed:   # a ring: its outer and inner loops as two prisms would leave the hole filled; build the four skins directly
+            m = len(path)
+            for i in range(m):
+                j = (i + 1) % m; ao, bo, ai, bi = a[i], a[j], b[i], b[j]
+                s.quad((ao[0], y0, ao[1]), (bo[0], y0, bo[1]), (bo[0], y1, bo[1]), (ao[0], y1, ao[1]), mat, col)
+                s.quad((bi[0], y0, bi[1]), (ai[0], y0, ai[1]), (ai[0], y1, ai[1]), (bi[0], y1, bi[1]), mat, col)
+                s.quad((ao[0], y1, ao[1]), (bo[0], y1, bo[1]), (bi[0], y1, bi[1]), (ai[0], y1, ai[1]), mat, col)
+                s.quad((ai[0], y0, ai[1]), (bi[0], y0, bi[1]), (bo[0], y0, bo[1]), (ao[0], y0, ao[1]), mat, col)
+            return
+        s.prism(a + b[::-1], y0, y1, mat, col, smooth=smooth)
+    def beam(s, a, b, w, h, mat, col, up=(0.0, 1.0, 0.0)):
+        """v12 a straight member of w x h section from point a to point b in any direction (diagonal mullions, chevron fins, struts);
+        h is measured along the side of the section nearest 'up'"""
+        t = norm(sub(b, a)); L = math.sqrt(sum((b[i] - a[i]) ** 2 for i in range(3)))
+        if L < 1e-6: return
+        sd = cross(t, up); sd = norm(sd) if sum(v * v for v in sd) > 1e-8 else (1.0, 0.0, 0.0); u = norm(cross(t, sd)); sd = norm(cross(u, t))   # (sd, u, t) right-handed
+        P = lambda x, y, z: add(a, add(scl(sd, x), add(scl(u, y), scl(t, z))))
+        C = [P(x, y, z) for z in (0.0, L) for y in (-h / 2, h / 2) for x in (-w / 2, w / 2)]   # index = 4 z + 2 y + x
+        if s.T is None: s.fill.append(tuple(min(c[k] for c in C) for k in range(3)) + tuple(max(c[k] for c in C) for k in range(3)) + (mat,))
+        for q in ((0, 2, 3, 1), (4, 5, 7, 6), (0, 1, 5, 4), (2, 6, 7, 3), (0, 4, 6, 2), (1, 3, 7, 5)):
+            s.quad(*[C[i] for i in q], mat, col)
     def wall(s, a, b, y0, y1, t, mat, col, openings=(), side=0, capmat=None, capcol=None, inner=None, trim=(0.0, 0.0)):
         """straight wall from a to b (2D x, z) of thickness t, centred (side 0) or offset to the left (+1) / right (-1) of a->b;
         openings: (s0, s1, top, bottom=y0) along the wall from a; each opening gets real reveals (jambs, head, sill).
