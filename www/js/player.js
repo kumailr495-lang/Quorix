@@ -79,7 +79,8 @@ export class Player {
           if (i === a.keys.length - 1 && t >= 1) { this.anim = null; if (a.kind === 'stand') { this.y = this.world.floorY(this.x, this.z, this.camY - EYE); this.camY = null; } a.done && a.done(); } break; }
         acc += k.d; from = k.to; }
       cam.position.set(this.x, this.camY, this.z);
-    } else if (this.seated) { const p = this.seated.pose; this.x = p.x; this.z = p.z; cam.position.set(p.x, p.y + Math.sin(performance.now() * 0.0011) * 0.004, p.z); }
+    } else if (this.seated) { const p = this.seated.pose, r = this.recline || 0; this.x = p.x; this.z = p.z;   // v12 recline: the eye settles 24 cm back and 12 cm down
+      cam.position.set(p.x + Math.sin(p.yaw) * 0.24 * r, p.y - 0.12 * r + Math.sin(performance.now() * 0.0011) * 0.004, p.z + Math.cos(p.yaw) * 0.24 * r); }
     else {
       let sx = this.stick.x, sy = this.stick.y; const k = this.keys; if (k.KeyW || k.ArrowUp) sy += 1; if (k.KeyS || k.ArrowDown) sy -= 1; if (k.KeyD || k.ArrowRight) sx += 1; if (k.KeyA || k.ArrowLeft) sx -= 1;
       const m = Math.hypot(sx, sy); if (m > 1) { sx /= m; sy /= m; } const dead = m < 0.1 ? 0 : 1, sp = (this.sprint ? 3.6 : 1.9) * dead * (this.locked ? 0 : 1);
@@ -95,6 +96,6 @@ export class Player {
       this.bob += ((spd > 0.3 ? 1 : 0) - this.bob) * Math.min(1, dt * 6);
       cam.position.set(this.x, this.y + EYE + Math.sin(this.phase * Math.PI) * 0.022 * this.bob * Math.min(1, spd / 2), this.z); this.camY = null;
     }
-    cam.rotation.set(this.pitch, this.yaw, Math.sin(this.phase * Math.PI * 0.5) * 0.003 * this.bob);
+    cam.rotation.set(this.pitch + (this.seated ? 0.1 * (this.recline || 0) : 0), this.yaw, Math.sin(this.phase * Math.PI * 0.5) * 0.003 * this.bob);
   }
 }

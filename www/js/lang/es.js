@@ -82,4 +82,5 @@ export const ES = {
   'set.more': "Más", 'set.advanced': "Más opciones",
   'guest.talk.curt': ["Perdona, estoy esperando a alguien.", "Ahora no.", "Estoy bien, gracias.", "Pregunta al personal.", "Prefiero no hablar."], 'guest.talk.plain': ["Buenas. Esperando a que empiece.", "Ni idea, perdona. Pregunta en el mostrador.", "Es mi primera vez aquí.", "Hay gente esta noche.", "La semana pasada había menos cola."], 'guest.talk.warm': ["Hola. ¿También vas a la última?", "Pide las palomitas de caramelo.", "La sala de las reclinables merece la pena.", "Disfruta la película."],
   'hud.leave': "Salir",
+  'hud.recline': "Reclinar", 'hud.sitUp': "Incorporarse", 'hud.cupIn': "Ponerlo en el portavasos", 'hud.cupOut': "Tomarlo del portavasos", 'toast.cupFull': "Los dos portavasos están ocupados",
 };

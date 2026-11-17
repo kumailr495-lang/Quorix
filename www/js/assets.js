@@ -123,9 +123,9 @@ const NO_COLLIDE = /^(letters|chandelier|pendant|downlight|sconce|speaker|rug|do
 function solidProp(name, b) { const h = b.max.y - b.min.y, w = b.max.x - b.min.x, d = b.max.z - b.min.z; return !NO_COLLIDE.test(name) && b.min.y < 0.35 && h > 0.35 && w > 0.12 && d > 0.12 && w * d < 14; }
 // one merged geometry (per material groups, 'occ' attribute) for instancing, e.g. hall seats. extra: matrix applied after the Kiln->engine turn
 // over = per-hall material swaps keyed by mesh name or material name, each with an optional library id and tint
-export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null) {
+export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null, pick = null) {
   const A = ASSETS[name]; if (!A) return null; const acc = new Acc(), m = extra || new THREE.Matrix4();
-  for (const p of A.parts) { if (p.lod !== lod) continue;
+  for (const p of A.parts) { if (p.lod !== lod || (pick && !pick(p.name))) continue;   // pick: only the parts it keeps (recline.js: the back, the footrest)
     if (p.glow) { const g = p.geo.clone(); g.setAttribute('occ', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(1), 1)); acc.add(g, m, p.glowColor, { mat: MAT.emit, uv: 'mesh' }); continue; }   // seat LEDs, cup-holder rings
     // cheap baked occlusion for an instanced prop: undersides and low parts darker
     const g = p.geo.clone(), P = g.attributes.position, N = g.attributes.normal, occ = new Float32Array(P.count);

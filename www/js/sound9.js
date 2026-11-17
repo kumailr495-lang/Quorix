@@ -57,6 +57,26 @@ export class Sound9 extends Sound {
   carDoor(inside) { this.play(inside ? 'car_door_in' : 'car_door', { gain: 0.6 }); }
   carRide(on) { if (on && !this._ride) this._ride = this.play('car_ride', { gain: 0.35, fadeIn: 1.2, dur: 22 }); else if (!on && this._ride) { try { this._ride.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5); } catch (e) { /* ended */ } this._ride = null; } }
   // v11 rain on the taxi's roof, heard from inside (BigSoundBank 1293, CC0), for the night ride
+  // v12 a power recliner's motor (the user: "actual reclining and sounds"): a geared hum that rises as it starts, a faint whine over it,
+  // a soft low thump as it stops; dur in seconds
+  recliner(dur = 2.2) {
+    if (!this.ready || this.muted) return; const c = this.ctx, t = c.currentTime;
+    const osc = c.createOscillator(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(46, t); osc.frequency.linearRampToValueAtTime(60, t + 0.3); osc.frequency.setValueAtTime(60, t + dur - 0.25); osc.frequency.linearRampToValueAtTime(38, t + dur);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 480; lp.Q.value = 2.2; const g = c.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.18); g.gain.setValueAtTime(0.1, t + dur - 0.2); g.gain.linearRampToValueAtTime(0, t + dur);
+    const wh = c.createOscillator(); wh.type = 'triangle'; wh.frequency.setValueAtTime(800, t); wh.frequency.linearRampToValueAtTime(960, t + dur); const gw = c.createGain();
+    gw.gain.setValueAtTime(0, t); gw.gain.linearRampToValueAtTime(0.01, t + 0.25); gw.gain.setValueAtTime(0.01, t + dur - 0.2); gw.gain.linearRampToValueAtTime(0, t + dur);
+    const th = c.createOscillator(); th.type = 'sine'; th.frequency.setValueAtTime(88, t + dur); th.frequency.exponentialRampToValueAtTime(40, t + dur + 0.18); const tg = c.createGain();
+    tg.gain.setValueAtTime(0, t + dur); tg.gain.linearRampToValueAtTime(0.15, t + dur + 0.012); tg.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.22);
+    osc.connect(lp); lp.connect(g); g.connect(this.master); wh.connect(gw); gw.connect(this.master); th.connect(tg); tg.connect(this.master);
+    osc.start(t); wh.start(t); th.start(t + dur); osc.stop(t + dur + 0.05); wh.stop(t + dur + 0.05); th.stop(t + dur + 0.25);
+  }
+  // a cup set into (or lifted from) a holder: a short hollow knock
+  cupKnock(up = false) {
+    if (!this.ready || this.muted) return; const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sine';
+    o.frequency.setValueAtTime(up ? 380 : 540, t); o.frequency.exponentialRampToValueAtTime(up ? 520 : 260, t + 0.07); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.14);
+  }
   // v12 a car out on the street, synthesised where it is (a panner): the hiss of its tyres on the wet road (filtered noise: at city speed
   // that is most of what a car sounds like at night) and its engine's low note. The handle takes the car's place, its speed in metres a
   // second and a level from 0 to 1 each frame, and fades the sound out when the car is gone

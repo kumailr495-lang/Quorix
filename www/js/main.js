@@ -31,6 +31,7 @@ import { Director } from './react.js';
 import { Intro, ARRIVAL } from './intro9.js';
 import { treeFor } from './dialogue9.js';
 import { makeHeld, setHeldMaterial } from './held.js';
+import { Recliner } from './recline.js';
 import { cleanTitle } from './films.js';
 import { ledWall, showtimes, menuBoard, attraction } from './panels9.js';
 import { makeRain } from './rain.js';
@@ -181,6 +182,11 @@ async function boot() {
   // ---------- what you hold ----------
   const itemU = { uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKeyDir: { value: new THREE.Vector3(-0.35, 0.8, 0.45).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, itemLight = { amb: itemU.uAmb.value, key: itemU.uKey.value, dir: itemU.uKeyDir.value, screen: itemU.uScreenL.value };
   const itemMat = mats.propMat(itemU); let itemMesh = null, itemAnim = 0, itemIn = 0, lightT = 0;
+  // v12 your own recliner (recline.js): it reclines for real, and its consoles' cup holders take what you hold
+  const recliner = new Recliner(world, sound, itemMat);
+  const giveBack = (st) => { held = st; if (itemMesh) engine.vm.remove(itemMesh); itemMesh = makeHeld(st.kind === 'coffee' ? 'coffee' : st.kind); setHeldMaterial(itemMesh, itemMat); itemMesh.userData.setLevel(1); engine.vm.add(itemMesh); itemIn = 0; ui.setItem(st.kind, st.left, st.max); };
+  const cupAction = () => { if (held) { if (recliner.put(held)) { engine.vm.remove(itemMesh); itemMesh = null; held = null; ui.setItem(null); } else ui.toast(t('toast.cupFull'), 2000); } else { const st = recliner.take(); if (st) giveBack(st); } };
+  for (const [sel, fn] of [['#bRecline', () => recliner.toggle()], ['#bCup', cupAction]]) { const el = document.querySelector(sel); if (el) el.addEventListener('click', (e) => { e.stopPropagation(); sound.unlock(); fn(); }); }
   function takeItem(kind) {
     const k = /cola|water/.test(kind) ? 'drink' : HOT.test(kind) ? 'coffee' : 'popcorn'; held = { kind: k, left: BITES[k], max: BITES[k], name: kind };
     if (itemMesh) engine.vm.remove(itemMesh); itemMesh = makeHeld(k === 'coffee' ? 'coffee' : k); setHeldMaterial(itemMesh, itemMat); itemMesh.userData.setLevel(1); engine.vm.add(itemMesh); itemIn = 0;
@@ -216,7 +222,8 @@ async function boot() {
   // v9.1b: sitting down, you look at the middle of the picture (the IMAX-shaped MAX picture rises 18 m: level eyes saw its lower half)
   const seatPose = (s) => { const H = BLD.HALL[s.hall], eye = s.y + SEAT[s.kind].eye, pitch = H ? Math.max(0, Math.min(0.5, 0.85 * Math.atan2(H.y0 + H.centreY - eye, Math.max(3, s.d)))) : 0.02;
     return { x: s.x - Math.sin(s.yaw) * 0.04, y: eye, z: s.z - Math.cos(s.yaw) * 0.04, yaw: s.yaw, pitch }; };
-  function claim(s) { if (sitRelease) sitRelease(); s.npc = s.npc || 'player'; sitRelease = () => { if (s.npc === 'player') s.npc = null; sitRelease = null; }; }
+  function claim(s) { if (sitRelease) sitRelease(); s.npc = s.npc || 'player'; recliner.attach(s.hallKey && world.hallByKey(s.hallKey), s);
+    sitRelease = () => { const back = recliner.detach(!held); if (back) giveBack(back); if (s.npc === 'player') s.npc = null; sitRelease = null; }; }
   function jumpToSeat(seat) { const s = seat || seatOf(ticket); if (!s) return; fadeTo(0.45, () => { claim(s); player.placeSeated(seatPose(s), crowd.laneStand(s)); player.y = s.y; tut.event('seated'); }); }
   function sitSeat(s) { if (s.npc && s.npc !== 'player') return; claim(s); player.sit(seatPose(s), crowd.laneStand(s), () => { sound.thud(); tut.event('seated'); if (ticket && ticket.tablet && game === 'flow') ui.toast(t('toast9.tabletArm'), 3000); }); }
   function sitSpot(sp) { sp.taken = 'player'; if (sitRelease) sitRelease(); sitRelease = () => { if (sp.taken === 'player') sp.taken = null; sitRelease = null; }; player.sit({ x: sp.x, y: sp.y + 0.72, z: sp.z, yaw: sp.face }, sp.stand, () => sound.thud()); }
@@ -339,6 +346,8 @@ async function boot() {
       if (!g) ui.setGoal(null); else { cam.getWorldDirection(fwd); const dx = g.aim.x - player.x, dz = g.aim.z - player.z, fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl;
         ui.setGoal(t(g.key, g.vars), Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz) * 180 / Math.PI, g.dist); } }
     ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
+    recliner.update(dt, player); const seatCtl = mode === 'play' && !!player.seated && !player.busy && !!recliner.cur && !modal;
+    ui.setButton('#bRecline', seatCtl); ui.setButton('#bCup', seatCtl && (held ? !!recliner.freeHolder() : recliner.hasItem()));
     ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet)));
     talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt); if (world.vis.has('lobby')) { led(now); board(now); } if (world.vis.has('street')) marq.update(now);
     slowT -= dt; if (slowT <= 0) { slowT = 0.5;

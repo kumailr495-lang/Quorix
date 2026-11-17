@@ -50,6 +50,23 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Taxi comes from somewhere and leaves; not blocking the doors | Done (X2b) |
 | Car model 10x, night feeling in the cab, driver's head inside the roof | Done (X2d, W5, X1) |
 
+## The 11-17 evening list (in the order it is being worked)
+
+| Ask | Status |
+|---|---|
+| Outside: Streamline front (concept B picked) | Done 11-17: curved band, speed lines, round corners, fin, round marquee |
+| Lobby lounge: curved sofas not on one circle | Done 11-17: three sofas on the table's own circle, two chairs close the C |
+| Halls: "the inside sucks" | In progress: folded MAX walls, CURVE sound-wave fins, 270 acoustic clouds, poster pre-show screen |
+| Curve hall: seats not following the curve | Open: check after its bake |
+| Street buildings: curves, triangles, "an illusion" that looks real | In progress: gables, Deco crown, curved gable, sawtooth, drum, wavy balconies; windows interior-mapped |
+| Trees that look real | Open: leaf cards |
+| Premium recliners that really recline, with sound; cup holders that take your drink or popcorn | Open |
+| Exits off the screen wall, the screen wall to wall | Open (moves doors, nav and exit routes) |
+| Light bounce, laser projection look, Dolby Atmos, corridors | Open |
+| Taxi interior, glitches, premium lighting | Open |
+| LODs for every object (asked 6-12) | Open: levels for what is drawn separately (people, cars, trees, seats); merged room props stay one mesh |
+| Lobby much better or from scratch; outside better still | Open |
+
 ## Theatres
 
 | Ask | Status |

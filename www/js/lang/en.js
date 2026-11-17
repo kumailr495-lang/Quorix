@@ -95,4 +95,5 @@ export const EN = {
   'set.more': "More", 'set.advanced': "More options",
   'guest.talk.curt': ["Sorry, I'm waiting for someone.", "Not now.", "I'm fine, thanks.", "Ask the staff.", "I'd rather not talk."], 'guest.talk.plain': ["Evening. Just waiting for it to start.", "No idea, sorry. Try the desk.", "First time here.", "Busy tonight.", "The queue was shorter last week."], 'guest.talk.warm': ["Hi. Seeing the late one too?", "Get the caramel popcorn.", "The recliner screen is worth it.", "Enjoy the film."],
   'hud.leave': "Leave",
+  'hud.recline': "Recline", 'hud.sitUp': "Sit up", 'hud.cupIn': "Put it in the cup holder", 'hud.cupOut': "Take it from the cup holder", 'toast.cupFull': "Both cup holders are in use",
 };

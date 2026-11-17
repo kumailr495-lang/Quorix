@@ -11,7 +11,7 @@ What the engine draws on top (www/js/street12.js) comes back in the room's extra
 Rules kept (CLAUDE.md, v11): parts embed 2 cm or more into each other or stand more than 3 cm apart; parallel faces 5 mm or more apart;
 no two same-facing faces in one plane overlap. Checked by connect.py and zcheck.py."""
 import math, random
-from geo import MAT, lin, mix
+from geo import MAT, lin, mix, arc, offset
 
 BLACK = (0.0, 0.0, 0.0)
 FRAME = lin('#17181c')
@@ -51,7 +51,7 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
             acc.box(o0 - 0.02, prev, far - P + 0.06, o1 + 0.02, ys - 0.03, far + 0.05, wall, sp)
             window(acc, atlas, rnd, o0, o1, ys, yh, far, P, trim, tcol, lit_p, tint=tint); prev = yh
             acc.box(o0 - 0.03, yh - 0.01, far - P + 0.02, o1 + 0.03, yh + 0.17, far + 0.04, trim, tcol)   # the lintel: 4 cm proud of the spandrel, 2 cm behind the piers
-            if k in balcony:   # v12 (the user: balconies, not billboards): a 1 m balcony; slab under the sill, a rail (on balusters, or a
+            if k in balcony and not glass:   # v12 (the user: balconies, not billboards): a 1 m balcony; slab under the sill, a rail (on balusters, or a
                 # glass panel on the modern block), a planter of greenery at one end. The lot's last bay stops 15 cm short of the rainwater pipe
                 bz0, bz1 = far - P - 1.0, far - P + 0.02; ba, bb = o0 - 0.1, (o1 - 0.05 if i == bays - 1 else o1 + 0.1)
                 acc.box(ba, ys - 0.2, bz0, bb, ys - 0.07, bz1, trim, tcol)   # 2 cm up into the sill, 2 cm into the piers' faces
@@ -69,6 +69,18 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
                 acc.box(px0, ys - 0.09, bz0 + 0.12, px0 + 0.9, ys + 0.22, bz0 + 0.42, MAT['powder'], lin('#2a2622'))
                 acc.box(px0 + 0.04, ys + 0.2, bz0 + 0.16, px0 + 0.86, ys + 0.52, bz0 + 0.38, MAT['velvet'], lin('#2c4a26'))   # its greenery, 2 cm down into the box
         acc.box(o0 - 0.02, prev, far - P + 0.06, o1 + 0.02, top + 0.03, far + 0.05, wall, sp)
+    if glass:   # v12 (the user: "curves"): the modern block's balconies run the lot's width as waves: a white slab whose front swings 0.4 to
+        # 1.1 m out (two waves, each floor's shifted), 8 cm into the piers and 2 cm into the spandrels; a glass rail along the wave, a steel
+        # cap on it, a warm line under the slab's lip
+        for k in balcony:
+            ys = y0 + k * fh + sill_h; xs_ = [xa + 0.05 + (xb - xa - 0.1) * j / 48 for j in range(49)]
+            front = [(x, far - P - (0.75 + 0.35 * math.sin(2 * math.pi * 2 * (x - xa) / (xb - xa) + k * 1.3))) for x in xs_]
+            acc.prism(front + [(xb - 0.05, far - P + 0.08), (xa + 0.05, far - P + 0.08)], ys - 0.2, ys - 0.07, MAT['plaster'], lin('#e8e4dc'), smooth=30.0)
+            acc.band(front, ys - 0.09, ys + 0.9, 0.03, 0.05, MAT['glass'], lin('#6a7a84'))
+            acc.band(front, ys + 0.88, ys + 0.93, 0.02, 0.06, MAT['powder'], FRAME)
+            q0, q1 = offset(front, 0.1), offset(front, 0.16)
+            for j in range(len(q0) - 1):
+                if glow is not None: gfq(glow, (q0[j][0], ys - 0.206, q0[j][1]), (q1[j][0], ys - 0.206, q1[j][1]), (q1[j + 1][0], ys - 0.206, q1[j + 1][1]), (q0[j + 1][0], ys - 0.206, q0[j + 1][1]), (0, -1, 0), lin('#ffd9a8'), 1.6)
     acc.box(xa, y0 - 0.02, far - P - 0.10, xb, y0 + 0.20, far - P, trim, tcol)   # the string course: against the piers' faces (not into them: its end would lie in the end pier's side), 5 cm down over the fascias
     if wash and lit is not None:
         wc_, wI = wash
@@ -349,6 +361,69 @@ def side_street(acc, glow, lit, atlas, halos, rnd, S, xa, xb, turn):
           glow=glow, lit=lit, wash=(lin('#ffe0b8'), 0.9))
 
 
+def gfq(glow, a, b, c, d, want, col, k):
+    """a glow quad facing `want`, whatever order its corners come in"""
+    n = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]), (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    glow.quad(*((a, b, c, d) if n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 else (d, c, b, a)), col, k)
+
+
+def round_window(glow, x, y, z, r, col, k):
+    """a lit round window facing the street (-z): an octagon in three quads"""
+    oc = [(x + r * math.cos(math.pi / 8 + q * math.pi / 4), y + r * math.sin(math.pi / 8 + q * math.pi / 4)) for q in range(8)]
+    for qd in ((0, 1, 2, 3), (0, 3, 4, 7), (4, 5, 6, 7)):
+        gfq(glow, *[(oc[q][0], oc[q][1], z) for q in qd], (0, 0, -1), col, k)
+
+
+def gable(acc, glow, x0, x1, top, far, rise, wall, wcol, trim, tcol, lit_window=True):
+    """a pitched roof behind the parapet with its gable wall on the street: the wall (an 18 cm triangle) rises out of the parapet, the slate
+    roof runs back from 2 cm inside it, a stone coping on both rakes, a round attic window"""
+    xm = (x0 + x1) / 2; SLATE = lin('#26282c')
+    acc.prism_z([(x0, top + 0.01), (xm, top + 0.01 + rise + 0.2), (x1, top + 0.01)], far + 0.30, far + 0.48, wall, wcol)
+    acc.prism_z([(x0 + 0.15, top + 0.01), (xm, top + 0.01 + rise), (x1 - 0.15, top + 0.01)], far + 0.46, far + 7.3, MAT['tblack'], SLATE)
+    for (a, b, zc) in (((x0 - 0.04, top + 0.06), (xm, top + 0.06 + rise + 0.2), far + 0.39), ((x1 + 0.04, top + 0.06), (xm, top + 0.06 + rise + 0.2), far + 0.396)):
+        acc.beam((a[0], a[1], zc), (b[0], b[1], zc), 0.14, 0.28, trim, tcol, up=(0.0, 0.0, 1.0))   # the copings: 6 mm apart in depth where they cross
+    if lit_window: round_window(glow, xm, top + 0.2 + rise * 0.45, far + 0.294, 0.38 if rise > 2.5 else 0.3, lin('#ffcf8a'), 1.4)
+
+
+def skyline(acc, glow, lit, halos, far, LOTS, tops, SW):
+    """v12 (the user: "styling, curves, triangles", the far side read as boxes): what each lot carries over its parapet. Every piece
+    stands 2 cm into the roof or the parapet it rises from"""
+    for (xa, xb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint) in LOTS:
+        top = H - 0.5; wall, wcol, trim, tcol = MAT[wm], lin(wc), MAT[tm], lin(tc)
+        if xa == SW[1]:   # twin gables over the bakery and the record shop
+            xm = (xa + xb) / 2; gable(acc, glow, xa + 0.1, xm - 0.05, top, far, 2.6, wall, wcol, trim, tcol); gable(acc, glow, xm + 0.05, xb - 0.1, top, far, 2.6, wall, wcol, trim, tcol, False)
+        elif xa == -36.0:   # the hotel: a stepped Deco crown with round ends, a gold line under each step's lip, a flagpole
+            xc = (xa + xb) / 2; y = top + 0.01
+            for (hw, h_) in ((4.6, 1.5), (3.3, 1.3), (2.0, 1.1)):
+                pl = arc(xc - hw + 0.9, far + 1.7, 0.9, math.pi / 2, 1.5 * math.pi, 10) + arc(xc + hw - 0.9, far + 1.7, 0.9, -math.pi / 2, math.pi / 2, 10)
+                acc.prism(pl, y, y + h_ + 0.05, wall, wcol, smooth=30.0)
+                zf_ = far + 0.8 - 0.006   # a gold line across the step's flat street face
+                gfq(glow, (xc - hw + 0.9, y + h_ - 0.16, zf_), (xc + hw - 0.9, y + h_ - 0.16, zf_), (xc + hw - 0.9, y + h_ - 0.1, zf_), (xc - hw + 0.9, y + h_ - 0.1, zf_), (0, 0, -1), lin('#ffcf8a'), 2.0)
+                y += h_
+            acc.cyl(xc, far + 1.7, 0.05, y - 0.02, y + 4.0, MAT['brass'], lin('#c9a35e'), n=8)
+            lit.spot((xc, top + 0.9, far - 2.0), lin('#ffd2a0'), 2.4, 12, 'f', (0, 0.9, 0.45), 25, 50)
+        elif xa == -24.0:   # the cafe: a curved Dutch gable rising out of the parapet, a round window in it
+            xc = (xa + xb) / 2; a_ = (xb - xa) / 2 - 1.2
+            shape = [(xc - a_ * math.cos(t), top + 0.73 + 2.0 * math.sin(t)) for t in [math.pi * i / 24 for i in range(0, 25)]]
+            acc.prism_z(shape, far - P + 0.02, far + 0.33, wall, wcol)
+            round_window(glow, xc, top + 1.75, far - P + 0.014, 0.42, lin('#ffcf8a'), 1.3)
+        elif xa == -11.2:   # the bookshop's pediment: one wide low gable
+            gable(acc, glow, xa + 0.1, xb - 0.1, top, far, 2.4, wall, wcol, trim, tcol)
+        elif xa == 15.2:   # a sawtooth roof over the ramen bar and the chemist: four teeth, each one's steep face to the west
+            n = 4; w = (xb - xa - 0.2) / n
+            for i in range(n):
+                x0 = xa + 0.1 + i * w
+                acc.prism_z([(x0, top + 0.01), (x0, top + 0.01 + 2.0), (x0 + w - 0.04, top + 0.01)], far + 0.36, far + 7.3, MAT['powder'], lin('#2c2e33'))
+                if i: gfq(glow, (x0 - 0.006, top + 0.5, far + 0.6), (x0 - 0.006, top + 0.5, far + 6.8), (x0 - 0.006, top + 1.7, far + 6.8), (x0 - 0.006, top + 1.7, far + 0.6), (-1, 0, 0), lin('#ffd9a0'), 0.35)
+        elif xa == 27.4:   # the gallery: a drum on its east corner, ringed with bands, stepped to a gold finial
+            cx, cz = xb - 1.9, far + 1.9; y = top + 0.01
+            acc.cyl(cx, cz, 1.6, y, top + 4.6, wall, wcol, n=40)
+            for yy in (top + 1.6, top + 2.6, top + 3.6): acc.cyl(cx, cz, 1.64, yy, yy + 0.14, trim, tcol, n=40)
+            acc.cyl(cx, cz, 1.25, top + 4.55, top + 5.3, wall, wcol, n=36); acc.cyl(cx, cz, 0.85, top + 5.25, top + 5.85, trim, tcol, n=32)
+            acc.cyl(cx, cz, 0.06, top + 5.8, top + 7.6, MAT['brass'], lin('#c9a35e'), n=8)
+            lit.spot((cx, top + 0.8, cz - 3.4), lin('#ffd2a0'), 2.0, 10, 'f', (0, 0.85, 0.5), 25, 55)
+
+
 def far_side(acc, glow, lit, S, extras):
     """the row across the road, west to east, and the two buildings that close the street's ends"""
     ST, F = S['STREET'], S['FACADE']; x0, x1, far = ST['x0'], ST['x1'], ST['far']; rnd = random.Random(12)
@@ -380,8 +455,10 @@ def far_side(acc, glow, lit, S, extras):
         acc.cyl(px, pz, 0.05, 0.02, tops[xa] - 0.9, MAT['powder'], lin('#26272b'), n=8)
         for py in (1.6, g + 2.0, tops[xa] - 2.2): acc.box(px - 0.07, py, pz - 0.02, px + 0.07, py + 0.05, far - P + 0.02, MAT['powder'], lin('#26272b'))
         rt = tops[xa] - 0.5   # the roof's deck (the mass's top)
-        acc.box(xa + 1.2, rt - 0.02, far + 2.6, xa + 3.6, rt + 2.3, far + 5.4, MAT['plaster'], mix(lin(wc), BLACK, 0.25))   # the stair's bulkhead
-        if bays >= 5: acc.cyl(xb - 2.6, far + 4.0, 0.95, rt - 0.02, rt + 2.4, MAT['powder'], lin('#3a3c40'), n=14)        # a water tank
+        if xa not in (SW[1], -36.0, -11.2, 15.2):   # v12: not through a pitched roof, the sawtooth or the hotel's crown
+            acc.box(xa + 1.2, rt - 0.02, far + 2.6, xa + 3.6, rt + 2.3, far + 5.4, MAT['plaster'], mix(lin(wc), BLACK, 0.25))   # the stair's bulkhead
+        if bays >= 5 and xa not in (-11.2, 27.4): acc.cyl(xb - 2.6, far + 4.0, 0.95, rt - 0.02, rt + 2.4, MAT['powder'], lin('#3a3c40'), n=14)   # a water tank
+    skyline(acc, glow, lit, halos, far, LOTS, tops, SW)
     # the alley between the cafe and the bookshop: paving, a back wall with one lit window and a lamp, two bins
     acc.box(-13.2, -0.3, far, -11.2, 0.0, far + 7.6, MAT['paving'], lin('#6e6a64'))
     acc.box(-13.2, 0.0, far + 7.3, -11.2, 12.0, far + 7.6, MAT['brick'], lin('#4a2c22'))

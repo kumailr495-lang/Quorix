@@ -14,7 +14,7 @@ import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
 import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
-import { posterURL } from './films.js';
+import { posterURL, filmById } from './films.js';
 import { Lift } from './lift9.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), IN = (r, x, z, m = 0) => x >= r.x0 - m && x <= r.x1 + m && z >= r.z0 - m && z <= r.z1 + m;
@@ -360,9 +360,13 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // the front-east corner by the windows (rooms.py LCX, LCZ: its rug), where the two small chair groups were. Pieces are kept apart:
   // sofas on a 2.4 m circle, chairs on 3.4 m at the diagonals (tools/dev/props-overlap.mjs checks every room's furniture)
   const LX = 15.3, LZ = 11.0;
-  for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', LX + 2.4 * Math.cos(r), 0, LZ + 2.4 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }   // square to the axes: their collision boxes stay tight
-  for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'armchair_deco', LX + 3.4 * Math.cos(r), 0, LZ + 3.4 * Math.sin(r), Math.round((-r - Math.PI / 2) / (Math.PI / 2)) * Math.PI / 2, { swap: BOUCLE }); }
-  add('lobby', 'table_lounge', LX, 0, LZ); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
+  // v12 (the user: "the curved seats are not placed rightly"): the sofas' origins stood on a 2.4 m circle but each arc is 2.0 m round its own
+  // centre, so the four arcs curved round four points 0.4 m past the table and read as scattered pieces. Now three sofas sit on the table's
+  // own 2.0 m circle (seat fronts on it, square to the axes) in a C open to the lobby (west), two boucle chairs close the C facing the
+  // table, and the table is half again as wide for a 4 m circle
+  for (const a of [0, 90, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', LX + 2.0 * Math.cos(r), 0, LZ + 2.0 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }
+  for (const a of [155, 205]) { const r = a * RAD; add('lobby', 'armchair_deco', LX + 2.35 * Math.cos(r), 0, LZ + 2.35 * Math.sin(r), Math.atan2(-Math.cos(r), -Math.sin(r)), { swap: BOUCLE }); }
+  add('lobby', 'table_lounge', LX, 0, LZ, 0, { scale: [1.5, 1, 1.5] }); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   // v12 (the user: "trees inside like a medieval tree"): an old olive tree in a travertine bowl in each front corner, by the glass (seen
   // from the street too); they replace the corner palms
   for (const x of [-20.5, 20.5]) add('lobby', 'olive_tree', x, 0, 16.0, x < 0 ? 0.6 : 2.4, { collide: false, round: 0.8 });
@@ -570,6 +574,7 @@ function buildHall(world, h, room) {
     geo[0].computeBoundingBox(); const bw = geo[0].boundingBox.max.x - geo[0].boundingBox.min.x, aw = ASSETS[F.an] ? ASSETS[F.an].box.max.x - ASSETS[F.an].box.min.x : 0.06;
     const want = SEAT[F.kind].w - Math.min(0.12, aw), sx = clamp(want / Math.max(0.2, bw), 0.75, 1.7);
     const idx = F.list.map((s) => s.i), sub = new Float32Array(idx.length * 7); idx.forEach((i, k) => sub.set(lit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, F.list, sub, sx);
+    for (const s of F.list) { s.sx = sx; s.fam = F.sn; }   // v12 recline.js copies your own seat at the same width
   }
   const armFam = {}; arms.forEach((a, i) => { (armFam[a.an] || (armFam[a.an] = [])).push(i); });
   for (const an in armFam) { const geo = [0, 1].map((l) => assetGeometry(an, l, flip, toGeometry, Acc, over)); if (!geo[0]) continue; const ids = armFam[an], list = ids.map((i) => arms[i]), sub = new Float32Array(ids.length * 7); ids.forEach((i, k) => sub.set(armLit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, list, sub, 1); }
@@ -600,11 +605,13 @@ function buildHall(world, h, room) {
       geo.applyMatrix4(m.matrixWorld); L.bake(geo); geo.applyMatrix4(m.matrixWorld.clone().invert()); room.group.add(m); ms.push(m); }
     curtains = { meshes: ms, open: 0.999, target: 1, base }; }   // v9.3: open, gathered at the sides (closed, the screen read as a dark wall: "where is the screen")
   const tmp = new THREE.Object3D(); let last = [1e9, 1e9];
-  const hall = { cfg: h, id: h.id, key: h.key, name: h.name, room, seats, arms, pic, picMat, slate, patches, curtains, seatLit: lit,
+  const hall = { cfg: h, id: h.id, key: h.key, name: h.name, room, seats, arms, pic, picMat, slate, patches, curtains, seatLit: lit, over,
+    // v12 recline.js: your own seat drops out of the instances while its moving copy stands in for it
+    hideSeat(s, on) { s.hidden = !!on; this.updateLOD(null, true); },
     updateLOD(cam, force, far = 7) {
-      const px = cam.position.x, pz = cam.position.z; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.5) return; last = [px, pz]; const fin = (far - 0.8) ** 2, fout = (far + 0.8) ** 2;
+      const px = cam ? cam.position.x : last[0], pz = cam ? cam.position.z : last[1]; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.5) return; last = [px, pz]; const fin = (far - 0.8) ** 2, fout = (far + 0.8) ** 2;
       for (const G_ of groups) { const cnt = [0, 0], { list, ms, lt, sx, arm } = G_;
-        for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, d2 = dx * dx + dz * dz; if (arm && d2 > 196) continue;   // arms past 14 m hide behind the seat backs
+        for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, d2 = dx * dx + dz * dz; if ((arm && d2 > 196) || s.hidden) continue;   // arms past 14 m hide behind the seat backs
           const l = (s.lod = force ? (d2 < far * far ? 0 : 1) : s.lod === 1 ? (d2 < fin ? 0 : 1) : (d2 > fout ? 1 : 0)), m = ms[l] || ms[0], k = cnt[ms[l] ? l : 0]++;
           tmp.position.set(s.x, s.y, s.z); tmp.rotation.set(0, s.yaw, 0); tmp.scale.set(sx, 1, 1); tmp.updateMatrix(); m.setMatrixAt(k, tmp.matrix);
           const a = m.geometry.attributes; a.iLh.setXYZ(k, lt[i * 7], lt[i * 7 + 1], lt[i * 7 + 2]); a.iLf.setXYZ(k, lt[i * 7 + 3], lt[i * 7 + 4], lt[i * 7 + 5]); a.iLs.setX(k, lt[i * 7 + 6]); }
@@ -613,16 +620,30 @@ function buildHall(world, h, room) {
   };
   return hall;
 }
-// the idle screen: the hall's name on a dark slate (the show system swaps in the countdown, then the film)
+// the idle screen (the show system swaps in the countdown, then the film)
+// v12 (the user: "the inside of the theatre sucks"): a pre-show card instead of a plain silver sheet: the hall's feature poster whole on
+// the left in a gold rule, the same poster blurred and dimmed to fill the screen behind it, LUMIERE, the hall and tonight's title in
+// gold and ivory. It stays bright and coloured, so the screen's size still reads under the house lights (v9.1b: a near-black slate made
+// the screens look small)
+const SLATE_FILM = { max: 'sintel', curve: 'cosmos', classic: 'bunny', x270: 'hero' };
 export function slateTexture(h) {
-  // v9.1b: between shows the screen reads as what it is, a big silver screen under the house lights (it was near black: "the screens look
-  // so small"), with the hall's wordmark in ink and a gold rule, like a cinema's own house slide
-  const w = 1024, ht = Math.round(w / h.aspect), c = makeCanvas(w, ht), g = c.getContext('2d'), gr = g.createRadialGradient(w / 2, ht * 0.45, 10, w / 2, ht / 2, w * 0.62);
-  gr.addColorStop(0, '#e9e6df'); gr.addColorStop(0.6, '#cdcac3'); gr.addColorStop(1, '#8f8c87'); g.fillStyle = gr; g.fillRect(0, 0, w, ht); g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = '#14162e'; g.font = `500 ${ht * 0.15}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${ht * 0.045}px`; g.fillText('LUMIÈRE', w / 2, ht * 0.43);
-  g.fillStyle = '#b8873a'; g.fillRect(w / 2 - ht * 0.22, ht * 0.535, ht * 0.44, Math.max(2, ht * 0.006));
-  g.fillStyle = 'rgba(20,22,46,.78)'; g.font = `600 ${ht * 0.055}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${ht * 0.035}px`; g.fillText(h.name.replace('LUMIERE ', '') + '  ·  SCREEN ' + h.no, w / 2, ht * 0.62);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+  const w = 1024, ht = Math.round(w / h.aspect), c = makeCanvas(w, ht), g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  const F = filmById(SLATE_FILM[h.format] || 'sintel'), ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v + 'px'; };
+  const draw = (im) => {
+    g.fillStyle = '#12121a'; g.fillRect(0, 0, w, ht);
+    if (im) { const s = Math.max(w / im.width, ht / im.height) * 1.12; g.save(); g.filter = 'blur(16px) brightness(0.6) saturate(1.15)'; g.drawImage(im, (w - im.width * s) / 2, (ht - im.height * s) / 2, im.width * s, im.height * s); g.restore(); }
+    const vg = g.createLinearGradient(0, 0, w, 0); vg.addColorStop(0, 'rgba(8,8,14,0.1)'); vg.addColorStop(0.5, 'rgba(8,8,14,0.5)'); vg.addColorStop(1, 'rgba(8,8,14,0.78)'); g.fillStyle = vg; g.fillRect(0, 0, w, ht);
+    const ph = ht * 0.8, pw = im ? ph * im.width / im.height : ph * 2 / 3, px = w * 0.07, py = (ht - ph) / 2;
+    g.fillStyle = '#c9a35e'; g.fillRect(px - 3, py - 3, pw + 6, ph + 6); if (im) g.drawImage(im, px, py, pw, ph); else { g.fillStyle = '#1c1c26'; g.fillRect(px, py, pw, ph); }
+    const x0 = px + pw + w * 0.04, tx = (x0 + w * 0.97) / 2; g.textAlign = 'center'; g.textBaseline = 'middle'; g.__fit = [x0, w * 0.97];
+    g.fillStyle = '#e8c27a'; g.font = `500 ${ht * 0.15}px ${SERIF}`; ls(ht * 0.04); g.fillText('LUMIÈRE', tx, ht * 0.35); ls(0);
+    g.fillStyle = '#c9a35e'; g.fillRect(tx - ht * 0.2, ht * 0.455, ht * 0.4, Math.max(2, ht * 0.006));
+    g.fillStyle = 'rgba(242,235,221,.94)'; g.font = `600 ${ht * 0.052}px ${SANS}`; ls(ht * 0.03); g.fillText(h.name.replace('LUMIERE ', '') + '  ·  SCREEN ' + h.no, tx, ht * 0.56);
+    if (F) { g.fillStyle = 'rgba(242,235,221,.72)'; g.font = `500 ${ht * 0.044}px ${SANS}`; g.fillText('TONIGHT  ·  ' + F.title.toUpperCase(), tx, ht * 0.665); }
+    ls(0); g.__fit = null; t.needsUpdate = true;
+  };
+  draw(null); if (F) { const im = new Image(); im.onload = () => draw(im); im.src = posterURL(F.id); }
+  return t;
 }
 // the picture: shown exactly as graded (no tone curve, no fog); uBox letterboxes it inside the screen
 const PIC_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;

@@ -236,12 +236,25 @@ def build_hall(h, L1):
                 on_wall(sg, 0.0, 0.055, fy + 1.1, fy + 1.14, da - 0.01, db + 0.01, MAT['brass'], lin('#b58a4c'))
                 on_wall(sg, 0.0, 0.03, fy + 1.2, wtop, da, db, MAT['acoustic'], mix(th['wall'], th['wall2'], 0.3 * rnd.random()))
                 wall_glow(sg, fy + 1.25, wtop - 0.1, dd - 0.012, dd + 0.012, th['accent'], 1.4)
+                # v12 (the user: "the inside of the theatre sucks"; "curves, triangles"): the fabric folded into vertical triangular ridges,
+                # 30 cm wide, 9 cm proud, 2 cm into the panel, so the wall washers rake light and shade down every fold
+                nr = int((db - da - 0.1) / 0.3)
+                for q in range(nr):
+                    r0 = da + 0.05 + q * (db - da - 0.1) / nr; r1 = r0 + (db - da - 0.1) / nr
+                    acc.prism([(sg * (W2 - 0.01), r0 + 0.01), (sg * (W2 - 0.12), (r0 + r1) / 2), (sg * (W2 - 0.01), r1 - 0.01)], fy + 1.3, wtop - 0.06, MAT['acoustic'], mix(th['wall'], th['frame'], 0.18))
             elif fmt == 'curve':  # cognac leather wainscot, navy fabric panels between slim champagne pilasters, warm up-lights
                 on_wall(sg, 0.0, 0.05, fy, fy + 1.15, da, db, MAT['leather'], th['wood'])
                 on_wall(sg, 0.0, 0.06, fy + 1.15, fy + 1.19, da - 0.01, db + 0.01, MAT['brass'], th['trim'])
                 on_wall(sg, 0.0, 0.03, fy + 1.3, wtop, da + 0.04, db - 0.04, MAT['acoustic'], mix(th['wall'], th['wall2'], 0.3 * rnd.random()))
                 on_wall(sg, 0.0, 0.05, fy + 1.19, wtop, dd - 0.035, dd + 0.035, MAT['brass'], th['trim'])
                 wall_glow(sg, fy + 1.21, fy + 1.27, da + 0.05, db - 0.05, th['warm'], 1.2, off=0.007)
+                # v12 a sound wave in brass across each fabric panel: fins 4 cm wide every 25 cm, 2 cm into the fabric and 5 cm proud,
+                # their heights an audio envelope that runs on from panel to panel down the hall
+                ym, yh = (fy + 1.45 + wtop - 0.2) / 2, (wtop - 0.2 - fy - 1.45) / 2
+                dq = da + 0.25
+                while dq < db - 0.22:
+                    amp = yh * (0.18 + 0.82 * abs(math.sin(dq * 0.83 + h['no'])) * (0.55 + 0.45 * math.sin(dq * 2.71)))
+                    on_wall(sg, 0.01, 0.08, ym - amp, ym + amp, dq - 0.02, dq + 0.02, MAT['brass'], th['trim']); dq += 0.25
                 lit.line((sg * (W2 - 0.12), fy + 1.3, da + 0.1), (sg * (W2 - 0.12), fy + 1.3, db - 0.1), th['warm'], 0.25, 3.5, 'h', (0, 1, 0))
             elif fmt == 'classic':  # charcoal dado and brass rail, burgundy fabric panels in cream mouldings, brass sconces
                 on_wall(sg, 0.0, 0.03, fy, fy + 0.95, da, db, MAT['paint'], th['ceil'])
@@ -314,6 +327,18 @@ def build_hall(h, L1):
     else:
         for u in (-W2 * 0.5, 0.0, W2 * 0.5):
             glow.quad((u - 0.03, cy, 2.0), (u + 0.03, cy, 2.0), (u + 0.03, cy, depth - 1.5), (u - 0.03, cy, depth - 1.5), th['accent'], 1.0)
+        # v12 curved acoustic clouds: shallow barrels across the hall (clear of the side screens' projectors), each hung 0.5 m down on
+        # four rods 2 cm into the ceiling and 2 cm into the cloud, a teal light along both long edges
+        cu = W2 - 2.4; yc0 = ceil - 0.5
+        for dc in [4.0 + 4.6 * i for i in range(int((depth - 5.0) / 4.6))]:
+            prof = [(dc - 1.3 + 2.6 * j / 12, yc0 - 0.32 * math.sin(math.pi * j / 12)) for j in range(13)][::-1] + [(dc - 1.3, yc0 + 0.04), (dc + 1.3, yc0 + 0.04)][::-1]
+            prof = [(dc - 1.3 + 2.6 * j / 12, yc0 - 0.32 * math.sin(math.pi * j / 12)) for j in range(13)] + [(dc + 1.3, yc0 + 0.04), (dc - 1.3, yc0 + 0.04)]
+            acc.prism_x(prof, -cu, cu, MAT['acoustic'], mix(th['panel'], th['wall'], 0.5))
+            for (ru, rd) in ((-cu + 0.6, dc - 0.7), (-cu + 0.6, dc + 0.7), (cu - 0.6, dc - 0.7), (cu - 0.6, dc + 0.7)):
+                acc.cyl(ru, rd, 0.012, yc0 + 0.02, ceil + 0.02, MAT['metal'], lin('#30333a'), n=6)
+            for ed in (dc - 1.3, dc + 1.3):
+                gq((-cu + 0.1, yc0 - 0.006, ed + (0.02 if ed < dc else -0.02)), (cu - 0.1, yc0 - 0.006, ed + (0.02 if ed < dc else -0.02)), (cu - 0.1, yc0 - 0.006, ed + (0.07 if ed < dc else -0.07)), (-cu + 0.1, yc0 - 0.006, ed + (0.07 if ed < dc else -0.07)), (0, -1, 0), th['accent'], 1.4)
+            lit.line((-cu, yc0 - 0.1, dc), (cu, yc0 - 0.1, dc), th['warm'], 0.08, 4.0, 'h', (0, 1, 0))
     # downlights over the seats only (the walls have their washers): fewer and softer than v9's grid
     nu = max(1, int(round((2 * h['blockHalf']) / 4.4)))
     for u in [-h['blockHalf'] + 1.0 + i * (2 * h['blockHalf'] - 2.0) / nu for i in range(nu + 1)]:
