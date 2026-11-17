@@ -1051,17 +1051,20 @@ def build_street(S):
         acc.box(pa - 0.015, 0.47, pz0 + 0.075, pa + 0.075, 0.515, pz1 - 0.075, MAT['brass'], FC['gold']); acc.box(pb - 0.075, 0.47, pz0 + 0.075, pb + 0.015, 0.515, pz1 - 0.075, MAT['brass'], FC['gold'])
     # street lamps: the posts are engine props (world9.js, every 10 m, none before the canopy); here their light, on both pavements
     halos = extras.setdefault('halos', [])
+    # v12 midnight: the street lamps are cool white LED (4000 K); warm light comes only from the shops, the windows and the cinema, so the
+    # street reads as night against the gold of the theatre (amber lamps everywhere made it a dusk)
+    LED = lin('#e2eaf6')
     for xx in range(-40, 41, 10):
         if abs(xx) > 12:
-            lit.spot((xx, 5.7, k + 0.45), lin('#ffdcae'), 9.0, 16, 'h', (0, -1, -0.1), 40, 76)   # under the head, 0.9 m out over the kerb
-            halos.append({'x': xx, 'y': 5.76, 'z': k + 0.45, 'r': 1.5, 'c': list(lin('#ffdcae')), 'k': 0.55})
+            lit.spot((xx, 5.7, k + 0.45), LED, 9.0, 16, 'h', (0, -1, -0.1), 40, 76)   # under the head, 0.9 m out over the kerb
+            halos.append({'x': xx, 'y': 5.76, 'z': k + 0.45, 'r': 1.5, 'c': list(LED), 'k': 0.5})
     for xx in range(-37, 46, 15):   # the far pavement's lamps: a slim post with an arm over the road (none on the entrance's axis)
         acc.cyl(xx, r1 + 0.6, 0.06, 0.0, 6.4, MAT['powder'], lin('#1a1a1e'), n=10)
         acc.box(xx - 0.04, 6.3, r1 - 1.0, xx + 0.04, 6.4, r1 + 0.62, MAT['powder'], lin('#1a1a1e'))
         acc.box(xx - 0.11, 6.22, r1 - 1.45, xx + 0.11, 6.36, r1 - 0.98, MAT['powder'], lin('#1a1a1e'))
         glow.quad((xx - 0.08, 6.215, r1 - 1.4), (xx + 0.08, 6.215, r1 - 1.4), (xx + 0.08, 6.215, r1 - 1.04), (xx - 0.08, 6.215, r1 - 1.04), lin('#ffe2b8'), 3.0)
-        lit.spot((xx, 6.1, r1 - 1.2), lin('#ffdcae'), 8.0, 16, 'h', (0, -1, 0), 42, 78)
-        halos.append({'x': xx, 'y': 6.2, 'z': r1 - 1.22, 'r': 1.4, 'c': list(lin('#ffdcae')), 'k': 0.5})
+        lit.spot((xx, 6.1, r1 - 1.2), LED, 8.0, 16, 'h', (0, -1, 0), 42, 78)
+        halos.append({'x': xx, 'y': 6.2, 'z': r1 - 1.22, 'r': 1.4, 'c': list(LED), 'k': 0.45})
     # the block across the street and the buildings at the street's ends (v12: real buildings with shopfronts, tools/blender/arch/street12.py)
     atlas, _ = street12.far_side(acc, glow, lit, S, extras)
     # the cinema's blade sign: a fin standing 2 m off the stone band beside the canopy, LUMIERE down both faces (atlas quads, a chase of
@@ -1078,9 +1081,10 @@ def build_street(S):
     # road markings from the atlas: the crossing in front of the doors, TAXI in the bay
     atlas.append({'k': 'road', 'v': 'zebra', 'x': 0.0, 'y': -0.144, 'z': (r0 + r1) / 2, 'yaw': 0, 'w': 5.2, 'h': r1 - r0 - 0.5, 'e': 0.16, 'flat': 1})
     atlas.append({'k': 'road', 'v': 'taxi', 'x': 9.0, 'y': -0.144, 'z': (k + r0) / 2, 'yaw': math.pi, 'w': 5.0, 'h': 1.5, 'e': 0.14, 'flat': 1})   # read from the cinema's pavement
-    # v12 (the user: "make the buildings and the street much more visible"): the night sky's own light, sixteen times what it was. Nothing
-    # outside is black any more: fronts the lamps do not reach are a cool blue with their own shading (the bake multiplies this by AO)
-    lit.ambient(lin('#3a4660'), lin('#1c1c24'), 0.9, 'h')
+    # v12 the night sky's own light. 0.06 left the fronts black ("make the buildings more visible"); 0.9 made it an evening ("it misses
+    # the whole point of a night theatre"). Midnight: a deep blue fill a third of that, so the fronts read as shapes in moonlight and the
+    # light comes from lamps, signs, windows and the cinema (the bake multiplies this by AO)
+    lit.ambient(lin('#22304e'), lin('#0c0c12'), 0.3, 'h')
     # v9.1 (the user: "the theatre's outside texture", "empty spaces"): lit poster cases on the facade's flanks at eye level (bronze frames,
     # a gooseneck spot over each), warm uplights washing the stone cladding every 4 m, so the building reads at night
     panels = [{'id': 'marquee', 'x': 0, 'y': 6.1, 'z': F + 7.11, 'yaw': 0, 'w': 14.0, 'h': 0.9, 'emit': 1}]

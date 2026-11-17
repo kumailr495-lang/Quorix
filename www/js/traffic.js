@@ -79,11 +79,10 @@ export function streetRoutes(plan, stopX) {
 // ------------------------------------------------------------------ what is ahead of a car on its route
 // the nearest point of its route ahead (up to 34 m) that passes within 1.7 m of an obstacle: the distance to it along the route
 function clearAhead(route, s, obstacles, self) {
-  let best = Infinity;
-  for (let d = 2; d < 34; d += 1) { const p = route.at(s + d); if (s + d > route.L) break;
-    for (const o of obstacles) { if (o === self) continue; if (Math.abs(p.x - o.x) < 2.2 && Math.abs(p.z - o.z) < 2.2 && Math.hypot(p.x - o.x, p.z - o.z) < (o.r || 1.7)) { best = d; break; } }
-    if (best < Infinity) break; }
-  return best;
+  const hit = (d) => { const p = route.at(s + d); for (const o of obstacles) { if (o === self) continue; if (Math.abs(p.x - o.x) < 2.2 && Math.abs(p.z - o.z) < 2.2 && Math.hypot(p.x - o.x, p.z - o.z) < (o.r || 1.7)) return true; } return false; };
+  // metre steps to find it, then halving to the centimetre (with whole metres the stop point jumped and the car crept on and stopped again)
+  for (let d = 1; d < 34 && s + d <= route.L; d += 1) if (hit(d)) { let a = d - 1, b = d; for (let k = 0; k < 7; k++) { const m = (a + b) / 2; if (hit(m)) b = m; else a = m; } return b; }
+  return Infinity;
 }
 // a car's speed this frame: under the route's profile and under a stop (its centre 4.5 m short of anything in its path: about a car's
 // length and a half of space), at the car's own limits
@@ -93,6 +92,11 @@ export function drive(car, dt, obstacles) {
   car.v = want > car.v ? Math.min(want, car.v + A_ACC * dt) : Math.max(want, car.v - A_BRK * 1.6 * dt);
   car.s = Math.min(R.L, car.s + car.v * dt); const p = R.at(car.s); car.x = p.x; car.z = p.z; car.h = p.h; return car.s >= R.L - 0.01;
 }
+
+// a car's light never drops under the night's own (a moonlit blue): between two lamps the street's light list gives almost nothing, and
+// the taxi's yellow roof went black there
+const FLOOR = [0.085, 0.095, 0.13];
+export function carFloor(H) { for (let i = 0; i < 3; i++) H[i] = Math.max(H[i], FLOOR[i]); return H; }
 
 // ------------------------------------------------------------------ passing cars
 // a few saloons in three paints (one instanced mesh per paint: one draw each), out of a hidden leg every 9 to 20 s, never more than three
@@ -127,7 +131,7 @@ export class Traffic {
     for (const m of this.meshes) { const mine = this.cars.filter((c) => c.mesh === m); m.count = mine.length ? 2 : 0;
       for (let k = 0; k < 2; k++) { const c = mine.find((q) => q.slot === k); if (c) { this._q.setFromAxisAngle(this._up, c.h); this._m.compose(new THREE.Vector3(c.x, ROAD_Y, c.z), this._q, new THREE.Vector3(1, 1, 1)); }
         else this._m.makeScale(0, 0, 0);
-        m.setMatrixAt(k, this._m); if (c) { this.room.lights.at(c.x, 0.9, c.z, 0, 1, 0, this._H, this._F); const G = m.geometry.attributes; G.iLh.array.set(this._H, k * 3); G.iLf.array.set(this._F, k * 3); G.iLh.needsUpdate = G.iLf.needsUpdate = true; } }
+        m.setMatrixAt(k, this._m); if (c) { this.room.lights.at(c.x, 0.9, c.z, 0, 1, 0, this._H, this._F); carFloor(this._H); const G = m.geometry.attributes; G.iLh.array.set(this._H, k * 3); G.iLf.array.set(this._F, k * 3); G.iLh.needsUpdate = G.iLf.needsUpdate = true; } }
       m.instanceMatrix.needsUpdate = true; }
   }
 }

@@ -58,7 +58,8 @@ export class Sound9 extends Sound {
   carRide(on) { if (on && !this._ride) this._ride = this.play('car_ride', { gain: 0.35, fadeIn: 1.2, dur: 22 }); else if (!on && this._ride) { try { this._ride.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5); } catch (e) { /* ended */ } this._ride = null; } }
   // v11 rain on the taxi's roof, heard from inside (BigSoundBank 1293, CC0), for the night ride
   // v12 a car out on the street, synthesised where it is (a panner): the hiss of its tyres on the wet road (filtered noise: at city speed
-  // that is most of what a car sounds like at night) and its engine's low note. set(x, z, speed m/s, level 0..1); stop() fades it out
+  // that is most of what a car sounds like at night) and its engine's low note. The handle takes the car's place, its speed in metres a
+  // second and a level from 0 to 1 each frame, and fades the sound out when the car is gone
   vehicle() {
     if (!this.ready) return null; const c = this.ctx;
     if (!this._noise) { const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this._noise = b; }

@@ -126,10 +126,10 @@ for path in paths:
         if not m: continue
         Q = [c for t in T for c in t] + [c for t in T for c in (t[0], t[2], t[1])]
         for ar, g, i, j in pairs(Q, None, gap=0.0005, min_area=1e-9):
-            if (i < m) != (j < m) and i % m != j % m and i < j: folds.append((ar, p['name']))
+            if (i < m) != (j < m) and i % m != j % m and i < j: folds.append((ar, p['name'], [sum(c[k] for c in T[i % m]) / 3 for k in range(3)]))   # where: the first face's centre
     nf = sum(len(g) for g in floating); bad += nf + len(cop) + len(folds)
     print(f'== {name}: {n} parts, {len(groups)} groups, {nf} floating, {len(cop)} coplanar pairs, {len(folds)} folds' + (' (hung)' if hung else ' (wall)' if wall else ''))
-    for ar, pn in sorted(folds, reverse=True)[:6]: print(f'   fold: {pn} {ar * 1e4:.3f} cm2')
+    for ar, pn, g in sorted(folds, key=lambda q: -q[0])[:6]: print(f'   fold: {pn} {ar * 1e4:.3f} cm2 at ({g[0]:.3f}, {g[1]:.3f}, {g[2]:.3f})')
     for g in floating:
         names = [parts[i]['name'] for i in g]; d = min((near.get(i, (9, ''))) for i in g)
         print(f'   floating: {", ".join(names if "--long" in argv else names[:6])}{" ..." if len(names) > 6 and "--long" not in argv else ""} (nearest: {d[1]} {d[0] * 1000:.1f} mm)')

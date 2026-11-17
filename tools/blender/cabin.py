@@ -88,7 +88,7 @@ def dash(bm):
 
 
 def bonnet(bm):
-    """the yellow bonnet ahead of the glass: 2 cm thick, crowned across, on the taxi's own top line"""
+    """the bonnet ahead of the glass (black: the taxi is black and yellow): 2 cm thick, crowned across, on the taxi's own top line"""
     xs = [1.10 + (2.30 - 1.10) * i / 14 for i in range(15)]; nv = 12
     top = lambda x, v: (x, v * (b_hw(x) - 0.05), b_top(x) - 0.035 * v * v)
     grid = []
@@ -190,7 +190,7 @@ def build():
     # beyond the glass: the scuttle under the wipers and the yellow bonnet on the taxi's own lines
     part('Scuttle', L0, 'plastic_dark', rb((0.10, 1.46, 0.04), 0.01, at=(1.11, 0, 0.92)))
     for y in (-0.32, 0.36): part('WiperPivot', L0, 'plastic_dark', lambda bm: lathe(bm, [(1e-4, 0.95), (0.02, 0.95), (0.02, 0.982), (0.012, 0.99), (1e-4, 0.99)], 16), T(1.04, y, 0))   # the blades (intro9.js) turn on these
-    part('Bonnet', L0, 'car_yellow', bonnet)
+    part('Bonnet', L0, 'gloss_black', bonnet)   # v12: the taxi is black and yellow (kaali-peeli): its bonnet is black
 
 
 os.makedirs(A.out, exist_ok=True)

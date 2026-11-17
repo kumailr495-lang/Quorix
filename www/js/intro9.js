@@ -13,7 +13,7 @@ import { assetGeometry } from './assets.js';
 import { Acc, toGeometry } from './geom.js';
 import { MAT } from './library.js';
 import { Person, staffRecipe, DATA, setGesture } from './people.js';
-import { streetRoutes, drive } from './traffic.js';
+import { streetRoutes, drive, carFloor } from './traffic.js';
 import { STREET } from './building.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, ease = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
 const KERB = 26.0, STOP_X = 9.0, ROAD_Y = -0.15;   // the TAXI bay's middle (rooms.py paints it at x 9)
@@ -174,7 +174,7 @@ export class Intro {
   _place(t) {
     const P = this.pose(t), x = P.x, z = P.z, yaw = P.h; if (P !== this.car) { this.car.x = x; this.car.z = z; this.car.h = yaw; }   // the car's nose (+z) along its motion
     this._q.setFromAxisAngle(this._up, yaw); this._m.compose(new THREE.Vector3(x, ROAD_Y, z), this._q, new THREE.Vector3(1, 1, 1)); this.mesh.setMatrixAt(0, this._m); this.mesh.instanceMatrix.needsUpdate = true;
-    const L = this.room.lights, G = this.mesh.geometry.attributes; L.at(x, 0.9, z, 0, 1, 0, this._H, this._F); G.iLh.array.set(this._H); G.iLf.array.set(this._F); G.iLh.needsUpdate = G.iLf.needsUpdate = true;
+    const L = this.room.lights, G = this.mesh.geometry.attributes; L.at(x, 0.9, z, 0, 1, 0, this._H, this._F); carFloor(this._H); G.iLh.array.set(this._H); G.iLf.array.set(this._F); G.iLh.needsUpdate = G.iLf.needsUpdate = true;
     if (this.inCar) { this.cab.setMatrixAt(0, this._m); this.cab.instanceMatrix.needsUpdate = true; this.rig.matrix.copy(this._m); this.rig.matrixWorldNeedsUpdate = true;
       // v11 night: the street's light through the glass (dimmer, it comes in sideways), the cabin's own low glow, and the light of the
       // nearest street lamp or sign sliding through the cabin as you pass it (iLs with the street's screen-light uniforms)

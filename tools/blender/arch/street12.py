@@ -67,9 +67,9 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
         for i, xp in enumerate(xs):
             if i == bays and not wash_last: continue   # the row's last pier stands in the corner with the building across the street's end
             xl = xa + pier_w / 4 if i == 0 else (xb - pier_w / 4 if i == bays else xp)
-            acc.box(xl - 0.07, y0 + 0.19, far - P - 0.085, xl + 0.07, y0 + 0.27, far - P + 0.02, MAT['powder'], FRAME)   # the fitting: on the course, 2 cm into the pier
+            acc.box(xl - 0.07, y0 + 0.19, far - P - 0.085, xl + 0.07, y0 + 0.27, far - P + 0.02, MAT['powder'], FRAME)   # the fitting: on the course, 2 cm into the pier (a narrow beam: a stripe up the pier, not a lit front)
             if glow is not None: glow.quad((xl - 0.05, y0 + 0.271, far - P - 0.07), (xl + 0.05, y0 + 0.271, far - P - 0.07), (xl + 0.05, y0 + 0.271, far - P - 0.01), (xl - 0.05, y0 + 0.271, far - P - 0.01), wc_, 2.2)
-            lit.spot((xl, y0 + 0.32, far - P - 0.22), wc_, wI, (top - y0) * 1.15, 'h', (0, 1, 0.13), 13, 36)
+            lit.spot((xl, y0 + 0.32, far - P - 0.22), wc_, wI, (top - y0) * 1.15, 'h', (0, 1, 0.1), 8, 24)
     acc.box(xa - 0.08, top, far - P - cor, xb + 0.08, top + 0.32, far + 0.1, trim, tcol)
     acc.box(xa, top + 0.29, far - P, xb, top + 0.75, far + 0.35, wall, wcol)
     acc.box(xa - 0.03, top + 0.72, far - P - 0.04, xb + 0.03, top + 0.80, far + 0.39, trim, tcol)
@@ -186,23 +186,24 @@ def ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, wall, wcol, t
     """the ground floor of one lot: pilasters, and per shop a stall riser, a glazed front with a door, a fascia with its sign, an awning
     on some, and a fitted room behind the glass with its own light. shops = [(x0, x1, kind, door side -1/+1)] between the lot's ends"""
     acc.box(xa, 0.0, far - P, xa + 0.45, g, far + depth, wall, wcol); acc.box(xb - 0.45, 0.0, far - P, xb, g, far + depth, wall, wcol)   # end pilasters, and party walls to the back; they carry the mass above
-    for i, (s0, s1, kind, side) in enumerate(shops):
+    for i, sh in enumerate(shops):
+        s0, s1, kind, side = sh[:4]; shut_ = len(sh) > 4 and sh[4] == 'closed'   # v12 midnight: a closed shop keeps a dim display and its sign
         if i > 0: acc.box(s0 - 0.25, 0.0, far - P, s0 + 0.25, g, far + D + 0.3, wall, wcol)   # a pilaster and party wall between two shops
         a = (xa + 0.45) if i == 0 else s0 + 0.25; b = (xb - 0.45) if i == len(shops) - 1 else s1 - 0.25; W = b - a
         if kind == 'shut': shutter(acc, a, b, g, far - P, far, wall, wcol); continue
         if kind == 'wall': plain_bay(acc, glow, lit, a, b, g, far - P, far, wall, wcol, trim, tcol); continue
-        iw, fl, fc, lc, LI, hc, aw, frc = LOOK[kind]; FR = lin(frc)
+        iw, fl, fc, lc, LI, hc, aw, frc = LOOK[kind]; FR = lin(frc); LI = LI * (0.22 if shut_ else 1.0)
         # the room: floor (a 3 cm step up, from under the door's frame), back wall, ceiling
         zf = far - P
         acc.box(a - 0.02, -0.3, zf + 0.12, b + 0.02, 0.03, far + D + 0.02, MAT[fl], lin(fc))
         acc.box(a - 0.02, 0.0, far + D, b + 0.02, g + 0.03, far + D + 0.3, MAT['plaster'], lin(iw))
         acc.box(a - 0.02, g - 0.14, far - 0.05, b + 0.02, g + 0.0, far + D + 0.02, MAT['plaster'], lin('#d8d2c8'))
-        atlas.append({'k': 'shop', 'v': kind, 'x': (a + b) / 2, 'y': (0.03 + g - 0.14) / 2, 'z': far + D - 0.012, 'yaw': math.pi, 'w': W, 'h': g - 0.17, 'e': 0.55})
+        atlas.append({'k': 'shop', 'v': kind, 'x': (a + b) / 2, 'y': (0.03 + g - 0.14) / 2, 'z': far + D - 0.012, 'yaw': math.pi, 'w': W, 'h': g - 0.17, 'e': 0.16 if shut_ else 0.55})
         for (u0, v0, w0, u1, v1, w1, m, c) in fit_out(kind, W, D, g): acc.box(b - u1, v0, far + w0, b - u0, v1, far + w1, m, c)   # u runs from the shop's left as seen from the street (+x to -x)
         # the front: fascia (6 cm proud, 3 cm up into the floors above), door, riser, glass 2 cm into everything round it
         acc.box(a - 0.02, g - 0.80, zf - 0.06, b + 0.02, g + 0.03, far + 0.02, MAT['powder'], lin('#121316'))
-        atlas.append({'k': 'sign', 'v': kind, 'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.072, 'yaw': math.pi, 'w': min(W - 0.5, 4.6), 'h': 0.52, 'e': 1.25, 'fx': 1 if kind in ('ramen', 'records') else 0})
-        halos.append({'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.25, 'r': 1.5, 'c': list(lin(hc)), 'k': 0.22})
+        atlas.append({'k': 'sign', 'v': kind, 'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.072, 'yaw': math.pi, 'w': min(W - 0.5, 4.6), 'h': 0.52, 'e': 0.55 if shut_ else 1.25, 'fx': 1 if kind in ('ramen', 'records') and not shut_ else 0})
+        halos.append({'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.25, 'r': 1.5, 'c': list(lin(hc)), 'k': 0.08 if shut_ else 0.22})
         # v12 (the user's arrows: a door that read as a wire outline, a front with no structure): the front is a frame in the shop's
         # own colour. Posts run from the pavement into the fascia, a transom crosses the whole front at the door's head, mullions
         # divide the window, a sill caps the riser; the door is a framed leaf (stiles, a kick rail, a top rail) on a stone threshold
@@ -292,7 +293,7 @@ def side_spans(S):
 ZT, ZC = 56.0, 63.0   # the side streets: where their flanking blocks end (the lane turns there), and the front of the block closing each
 
 
-def side_windows(acc, atlas, rnd, xe, sx, za, zb, g, top, fh, trim, tcol, lit_p=0.55, win_w=1.3, win_h=1.6):
+def side_windows(acc, atlas, rnd, xe, sx, za, zb, g, top, fh, trim, tcol, lit_p=0.3, win_w=1.3, win_h=1.6):
     """windows on a block's plain side wall over a side street (sx -1: the wall faces east, +1: west), between za and zb"""
     if sx < 0: T = lambda p: (xe - p[2], p[1], za + p[0]); R = lambda n: (-n[2], n[1], n[0]); dyaw = -math.pi / 2
     else: T = lambda p: (xe + p[2], p[1], zb - p[0]); R = lambda n: (n[2], n[1], -n[0]); dyaw = math.pi / 2
@@ -332,21 +333,21 @@ def side_street(acc, glow, lit, atlas, halos, rnd, S, xa, xb, turn):
     # the blocks: the outer one runs on from the block across the street's end; the inner one stands behind the corner lot. Their ground
     # storeys differ from the head block's and their piers from the end block's, so nothing they share at a corner lies in one plane
     if turn < 0:
-        end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 0.5, ZT, 15.6, 4.3, 3.3, 0.28, 4, 'brick', '#7a4232', 'stone', '#b0a490', 0.6,
-                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], None, ('#ffd9b0', 1.6), None)
-        end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 7.6, ZC, 18.2, 4.3, 3.4, 0.28, 4, 'plaster', '#a89a86', 'stone', '#8e8676', 0.55,
-                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffe2c0', 1.6), None)
+        end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 0.5, ZT, 15.6, 4.3, 3.3, 0.28, 4, 'brick', '#4a2a20', 'stone', '#6e665a', 0.3,
+                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], None, ('#ffd9b0', 0.8), None)
+        end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 7.6, ZC, 18.2, 4.3, 3.4, 0.28, 4, 'plaster', '#4e4840', 'stone', '#6a645a', 0.3,
+                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffe2c0', 0.8), None)
     else:
-        end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 0.5, ZT, 14.8, 4.5, 3.4, 0.26, 4, 'microcement', '#5a5e66', 'chrome', '#8a9098', 0.6,
-                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], '#cfe2ff', ('#d8e6ff', 1.6), None)
-        end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 7.6, ZC, 16.4, 4.3, 3.4, 0.28, 4, 'brick', '#6e3a2c', 'concrete', '#8a8478', 0.55,
-                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffd9a8', 1.6), None)
+        end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 0.5, ZT, 14.8, 4.5, 3.4, 0.26, 4, 'microcement', '#3a3e44', 'chrome', '#6a7078', 0.3,
+                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], '#cfe2ff', ('#d8e6ff', 0.8), None)
+        end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 7.6, ZC, 16.4, 4.3, 3.4, 0.28, 4, 'brick', '#4a281e', 'concrete', '#66625a', 0.3,
+                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffd9a8', 0.8), None)
     # the block across the lane's head (it faces down the lane: the same front as the row's)
     hx = (xa - 18.0, xb + 8.0) if turn < 0 else (xa - 8.0, xb + 18.0); mid = (hx[0] + hx[1]) / 2
     ground(acc, glow, lit, atlas, halos, hx[0], hx[1], 4.4, ZC, 0.3, [(hx[0], mid - 3.0, 'wall', 1), (mid - 3.0, mid + 3.0, 'shut', 1), (mid + 3.0, hx[1], 'wall', 1)],
-           MAT['stone'], lin('#b5a68c'), MAT['travertine'], lin('#d8ccb4'))
-    upper(acc, atlas, rnd, hx[0], hx[1], 4.4, 17.0, ZC, 0.3, 8, 3.3, MAT['stone'], lin('#b5a68c'), MAT['travertine'], lin('#d8ccb4'), lit_p=0.65,
-          glow=glow, lit=lit, wash=(lin('#ffe0b8'), 1.8))
+           MAT['stone'], lin('#5a5246'), MAT['travertine'], lin('#86806e'))
+    upper(acc, atlas, rnd, hx[0], hx[1], 4.4, 17.0, ZC, 0.3, 8, 3.3, MAT['stone'], lin('#5a5246'), MAT['travertine'], lin('#86806e'), lit_p=0.35,
+          glow=glow, lit=lit, wash=(lin('#ffe0b8'), 0.9))
 
 
 def far_side(acc, glow, lit, S, extras):
@@ -357,15 +358,15 @@ def far_side(acc, glow, lit, S, extras):
     SW, SE = side_spans(S)   # the two side streets (x from, x to)
     # (xa, xb, height, ground storey, floor height, pier relief, bays, wall material, colour, trim material, colour, share of lit windows, shops, window tint)
     LOTS = [
-        (SW[1], -36.0, 14.6, 4.3, 3.3, 0.30, 4, 'brick', '#8a4a36', 'stone', '#b8ac98', 0.5, [(SW[1], -41.5, 'bakery', 1), (-41.5, -36.0, 'records', -1)], None),
-        (-36.0, -24.0, 19.4, 4.8, 3.5, 0.36, 4, 'travertine', '#6a6258', 'nero', '#3a3632', 0.62, [(-36.0, -24.0, 'hotel', 1)], '#ffd9a0'),
-        (-24.0, -13.2, 12.4, 4.2, 3.6, 0.26, 3, 'plaster', '#c8b8a0', 'stone', '#9a8c78', 0.45, [(-24.0, -13.2, 'cafe', -1)], None),
-        (-11.2, 3.2, 16.8, 4.4, 3.4, 0.32, 5, 'stone', '#b09a7a', 'travertine', '#d8ccb4', 0.5, [(-11.2, -3.6, 'books', 1), (-3.6, 3.2, 'florist', -1)], None),
-        (3.2, 15.2, 21.2, 4.6, 3.3, 0.22, 4, 'microcement', '#4a4e56', 'chrome', '#8a9098', 0.7, [(3.2, 15.2, 'pixel', -1)], '#cfe2ff'),
-        (15.2, 27.4, 13.4, 4.2, 3.3, 0.30, 4, 'brick', '#6e3a2c', 'concrete', '#8a8478', 0.5, [(15.2, 21.6, 'ramen', 1), (21.6, 27.4, 'chemist', -1)], None),
-        (27.4, SE[0], 17.4, 4.4, 3.4, 0.28, 5, 'plaster', '#8e949a', 'stone', '#b0a898', 0.5, [(27.4, 38.0, 'gallery', -1), (38.0, SE[0], 'shut', 1)], None),
+        (SW[1], -36.0, 14.6, 4.3, 3.3, 0.30, 4, 'brick', '#5a2e22', 'stone', '#7a7064', 0.3, [(SW[1], -41.5, 'bakery', 1, 'closed'), (-41.5, -36.0, 'records', -1, 'closed')], None),
+        (-36.0, -24.0, 19.4, 4.8, 3.5, 0.36, 4, 'travertine', '#5a5249', 'nero', '#2e2a27', 0.42, [(-36.0, -24.0, 'hotel', 1)], '#ffd9a0'),
+        (-24.0, -13.2, 12.4, 4.2, 3.6, 0.26, 3, 'plaster', '#5e544a', 'stone', '#7a6e5e', 0.3, [(-24.0, -13.2, 'cafe', -1)], None),
+        (-11.2, 3.2, 16.8, 4.4, 3.4, 0.32, 5, 'stone', '#6a5c4a', 'travertine', '#968a74', 0.3, [(-11.2, -3.6, 'books', 1, 'closed'), (-3.6, 3.2, 'florist', -1, 'closed')], None),
+        (3.2, 15.2, 21.2, 4.6, 3.3, 0.22, 4, 'microcement', '#34373d', 'chrome', '#6a7078', 0.4, [(3.2, 15.2, 'pixel', -1, 'closed')], '#cfe2ff'),
+        (15.2, 27.4, 13.4, 4.2, 3.3, 0.30, 4, 'brick', '#4e2a20', 'concrete', '#6a665e', 0.3, [(15.2, 21.6, 'ramen', 1), (21.6, 27.4, 'chemist', -1)], None),
+        (27.4, SE[0], 17.4, 4.4, 3.4, 0.28, 5, 'plaster', '#44484e', 'stone', '#7a7468', 0.3, [(27.4, 38.0, 'gallery', -1, 'closed'), (38.0, SE[0], 'shut', 1)], None),
     ]
-    WASH = {-36.0: ('#ffd9a8', 2.6), -11.2: ('#ffe2bc', 2.0), 3.2: ('#cfe0ff', 2.2), 27.4: ('#ffe6c8', 1.4), -24.0: ('#ffdcb0', 1.2)}   # by a lot's west end: colour, strength
+    WASH = {-36.0: ('#ffd2a0', 2.2), -11.2: ('#ffdcb4', 1.1), 3.2: ('#cfe0ff', 1.2)}   # by a lot's west end: colour, strength (midnight: the hotel's, and two lower ones)
     tops = {}; corner = {}
     for (xa, xb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint) in LOTS:
         if xa == SW[1]: corner['w'] = (g, H - 0.5, fh, MAT[tm], lin(tc))
@@ -427,8 +428,8 @@ def far_side(acc, glow, lit, S, extras):
     # the street's ends (the user's arrow: a black wall with windows pasted on it): a building across each, built by the same hands
     # as the row and turned a quarter turn. A jazz room closes the west vista, an all-night diner the east; each has a roof sign
     F1 = F - 1.0
-    end_block(acc, glow, lit, atlas, halos, rnd, x0 - E, -1, F1, far + 0.5, 18.6, 4.6, 3.4, 0.30, 6, 'stone', '#b9a888', 'travertine', '#ded2ba', 0.6,
-              [(0.0, 6.2, 'wall', 1), (6.2, 18.2, 'jazz', 1), (18.2, far + 0.5 - F1, 'wall', 1)], '#ffd9a8', ('#ffe0b8', 2.4), 'jazz')
-    end_block(acc, glow, lit, atlas, halos, rnd, x1 + E, 1, F1, far + 0.5, 15.2, 4.5, 3.5, 0.26, 6, 'plaster', '#b6a48c', 'stone', '#8e8676', 0.6,
-              [(0.0, 5.0, 'wall', 1), (5.0, 17.5, 'diner', -1), (17.5, far + 0.5 - F1, 'wall', 1)], None, ('#ffe6c8', 2.0), 'diner')
+    end_block(acc, glow, lit, atlas, halos, rnd, x0 - E, -1, F1, far + 0.5, 18.6, 4.6, 3.4, 0.30, 6, 'stone', '#5e5446', 'travertine', '#8a7e6a', 0.35,
+              [(0.0, 6.2, 'wall', 1), (6.2, 18.2, 'jazz', 1), (18.2, far + 0.5 - F1, 'wall', 1)], '#ffd9a8', ('#ffd8b0', 1.3), 'jazz')
+    end_block(acc, glow, lit, atlas, halos, rnd, x1 + E, 1, F1, far + 0.5, 15.2, 4.5, 3.5, 0.26, 6, 'plaster', '#544a42', 'stone', '#6e675c', 0.35,
+              [(0.0, 5.0, 'wall', 1), (5.0, 17.5, 'diner', -1), (17.5, far + 0.5 - F1, 'wall', 1)], None, ('#ffe0c0', 1.1), 'diner')
     return atlas, halos

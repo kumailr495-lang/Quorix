@@ -42,7 +42,8 @@ function prepare(scene, name) {
     const lod = (() => { for (let p = o; p; p = p.parent) { const m = /LOD(\d)/.exec(p.name || ''); if (m) return +m[1]; } return 0; })();
     const geo = o.geometry.clone(), mw = new THREE.Matrix4().multiplyMatrices(PRE, o.matrixWorld); geo.applyMatrix4(mw);
     if (!geo.attributes.normal) geo.computeVertexNormals();
-    solidify(geo, mw.determinant() < 0, (TWO_SIDED[name] || []).includes(parts.length), name + '#' + parts.length);
+    const grp = o.parent && o.parent.isGroup && o.parent.children.length > 1 && o.parent.children.every((q) => q.isMesh) ? o.parent.uuid : o.uuid;   // one glTF node split by material
+    solidify(geo, mw.determinant() < 0, (TWO_SIDED[name] || []).includes(parts.length), name + '#' + parts.length, grp);
     const mn = (o.material && o.material.name) || '', glow = /^glow/i.test(mn);
     const nm = named(mn) || { id: 0, tint: (o.material && o.material.color ? o.material.color.toArray() : [0.5, 0.5, 0.5]) };
     const c = o.material && o.material.color ? o.material.color.toArray() : [1, 1, 1], ei = o.material && o.material.emissiveIntensity != null ? o.material.emissiveIntensity : 1;
@@ -50,19 +51,30 @@ function prepare(scene, name) {
     parts.push({ geo, id: nm.id, tint: nm.tint, glow, glowColor: em.some((v) => v > 0) ? em : c, lod, name: o.name.replace(/_\d+$/, ''), matName: mn });   // LOD tiers repeat names (loader adds _2)
     if (lod === 0) { geo.computeBoundingBox(); box.union(geo.boundingBox); }
   });
+  if (CHECK) checkNodes();
   return { name, parts, box, lods: Math.max(...parts.map((p) => p.lod)) + 1 };
 }
 // v9 see-through fixes, per part as loaded (tools/dev/seethru.mjs --assets): a mirrored node (negative scale) baked into the geometry
 // keeps its index order, so its winding would turn inside out; a face whose winding disagrees with its own normals is turned to match
 // them (the hedge planters' leaf clumps: Kiln wound about half their faces inwards, so you saw through them) and a zero-area face is
-// dropped. The parts listed in TWO_SIDED are open shells (an edge used by one face only: the taxi's body panels and glass, rope ends,
+// dropped. The parts listed in TWO_SIDED are open shells (an edge used by one face only: rope ends,
 // bollard rings): they get their back faces too, as the GLBs' double-sided materials meant. The list is measured offline, not on the
 // phone: ?assetcheck=1 recomputes it and warns when a GLB changed (tools/dev/seethru.mjs --assets runs that check).
-export const TWO_SIDED = { sofa_curve: [17], planter_tree: [3, 4, 5], rope_velvet: [0], lamp_post: [3], bollard_light: [1], car_taxi: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 56, 57],
-  // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
-  letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [2], restroom_set: [14] };
+// v12: car_taxi and car_sedan list their plate and sign lettering (a few T-junction edges the font leaves); their bodies are closed
+export const TWO_SIDED = { sofa_curve: [17], planter_tree: [3, 4, 5], rope_velvet: [0], lamp_post: [3], bollard_light: [1], // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
+  letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [0, 1, 2], car_taxi: [80, 81, 90, 91], car_sedan: [80, 81], restroom_set: [14] };
 const CHECK = typeof location !== 'undefined' && /[?&]assetcheck=1/.test(location.search);
-function solidify(g, mirrored, twoSided, label) {
+// ?assetcheck=1: the open edges of a glTF node are counted over all its primitives together. A mesh with several materials comes in as one
+// primitive per material, and each of those is open along its seams with the others (a car's paint, trim and glass) while the whole is
+// closed; counted one by one, every closed multi-material body asked for back faces it never shows
+const NODE_EDGES = new Map();
+function checkNodes() {
+  for (const rec of NODE_EDGES.values()) { let open = 0; for (const v of rec.E.values()) if (v === 1) open++;
+    rec.labels.forEach((label, i) => { const tw = rec.two[i]; if (!!open !== tw) console.warn(`[assetcheck] ${label}: ${open} open edges, ${tw ? 'listed' : 'not listed'} in TWO_SIDED`);
+      (CHECK_OPEN[label.split('#')[0]] || (CHECK_OPEN[label.split('#')[0]] = [])).push(open ? +label.split('#')[1] : null); }); }
+  NODE_EDGES.clear();
+}
+function solidify(g, mirrored, twoSided, label, node = label) {
   const P = g.attributes.position, N = g.attributes.normal; if (!g.index) g.setIndex([...Array(P.count).keys()]);
   const I0 = g.index.array, I = [], a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
   for (let t = 0; t + 2 < I0.length; t += 3) {
@@ -72,11 +84,9 @@ function solidify(g, mirrored, twoSided, label) {
     if (n.lengthSq() > 1e-12 && b.normalize().dot(n.normalize()) < -0.2) [i1, i2] = [i2, i1];
     I.push(i0, i1, i2);
   }
-  if (CHECK) { const E = new Map(), key = (j) => `${Math.round(P.getX(j) * 1e4)},${Math.round(P.getY(j) * 1e4)},${Math.round(P.getZ(j) * 1e4)}`;
+  if (CHECK) { let rec = NODE_EDGES.get(node); if (!rec) NODE_EDGES.set(node, rec = { E: new Map(), labels: [], two: [] }); const E = rec.E, key = (j) => `${Math.round(P.getX(j) * 1e4)},${Math.round(P.getY(j) * 1e4)},${Math.round(P.getZ(j) * 1e4)}`;
     for (let t = 0; t < I.length; t += 3) { const ks = [key(I[t]), key(I[t + 1]), key(I[t + 2])]; for (let e = 0; e < 3; e++) { const p = ks[e], q = ks[(e + 1) % 3], k = p < q ? p + '|' + q : q + '|' + p; E.set(k, (E.get(k) || 0) + 1); } }
-    let open = 0; for (const v of E.values()) if (v === 1) open++;
-    if (!!open !== !!twoSided) console.warn(`[assetcheck] ${label}: ${open} open edges, ${twoSided ? 'listed' : 'not listed'} in TWO_SIDED`);
-    (CHECK_OPEN[label.split('#')[0]] || (CHECK_OPEN[label.split('#')[0]] = [])).push(open ? +label.split('#')[1] : null); }
+    rec.labels.push(label); rec.two.push(!!twoSided); }
   if (twoSided) {   // back faces: a copy of every vertex with its normal flipped, the triangles in reverse order (attributes may be interleaved)
     const n0 = P.count, GET = ['getX', 'getY', 'getZ', 'getW'];
     for (const name of Object.keys(g.attributes)) { const A = g.attributes[name], w = A.itemSize, k = name === 'normal' ? -1 : 1, out = new Float32Array(n0 * 2 * w);

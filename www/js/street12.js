@@ -205,7 +205,8 @@ function haloMesh(list, extra = 16) {
 function skyTexture() {
   const w = 2048, h = 512, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'), R = rng(4242);
   // v runs from the zenith (0) down to a little under the horizon (h): deep blue overhead, the city's glow low down
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#060a16'); gr.addColorStop(0.45, '#0e1830'); gr.addColorStop(0.75, '#1e2642'); gr.addColorStop(0.9, '#4a3a44'); gr.addColorStop(1, '#6a4a3c'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  // midnight: near black overhead, the city's glow only low down
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#020309'); gr.addColorStop(0.45, '#050913'); gr.addColorStop(0.75, '#0c1020'); gr.addColorStop(0.9, '#1c1824'); gr.addColorStop(1, '#2a2024'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 520; i++) { const y = Math.pow(R(), 1.6) * h * 0.8, a = 0.25 + R() * 0.75; g.fillStyle = `rgba(${220 + R() * 35},${220 + R() * 35},255,${a * (1 - y / h)})`; const s = R() < 0.06 ? 2 : 1; g.fillRect(R() * w, y, s, s); }
   // thin cloud, lit from below
   for (let i = 0; i < 70; i++) { const x = R() * w, y = h * (0.45 + R() * 0.42), rw = 80 + R() * 220, rh = 8 + R() * 22; const cg = g.createRadialGradient(x, y, 0, x, y, rw); cg.addColorStop(0, `rgba(${90 + R() * 40},${78 + R() * 30},${84 + R() * 30},0.10)`); cg.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(x, y); g.scale(1, rh / rw); g.translate(-x, -y); g.fillStyle = cg; g.fillRect(x - rw, y - rw, 2 * rw, 2 * rw); g.restore(); }
