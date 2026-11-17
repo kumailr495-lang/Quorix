@@ -9,7 +9,7 @@ import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
-import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_STAIRS } from './building.js';
+import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_STAIRS, CORE } from './building.js';
 import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
@@ -219,7 +219,7 @@ class Travelator {
 }
 // the lift (lift9.js): a through car with its controls in the world
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
-const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192, kiosk: 640 };   // canvas pixels per metre for boards with text or fine figures
+const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512 };   // canvas pixels per metre for boards with text or fine figures
 const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 function panelTexture(id, w, h, hooks) {
   const ppm = DENSE[id.split('_')[0]] || 128, px = Math.min(2048, Math.max(256, Math.round(w * ppm))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
@@ -244,6 +244,30 @@ function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.
   g.font = `600 ${lab}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('LIFT', x + h * 0.68, h * 0.5); ls('0px');
   g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.3, h * 0.48); }
 export const PANEL_DRAW = {
+  // v12 the heritage corner's two posters: original 1950s-style cinema bills (no real film, no real studio)
+  // v12 the bills' lines keep inside their gold border (g.__fit, textures.js)
+  vintage: (g, w, h, id) => { const b = /_b$/.test(id); g.__fit = [w * 0.07, w * 0.93]; const bg = g.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, b ? '#2a1a12' : '#0e1a2c'); bg.addColorStop(1, b ? '#120a06' : '#05080f'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
+    if (!b) { const beam = g.createLinearGradient(w / 2, h * 0.18, w / 2, h * 0.7); beam.addColorStop(0, 'rgba(255,224,160,0.85)'); beam.addColorStop(1, 'rgba(255,224,160,0)'); g.fillStyle = beam; g.beginPath(); g.moveTo(w * 0.47, h * 0.2); g.lineTo(w * 0.53, h * 0.2); g.lineTo(w * 0.85, h * 0.68); g.lineTo(w * 0.15, h * 0.68); g.closePath(); g.fill();
+      for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(255,240,210,0.7)'; g.fillRect((i * 97) % w, (i * 53) % (h * 0.16), 2, 2); }
+      g.fillStyle = '#d8b46a'; g.font = `600 ${h * 0.05}px ${SERIF}`; ls(`${h * 0.012}px`); g.fillText('LUMIÈRE PRESENTS', w / 2, h * 0.76); ls('0px'); g.fillStyle = '#f2ebdd'; g.font = `700 ${h * 0.085}px ${SERIF}`; g.fillText('The Midnight Show', w / 2, h * 0.85); g.font = `500 ${h * 0.028}px ${SANS}`; g.fillStyle = '#b8a07a'; g.fillText('IN GLORIOUS 35 MM', w / 2, h * 0.93); }
+    else { g.fillStyle = '#c9a35e'; for (let i = 0; i < 9; i++) { const y = h * (0.12 + i * 0.065); g.fillRect(w * 0.12, y, w * 0.05, h * 0.03); g.fillRect(w * 0.83, y, w * 0.05, h * 0.03); }
+      g.strokeStyle = '#c9a35e'; g.lineWidth = Math.max(2, w * 0.008); g.strokeRect(w * 0.2, h * 0.1, w * 0.6, h * 0.58); g.fillStyle = 'rgba(201,163,94,0.15)'; g.fillRect(w * 0.2, h * 0.1, w * 0.6, h * 0.58);
+      g.fillStyle = '#f2ebdd'; g.font = `700 ${h * 0.14}px ${SERIF}`; g.fillText('1952', w / 2, h * 0.39); g.fillStyle = '#d8b46a'; g.font = `600 ${h * 0.05}px ${SERIF}`; ls(`${h * 0.01}px`); g.fillText('A HOUSE OF PICTURES', w / 2, h * 0.79); ls('0px'); g.font = `500 ${h * 0.03}px ${SANS}`; g.fillStyle = '#b8a07a'; g.fillText('SINCE THE FIRST REEL', w / 2, h * 0.87); }
+    g.strokeStyle = 'rgba(216,180,106,0.6)'; g.lineWidth = Math.max(2, h * 0.005); g.strokeRect(h * 0.015, h * 0.015, w - h * 0.03, h - h * 0.03); g.__fit = null; },
+  // v12 the projector's caption on its plinth: engraved lettering on brushed brass
+  plaque: (g, w, h) => { const bg = g.createLinearGradient(0, 0, w, h); bg.addColorStop(0, '#b8914f'); bg.addColorStop(0.5, '#d9b878'); bg.addColorStop(1, '#a8803f'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.globalAlpha = 0.08; g.fillStyle = '#000'; for (let y = 0; y < h; y += 2) g.fillRect(0, y, w, 1); g.globalAlpha = 1; g.textAlign = 'center'; g.textBaseline = 'middle'; const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
+    g.fillStyle = '#2a1d0c'; g.font = `700 ${h * 0.20}px ${SERIF}`; ls(`${h * 0.03}px`); g.fillText('35 MM PROJECTOR · 1952', w / 2, h * 0.38); ls('0px');
+    g.fillStyle = '#3b2a12'; g.font = `500 ${h * 0.17}px ${SERIF}`; g.fillText('It ran in this house until the last reel of 1998', w / 2, h * 0.72); },
+  // v12 the photo spot's step-and-repeat: the wordmark and a star in gold on deep navy, offset row by row, a soft light in the middle
+  photowall: (g, w, h) => { const bg = g.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, w * 0.7); bg.addColorStop(0, '#1a2a52'); bg.addColorStop(1, '#0a1128'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    // five whole marks a row, the wordmark and the star swapping places row by row (the user: no word cut off at the edges)
+    g.textAlign = 'center'; g.textBaseline = 'middle'; const rows = 6, rh = h / rows;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < 5; c++) { const x = (c + 1) * w / 6, y = (r + 0.5) * rh;
+      if ((r + c) % 2 === 0) { g.fillStyle = '#d8b46a'; g.font = `600 ${rh * 0.26}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${rh * 0.05}px`; g.fillText('LUMIÈRE', x, y); if ('letterSpacing' in g) g.letterSpacing = '0px'; }
+      else { g.fillStyle = '#b8954f'; g.font = `400 ${rh * 0.34}px ${SERIF}`; g.fillText('✦', x, y); } }
+    g.strokeStyle = 'rgba(216,180,106,0.5)'; g.lineWidth = Math.max(2, h * 0.006); g.strokeRect(h * 0.02, h * 0.02, w - h * 0.04, h - h * 0.04); },
   // v11 a ticket machine's screen (rooms.py: three on the walnut panel between the box office and the concessions)
   kiosk: (g, w, h) => { g.fillStyle = '#101225'; g.fillRect(0, 0, w, h); g.textAlign = 'center'; g.textBaseline = 'middle'; const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
     g.fillStyle = '#e3b25f'; g.font = `500 ${h * 0.07}px ${SERIF}`; ls(`${h * 0.022}px`); g.fillText('LUMIÈRE', w / 2, h * 0.12); ls('0px');
@@ -337,6 +361,8 @@ export const PANEL_DRAW = {
   arrival: (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#120d24'); gr.addColorStop(1, '#2a1640'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.14}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SCREENS 1 – 4', w / 2, h * 0.42); g.fillStyle = 'rgba(242,235,221,.8)'; g.font = `400 ${h * 0.07}px ${SANS}`; g.fillText('MAX  ·  CURVE  ←      CLASSIC  ·  270  →', w / 2, h * 0.62); },
 };
 // ---------------------------------------------------------------- props: the furniture of each room (Kiln / Blender assets), lit per vertex
+// v12 where no guest stands: inside the heritage exhibit's rope, on the photo set (npc9.js millNet reads world.keepOut)
+const KEEP_OUT = [[CORE.x0 - 2.3, -4.2, CORE.x0, -1.8], [-8.9, -5.9, -5.1, -4.1]];
 const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   const L = [], add = (room, name, x, y, z, yaw = 0, o = {}) => L.push({ room, name, x, y, z, yaw, o });
   // the lounge: four curved sofas round the table, each one's concave seat side facing it (sofa_curve sits facing local +z, its arc's centre
@@ -402,12 +428,24 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v12 (the user: decorations must not block the entrance and the exit; the inside full of them instead): the palms that stood either side
   // of the doors outside now stand either side of them inside
   for (const x of [-3.5, 3.5]) add('lobby', 'planter_tall', x, 0, FACADE_Z - 1.15);
+  // v12 the lobby told as a cinema (tools/blender/decor12.py): the film-heritage exhibit on the escalator hall's long blank west wall (four
+  // reels on walnut, a 1950s projector on a plinth before it); the photo spot on the open floor west of the fountain court, seen as you
+  // come in (a step-and-repeat wall between two posts, two director's chairs, a ring light where the camera stands); a shelf of
+  // collectible buckets and cups beside the candy wall
+  add('lobby', 'reel_wall', CORE.x0 + 0.005, 0, -3.0, -Math.PI / 2, { collide: false, ground: false, scale: 1.5 });
+  add('lobby', 'projector_vintage', CORE.x0 - 1.2, 0, -3.0, -Math.PI / 2);
+  for (const z of [-3.875, -2.125]) add('lobby', 'stanchion', CORE.x0 - 2.1, 0, z);   // a rope before the exhibit, as in a museum
+  add('lobby', 'rope_velvet', CORE.x0 - 2.1, 0, -3.0, Math.PI / 2);
+  add('lobby', 'backdrop_stand', -7.0, 0, -5.51, 0);
+  for (const x of [-7.9, -6.1]) add('lobby', 'directors_chair', x, 0, -4.7, 0);
+  add('lobby', 'ring_light', -7.0, 0, -2.7, Math.PI);
+  add('lobby', 'merch_shelf', -21.35, 0, 2.1, Math.PI / 2);
   for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
   // v11 (the user: "a pole is blocking the view"): none in front of the canopy. v12: each lamp's arm reaches over the kerb (it lay along the
   // pavement); the light and its halo are at the head (tools/blender/arch/rooms.py); a clipped hedge stands in every bronze trough
   for (let x = -40; x <= 40; x += 10) if (Math.abs(x) > 12) add('street', 'lamp_post', x, 0, 25.55, 0, { collide: 0.05 });
-  for (let x = -44; x < 42; x += 8) if (Math.abs(x) >= 12) add('street', 'hedge_block', x, 0, 24.9, 0, { collide: false, ground: false });
+  for (let x = -44; x < 42; x += 8) if (Math.abs(x) >= 12 && Math.abs(Math.abs(x) - 20) >= 1) add('street', 'hedge_block', x, 0, 24.9, 0, { collide: false, ground: false });   // none under the lamps at +-20
   for (const x of [-14, -11.2, -8.4, -5.6, 14]) add('street', 'bollard_light', x, 0, 25.6);   // v12: none by the crossing, none along the taxi bay (x 6 to 13)
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
@@ -448,10 +486,18 @@ function dressRooms(world) {
     const framed = FRAMED.filter((f) => f.room === key); for (const f of framed) framePanel(host.pacc, f);
     const det = world.engine && world.engine.preset ? world.engine.preset.detail ?? 1 : 1;   // v10: the low preset skips purely decorative extras (o.detail 1)
     const cen = (world.census || (world.census = {}))[key] = {};   // what each room's furniture costs (triangles per asset): the optimiser's map
-    for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y; placeAsset(host, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
+    // v12 the lobby's furniture in two meshes: what the street sees through the glass, and the deep set (the mezzanine, and small things more
+    // than 14 m behind the glass, a few pixels from the pavement) drawn only from inside. The review: the lobby's props were 147k of the
+    // street's 339k triangles, and the inside is about to get fuller
+    const deep = key === 'lobby' ? { ...host, pacc: new Acc(), gacc: new Acc() } : null;
+    for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y;
+      const sz = A.box.getSize(new THREE.Vector3()), small = Math.max(sz.x, sz.z) * (typeof p.o.scale === 'number' ? p.o.scale : 1) < 1.6;
+      const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
       const e = cen[p.name] || (cen[p.name] = { n: 0, tris: 0 }), ld = p.o.lod ?? 0; e.n++; for (const q of A.parts) if (q.lod === ld && (!p.o.only || q.name.startsWith(p.o.only))) e.tris += (q.geo.index ? q.geo.index.count : q.geo.attributes.position.count) / 3; }
     if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
     if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
+    if (deep && deep.pacc.count) { const g = toGeometry(deep.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-propsdeep'; room.group.add(m); }
+    if (deep && deep.gacc.count) { const g = toGeometry(deep.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglowdeep'; room.group.add(m); }
     for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });
     for (const f of framed) addPanel(world, room, f);
     for (const t of TOTEM_POSTERS) if (t.room === key) addPanel(world, room, t);
@@ -463,6 +509,9 @@ function dressRooms(world) {
 const ESC_BOX_Z = (() => { const [zi0, zi1] = escProfile(ESC.up).incline; return zi0 - 0.6 - 2.45 / (L1 - 0.85) * (zi0 - zi1); })();   // the back of the boxed-in escalator feet (rooms.py zk1)
 const ART = { room: 'lobby', yaw: 0, z: -13.6 + 0.034, frameCol: '#3e2618', frameMat: MAT.wood }, PIC = (o) => ({ room: 'lobby', depth: 0.03, ...o });
 const FRAMED = [
+  PIC({ id: 'photowall', x: -7.0, y: 1.30, z: -5.48, yaw: 0, w: 3.10, h: 2.36, emit: 0.35, frame: 'thin' }),   // v12 between the backdrop stand's posts (7 mm into each, and into its top bar)
+  PIC({ id: 'plaque_proj', x: CORE.x0 - 1.2 - 0.5 - 0.034, y: 0.62, z: -3.0, yaw: -Math.PI / 2, w: 0.42, h: 0.12, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the projector's plinth (world9.js DRESS)
+  ...[['a', -5.6], ['b', -0.4]].map(([v, z]) => PIC({ id: 'vintage_' + v, x: CORE.x0 - 0.034, y: 1.75, z, yaw: -Math.PI / 2, w: 1.0, h: 1.45, emit: 0.45 })),   // v12 either side of the reel wall
   PIC({ id: 'picto_m', x: 21.56 - 0.034, y: 1.35, z: -3.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
   PIC({ id: 'picto_f', x: 21.56 - 0.034, y: 1.35, z: 1.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
   ...[-7.7, 1.8, 11.3].map((z, i) => PIC({ id: 'mural_' + i, x: 21.6 - 0.034, y: 7.6, z, yaw: -Math.PI / 2, w: 9.2, h: 2.4, emit: 0.25, frame: 'thin' })),
@@ -591,16 +640,18 @@ const PROBE_AT = { lobby: [0, 2.2, 6], street: [0, 2.2, 30], wc: [27, 1.6, -4], 
 const ENV_BOX = { street: [STREET.x0 - 6, -0.2, STREET.z0, STREET.x1 + 6, 26, STREET.far], lobby: [LOBBY.x0, 0, LOBBY.z0, LOBBY.x1, LOBBY.ceil, LOBBY.z1] };
 // Called again when Settings turns reflections on or widens them: rooms that have their cube are left alone.
 function captureReflections(world, engine) {
-  if (!('USE_ENV' in world.mats.defines)) return; const r = engine.renderer, prev = new Set(world.vis), room0 = [...prev][0], rtPrev = r.getRenderTarget(); G.uEnvOn.value = 0;
+  if (!('USE_ENV' in world.mats.defines)) return; const r = engine.renderer, prev = new Set(world.vis), rtPrev = r.getRenderTarget(); G.uEnvOn.value = 0;
   for (const key in world.rooms) { const room = world.rooms[key]; if (room.probe || (world.mats.heroOnly && !room.U.hero)) continue; const h = HALL_BY_KEY[key], at = h ? (() => { const w = h.toWorld(0, h.depthIn - 1.6); return [w.x, h.y0 + h.total + 1.6, w.z]; })() : PROBE_AT[key] || [0, 2, 0];
     const bx = ENV_BOX[key], rt = new THREE.WebGLCubeRenderTarget(bx ? 256 : 128, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter }), cam = new THREE.CubeCamera(0.1, bx ? 130 : 90, rt);
     cam.position.set(...at); world.setVisibility(key, at[0], at[1], at[2], true); cam.update(r, engine.scene); room.U.uEnvMap.value = rt.texture; room.probe = { rt, at };
     if (bx) { room.U.uEnvPos.value.set(...at); room.U.uEnvMin.value.set(bx[0], bx[1], bx[2]); room.U.uEnvMax.value.set(bx[3], bx[4], bx[5]); room.U.uEnvBox.value = 1; } }
-  G.uEnvOn.value = 1; r.setRenderTarget(rtPrev); world.vis = prev; for (const k in world.rooms) world.rooms[k].group.visible = prev.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => prev.has(k));
+  G.uEnvOn.value = 1; r.setRenderTarget(rtPrev);
+  // put back what the player's place shows (rooms, doors and which rooms' furniture): the capture drew everything
+  if (world._visArgs) world.setVisibility(...world._visArgs); else { world.vis = prev; for (const k in world.rooms) world.rooms[k].group.visible = prev.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => prev.has(k)); }
 }
 // ---------------------------------------------------------------- the world
 export async function buildWorld(engine, mats, onProgress = () => {}) {
-  const world = { mats, engine, rooms: {}, doors: [], halls: [], walls: new Walls(), vis: new Set(['lobby']), panels: {}, uses: [], bins: [], sitSpots: [], escalators: [], movers: [], dress: DRESS };   // dress: for tools/dev/props-overlap.mjs
+  const world = { mats, engine, rooms: {}, doors: [], halls: [], walls: new Walls(), vis: new Set(['lobby']), panels: {}, uses: [], bins: [], sitSpots: [], escalators: [], movers: [], dress: DRESS, keepOut: KEEP_OUT };   // dress: for tools/dev/props-overlap.mjs
   engine.scene.background = new THREE.Color(0x07070a);
   world.hallByKey = (k) => world.halls.find((h) => h.key === k); world.hallById = (id) => world.halls.find((h) => h.id === id);
   const keys = Object.keys(ROOMS); let i = 0;
@@ -707,6 +758,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   const GLASS = new Set(['lobby|street', 'street|lobby']);   // the lobby's glass front: the street is always in view
   const linkOpen = (a, b) => { if (GLASS.has(a + '|' + b)) return true; let any = false; for (const d of world.doors) if (d.rooms.includes(a) && d.rooms.includes(b)) { any = true; if (d.kind === 'open' || d.open > 0.02) return true; } return !any; };
   world.setVisibility = (room, x, y, z, all = false) => {
+    if (!all) world._visArgs = [room, x, y, z];   // what the reflections' capture puts back
     // two links deep: from the street you see through the lobby's glass and on through its open portal into the corridor and through
     // the restroom door; from the spine through the lobby to the street (one link left those rooms undrawn: you saw the void there)
     const v = new Set([room || 'lobby']); let front = [...v];
@@ -719,6 +771,8 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     const here = room || 'lobby', show = { corridor: here === 'corridor' || here === 'lobby', wc: here === 'wc' || here === 'lobby', street: here === 'street' || here === 'lobby' };
     for (const k in show) { const rm = world.rooms[k]; if (!rm) continue; if (!rm.propMeshes || !rm.propMeshes.length) rm.propMeshes = rm.group.children.filter((o) => o.name === k + '-props' || o.name === k + '-propglow');   // looked up again until the props exist (reflections are captured before them)
       for (const m of rm.propMeshes) m.visible = all || world.propCull === false || show[k]; }
+    const lob = world.rooms.lobby; if (lob) { if (!lob.deepMeshes || !lob.deepMeshes.length) lob.deepMeshes = lob.group.children.filter((o) => o.name === 'lobby-propsdeep' || o.name === 'lobby-propglowdeep');
+      for (const m of lob.deepMeshes) m.visible = all || world.propCull === false || here !== 'street'; }
   };
   world.update = (dt, actors, now) => {
     for (const d of world.doors) d.update(dt, actors); const lob = world.rooms.lobby.group.visible;

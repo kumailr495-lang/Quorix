@@ -1,7 +1,27 @@
 // LUMIERE v5 - textures drawn in code (nothing is downloaded): signs, posters, menu boards, the street, the idle screen slate.
 import * as THREE from 'three';
 export const makeCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-export const SANS = 'Inter, "Noto Sans", system-ui, sans-serif', SERIF = 'Cormorant, Georgia, serif';
+// v12 no line of text leaves its picture (the user: "the photos text and everything they are cropped and coming out"). Every fillText
+// and strokeText that would run past the canvas edge, or past ctx.__fit = [x0, x1] (an atlas cell), less a 3 % margin, is drawn in a
+// smaller font that fits. Only untransformed or translated text is checked; ctx.__noFit opts out (the LED wall's posters slide past its
+// edges on purpose); ?textcheck=1 logs each fit in window.__textFit.
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.__fitted) {
+  const P = CanvasRenderingContext2D.prototype, LOG = typeof location !== 'undefined' && /[?&]textcheck=1/.test(location.search); P.__fitted = true;
+  for (const k of ['fillText', 'strokeText']) {
+    const orig = P[k];
+    P[k] = function (s, x, y, mw) {
+      const c = this.canvas, t = this.getTransform(); if (!c || this.__noFit || mw !== undefined || t.b || t.c || Math.abs(t.a - 1) > 1e-6) return orig.call(this, s, x, y, mw);
+      const a = this.__fit ? this.__fit[0] : 0, b = this.__fit ? this.__fit[1] : c.width, m = Math.max(3, (b - a) * 0.03), X = x + t.e, al = this.textAlign, rtl = this.direction === 'rtl';
+      const left = al === 'left' || (al === 'start' && !rtl) || (al === 'end' && rtl), room = al === 'center' ? 2 * Math.min(X - a - m, b - m - X) : left ? b - m - X : X - a - m;
+      let w = this.measureText(s).width; if (w <= room || room <= 0 || room < w * 0.35) return orig.call(this, s, x, y);   // a line starting at the edge on purpose (a scrolling ticker) is left alone
+      const f = this.font, px = +((/([\d.]+)px/.exec(f) || [])[1] || 0); if (!px) return orig.call(this, s, x, y, room);
+      let p = px; for (let i = 0; i < 4 && w > room; i++) { p *= (room / w) * 0.995; this.font = f.replace(/([\d.]+)px/, p.toFixed(2) + 'px'); w = this.measureText(s).width; }
+      if (LOG) (self.__textFit || (self.__textFit = [])).push({ s: String(s).slice(0, 40), cw: c.width, k: +(p / px).toFixed(2) });
+      orig.call(this, s, x, y); this.font = f;
+    };
+  }
+}
+export const SANS ='Inter, "Noto Sans", system-ui, sans-serif', SERIF = 'Cormorant, Georgia, serif';
 const tex = (c, srgb = true) => { const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 2; return t; };
 // single-line sign: transparent background, clean sans by default
 export function signTexture(text, w = 512, h = 128, o = {}) {

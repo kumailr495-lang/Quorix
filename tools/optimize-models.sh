@@ -40,5 +40,7 @@ bollard_light 0.5 0.004
 lamp_post 0.55 0.004
 table_lounge 0.5 0.004
 taxi_cabin 0.6 0.0015
+planter_hedge 0.3 0.004
+hedge_block 0.5 0.004
 LIST
 rm -rf "$TMP"

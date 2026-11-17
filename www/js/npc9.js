@@ -103,6 +103,7 @@ export class Crowd {
     const posts = Object.values(this.staff).map((a) => a.home).filter((h) => h && this.world.roomAt(h.x, h.y || 0, h.z) === 'lobby');
     const ok = (x, z) => {
       if (this.world.roomAt(x, 0, z) !== 'lobby' || (x > ZONE.x0 - 0.3 && x < ZONE.x1 + 0.3 && z > ZONE.z0 - 0.3 && z < ZONE.z1 + 0.3)) return null;
+      for (const r of this.world.keepOut || []) if (x > r[0] && x < r[2] && z > r[1] && z < r[3]) return null;   // v12 the exhibit behind its rope, the photo set (world9.js)
       for (const e of edges) if (segPt(x, z, e.A[0], e.A[2], e.B[0], e.B[2]) < 0.85) return null;
       for (const s of spots) if (Math.hypot(s.x - x, s.z - z) < 1.0 || segPt(x, z, s.x, s.z, NODES[s.node][0], NODES[s.node][2]) < 0.6) return null;
       for (const p of posts) if (Math.hypot(p.x - x, p.z - z) < 1.0) return null;

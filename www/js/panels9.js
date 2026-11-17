@@ -9,7 +9,7 @@ const ok = (im) => im && im.complete && im.naturalWidth > 0;
 function sp(g, px) { if ('letterSpacing' in g) g.letterSpacing = px + 'px'; }
 // the LED wall: posters sliding past, each with its screen and status; a brand card between them
 export function ledWall(P, shows, t, fmt) {
-  if (!P) return () => {}; const { g, canvas: c, tex } = P, W = c.width, H = c.height, seg = Math.round(H * 0.95), items = [...HALL_IDS.map((id) => ({ id })), { logo: true }]; let last = 0;
+  if (!P) return () => {}; const { g, canvas: c, tex } = P, W = c.width, H = c.height, seg = Math.round(H * 0.95), items = [...HALL_IDS.map((id) => ({ id })), { logo: true }]; let last = 0; g.__noFit = true;
   return (now) => {
     if (now - last < 80) return; last = now;
     const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b0a14'); bg.addColorStop(1, '#1a1026'); g.fillStyle = bg; g.fillRect(0, 0, W, H);

@@ -117,6 +117,30 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v12 (2026-11-17; docs/V12-PLAN.md)
+- **Street** (tools/blender/arch/street12.py, www/js/street12.js): seven lots of buildings across the road, framed shopfronts (most shut at
+  midnight: `ground()` shop tuples take a fifth 'closed'), a side street north at each end (`side_spans`, `side_street`, `end_block`; the
+  hidden legs behind the corner blocks are where traffic appears and leaves). Midnight grade: rooms.py `LED` street lamps, a low blue
+  ambient, world9.js LEVEL street 0.15, fog 0x090c14, the sky drawn at the far plane (`p.xyww`). Re-bake the street after any change.
+- **Traffic** (www/js/traffic.js): routes are polylines from `extras.traffic` (left-hand traffic), a speed profile from curvature, braking
+  to a centimetre-exact distance from the player and other cars (`clearAhead`), `carFloor` keeps roofs readable between lamps. intro9.js
+  drives the taxi on the same routes: down the west lane, stop at the TAXI bay (x 9), leave round the east corner after you get out.
+  sound9.js `vehicle()` is the synthesized engine + tyre hiss per car.
+- **Cars** (tools/blender/taxi.py builds `car_taxi` and `car_sedan`; cars.py is retired for cars): cage body, Subsurf 1, shut lines as
+  painted plane cuts (booleans only for the arches), lamps, plates and lettering (Inter, OFL). The cabin (cabin.py) is unchanged apart from
+  the bonnet. LOD0 about 18.5k / 17.4k triangles.
+- **Lobby dressing** (tools/blender/decor12.py; world9.js DRESS): film-heritage exhibit on the escalator hall's west wall (projector,
+  reel wall, two framed bills `vintage_a/b`, a rope), a photo spot (`photowall` panel, director's chairs, ring light, backdrop stand),
+  a merchandise shelf. world9.js `KEEP_OUT` rectangles keep guests (npc9.js `millNet`) out of the exhibit and the set.
+- **Lobby props are split**: small props and those on the upper level go into `lobby-propsdeep` (hidden from the street), the rest stay in
+  `lobby-props` (seen through the glass). `captureReflections` only renders hero rooms and restores the visibility it found.
+- glb_check.py prints each fold's position; `reel_wall` hangs on a wall.
+- **No cropped text** (the user, 2026-11-13 and 11-17): textures.js patches `fillText`/`strokeText` once: a line that would run past its
+  canvas (or `ctx.__fit = [x0, x1]`: an atlas cell, a poster's border) is drawn in a smaller font that fits; `ctx.__noFit` opts out (the
+  LED wall slides posters past its edges). `?textcheck=1` logs every fit in `window.__textFit`. Small 3D lettering is avoided (font
+  T-junctions): captions are engine panels (`plaque_proj`).
+- **docs/ASKS-LEDGER.md**: every ask since the v8 phone test, grouped, with its status. Update it when an ask moves.
+
 ## v11 (2026-11-14; docs/V11-RESEARCH.md)
 - **Escalator and lift hall** (the user: "make the escalator and the elevator area one and a separate area"): building.js `CORE`, rooms.py
   `core_hall`. Walls from the floor to the roof slab, from the gate line back to the mezzanine; one portal frames the gates (ticket leaf on

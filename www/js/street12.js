@@ -147,7 +147,7 @@ function roadDraw(g, k, w, h) {
 function drawAtlas(k = 1) {
   // k: the canvas's share of the design size (the low preset draws it at half: a quarter of the memory)
   const c = document.createElement('canvas'); c.width = AW * k; c.height = AH * k; const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.scale(k, k);
-  const cell = (key, fn) => { const [x, y, w, h] = CELL[key]; g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; fn(w, h); g.restore(); };
+  const cell = (key, fn) => { const [x, y, w, h] = CELL[key]; g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y); g.__fit = [x, x + w]; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; fn(w, h); g.__fit = null; g.restore(); };
   SHOPS.forEach((k, i) => { cell('shop:' + k, (w, h) => { g.scale(w / SW, h / SH); SHOP_DRAW[k](g, SW, SH, rng(101 + i * 7)); }); cell('sign:' + k, (w, h) => { g.fillStyle = '#121316'; g.fillRect(0, 0, w, h); SIGN_DRAW[k](g, w, h); }); });
   for (let i = 0; i < 8; i++) cell('win:' + i, (w, h) => winDraw(g, i, w, h, rng(977 + i * 13)));
   for (const k of ['lumiere', 'hotel', 'cross', 'diner', 'jazz']) cell('blade:' + k, (w, h) => bladeDraw(g, k, w, h));

@@ -17,7 +17,7 @@ export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club',
   // v10 (tools/blender/decor10.py): the fountain court, light columns, pendant clouds, the cafe, rugs, standees, the popcorn cart
   'fountain_tier', 'pendant_cloud', 'espresso_machine', 'cake_case', 'cafe_counter', 'rug_round', 'rug_runner', 'standee_base', 'popcorn_cart', 'bistro_table', 'bistro_chair', 'bar_stool', 'pos_terminal',
   // v11 the taxi's cabin for the Story arrival (tools/blender/cabin.py)
-  'taxi_cabin', 'hedge_block'];
+  'taxi_cabin', 'hedge_block', 'projector_vintage', 'reel_wall', 'directors_chair', 'ring_light', 'merch_shelf', 'backdrop_stand'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
@@ -62,7 +62,7 @@ function prepare(scene, name) {
 // phone: ?assetcheck=1 recomputes it and warns when a GLB changed (tools/dev/seethru.mjs --assets runs that check).
 // v12: car_taxi and car_sedan list their plate and sign lettering (a few T-junction edges the font leaves); their bodies are closed
 export const TWO_SIDED = { sofa_curve: [17], planter_tree: [3, 4, 5], rope_velvet: [0], lamp_post: [3], bollard_light: [1], // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
-  letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [0, 1, 2], car_taxi: [80, 81, 90, 91], car_sedan: [80, 81], restroom_set: [14] };
+  letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [0, 1, 2], car_taxi: [80, 81, 90, 91], car_sedan: [80, 81] };
 const CHECK = typeof location !== 'undefined' && /[?&]assetcheck=1/.test(location.search);
 // ?assetcheck=1: the open edges of a glTF node are counted over all its primitives together. A mesh with several materials comes in as one
 // primitive per material, and each of those is open along its seams with the others (a car's paint, trim and glass) while the whole is

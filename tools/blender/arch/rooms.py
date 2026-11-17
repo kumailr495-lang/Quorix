@@ -1042,7 +1042,7 @@ def build_street(S):
     # v12 planters along the kerb: a bronze trough with a brass lip and soil 6 cm under it (the hedge on each is an engine prop,
     # world9.js; they were stone crates with a flat green top)
     for xx in range(-44, 42, 8):
-        if abs(xx) < 12: continue   # v12 (the user: decorations blocking the entrance): none on the line from the taxi bay and the crossing to the doors
+        if abs(xx) < 12 or abs(abs(xx) - 20) < 1: continue   # v12 (the user: decorations blocking the entrance): none on the line from the taxi bay and the crossing to the doors; none on the lamps at +-20
         pa, pb, pz0, pz1 = xx - 0.9, xx + 0.9, k - 1.6, k - 0.6; br = lin('#3a2c20')
         acc.box(pa, 0.0, pz0, pb, 0.50, pz0 + 0.06, MAT['powder'], br); acc.box(pa, 0.0, pz1 - 0.06, pb, 0.50, pz1, MAT['powder'], br)
         acc.box(pa, 0.0, pz0 + 0.06, pa + 0.06, 0.50, pz1 - 0.06, MAT['powder'], br); acc.box(pb - 0.06, 0.0, pz0 + 0.06, pb, 0.50, pz1 - 0.06, MAT['powder'], br)   # between the long walls

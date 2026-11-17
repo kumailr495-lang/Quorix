@@ -63,7 +63,7 @@ for path in paths:
     if not parts: continue
     allV = np.concatenate([p['V'] for p in parts]); lo, hi = allV.min(0), allV.max(0)   # glTF frame: y up; front +x (Kiln and the builders)
     hung = abs(hi[2]) < 0.02 and lo[2] < -0.05   # Blender imports y-up glTF as z-up: the model's up is z here
-    wall = name.startswith(('letters_', 'num_', 'mirror_', 'sconce_', 'urinal'))
+    wall = name.startswith(('letters_', 'num_', 'mirror_', 'sconce_', 'urinal', 'reel_wall'))
     mount = (lambda p: p['V'][:, 0].min() < lo[0] + MOUNT) if wall else ((lambda p: p['V'][:, 2].max() > hi[2] - MOUNT) if hung else (lambda p: p['V'][:, 2].min() < lo[2] + MOUNT))
     n = len(parts); seat = name.startswith('seat_')
     def analyse():

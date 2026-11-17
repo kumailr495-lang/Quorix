@@ -78,6 +78,8 @@ export const NAMED = {
   candy_pink: [15, '#e0558a'], candy_yellow: [15, '#f2c230'], candy_green: [15, '#4caf50'], candy_blue: [15, '#3a7bd5'], candy_orange: [15, '#f07a2a'], candy_red: [15, '#c62a36'], screen_black: [15, '#0a0a0c'], acoustic: [9, '#2a2a30'], carpet_deco: [22, '#ffffff'], plant: [0, '#2f5a2a'], soil: [18, '#2b2119'], ceramic: [15, '#e6e0d6'], popcorn: [6, '#f2dca0'], paper_red: [0, '#c4202c'],
   // v11 the taxi's cabin (tools/blender/cabin.py): tan leather seats, matte plastics, a woven headliner, cabin carpet, piano-black bezels
   leather_tan: [8, '#7a6652'], plastic_matte: [13, '#3a3a40'], plastic_dark: [13, '#1e1e22'], headliner: [9, '#9a9388'], carpet_cabin: [5, '#2c2c30'], gloss_black: [15, '#0b0b0d'],
+  // v12 the lobby's exhibit and photo set (tools/blender/decor12.py): the projector's green enamel, the director's chairs' canvas
+  enamel_green: [15, '#2e4a3c'], canvas_black: [9, '#19191b'],
 };
 const _c = new THREE.Color();
 export function named(name) { const k = String(name || '').toLowerCase().replace(/[^a-z_]/g, '').replace(/_+$/, ''); const e = NAMED[k] || NAMED[k.replace(/_lod\d$/, '')]; return e ? { id: e[0], tint: _c.set(e[1]).toArray() } : null; }
