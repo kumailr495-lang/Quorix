@@ -414,7 +414,8 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // the first-floor landing between the gallery and the corridor: two benches and palms along the back wall
   for (const x of [16.6, 19.2]) add('lobby', 'bench_velvet', x, L1, -13.28); for (const x of [15.1, 20.7]) add('lobby', 'planter_tall', x, L1, -13.2);   // velvet benches under the pictures either side of the exit
   add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
-  add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, 2 cm in front of the gold fins (v10)
+  // v12 the brand on the Streamline band's flat middle (rooms.py front12: its face at FACADE_Z + 4.5), its back 2 cm into the band
+  add('street', 'letters_lumiere_lit', 0, 11.9, FACADE_Z + 4.48, 0, { collide: false, ground: false, scale: 1.6 });
   // v10 (the user: "improve the overall look from outside"): a premiere carpet from the kerb to the doors, two light columns flanking them
   add('street', 'rug_runner', 0, 0, FACADE_Z + 4.0, 0, { collide: false, scale: [0.62, 1, 1.8], swap: { carpet_deco: [MAT.velvet, [0.34, 0.015, 0.025]] } });
   // v12 (the user: decorations must not block the entrance and the exit; the inside full of them instead): the palms that stood either side
@@ -432,14 +433,14 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const x of [-7.9, -6.1]) add('lobby', 'directors_chair', x, 0, -4.7, 0);
   add('lobby', 'ring_light', -7.0, 0, -2.7, Math.PI);
   add('lobby', 'merch_shelf', -21.35, 0, 2.1, Math.PI / 2);
-  for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
+  for (const x of [-40, -34, 34, 40]) add('street', 'planter_tree', x, 0, 22.8);   // v12: between the wings' showcases, 1.8 m off their faces
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
   // v11 (the user: "a pole is blocking the view"): none in front of the canopy. v12: each lamp's arm reaches over the kerb (it lay along the
   // pavement); the light and its halo are at the head (tools/blender/arch/rooms.py); a clipped hedge stands in every bronze trough
   for (let x = -40; x <= 40; x += 10) if (Math.abs(x) > 12) add('street', 'lamp_post', x, 0, 25.55, 0, { collide: 0.05 });
   for (let x = -44; x < 42; x += 8) if (Math.abs(x) >= 12 && Math.abs(Math.abs(x) - 20) >= 1) add('street', 'hedge_block', x, 0, 24.9, 0, { collide: false, ground: false });   // none under the lamps at +-20
   for (const x of [-14, -11.2, -8.4, -5.6, 14]) add('street', 'bollard_light', x, 0, 25.6);   // v12: none by the crossing, none along the taxi bay (x 6 to 13)
-  add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
+  add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); 
   // v12 (the user: "balconies, an outer extension of shops, people, crosswalks, lamps, trees, plants"): the far pavement gets street trees
   // in grated pits between its lamps (none on the crossing's landing), Café Noir's tables out under its awning, and box planters by the
   // open door of the ramen bar (the hotel's door has its canopy). The trees' trunks collide (a round 0.3 m), the crowns stand over the walkers' heads

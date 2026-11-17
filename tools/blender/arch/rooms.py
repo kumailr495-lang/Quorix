@@ -5,6 +5,7 @@ Palettes: docs/V9-DESIGN.md section 5 (3-4 colours per space, dim variants of th
 import math, random
 from geo import Acc, Glow, Lights, MAT, lin, mix, cross, sub
 import street12
+import front12
 
 def build(key, S):
     fn = globals().get('build_' + key)
@@ -975,93 +976,9 @@ def build_street(S):
         xx = xw + 2 + i * 4.0
         if -4.4 < xx + 1.1 < 4.4: continue   # the crossing in front of the entrance
         glow_facing(glow, (xx, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 - 0.06), (xx + 2.2, -0.148, (r0 + r1) / 2 + 0.06), (xx, -0.148, (r0 + r1) / 2 + 0.06), (0, 1, 0), lin('#d8d4c8'), 0.25)   # they faced down
-    # the cinema's facade: sandstone cladding with dark bronze bands and gold fins (no white panels, photo 10)
-    fz = F + 0.4
-    # v12 (the user: "the building's outside looks shit"): the wings were a grid of gold fins every 2 m (it read as a car park). Now:
-    # stone between black Art Deco pilasters every 6 m, each with a brass inlay and a lit capital, one bronze band under the cornice,
-    # and in each bay a large lit poster showcase (below)
-    PIL = [x_ for k_ in range(5) for x_ in (-22.6 - 6.0 * k_, 22.6 + 6.0 * k_) if xw + 0.5 < x_ < xe - 0.5]
-    for (a, b) in ((xw, -22.0), (22.0, xe)):   # to the street's ends: nothing open behind the facade line
-        acc.box(a, -0.3, F, b, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
-        acc.box(a, 12.6, F + 0.4, b, 12.95, F + 0.55, MAT['powder'], FC['bronze'])
-        acc.box(a, 13.48, F, b, 13.9, F + 0.6, MAT['powder'], FC['bronze'])   # the wing's cornice, 2 cm down into the cladding
-    for xx in PIL:
-        acc.box(xx - 0.3, 0.0, F + 0.38, xx + 0.3, 12.62, F + 0.72, MAT['lacquer'], lin('#0b0b0e'))   # 2 cm into the cladding and the band
-        acc.box(xx - 0.05, 0.4, F + 0.70, xx + 0.05, 12.3, F + 0.745, MAT['brass'], FC['gold'])          # its inlay: 2 cm in, 2.5 cm proud
-        acc.box(xx - 0.38, 11.6, F + 0.36, xx + 0.38, 11.85, F + 0.8, MAT['brass'], FC['gold'])          # the capital ring
-        glow_facing(glow, (xx - 0.3, 11.594, F + 0.74), (xx + 0.3, 11.594, F + 0.74), (xx + 0.3, 11.594, F + 0.79), (xx - 0.3, 11.594, F + 0.79), (0, -1, 0), lin('#ffd08a'), 2.4)
-        lit.spot((xx, 11.5, F + 0.9), lin('#ffd09a'), 1.8, 9.0, 'f', (0, -1, 0.08), 14, 34)
-    # v9.3 (the user's photo of a premiere entrance): over the entrance the stone band becomes a feature wall of deep blue diamond tiles
-    # behind the LUMIERE letters (engine prop), washed from below; the rest of the band stays stone
-    acc.box(-22.0, 9.6, F, -9.5, 13.5, F + 0.4, MAT['stone'], FC['sandstone']); acc.box(9.5, 9.6, F, 22.0, 13.5, F + 0.4, MAT['stone'], FC['sandstone'])
-    # v10 (the user: "the diamond one looks shit"; the outside "better colours and contrast"): the feature wall over the entrance is now deep
-    # navy lacquer with gold fins every 0.5 m (8 cm deep, clear of the letters 2 cm in front), washed warm from below: Art Deco, not tiles
-    acc.box(-9.5, 9.6, F, 9.5, 13.5, F + 0.4, MAT['lacquer'], lin('#0d1f3d'))
-    for i in range(38):
-        xx = -9.5 + 0.5 * i + 0.25 - 0.02
-        acc.box(xx, 9.65, F + 0.39, xx + 0.04, 13.45, F + 0.481, MAT['brass'], FC['gold'])   # v11: 1 cm into the canopy's face (they stood 1 mm off it)
-    for xx in (-7.6, -3.8, 0.0, 3.8, 7.6):
-        lit.spot((xx, 9.2, F + 1.2), lin('#ffd9a0'), 3.0, 7.5, 'f', (0, 1, -0.35), 22, 55)
-    acc.box(-22.4, 13.5, F, 22.4, 13.9, F + 0.6, MAT['powder'], FC['bronze'])
-    # a gold light line under the cornice, the building's whole width: a crisp top edge at night
-    glow_facing(glow, (-22.3, 13.497, F + 0.48), (22.3, 13.497, F + 0.48), (22.3, 13.497, F + 0.56), (-22.3, 13.497, F + 0.56), (0, -1, 0), lin('#ffcf8a'), 2.6)
-    lit.line((-22.0, 13.4, F + 0.7), (22.0, 13.4, F + 0.7), lin('#ffcf8a'), 0.5, 6.0, 'f', (0, -1, -0.25))
-    # v12 the crown (a movie palace's tower, Art Deco setbacks): three stepped navy blocks over the entrance, brass fins every 0.5 m,
-    # a bronze cap with a gold light line under its lip at each setback, a brass spire with a warm beacon. Each step sits 2 cm into the
-    # cap below; caps are 15 cm proud of their block
-    NAVY = lin('#0d1f3d')
-    for (hw, y0, y1, zf_, k_) in ((9.0, 13.88, 16.4, F + 0.30, 0), (6.0, 16.53, 18.4, F + 0.15, 1), (3.0, 18.53, 20.0, F + 0.0, 2)):
-        acc.box(-hw, y0, F - 2.6 + 0.4 * k_, hw, y1, zf_, MAT['lacquer'], NAVY)
-        for i in range(int(hw / 0.5) * 2 - 1):
-            xx = -hw + 0.5 * (i + 1) - 0.02
-            acc.box(xx, y0 + 0.08, zf_ - 0.01, xx + 0.04, y1 - 0.08, zf_ + 0.07, MAT['brass'], FC['gold'])
-        acc.box(-hw - 0.15, y1, F - 2.7 + 0.4 * k_, hw + 0.15, y1 + 0.15, zf_ + 0.15, MAT['powder'], FC['bronze'])
-        glow_facing(glow, (-hw - 0.1, y1 - 0.006, zf_ + 0.09), (hw + 0.1, y1 - 0.006, zf_ + 0.09), (hw + 0.1, y1 - 0.006, zf_ + 0.14), (-hw - 0.1, y1 - 0.006, zf_ + 0.14), (0, -1, 0), lin('#ffcf8a'), 2.8)
-        for xx in [-hw + 1.5 + 3.0 * j for j in range(int(hw * 2 / 3.0))]:
-            lit.spot((xx, y0 + 0.1, zf_ + 0.5), lin('#ffd9a0'), 1.6, (y1 - y0) * 1.6, 'f', (0, 1, -0.2), 12, 30)
-    acc.cyl(0.0, F - 1.6, 0.07, 20.13, 23.2, MAT['brass'], FC['gold'], n=12)   # the spire, 2 cm into the top cap
-    bx0_, bx1_, by0_, by1_, bz0_, bz1_ = -0.16, 0.16, 23.15, 23.47, F - 1.76, F - 1.44   # the beacon: a glowing cube round the spire's tip
-    for (pa_, pb_, pc_, pd_, n_) in ((( bx0_, by0_, bz1_), (bx1_, by0_, bz1_), (bx1_, by1_, bz1_), (bx0_, by1_, bz1_), (0, 0, 1)), ((bx0_, by0_, bz0_), (bx1_, by0_, bz0_), (bx1_, by1_, bz0_), (bx0_, by1_, bz0_), (0, 0, -1)),
-                                     ((bx1_, by0_, bz0_), (bx1_, by0_, bz1_), (bx1_, by1_, bz1_), (bx1_, by1_, bz0_), (1, 0, 0)), ((bx0_, by0_, bz0_), (bx0_, by0_, bz1_), (bx0_, by1_, bz1_), (bx0_, by1_, bz0_), (-1, 0, 0)),
-                                     ((bx0_, by1_, bz0_), (bx1_, by1_, bz0_), (bx1_, by1_, bz1_), (bx0_, by1_, bz1_), (0, 1, 0)), ((bx0_, by0_, bz0_), (bx1_, by0_, bz0_), (bx1_, by0_, bz1_), (bx0_, by0_, bz1_), (0, -1, 0))):
-        glow_facing(glow, pa_, pb_, pc_, pd_, n_, lin('#ffd9a0'), 3.2)
-    lit.point((0.0, 23.3, F - 1.6), lin('#ffd9a0'), 1.2, 9, 'f')
-    extras.setdefault('halos', []).append({'x': 0.0, 'y': 23.31, 'z': F - 1.6, 'r': 1.4, 'c': list(lin('#ffd9a0')), 'k': 0.5})
-    # v12 the marquee (the user: the outside looked bad; a black drum with a black void under it): a movie palace's canopy, 14 m wide,
-    # 4.8 m out over the pavement. Its front and sides carry the attraction board (engine panels 'attraction_*': tonight's films from the
-    # shows, black letters on lit milk glass, in brass frames), chaser bulbs above and below each board (street12.js atlas 'bulbs', fx 3),
-    # a brass soffit set with 133 warm bulbs, two black columns on brass rings. One wordmark: the letters over it and the blade sign
-    MX, MZ0, MZ1, MY0, MY1 = 7.0, F + 0.002, F + 4.8, 4.7, 6.6
-    acc.box(-MX, MY0, MZ0, MX, MY1, MZ1, MAT['lacquer'], lin('#0a0a0c'))
-    acc.box(-MX - 0.04, MY1 - 0.04, MZ0, MX + 0.04, MY1 + 0.04, MZ1 + 0.04, MAT['brass'], FC['gold'])          # the cap, 4 cm proud all round
-    acc.box(-MX + 0.1, MY0 - 0.08, F + 0.1, MX - 0.1, MY0 + 0.02, MZ1 - 0.1, MAT['brass'], FC['gold'])          # the brass soffit, 2 cm up into the body
-    for (ax0, ax1, ay0, ay1) in ((-6.55, 6.55, 4.84, 4.88), (-6.55, 6.55, 5.98, 6.02), (-6.55, -6.51, 4.88, 5.98), (6.51, 6.55, 4.88, 5.98)):
-        acc.box(ax0, ay0, MZ1 - 0.02, ax1, ay1, MZ1 + 0.03, MAT['brass'], FC['gold'])                          # the front board's frame
-    for sx_ in (-1, 1):
-        for (az0, az1, ay0, ay1) in ((F + 0.56, F + 4.44, 4.84, 4.88), (F + 0.56, F + 4.44, 5.98, 6.02), (F + 0.56, F + 0.6, 4.88, 5.98), (F + 4.40, F + 4.44, 4.88, 5.98)):
-            acc.box(sx_ * MX - 0.02 if sx_ > 0 else -MX - 0.03, ay0, az0, sx_ * MX + 0.03 if sx_ > 0 else -MX + 0.02, ay1, az1, MAT['brass'], FC['gold'])   # the side boards' frames
-    panels_m = [{'id': 'attraction_f', 'x': 0.0, 'y': 5.43, 'z': MZ1 + 0.006, 'yaw': 0, 'w': 13.02, 'h': 1.1, 'emit': 1.15},
-                {'id': 'attraction_w', 'x': -MX - 0.006, 'y': 5.43, 'z': F + 2.5, 'yaw': -math.pi / 2, 'w': 3.84, 'h': 1.1, 'emit': 1.15},
-                {'id': 'attraction_e', 'x': MX + 0.006, 'y': 5.43, 'z': F + 2.5, 'yaw': math.pi / 2, 'w': 3.84, 'h': 1.1, 'emit': 1.15}]
-    # the chaser bulbs: a strip under and over each board, 8 bulbs 12 cm apart per atlas quad; 'i' numbers the quads round the marquee
-    # (west side out from the facade, the front west to east, the east side back), so every third bulb lights in one wave (fx 3)
-    bulbs_ = []
-    for yb in (4.785, 6.19):
-        run = [(-(MX + 0.006), F + 2.5 - 1.92 + 0.48 + 0.96 * j, -math.pi / 2) for j in range(4)] + [(-6.24 + 0.96 * j, MZ1 + 0.006, 0.0) for j in range(14)] \
-            + [(MX + 0.006, F + 2.5 + 1.92 - 0.48 - 0.96 * j, math.pi / 2) for j in range(4)]
-        for i_, (bx_, bz_, byaw_) in enumerate(run):
-            bulbs_.append({'k': 'bulbs', 'v': 'row', 'x': bx_, 'y': yb, 'z': bz_, 'yaw': byaw_, 'w': 0.96, 'h': 0.12, 'e': 1.6, 'fx': 3, 'i': i_})
-    lit.area((0.0, 5.43, MZ1 + 0.3), (6.5, 0, 0), (0, 0.55, 0), (0, -0.2, 1), lin('#fff6e8'), 5.0, 14, 'f', 4, 1)   # the board's light on the pavement
-    for ix in range(19):   # the soffit's bulbs
-        for iz in range(7):
-            xx, zz = -6.3 + 0.7 * ix, F + 0.6 + 0.62 * iz
-            oc = [(xx + 0.04 * math.cos(math.pi / 8 + q * math.pi / 4), zz + 0.04 * math.sin(math.pi / 8 + q * math.pi / 4)) for q in range(8)]   # round: an octagon in three quads
-            for qd in ((0, 1, 2, 3), (0, 3, 4, 7), (4, 5, 6, 7)):
-                glow_facing(glow, *[(oc[q][0], MY0 - 0.086, oc[q][1]) for q in qd], (0, -1, 0), lin('#ffe2b4'), 3.4)
-            if ix % 3 == 1 and iz % 2 == 1: lit.spot((xx, MY0 - 0.1, zz), lin('#ffd9a8'), 2.2, 7, 'h', (0, -1, 0), 30, 70)
-    for xx in (-6.4, 6.4):   # the columns: black lacquer on brass rings, 2 cm up into the soffit
-        acc.cyl(xx, F + 4.3, 0.16, 0.0, MY0 - 0.06, MAT['lacquer'], lin('#0b0b0d'), n=24)
-        acc.cyl(xx, F + 4.3, 0.22, 0.0, 0.18, MAT['brass'], FC['gold'], n=24); acc.cyl(xx, F + 4.3, 0.21, MY0 - 0.32, MY0 - 0.06, MAT['brass'], FC['gold'], n=24)
+    # v12 the cinema's front, Streamline Moderne (the user picked concept B): curved corners, speed lines, a curved band, a tower fin and
+    # a marquee with round ends; tools/blender/arch/front12.py
+    panels, front_atlas = front12.build(acc, glow, lit, F, xw, xe, extras)
     # v12 planters along the kerb: a bronze trough with a brass lip and soil 6 cm under it (the hedge on each is an engine prop,
     # world9.js; they were stone crates with a flat green top)
     for xx in range(-44, 42, 8):
@@ -1089,18 +1006,7 @@ def build_street(S):
         lit.spot((xx, 6.1, r1 - 1.2), LED, 8.0, 16, 'h', (0, -1, 0), 42, 78)
         halos.append({'x': xx, 'y': 6.2, 'z': r1 - 1.22, 'r': 1.4, 'c': list(LED), 'k': 0.45})
     # the block across the street and the buildings at the street's ends (v12: real buildings with shopfronts, tools/blender/arch/street12.py)
-    atlas, _ = street12.far_side(acc, glow, lit, S, extras); atlas.extend(bulbs_)
-    # the cinema's blade sign: a fin standing 2 m off the stone band beside the canopy, LUMIERE down both faces (atlas quads, a chase of
-    # bulbs round them), a brass edge and cap
-    bx0, bx1, bz0, bz1, by0, by1 = -10.95, -10.55, F + 0.38, F + 2.45, 6.1, 15.4
-    acc.box(bx0, by0, bz0, bx1, by1, bz1, MAT['lacquer'], lin('#0b0d14'))
-    acc.box(bx0 - 0.03, by0 - 0.03, bz1 - 0.02, bx1 + 0.03, by1 + 0.03, bz1 + 0.04, MAT['brass'], FC['gold'])
-    acc.box(bx0 - 0.03, by1 - 0.02, bz0, bx1 + 0.03, by1 + 0.06, bz1 - 0.02, MAT['brass'], FC['gold'])
-    for yb in (10.2, 13.0): acc.box(bx0 + 0.1, yb, F + 0.2, bx1 - 0.1, yb + 0.14, bz0 + 0.02, MAT['powder'], FC['bronze'])
-    for s_, xf in ((1, bx1 + 0.012), (-1, bx0 - 0.012)):
-        atlas.append({'k': 'blade', 'v': 'lumiere', 'x': xf, 'y': (by0 + by1) / 2, 'z': (bz0 + bz1) / 2 + 0.01, 'yaw': s_ * math.pi / 2, 'w': bz1 - bz0 - 0.12, 'h': by1 - by0 - 0.1, 'e': 1.35, 'fx': 2})
-    halos.append({'x': (bx0 + bx1) / 2, 'y': 10.8, 'z': F + 1.5, 'r': 3.4, 'c': list(lin('#ffcf8a')), 'k': 0.16})
-    lit.line((bx1 + 0.3, by0, F + 1.4), (bx1 + 0.3, by1, F + 1.4), lin('#ffcf8a'), 0.5, 7.0, 'f', (1, -0.2, 0.3))
+    atlas, _ = street12.far_side(acc, glow, lit, S, extras); atlas.extend(front_atlas)
     # road markings from the atlas: the crossing in front of the doors, TAXI in the bay
     atlas.append({'k': 'road', 'v': 'zebra', 'x': 0.0, 'y': -0.144, 'z': (r0 + r1) / 2, 'yaw': 0, 'w': 5.2, 'h': r1 - r0 - 0.5, 'e': 0.16, 'flat': 1})
     atlas.append({'k': 'road', 'v': 'taxi', 'x': 9.0, 'y': -0.144, 'z': (k + r0) / 2, 'yaw': math.pi, 'w': 5.0, 'h': 1.5, 'e': 0.14, 'flat': 1})   # read from the cinema's pavement
@@ -1108,38 +1014,5 @@ def build_street(S):
     # the whole point of a night theatre"). Midnight: a deep blue fill a third of that, so the fronts read as shapes in moonlight and the
     # light comes from lamps, signs, windows and the cinema (the bake multiplies this by AO)
     lit.ambient(lin('#22304e'), lin('#0c0c12'), 0.3, 'h')
-    # v9.1 (the user: "the theatre's outside texture", "empty spaces"): lit poster cases on the facade's flanks at eye level (bronze frames,
-    # a gooseneck spot over each), warm uplights washing the stone cladding every 4 m, so the building reads at night
-    # v12 the showcases: one large lit poster case (2.6 x 3.9 m) in each bay between the pilasters, a bronze case 8 cm deep with a brass
-    # frame, a light bar over it washing the poster; the eye-level cases were small
-    panels = panels_m
-    films = ['bunny', 'llamigos', 'glasshalf', 'coffeerun', 'sintel', 'cosmos', 'hero', 'wingit']
-    bays_ = sorted((PIL[i_] + PIL[j_]) / 2 for i_ in range(len(PIL)) for j_ in range(len(PIL)) if 0 < PIL[j_] - PIL[i_] < 6.5 and (PIL[i_] > 0) == (PIL[j_] > 0))
-    for i, xx in enumerate(bays_):
-        pw, ph, pyc = 2.6, 3.9, 2.95; zf = F + 0.4
-        acc.box(xx - pw / 2 - 0.12, pyc - ph / 2 - 0.12, zf - 0.02, xx + pw / 2 + 0.12, pyc + ph / 2 + 0.12, zf + 0.08, MAT['powder'], FC['bronze'])
-        for (fx0, fx1, fy0, fy1) in ((xx - pw / 2 - 0.16, xx + pw / 2 + 0.16, pyc - ph / 2 - 0.16, pyc - ph / 2 - 0.1), (xx - pw / 2 - 0.16, xx + pw / 2 + 0.16, pyc + ph / 2 + 0.1, pyc + ph / 2 + 0.16),
-                                     (xx - pw / 2 - 0.16, xx - pw / 2 - 0.1, pyc - ph / 2 - 0.1, pyc + ph / 2 + 0.1), (xx + pw / 2 + 0.1, xx + pw / 2 + 0.16, pyc - ph / 2 - 0.1, pyc + ph / 2 + 0.1)):
-            acc.box(fx0, fy0, zf + 0.06, fx1, fy1, zf + 0.14, MAT['brass'], FC['gold'])   # the frame: 2 cm into the case, 6 cm proud of it
-        panels.append({'id': 'poster_' + films[i % len(films)] + '_f' + str(i), 'x': xx, 'y': pyc, 'z': zf + 0.086, 'yaw': 0, 'w': pw, 'h': ph, 'emit': 1})
-        acc.box(xx - pw / 2, pyc + ph / 2 + 0.3, zf + 0.06, xx + pw / 2, pyc + ph / 2 + 0.42, zf + 0.62, MAT['powder'], FC['bronze'])   # the light bar
-        glow_facing(glow, (xx - pw / 2 + 0.05, pyc + ph / 2 + 0.294, zf + 0.3), (xx + pw / 2 - 0.05, pyc + ph / 2 + 0.294, zf + 0.3), (xx + pw / 2 - 0.05, pyc + ph / 2 + 0.294, zf + 0.56), (xx - pw / 2 + 0.05, pyc + ph / 2 + 0.294, zf + 0.56), (0, -1, 0), lin('#ffe8c8'), 2.0)
-        lit.area((xx, pyc + ph / 2 + 0.29, zf + 0.45), (pw / 2 - 0.1, 0, 0), (0, 0, 0.12), (0, -1, -0.45), lin('#ffe3be'), 2.4, 7, 'h', 3, 1)
-        # above it a Deco panel (the stone over the cases was 7 m of blank wall): navy lacquer in a bronze frame, brass flutes every 0.4 m,
-        # a stepped brass head (the crown's setbacks in small), washed from the light bar's top
-        px0, px1, py0, py1 = xx - 1.5, xx + 1.5, 5.9, 10.9
-        acc.box(px0, py0, F + 0.38, px1, py1, F + 0.46, MAT['lacquer'], NAVY)   # 2 cm into the cladding, 6 cm proud
-        for (fx0, fx1, fy0, fy1) in ((px0 - 0.08, px1 + 0.08, py0 - 0.08, py0), (px0 - 0.08, px1 + 0.08, py1, py1 + 0.08), (px0 - 0.08, px0, py0, py1), (px1, px1 + 0.08, py0, py1)):
-            acc.box(fx0, fy0, F + 0.38, fx1, fy1, F + 0.5, MAT['powder'], FC['bronze'])
-        for j in range(7):
-            fx = xx - 1.22 + 0.4 * j
-            acc.box(fx, py0 + 0.1, F + 0.44, fx + 0.04, py1 - 0.6, F + 0.49, MAT['brass'], FC['gold'])   # 2 cm into the panel
-        for (sw_, sy0, sy1) in ((1.0, py1 - 0.5, py1 - 0.36), (0.66, py1 - 0.36, py1 - 0.22), (0.33, py1 - 0.22, py1 - 0.08)):
-            acc.box(xx - sw_, sy0, F + 0.44, xx + sw_, sy1, F + 0.52, MAT['brass'], FC['gold'])
-        lit.spot((xx, 5.4, F + 0.9), lin('#ffd9a8'), 1.6, 7, 'h', (0, 1, -0.12), 16, 36)
-    for xx in PIL:   # v12 an uplight at each pilaster's foot washes it to the capital (they stood every 4 m, in front of the showcases)
-        lit.spot((xx, 0.15, F + 0.86), lin('#ffd2a0'), 2.2, 14, 'h', (0, 1, -0.1), 10, 24)
-        acc.box(xx - 0.12, 0.0, F + 0.76, xx + 0.12, 0.12, F + 0.98, MAT['powder'], lin('#1a1a1c'))
-        glow_facing(glow, (xx - 0.08, 0.126, F + 0.8), (xx + 0.08, 0.126, F + 0.8), (xx + 0.08, 0.126, F + 0.94), (xx - 0.08, 0.126, F + 0.94), (0, 1, 0), lin('#ffd2a0'), 1.6)
     extras['panels'] = panels
     return acc, glow, lit, extras
