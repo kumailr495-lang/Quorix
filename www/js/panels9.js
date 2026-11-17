@@ -1,7 +1,7 @@
 // LUMIERE v9 - the lobby's screens: the big LED wall over the way out (a slow film reel of what is on), the showtimes board over the box
 // office (each screen, its film and when it starts), the menu boards over the concession counter (prices as on the bill).
 import { CATALOG, filmById, posterURL, FEATURED } from './films.js';
-import { SANS, SERIF } from './textures.js';
+import { SANS, SERIF, readerBoard } from './textures.js';
 import { HALL } from './building.js';
 const HALL_IDS = ['MAX', 'CURVE', 'CLASSIC', 'X270'], FEAT = { MAX: 'sintel', CURVE: 'cosmos', CLASSIC: 'bunny', X270: 'hero' };
 const posters = {}; for (const f of CATALOG) { const im = new Image(); im.src = posterURL(f.id); posters[f.id] = im; }
@@ -39,6 +39,18 @@ export function showtimes(P, shows, t, fmt) {
       const st = s && s.state === 'pending' ? fmt(shows.countdown(id) - 10) : s && (s.state === 'playing' || s.state === 'countdown') ? t('show.playing') : t('panel9.book');
       g.textAlign = 'right'; g.fillStyle = s && s.state === 'pending' ? '#ffcf7a' : 'rgba(227,178,95,.9)'; g.fillText(st, W * 0.965, y); g.textAlign = 'left'; });
     tex.needsUpdate = true;
+  };
+}
+// v12 the marquee's front board: what each screen plays tonight; once you hold a ticket, your film on the top row and the rest under it
+export function attraction(P, shows) {
+  if (!P) return { update() {}, own() {} }; let mine = '', sig = '', last = 0;
+  const title = (id) => { const s = shows.get(id), f = filmById(s && s.src && s.src.kind === 'film' ? s.src.filmId : FEAT[id]); return String(s && s.src ? s.src.title : f ? f.short || f.title : '').toUpperCase(); };
+  return {
+    update(now) {
+      if (now - last < 2000) return; last = now; const ts = HALL_IDS.map(title), k = mine + '|' + ts.join('|'); if (k === sig) return; sig = k;
+      readerBoard(P.g, P.canvas.width, P.canvas.height, mine ? [mine.toUpperCase(), 'ALSO TONIGHT · ' + ts.filter((x) => x !== mine.toUpperCase()).slice(0, 3).join(' · ')] : [ts.join(' · '), 'MAX · CURVE · CLASSIC · 270']); P.tex.needsUpdate = true;
+    },
+    own(t) { mine = String(t || '').replace(/·/g, '-').slice(0, 60); last = 0; },
   };
 }
 // the menu boards (drawn once; the prices are the bill's)

@@ -13,7 +13,7 @@ import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GAT
 import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
-import { makeCanvas, SANS, SERIF } from './textures.js';
+import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
 import { posterURL } from './films.js';
 import { Lift } from './lift9.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
@@ -219,7 +219,7 @@ class Travelator {
 }
 // the lift (lift9.js): a through car with its controls in the world
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
-const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 640, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512 };   // canvas pixels per metre for boards with text or fine figures
+const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 640, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512, attraction: 150 };   // canvas pixels per metre for boards with text or fine figures
 const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 function panelTexture(id, w, h, hooks) {
   const ppm = DENSE[id.split('_')[0]] || 128, px = Math.min(2048, Math.max(256, Math.round(w * ppm))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
@@ -343,7 +343,8 @@ export const PANEL_DRAW = {
       g.font = `400 ${h * 0.09}px ${SANS}`; items.forEach(([nm, pr], i) => { const y = h * (0.37 + i * 0.13); g.fillStyle = '#f2ebdd'; g.textAlign = 'left'; g.fillText(nm, x0, y); g.textAlign = 'right'; g.fillStyle = '#e3b25f'; g.fillText('₹' + pr, x1, y); }); }); },
   cafesign: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1d140d'); gr.addColorStop(1, '#0d0906'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     g.fillStyle = '#e8c27a'; g.font = `500 ${h * 0.52}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.12}px`; g.fillText('CAFÉ LUMIÈRE', w / 2, h * 0.5); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.fillRect(w * 0.28, h * 0.86, w * 0.44, Math.max(2, h * 0.025)); },
-  marquee: (g, w, h) => { g.fillStyle = '#0a0a0d'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2ebdd'; g.font = `500 ${h * 0.56}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.3}px`; g.fillText('LUMIÈRE', w / 2, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
+  // v12 the marquee's boards; the front is redrawn with tonight's films by panels9.js attraction()
+  attraction: (g, w, h, id) => readerBoard(g, w, h, id === 'attraction_f' ? ['SINTEL · COSMOS LAUNDROMAT · BIG BUCK BUNNY · HERO', 'MAX · CURVE · CLASSIC · 270'] : id === 'attraction_w' ? ['NOW SHOWING', 'FOUR SCREENS'] : ['LATE SHOWS', 'EVERY NIGHT']),
   arrival: (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#120d24'); gr.addColorStop(1, '#2a1640'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.14}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SCREENS 1 – 4', w / 2, h * 0.42); g.fillStyle = 'rgba(242,235,221,.8)'; g.font = `400 ${h * 0.07}px ${SANS}`; g.fillText('MAX  ·  CURVE  ←      CLASSIC  ·  270  →', w / 2, h * 0.62); },
 };
 // ---------------------------------------------------------------- props: the furniture of each room (Kiln / Blender assets), lit per vertex

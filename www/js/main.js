@@ -32,7 +32,7 @@ import { Intro, ARRIVAL } from './intro9.js';
 import { treeFor } from './dialogue9.js';
 import { makeHeld, setHeldMaterial } from './held.js';
 import { cleanTitle } from './films.js';
-import { ledWall, showtimes, menuBoard } from './panels9.js';
+import { ledWall, showtimes, menuBoard, attraction } from './panels9.js';
 import { makeRain } from './rain.js';
 import { Traffic } from './traffic.js';
 // v12 medium draws reflections in the rooms that live on them only (the street's wet road, the lobby's floor); high, or Reflections: Full, in every room
@@ -123,8 +123,7 @@ async function boot() {
   // a few things nobody asked for: rain on the street (wet paving, the drops stop under the canopy), your film on the marquee once you
   // have a ticket, and a stub for every film you watch to the end (Settings, More keeps your last nights)
   const rain = makeRain(world.rooms.street, { count: lowG ? 1500 : 3500 }); rain.mesh.material.uniforms.uBoxMin.value.z = 25.4; world.rooms.street.U.uWet.value = 1;
-  const marquee = (title) => { const P = world.panels.marquee; if (!P) return; const { g, canvas: c, tex } = P, W = c.width, H = c.height; g.fillStyle = '#0a0a0d'; g.fillRect(0, 0, W, H); g.textBaseline = 'middle'; g.textAlign = 'center';
-    g.fillStyle = '#f2ebdd'; g.font = `500 ${H * 0.5}px Cormorant, Georgia, serif`; if ('letterSpacing' in g) g.letterSpacing = `${H * 0.18}px`; g.fillText(title ? 'LUMIÈRE  ·  ' + title.toUpperCase() : 'LUMIÈRE', W / 2, H * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; tex.needsUpdate = true; };
+  const marq = attraction(world.panels.attraction_f, shows), marquee = (title) => marq.own(title);
   const stubs = { get() { try { return JSON.parse(localStorage.getItem('lumiere.stubs') || '[]'); } catch (e) { return []; } }, add(x) { try { const a = this.get(); a.unshift(x); localStorage.setItem('lumiere.stubs', JSON.stringify(a.slice(0, 20))); } catch (e) { /* private mode */ } } };
   const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
@@ -341,7 +340,7 @@ async function boot() {
         ui.setGoal(t(g.key, g.vars), Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz) * 180 / Math.PI, g.dist); } }
     ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
     ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet)));
-    talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt); if (world.vis.has('lobby')) { led(now); board(now); }
+    talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt); if (world.vis.has('lobby')) { led(now); board(now); } if (world.vis.has('street')) marq.update(now);
     slowT -= dt; if (slowT <= 0) { slowT = 0.5;
       const S = (id) => shows.get(id), status = (id) => { const s = S(id); return s.state === 'pending' ? t('show.pending', { time: fmtTime(shows.countdown(id) - 10) }) : s.state === 'countdown' ? t('show9.countdown') : s.state === 'playing' ? (shows.buffering ? t('show.buffering') : t('show.playing')) : s.state === 'ended' ? t('show.ended') : t('show.idle'); };
       if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.name, S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room9.' + r), '');

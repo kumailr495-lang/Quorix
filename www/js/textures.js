@@ -156,3 +156,19 @@ export function printTexture(p) {
   g.font = `400 ${Math.round(w * 0.045)}px ${SANS}`; g.fillStyle = 'rgba(245,237,227,.7)'; if ('letterSpacing' in g) g.letterSpacing = '1px'; g.fillText(p.s, w / 2, h * 0.86);
   g.strokeStyle = 'rgba(201,160,97,.6)'; g.lineWidth = 2; g.strokeRect(10, 10, w - 20, h - 20); return tex(c);
 }
+// v12 a movie palace's attraction board (the marquee, rooms.py 'attraction_*'): rows of black letters hung on rails over lit milk glass,
+// a red dot between items ('A · B · C'). Each row is sized to fit the board here, so the canvas text fit is off while it draws
+export function readerBoard(g, w, h, rows) {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#e6dfcd'); gr.addColorStop(0.5, '#fcf8ef'); gr.addColorStop(1, '#e3dbc8'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const n = rows.length, rh = h / n, ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v + 'px'; }; g.__noFit = true; g.textBaseline = 'middle'; g.textAlign = 'left';
+  for (let r = 0; r < n; r++) {
+    const y0 = r * rh, parts = String(rows[r]).split('·').map((s) => s.trim()).filter(Boolean); let px = rh * 0.6;
+    g.fillStyle = 'rgba(96,84,66,0.4)'; g.fillRect(0, y0 + rh * 0.07, w, Math.max(1, rh * 0.03)); g.fillRect(0, y0 + rh * 0.9, w, Math.max(1, rh * 0.03));
+    const width = () => { g.font = `800 ${px.toFixed(1)}px ${SANS}`; ls(px * 0.08); return parts.reduce((s, p, i) => s + g.measureText(p).width + (i ? px * 2.2 : 0), 0); };
+    let tw = width(); if (tw > w * 0.94) { px *= (w * 0.94) / tw; tw = width(); }
+    let x = (w - tw) / 2; const y = y0 + rh * 0.52;
+    parts.forEach((p, i) => { if (i) { g.fillStyle = '#a3201c'; g.beginPath(); g.arc(x + px * 1.1, y, px * 0.12, 0, 7); g.fill(); x += px * 2.2; } g.fillStyle = '#17130e'; g.fillText(p, x, y); x += g.measureText(p).width; });
+    ls(0);
+  }
+  g.__noFit = false;
+}

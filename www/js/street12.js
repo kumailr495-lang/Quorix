@@ -16,7 +16,7 @@ const CELL = {};
 SHOPS.forEach((k, i) => { CELL['shop:' + k] = [(i % 4) * 510 + 2, Math.floor(i / 4) * 364 + 2, 506, 360]; CELL['sign:' + k] = [(i % 4) * 510 + 2, 1096 + Math.floor(i / 4) * 68, 506, 64]; });
 for (let i = 0; i < 8; i++) CELL['win:' + i] = [310 + i * 114, 1304, 110, 150];
 Object.assign(CELL, { 'blade:lumiere': [2, 1304, 150, 710], 'blade:hotel': [158, 1304, 120, 662], 'blade:cross': [1600, 1446, 100, 100],
-  'road:zebra': [310, 1460, 124, 154], 'road:taxi': [440, 1460, 420, 126] });
+  'road:zebra': [310, 1460, 124, 154], 'road:taxi': [440, 1460, 420, 126], 'bulbs:row': [870, 1600, 256, 32] });
 
 // ------------------------------------------------------------------ small drawing helpers
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -98,19 +98,17 @@ const SIGN_DRAW = {
   jazz: (g, w, h) => { g.textAlign = 'center'; neon(g, 'Indigo Room', w * 0.4, h * 0.74, `italic 600 ${h * 0.74}px ${SERIF}`, '#8aa0ff', 13); g.font = `500 ${h * 0.2}px ${SANS}`; g.fillStyle = '#ff9ad8'; g.fillText('JAZZ  ·  SUPPER', w * 0.8, h * 0.62); },
   gallery: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#f0ece2'; g.font = `300 ${h * 0.5}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.22}px`; g.fillText('GALERIE NORD', w / 2, h * 0.68); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
 };
-// eight windows of other people's evenings
+// eight windows of other people's evenings: each picture is the back wall of a room; street12.js ATLAS_FRAG (fx 4) puts it 3.6 m behind
+// the glass and builds the side walls, floor and ceiling round it from its edges (interior mapping), with curtains, blinds or a sheer
+// in the window plane and the glass's reflection over all of it
 function winDraw(g, v, w, h, R) {
   const warm = ['#ffd08a', '#ffc070', '#ffe0a8'][v % 3];
   if (v === 4) { wallFill(g, w, h, '#2a4a78', '#101c34'); glowDot(g, w * 0.5, h * 0.7, w * 0.7, 'rgba(120,170,255,0.8)'); }
   else if (v === 2) { wallFill(g, w, h, '#e8f0f4', '#b8c8d0'); glowDot(g, w * 0.5, h * 0.2, w * 0.5, 'rgba(255,255,255,0.9)'); g.fillStyle = '#7a8a90'; g.fillRect(0, h * 0.62, w, h * 0.06); g.fillStyle = '#5a6a70'; g.fillRect(w * 0.1, h * 0.68, w * 0.8, h * 0.32); }
   else if (v === 7) { wallFill(g, w, h, '#8a6238', '#4a3220'); shelves(g, 4, 4, w - 8, h - 8, 5, '#2a1a0e', book(['#8c2f2a', '#2f5d8c', '#c9a35e', '#3d6b4a', '#d8cdb8']), R); }
   else { wallFill(g, w, h, warm, '#9a6a3a'); glowDot(g, w * (0.3 + R() * 0.4), h * 0.25, w * 0.6, 'rgba(255,236,190,0.9)'); }
-  if (v === 0 || v === 6) { g.fillStyle = v === 0 ? '#7a2a2a' : '#3a4a6a'; g.beginPath(); g.moveTo(0, 0); g.lineTo(w * 0.3, 0); g.quadraticCurveTo(w * 0.22, h * 0.5, w * 0.08, h); g.lineTo(0, h); g.fill(); g.beginPath(); g.moveTo(w, 0); g.lineTo(w * 0.7, 0); g.quadraticCurveTo(w * 0.78, h * 0.5, w * 0.92, h); g.lineTo(w, h); g.fill(); }
-  if (v === 1) for (let i = 0; i < 16; i++) { g.fillStyle = 'rgba(60,40,20,0.55)'; g.fillRect(0, i * h / 16, w, h / 16 * 0.45); }
   if (v === 3) { g.fillStyle = '#1e3a22'; for (let k = 0; k < 7; k++) { g.beginPath(); g.ellipse(w * 0.2 + (R() - 0.5) * 20, h * 0.75 - R() * 40, 5, 16, (R() - 0.5) * 1.6, 0, 7); g.fill(); } g.fillStyle = '#2a2018'; g.fillRect(w * 0.13, h * 0.8, w * 0.14, h * 0.2); g.fillStyle = '#2a1c10'; g.fillRect(w * 0.7, h * 0.4, 3, h * 0.6); g.beginPath(); g.moveTo(w * 0.6, h * 0.4); g.lineTo(w * 0.82, h * 0.4); g.lineTo(w * 0.76, h * 0.26); g.lineTo(w * 0.66, h * 0.26); g.fill(); }
-  if (v === 5) { g.fillStyle = 'rgba(180,120,70,0.55)'; g.fillRect(0, 0, w, h); for (let i = 0; i < 9; i++) { g.fillStyle = 'rgba(90,50,20,0.25)'; g.fillRect(i * w / 9, 0, 2, h); } }
   if (v === 6) { g.fillStyle = 'rgba(20,14,10,0.85)'; g.beginPath(); g.arc(w * 0.55, h * 0.5, w * 0.1, 0, 7); g.fill(); g.fillRect(w * 0.43, h * 0.58, w * 0.24, h * 0.42); }
-  const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
 }
 function bladeDraw(g, k, w, h) {
   if (k === 'cross') { g.fillStyle = '#050806'; g.fillRect(0, 0, w, h); g.shadowColor = '#40ff90'; g.shadowBlur = 10; g.fillStyle = '#30e080'; g.fillRect(w * 0.38, h * 0.14, w * 0.24, h * 0.72); g.fillRect(w * 0.14, h * 0.38, w * 0.72, h * 0.24); g.shadowBlur = 0; return; }
@@ -132,6 +130,11 @@ function roadDraw(g, k, w, h) {
   if (k === 'zebra') { g.fillStyle = '#e8e6de'; const n = 7; for (let i = 0; i < n; i++) g.fillRect(i * w / n + w / n * 0.2, 0, w / n * 0.6, h); }
   else { g.fillStyle = '#e6c84a'; g.textAlign = 'center'; g.font = `800 ${h * 0.9}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.2}px`; g.fillText('TAXI', w / 2 + h * 0.1, h * 0.84); if ('letterSpacing' in g) g.letterSpacing = '0px'; }
 }
+// v12 the marquee's chaser bulbs: eight warm bulbs on a dark brass rail (a quad is 0.96 x 0.12 m: 8 bulbs 12 cm apart)
+function bulbsDraw(g, w, h) {
+  g.fillStyle = '#1c150d'; g.fillRect(0, 0, w, h); g.fillStyle = '#3a2c18'; g.fillRect(0, h * 0.42, w, h * 0.16);
+  for (let i = 0; i < 8; i++) { const x = (i + 0.5) * w / 8, y = h / 2; glowDot(g, x, y, h * 0.5, 'rgba(255,190,110,0.55)'); g.fillStyle = '#ffe9c0'; g.beginPath(); g.arc(x, y, h * 0.27, 0, 7); g.fill(); glowDot(g, x - h * 0.06, y - h * 0.06, h * 0.16, 'rgba(255,255,250,0.95)'); }
+}
 function drawAtlas(k = 1) {
   // k: the canvas's share of the design size (the low preset draws it at half: a quarter of the memory)
   const c = document.createElement('canvas'); c.width = AW * k; c.height = AH * k; const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.scale(k, k);
@@ -140,31 +143,66 @@ function drawAtlas(k = 1) {
   for (let i = 0; i < 8; i++) cell('win:' + i, (w, h) => winDraw(g, i, w, h, rng(977 + i * 13)));
   for (const k of ['lumiere', 'hotel', 'cross']) cell('blade:' + k, (w, h) => bladeDraw(g, k, w, h));
   for (const k of ['zebra', 'taxi']) cell('road:' + k, (w, h) => roadDraw(g, k, w, h));
+  cell('bulbs:row', (w, h) => bulbsDraw(g, w, h));
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.flipY = false; return t;
 }
 
 // ------------------------------------------------------------------ one mesh for every atlas quad
-const ATLAS_VERT = `attribute vec2 aL; attribute vec3 aE; attribute vec3 aT; varying vec2 vUv; varying vec2 vL; varying vec3 vE; varying vec3 vT; varying float vDist;
-void main() { vUv = uv; vL = aL; vE = aE; vT = aT; vec4 mv = modelViewMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
+const ATLAS_VERT = `attribute vec2 aL; attribute vec3 aE; attribute vec3 aT; attribute vec4 aW; attribute vec4 aR; varying vec2 vUv; varying vec2 vL; varying vec3 vE; varying vec3 vT; varying float vDist;
+varying vec3 vV; varying vec2 vS; varying vec4 vR;
+void main() { vUv = uv; vL = aL; vE = aE; vT = aT; vS = aW.xy; vR = aR; vec4 wp = modelMatrix * vec4(position, 1.0); vec3 V = wp.xyz - cameraPosition;
+  vV = vec3(dot(V, vec3(aW.w, 0.0, -aW.z)), V.y, -dot(V, vec3(aW.z, 0.0, aW.w)));
+  vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
+// v12 interior mapping for the windows (fx 4): the ray from the eye through the glass meets the room behind it (a box 0.9 m wider than
+// the window each side, 0.95 m below the sill, 0.55 m over the head, 3.6 m deep); the back wall is the window's picture, the side walls,
+// floor and ceiling take the picture's edge colours, darker towards the glass. textureGrad keeps the flat picture's mip level (the
+// jumps at the room's corners would pick the smallest mip: seams)
+const INTERIOR = `
+vec3 interior(vec3 d, vec2 S, out float face) {
+  vec3 o = vec3(vL * S, 0.0), lo = vec3(-0.9, -0.95, 0.0), hi = vec3(S.x + 0.9, S.y + 0.55, 3.6);
+  vec3 tt = (mix(lo, hi, step(0.0, d)) - o) / d; float t = min(min(tt.x, tt.y), tt.z); vec3 h = o + d * t; vec3 l = (h - lo) / (hi - lo);
+  vec2 gx = dFdx(vUv), gy = dFdy(vUv); vec2 uv; float k;
+  if (t == tt.z) { uv = l.xy; k = 1.0; face = 0.0; }
+  else if (t == tt.x) { uv = vec2(step(0.5, l.x) * 0.96 + 0.02, l.y); k = mix(0.42, 0.8, l.z); face = 1.0; }
+  else { uv = vec2(l.x, step(0.5, l.y) * 0.96 + 0.02); k = l.y > 0.5 ? mix(0.5, 0.85, l.z) : mix(0.3, 0.6, l.z); face = 2.0; }
+  return textureGrad(map, vR.xy + clamp(uv, 0.01, 0.99) * vR.zw, gx, gy).rgb * k;
+}
+vec3 nearLayer(vec3 col, float v, float e) {
+  vec2 q = vL; float fold = 0.72 + 0.28 * sin(q.x * 70.0 + sin(q.y * 9.0) * 0.6);
+  if (v < 0.5 || abs(v - 6.0) < 0.5) { float cw = mix(0.1, 0.3, q.y); if (q.x < cw || q.x > 1.0 - cw) col = (v < 0.5 ? vec3(0.32, 0.05, 0.05) : vec3(0.06, 0.09, 0.2)) * fold * (0.35 + 0.65 * e); }
+  else if (abs(v - 1.0) < 0.5) { if (fract(q.y * 16.0) < 0.45) col = mix(col, vec3(0.16, 0.09, 0.04) * (0.4 + 0.6 * e), 0.8); }
+  else if (abs(v - 5.0) < 0.5) col = mix(col, vec3(0.55, 0.32, 0.15) * fold * (0.3 + 0.7 * e), 0.55);
+  return col;
+}`;
 const ATLAS_FRAG = COMMON_FRAG + `uniform sampler2D map; uniform float uTime; varying vec2 vUv; varying vec2 vL; varying vec3 vE; varying vec3 vT; varying float vDist;
-void main() { vec4 t = texture2D(map, vUv); if (t.a < 0.5) discard; float e = vE.x;
+varying vec3 vV; varying vec2 vS; varying vec4 vR;` + INTERIOR + `
+void main() {
+  if (vE.y > 3.5) { vec3 d = normalize(vV); float face; vec3 room = interior(d, vS, face) * vT * vE.x; room = nearLayer(room, vE.z, vE.x);
+    float fr = pow(1.0 - abs(d.z), 4.0); room += vec3(0.012, 0.016, 0.026) * (1.0 + 6.0 * fr);
+    gl_FragColor = vec4(lumFog(lumTone(room), vDist), 1.0);
+    #include <colorspace_fragment>
+    return; }
+  vec4 t = texture2D(map, vUv); if (t.a < 0.5 && vE.y < 2.5) discard; float e = vE.x;
   if (vE.y > 0.5 && vE.y < 1.5) { float n = sin(uTime * 11.0 + vE.z * 40.0) * sin(uTime * 6.3 + vE.z * 17.0); e *= n > 0.93 ? 0.55 : 1.0; }
-  if (vE.y > 1.5) { float edge = min(min(vL.x, 1.0 - vL.x) * 5.0, min(vL.y, 1.0 - vL.y) * 24.0); float wave = 0.6 + 0.8 * step(0.5, fract(vL.y * 9.0 - uTime * 1.3)); e *= edge < 0.62 ? wave : 1.0; }
+  if (vE.y > 2.5) { float b = floor(vL.x * 8.0) + vE.z * 8.0; e *= mod(b - floor(uTime * 7.0), 3.0) < 0.5 ? 1.3 : 0.42; }
+  if (vE.y > 1.5 && vE.y < 2.5) { float edge = min(min(vL.x, 1.0 - vL.x) * 5.0, min(vL.y, 1.0 - vL.y) * 24.0); float wave = 0.6 + 0.8 * step(0.5, fract(vL.y * 9.0 - uTime * 1.3)); e *= edge < 0.62 ? wave : 1.0; }
   vec3 col = t.rgb * vT * e; gl_FragColor = vec4(lumFog(lumTone(col), vDist), 1.0);
   #include <colorspace_fragment>
 }`;
 function atlasMesh(list, tex) {
-  const P = [], UV = [], L = [], E = [], T = [], I = []; let n = 0; const c = new THREE.Color();
+  const P = [], UV = [], L = [], E = [], T = [], W = [], R = [], I = []; let n = 0; const c = new THREE.Color();
   for (const q of list) {
     const cell = CELL[q.k + ':' + q.v]; if (!cell) continue; const [cx, cy, cw, ch] = cell, hw = q.w / 2, hh = q.h / 2, s = Math.sin(q.yaw || 0), co = Math.cos(q.yaw || 0);
     // corners: a wall quad faces +z at yaw 0 (as the engine's panels); a flat one lies on the road, its picture's top to -z
     const at = q.flat ? (u, v) => [q.x + u * hw * co - v * hh * s, q.y, q.z - u * hw * s - v * hh * co] : (u, v) => [q.x + u * hw * co, q.y + v * hh, q.z - u * hw * s];
     const u0 = (cx + 1) / AW, u1 = (cx + cw - 1) / AW, v0 = (cy + 1) / AH, v1 = (cy + ch - 1) / AH; c.set(1, 1, 1); if (q.tint) c.setRGB(q.tint[0], q.tint[1], q.tint[2]);
-    for (const [u, v, tu, tv] of [[-1, -1, u0, v1], [1, -1, u1, v1], [1, 1, u1, v0], [-1, 1, u0, v0]]) { P.push(...at(u, v)); UV.push(tu, tv); L.push((u + 1) / 2, (v + 1) / 2); E.push(q.e ?? 1, q.fx || 0, (n * 0.37) % 1); T.push(c.r, c.g, c.b); }
+    const fx = q.k === 'win' && !q.flat ? 4 : q.fx || 0, ez = fx === 4 ? +q.v : fx === 3 ? q.i || 0 : (n * 0.37) % 1;   // v12 windows: interior mapped
+    for (const [u, v, tu, tv] of [[-1, -1, u0, v1], [1, -1, u1, v1], [1, 1, u1, v0], [-1, 1, u0, v0]]) { P.push(...at(u, v)); UV.push(tu, tv); L.push((u + 1) / 2, (v + 1) / 2); E.push(q.e ?? 1, fx, ez); T.push(c.r, c.g, c.b);
+      W.push(q.w, q.h, s, co); R.push(u0, v1, u1 - u0, v0 - v1); }
     I.push(n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3); n++;
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setAttribute('aL', new THREE.Float32BufferAttribute(L, 2));
-  g.setAttribute('aE', new THREE.Float32BufferAttribute(E, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(T, 3)); g.setIndex(I);
+  g.setAttribute('aE', new THREE.Float32BufferAttribute(E, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(T, 3)); g.setAttribute('aW', new THREE.Float32BufferAttribute(W, 4)); g.setAttribute('aR', new THREE.Float32BufferAttribute(R, 4)); g.setIndex(I);
   const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ vertexShader: ATLAS_VERT, fragmentShader: ATLAS_FRAG, uniforms: { map: { value: tex }, uTime: G.uTime, uExposure: G.uExposure, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uBright: G.uBright } }));
   m.name = 'street-atlas'; m.frustumCulled = false; return m;
 }
