@@ -5,16 +5,19 @@
 // the change from the cabin to the taxi seen from outside) and you stand up out of it onto the kerb, turn to the doors, and the camera
 // you are left with is the player's own: same place, same heading, no cut. The whole ride draws the street and the lobby behind its
 // glass, so everything you are about to walk into is already on the GPU when you get control. The first arrival can't be skipped.
-// The taxi stays at the kerb afterwards ("the taxi always present"); real car recordings (sound9.js); the driver says three short things.
+// v12 (the user: the taxi should come from somewhere and go somewhere, not block the doors): it comes in down the lane at the street's
+// west end, stops at its own painted bay 9 m east of the doors, and once its door has shut and the lane behind it is clear it pulls out
+// and leaves round the east corner (traffic.js routes; the passing cars drive the same roads). The driver says three short things.
 import * as THREE from 'three';
 import { assetGeometry } from './assets.js';
 import { Acc, toGeometry } from './geom.js';
 import { MAT } from './library.js';
 import { Person, staffRecipe, DATA, setGesture } from './people.js';
+import { streetRoutes, drive } from './traffic.js';
+import { STREET } from './building.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, ease = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
-const KERB = 26.0, LANE_IN = 27.85, LANE_OUT = 31.6, STOP_X = 1.6, ROAD_Y = -0.15, ARRIVE = 8.4, LEAVE = 1e9;
-const SHOT_B = 9.3, END_T = SHOT_B + 4.3;   // the door opens and you get out; hand over control
-export const ARRIVAL = { x: 0.6, z: 25.2, yaw: 0, pitch: 0.06 };   // on the pavement at the kerb, facing the doors
+const KERB = 26.0, STOP_X = 9.0, ROAD_Y = -0.15;   // the TAXI bay's middle (rooms.py paints it at x 9)
+export const ARRIVAL = (() => { const x = STOP_X - 1.1, z = 25.2; return { x, z, yaw: Math.atan2(x, z - STREET.z0), pitch: 0.06 }; })();   // by the taxi's rear door on the pavement, turned to the doors
 // the cabin, in the car's own frame (nose +z, kerb side +x, up +y, origin on the road under the middle): what you see from the back seat
 const SEAT_EYE = [0.07, 1.235, -0.6];   // leaning a little to the middle: you see the road between the front headrests
 // v12 the driver (people.js, look 'driver'), seated by the car's measures (tools/blender/cabin.py: cushion top 0.455, roof lining 1.41, the
@@ -117,6 +120,10 @@ export class Intro {
   constructor(engine, world, mats, sound, hooks = {}) {
     this.engine = engine; this.world = world; this.sound = sound; this.hooks = hooks; this.active = false; this.inCar = false; this.t = 0; this.carOn = false; this.mesh = null;
     const room = world.rooms.street, g = room && assetGeometry('car_taxi', 0, null, toGeometry, Acc); if (!g) return;
+    // the ride's timing comes from the route (the door opens 0.9 s after it stops, control 4.3 s later, it leaves 0.9 s after that)
+    const plan = (room.x && room.x.traffic) || { zt: 56, zc: 63, sw: [STREET.x0 - 6, STREET.x0 + 2], se: [STREET.x1 - 2, STREET.x1 + 6] };
+    this.R = streetRoutes(plan, STOP_X); this.ARRIVE = this.R.taxiIn.dur; this.SHOT_B = this.ARRIVE + 0.9; this.END_T = this.SHOT_B + 4.3; this.LEAVE = this.SHOT_B + 5.2;
+    this.car = { route: null, s: 0, v: 0, x: 0, z: 0, h: 0, r: 1.9 }; this.traffic = null; this.snd = null;   // the taxi as the other cars see it; main.js sets traffic
     const inst = (geo) => { for (const [n, k] of [['iLh', 3], ['iLf', 3], ['iLs', 1]]) geo.setAttribute(n, new THREE.InstancedBufferAttribute(new Float32Array(k), k)); return geo; };
     const m = new THREE.InstancedMesh(inst(g), mats.litFor(room.U, g, true), 1); m.frustumCulled = false; m.visible = false; room.group.add(m);
     this.mesh = m; this.room = room; this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._up = new THREE.Vector3(0, 1, 0); this._H = [0, 0, 0]; this._F = [0, 0, 0];
@@ -157,14 +164,15 @@ export class Intro {
     if (j0 >= 0) { const m = Math.max(L[j0 + 3], L[j0 + 4], L[j0 + 5]) || 1; S.c.lerp(new THREE.Color(L[j0 + 3] / m, L[j0 + 4] / m, L[j0 + 5] / m), f); S.dir.lerp(new THREE.Vector3(bd[0], bd[1], bd[2]), f).normalize(); }
     S.k += (Math.min(best, 1.6) - S.k) * f; return S;
   }
-  // the taxi's ground point at time t: in on the outer lane from the west, across into the kerb lane, a gentle stop at the carpet
-  pos(t) {
-    if (t < ARRIVE) { const u = t / ARRIVE, s = 1 - (1 - u) ** 2.4, x = lerp(-48, STOP_X, s); return [x, lerp(LANE_OUT, LANE_IN, ease((x - (STOP_X - 15)) / 11))]; }
-    if (t < LEAVE) return [STOP_X, LANE_IN];
-    const u = t - LEAVE, x = STOP_X + 1.1 * u * u + 0.4 * u; return [x, lerp(LANE_IN, LANE_OUT, ease((x - STOP_X - 4) / 14))];
+  // where the taxi is at time t: the scripted ride in (the same every time), waiting in the bay, then driven out (update moves this.car)
+  pose(t) {
+    const In = this.R.taxiIn; if (this.car.route === this.R.taxiOut) return this.car;
+    return In.at(t < this.ARRIVE ? In.sAt(t) : In.L);
   }
+  // round bodies along the taxi while you are outside it (main.js adds them to the crowd's): you walk round it, never through it
+  bodiesNear(x, z, r, out = []) { const c = this.car; if (!this.carOn || this.inCar || Math.abs(c.x - x) > r + 3 || Math.abs(c.z - z) > r + 3) return out; for (const k of [-1.45, 0, 1.45]) out.push({ x: c.x + Math.sin(c.h) * k, z: c.z + Math.cos(c.h) * k, r: 0.92 }); return out; }
   _place(t) {
-    const [x, z] = this.pos(t), [x2, z2] = this.pos(t + 0.06), yaw = Math.hypot(x2 - x, z2 - z) > 1e-4 ? Math.atan2(x2 - x, z2 - z) : Math.PI / 2;   // the car's nose (+z) along its motion
+    const P = this.pose(t), x = P.x, z = P.z, yaw = P.h; if (P !== this.car) { this.car.x = x; this.car.z = z; this.car.h = yaw; }   // the car's nose (+z) along its motion
     this._q.setFromAxisAngle(this._up, yaw); this._m.compose(new THREE.Vector3(x, ROAD_Y, z), this._q, new THREE.Vector3(1, 1, 1)); this.mesh.setMatrixAt(0, this._m); this.mesh.instanceMatrix.needsUpdate = true;
     const L = this.room.lights, G = this.mesh.geometry.attributes; L.at(x, 0.9, z, 0, 1, 0, this._H, this._F); G.iLh.array.set(this._H); G.iLf.array.set(this._F); G.iLh.needsUpdate = G.iLf.needsUpdate = true;
     if (this.inCar) { this.cab.setMatrixAt(0, this._m); this.cab.instanceMatrix.needsUpdate = true; this.rig.matrix.copy(this._m); this.rig.matrixWorldNeedsUpdate = true;
@@ -182,7 +190,8 @@ export class Intro {
   }
   start(o = {}) {
     if (!this.mesh) { this.hooks.done && this.hooks.done(); return false; }
-    this.active = true; this.t = 0; this.skippable = !!o.skippable; this.carOn = true; this._door = 0; this._said = 0; this._cut = false; this._mkDriver(); this._ride(true); document.body.classList.add('cutscene');
+    this.active = true; this.t = 0; this.skippable = !!o.skippable; this.carOn = true; this._door = 0; this._said = 0; this._cut = false; this.car.route = null; this.car.v = 0; if (this.snd) { this.snd.stop(); this.snd = null; }
+    this._mkDriver(); this._ride(true); document.body.classList.add('cutscene');
     this._inside(true);
     const b = document.querySelector('#skipCut'); if (b) { b.hidden = !this.skippable; b.onclick = () => this.finish(); }
     this.hooks.fade && this.hooks.fade(0, 0.9); return true;
@@ -191,7 +200,7 @@ export class Intro {
   _inside(on) { const S = this.sound; if (S.carRide) S.carRide(on); if (S.carRain) S.carRain(on); }
   finish() {
     if (!this.active) return; this.active = false; this._inside(false); document.body.classList.remove('cutscene'); const b = document.querySelector('#skipCut'); if (b) b.hidden = true;
-    this._ride(false); this.t = Math.max(this.t, SHOT_B + 3.1); this._door = 3; this.sound.carOff && this.sound.carOff(); this._place(this.t);   // skipped: the taxi waits at the kerb
+    this._ride(false); this.t = Math.max(this.t, this.SHOT_B + 3.1); this._door = 3; this._place(this.t); if (!this.snd && this.sound.vehicle) this.snd = this.sound.vehicle();   // skipped: the taxi is at its bay and leaves as it would have
     this.hooks.done && this.hooks.done();
   }
   // per frame: the taxi (also after you have control), and the camera while the scene runs
@@ -201,24 +210,33 @@ export class Intro {
     if (this.driver && this.inCar) {   // lit like the cabin: its ambient, and the passing light as the key
       const D = this._dl, S = this._sw, a = (i) => Math.min(0.55, this._H[i] * 0.5 + NIGHT[i] * 1.6); D.amb.setRGB(a(0), a(1), a(2)); D.key.copy(S.c).multiplyScalar(Math.min(0.75, S.k * 0.8)); D.dir.copy(S.dir);
       this.rig.updateMatrixWorld(true); this.driver.update(dt, D); }
-    const rev = (t < ARRIVE ? 0.5 + 0.5 * (1 - t / ARRIVE) : 0.3) * (this.inCar ? 0.55 : 1); if (this._door < 3) this.sound.car && this.sound.car(rev, cx, cz);   // inside, the recording carries most of it
+    // the leaving: once the door has shut, you have control and nothing is coming along the near lane, it pulls out (and waits for you if
+    // you stand in its way); round the east corner it is gone
+    if (t > this.LEAVE && this.car.route !== this.R.taxiOut && !this.active && !(this.traffic && this.traffic.comingTo(STOP_X, this.R.lane.near))) { this.car.route = this.R.taxiOut; this.car.s = 0; this.car.v = 0; }
+    if (this.car.route === this.R.taxiOut) {
+      const obs = [{ x: player.x, z: player.z, r: 1.5 }, ...(this.traffic ? this.traffic.cars : [])];
+      if (drive(this.car, dt, obs)) { this.carOn = false; this.mesh.visible = false; if (this.snd) { this.snd.stop(); this.snd = null; } return; }
+      this._place(t); }
+    // outside the cabin its engine and tyres are heard from where it is (sound9.js vehicle); inside, the cabin recording carries it
+    if (this.snd) this.snd.set(cx, cz, this.car.route === this.R.taxiOut ? this.car.v : 0, this.hear ?? 1);
     const say = (k) => this.hooks.driver && this.hooks.driver(k, cx, cz);
     if (t > 2.2 && this._said < 1 && this.active) { this._said = 1; say('drv.ride'); }
-    if (t > ARRIVE + 0.1 && this._said < 2 && this.active) { this._said = 2; say('drv.arrive'); }
-    if (t > SHOT_B && this._door < 1) { this._door = 1; this._inside(false); if (this.sound.carDoor) this.sound.carDoor(true); else this.sound.door(true, 0.9); }
-    if (t > SHOT_B + 1.75 && this._door < 2) { this._door = 2; if (this.sound.carDoor) this.sound.carDoor(false); else { this.sound.door(false, 1.2); this.sound.thud && this.sound.thud(); } say('drv.bye'); }
-    if (t > SHOT_B + 3.0 && this._door < 3) { this._door = 3; this.sound.carOff && this.sound.carOff(); }
+    if (t > this.ARRIVE + 0.1 && this._said < 2 && this.active) { this._said = 2; say('drv.arrive'); }
+    if (t > this.SHOT_B && this._door < 1) { this._door = 1; this._inside(false); if (!this.snd && this.sound.vehicle) this.snd = this.sound.vehicle(); if (this.sound.carDoor) this.sound.carDoor(true); else this.sound.door(true, 0.9); }
+    if (t > this.SHOT_B + 1.75 && this._door < 2) { this._door = 2; if (this.sound.carDoor) this.sound.carDoor(false); else { this.sound.door(false, 1.2); this.sound.thud && this.sound.thud(); } say('drv.bye'); }
+    if (t > this.SHOT_B + 3.0 && this._door < 3) this._door = 3;
     if (!this.active) return;
     const cam = this.engine.camera;
+    const SHOT_B = this.SHOT_B, ARRIVE = this.ARRIVE;
     if (t < SHOT_B) {
       // the ride: your eye in the back seat (the road's small shudder, a nod as the car brakes); you look ahead between the front seats,
       // then, as the cinema comes up on the kerb side, at its doors through your own window
-      const sp = t < ARRIVE ? (1 - t / ARRIVE) : 0, brake = t < ARRIVE ? Math.sin(Math.PI * clamp((t - ARRIVE + 2.4) / 2.4)) : 0;
+      const sp = t < ARRIVE ? this.R.taxiIn.vAt(t) / 9 : 0, brake = t < ARRIVE ? Math.sin(Math.PI * clamp((t - ARRIVE + 2.4) / 2.4)) : 0;
       this._eye.set(SEAT_EYE[0], SEAT_EYE[1] + Math.sin(t * 9.1) * 0.004 * sp + Math.sin(t * 2.3) * 0.006 * sp, SEAT_EYE[2] + brake * 0.035).applyMatrix4(this._m); cam.position.copy(this._eye);
-      const k = ease((t - 4.4) / 3.2), ax = this._look.set(0.0, 1.16, 9).applyMatrix4(this._m);
+      const k = ease((t - (ARRIVE - 4.0)) / 3.2), ax = this._look.set(0.0, 1.16, 9).applyMatrix4(this._m);
       cam.lookAt(lerp(ax.x, 0.6, k), lerp(ax.y, 1.95, k), lerp(ax.z, 18.5, k));
       const w = Math.sin(t * 4.2) * 0.5 + 0.5; this.wipers[0].rotation.z = -0.15 - w * 1.25; this.wipers[1].rotation.z = -0.15 - w * 1.25;
-      const [px, pz] = this.pos(Math.max(0, t - 0.1)), spd = Math.hypot(cx - px, cz - pz) / 0.1, S = this._sw;
+      const spd = t < ARRIVE ? this.R.taxiIn.vAt(t) : 0, S = this._sw;
       for (const g of this.glass) { const u = g.material.uniforms; u.uT.value = t; u.uSpeed.value = spd; u.uLit.value.copy(S.c).multiplyScalar(Math.min(1.2, 0.3 + S.k)); }
       if (t > SHOT_B - 0.3 && !this._cut) { this._cut = true; this.hooks.fade && this.hooks.fade(1, 0.26); }
     } else {
@@ -231,6 +249,6 @@ export class Intro {
       cam.rotation.set(pitch, yaw, 0);
     }
     player.x = cam.position.x; player.z = cam.position.z; player.yaw = t < SHOT_B ? 0 : cam.rotation.y;
-    if (t >= END_T) this.finish();
+    if (t >= this.END_T) this.finish();
   }
 }

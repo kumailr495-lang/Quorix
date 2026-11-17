@@ -12,7 +12,7 @@ export const ASSETS = {};
 // banquette_round, torchere_deco, back_bar, pendant_dish, which also stay in the repo)
 // v9: only what the v9 rooms use (world9.js DRESS and the hall seat families, intro9.js's taxi); the v7/v8 props stay in www/models
 export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club', 'seat_classic', 'arm_classic', 'sofa_curve', 'table_lounge', 'planter_tall', 'planter_hedge', 'planter_tree',
-  'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi',
+  'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi', 'car_sedan',
   'armchair_deco', 'side_table', 'torchere_deco', 'chandelier_cascade', 'letters_lumiere_lit', 'letters_max', 'letters_curve', 'letters_classic', 'letters_x270', 'num_1', 'num_2', 'num_3', 'num_4', 'basin_vessel', 'tap_brass', 'urinal',
   // v10 (tools/blender/decor10.py): the fountain court, light columns, pendant clouds, the cafe, rugs, standees, the popcorn cart
   'fountain_tier', 'pendant_cloud', 'espresso_machine', 'cake_case', 'cafe_counter', 'rug_round', 'rug_runner', 'standee_base', 'popcorn_cart', 'bistro_table', 'bistro_chair', 'bar_stool', 'pos_terminal',

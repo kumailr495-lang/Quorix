@@ -34,6 +34,7 @@ import { makeHeld, setHeldMaterial } from './held.js';
 import { cleanTitle } from './films.js';
 import { ledWall, showtimes, menuBoard } from './panels9.js';
 import { makeRain } from './rain.js';
+import { Traffic } from './traffic.js';
 // v12 medium draws reflections in the rooms that live on them only (the street's wet road, the lobby's floor); high, or Reflections: Full, in every room
 const heroRefl = (s) => s.graphics !== 'high' && s.reflections !== 'full';
 import { loadSettings, saveSettings, presetFor } from './settings.js';
@@ -134,8 +135,8 @@ async function boot() {
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
   const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived(), driver: (k, cx, cz) => { const ln = pick(k); if (cx != null) { driverAgent.x = cx; driverAgent.z = cz; } if (ln) { talk.bubble(driverAgent, ln, 2.6); voice.speak(driverAgent, ln, { full: true }); } } });
   const driverAgent = { x: 1.6, y: 0, z: 27.9, name: t('role9.driver'), role: 'driver', voice: 'driver', alive: true, ch: { s: { sit: 1 }, scale: 1 }, group: { visible: true }, crowd };
-  // the taxi waits at the kerb: it's solid
-  for (const [ax, az, bx, bz] of [[-0.75, 26.92, 3.95, 26.92], [3.95, 26.92, 3.95, 28.8], [3.95, 28.8, -0.75, 28.8], [-0.75, 28.8, -0.75, 26.92]]) world.walls.add(ax, az, bx, bz, -0.2, 1.6);
+  // v12 the street's traffic: the taxi leaves after dropping you (intro9.js), saloons pass now and then (traffic.js); both are solid to you
+  const traffic = new Traffic(world, mats, sound, world.rooms.street && world.rooms.street.x && world.rooms.street.x.traffic); intro.traffic = traffic;
   bill.onChange = () => ui.setWallet(game === 'flow' && bill.total ? t('hud9.bill', { total: bill.fmt(bill.total) }) : null);
   function applySettings(gfx) {
     saveSettings(settings); engine.applySettings(settings); { const on = settings.reflections !== 'off' && settings.graphics !== 'low'; mats.setReflections(on, heroRefl(settings)); if (on && world.captureReflections) world.captureReflections(); } crowd.setDensity(DENS[settings.npcs] || 'medium');
@@ -303,9 +304,11 @@ async function boot() {
     return Math.max(0.42, Math.min(1, Math.max(vw, vh) / engine.baseFov)); }
   function step(dt, now) {
     if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
-    else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); player.update(dt); }
+    else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); traffic.bodiesNear(player.x, player.z, 2.5, player.dyn); intro.bodiesNear(player.x, player.z, 2.5, player.dyn); player.update(dt); }
     input.update(dt);
     intro.update(dt, player);
+    { const hear = world.vis.has('street') ? (world.roomAt(player.x, 1, player.z) === 'street' ? 1 : 0.35) : 0; intro.hear = hear; traffic.hear = hear;
+      traffic.paused = intro.active && intro.t < intro.SHOT_B; traffic.update(dt, player, intro.carOn && !intro.inCar ? [intro.car] : []); }
     const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } if (r === 'spine' && room.startsWith('hall') && mode === 'play' && !dbg) fastExit(); room = r;
     const cam = engine.camera; world.setVisibility(r, cam.position.x, cam.position.y, cam.position.z);
     const watching = mode === 'play' && !!player.seated && r.startsWith('hall') && shows.isOn(world.hallByKey(r).id);
@@ -375,7 +378,7 @@ async function boot() {
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
-  window.__lumiere = { engine, world, player, shows, sound, voice, intro, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
+  window.__lumiere = { engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles

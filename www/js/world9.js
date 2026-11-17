@@ -39,6 +39,7 @@ export function roomAt(x, y, z) {
   if (IN(LOBBY, x, z)) return 'lobby';
   if (IN(WC, x, z)) return 'wc';
   if (IN(STREET, x, z, 0.5)) return 'street';
+  if (x > STREET.x0 - 6.5 && x < STREET.x1 + 6.5 && z > STREET.z0 - 0.5 && z < STREET.far + 0.5) return 'street';   // v12: the street's ends, up to the blocks across them
   for (const r of CORR) if (IN(r, x, z)) return 'corridor';
   return null;
 }
@@ -398,14 +399,16 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('street', 'letters_lumiere_lit', 0, 10.75, FACADE_Z + 0.5, 0, { collide: false, ground: false, scale: 1.6 });   // the brand over the canopy, 2 cm in front of the gold fins (v10)
   // v10 (the user: "improve the overall look from outside"): a premiere carpet from the kerb to the doors, two light columns flanking them
   add('street', 'rug_runner', 0, 0, FACADE_Z + 4.0, 0, { collide: false, scale: [0.62, 1, 1.8], swap: { carpet_deco: [MAT.velvet, [0.34, 0.015, 0.025]] } });
-  for (const x of [-3.1, 3.1]) add('street', 'planter_tall', x, 0, FACADE_Z + 0.95);   // v11: palms flank the doors (the half-height light pillars are gone)
+  // v12 (the user: decorations must not block the entrance and the exit; the inside full of them instead): the palms that stood either side
+  // of the doors outside now stand either side of them inside
+  for (const x of [-3.5, 3.5]) add('lobby', 'planter_tall', x, 0, FACADE_Z - 1.15);
   for (const x of [-40, -33, 33, 40]) add('street', 'planter_tree', x, 0, 21.4);
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
   // v11 (the user: "a pole is blocking the view"): none in front of the canopy. v12: each lamp's arm reaches over the kerb (it lay along the
   // pavement); the light and its halo are at the head (tools/blender/arch/rooms.py); a clipped hedge stands in every bronze trough
   for (let x = -40; x <= 40; x += 10) if (Math.abs(x) > 12) add('street', 'lamp_post', x, 0, 25.55, 0, { collide: 0.05 });
-  for (let x = -44; x < 42; x += 8) if (Math.abs(x) >= 4) add('street', 'hedge_block', x, 0, 24.9, 0, { collide: false, ground: false });
-  for (let x = -14; x <= 14; x += 2.8) if (Math.abs(x) > 2.5) add('street', 'bollard_light', x, 0, 25.6);
+  for (let x = -44; x < 42; x += 8) if (Math.abs(x) >= 12) add('street', 'hedge_block', x, 0, 24.9, 0, { collide: false, ground: false });
+  for (const x of [-14, -11.2, -8.4, -5.6, 14]) add('street', 'bollard_light', x, 0, 25.6);   // v12: none by the crossing, none along the taxi bay (x 6 to 13)
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
   // v9.3 hall entrances (the user's ScreenX entrance photo; tools/blender/arch/rooms.py builds the portals): the hall's name in face-lit
@@ -617,7 +620,9 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
       if (mats.lightMaps) { const mat = mats.litRoom(U, false, bk); mat.uniforms.uLmK.value.x *= gain; mat.uniforms.uLmK.value.y *= Math.min(gain, 10); m = new THREE.Mesh(geo, mat); room.bake = bk; U.uEnvK.value = 1 / Math.max(0.05, bk.avg * gain); }
       else { const g = geo.clone(); lights.bake(g); m = new THREE.Mesh(g, mats.litFor(U, g)); room.bake = { ...bk, maps: null }; }
       m.matrixAutoUpdate = false; m.name = key + '-shell'; group.add(m); room.solid = m;
-      if (!bk._walls) { world.walls.fromGeometry(geo, def.kind === 'street' ? 3 : L1 + 2.2); bk._walls = true; }
+      if (!bk._walls) { world.walls.fromGeometry(geo, def.kind === 'street' ? 3 : L1 + 2.2); bk._walls = true;
+        // v12: the lanes north at the street's ends carry the traffic in and out; people stop at their mouths (street12.py side_street)
+        if (def.kind === 'street') for (const [a, b] of [[STREET.x0 - 6, STREET.x0 + 2], [STREET.x1 - 2, STREET.x1 + 6]]) world.walls.add(a, STREET.far, b, STREET.far, -1, 3, 1); }
       // glass (balustrades, the facade, screens) is drawn see-through on its own: the shell keeps every other face
       const glass = splitGlass(m.geometry); if (glass) { const gm = new THREE.Mesh(glass, mats.glassMat()); gm.renderOrder = 3; gm.matrixAutoUpdate = false; gm.name = key + '-glass'; group.add(gm); }
     } else console.warn(`[lumiere] room ${key}: no matching bake (${bk ? bk.hash : 'none'} vs ${x ? x.hash : 'no extras'}); run tools/bake/bake9.sh`);

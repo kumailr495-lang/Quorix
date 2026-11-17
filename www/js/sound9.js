@@ -57,6 +57,22 @@ export class Sound9 extends Sound {
   carDoor(inside) { this.play(inside ? 'car_door_in' : 'car_door', { gain: 0.6 }); }
   carRide(on) { if (on && !this._ride) this._ride = this.play('car_ride', { gain: 0.35, fadeIn: 1.2, dur: 22 }); else if (!on && this._ride) { try { this._ride.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5); } catch (e) { /* ended */ } this._ride = null; } }
   // v11 rain on the taxi's roof, heard from inside (BigSoundBank 1293, CC0), for the night ride
+  // v12 a car out on the street, synthesised where it is (a panner): the hiss of its tyres on the wet road (filtered noise: at city speed
+  // that is most of what a car sounds like at night) and its engine's low note. set(x, z, speed m/s, level 0..1); stop() fades it out
+  vehicle() {
+    if (!this.ready) return null; const c = this.ctx;
+    if (!this._noise) { const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this._noise = b; }
+    const src = c.createBufferSource(); src.buffer = this._noise; src.loop = true; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 0.6; const hiss = c.createGain(); hiss.gain.value = 0;
+    const osc = c.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 30; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150; const eng = c.createGain(); eng.gain.value = 0;
+    const p = c.createPanner(); p.panningModel = 'equalpower'; p.distanceModel = 'inverse'; p.refDistance = 3; p.rolloffFactor = 1.1; p.maxDistance = 140;
+    src.connect(bp); bp.connect(hiss); hiss.connect(p); osc.connect(lp); lp.connect(eng); eng.connect(p); p.connect(this.master); src.start(0, Math.random() * 2); osc.start();
+    const to = (prm, v, tau = 0.15) => prm.setTargetAtTime(v, c.currentTime, tau); let dead = false;
+    return {
+      set: (x, z, v, k = 1) => { if (dead) return; const u = clamp(v / 9, 0, 1.3), m = this.muted ? 0 : k; if (p.positionX) { to(p.positionX, x, 0.05); to(p.positionY, 0.5, 0.05); to(p.positionZ, z, 0.05); } else p.setPosition(x, 0.5, z);
+        to(hiss.gain, (0.055 * u + 0.003) * m, 0.2); to(bp.frequency, 800 + 1000 * u); to(eng.gain, (0.02 + 0.035 * u) * m); to(osc.frequency, 26 + 36 * u); },
+      stop: () => { if (dead) return; dead = true; to(hiss.gain, 0, 0.3); to(eng.gain, 0, 0.3); try { src.stop(c.currentTime + 1.6); osc.stop(c.currentTime + 1.6); } catch (e) { /* stopped already */ } },
+    };
+  }
   carRain(on) { if (on && !this._rain) this._rain = this.play('car_rain', { gain: 0.5, fadeIn: 0.8, dur: 24 }); else if (!on && this._rain) { try { this._rain.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.35); } catch (e) { /* ended */ } this._rain = null; } }
   liftHum() { this.play('lift', { gain: 0.35, dur: 6 }); }
   ding() { this.chime(); }

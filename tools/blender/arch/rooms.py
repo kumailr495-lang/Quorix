@@ -963,8 +963,9 @@ def build_street(S):
     acc.box(xw, -0.45, k, xe, -0.15, r0, MAT['asphalt'], lin('#4a4a4e'))   # drop-off bay, 15 cm below the kerb
     acc.box(xw, -0.3, k - 0.18, xe, 0.0, k, MAT['granite'], lin('#9a958e'))   # kerb stone
     acc.box(xw, -0.15 - 0.3, r0, xe, -0.15, r1, MAT['asphalt'], lin('#3a3a3e'), top=MAT['asphalt'], topcol=lin('#3c3c40'))
-    acc.box(xw, -0.3, r1 + 0.18, xe, 0.0, far, MAT['paving'], lin('#a49d93'))
-    acc.box(xw, -0.3, r1, xe, 0.0, r1 + 0.18, MAT['granite'], lin('#9a958e'))   # the far kerb stone
+    sw, se = street12.side_spans(S)   # v12: the far pavement stops at the two side streets (street12.side_street builds their ground)
+    acc.box(sw[1], -0.3, r1 + 0.18, se[0], 0.0, far, MAT['paving'], lin('#a49d93'))
+    acc.box(sw[1], -0.3, r1, se[0], 0.0, r1 + 0.18, MAT['granite'], lin('#9a958e'))   # the far kerb stone
     for i in range(int((xe - xw) / 4)):   # lane dashes
         xx = xw + 2 + i * 4.0
         if -4.4 < xx + 1.1 < 4.4: continue   # the crossing in front of the entrance
@@ -1041,7 +1042,7 @@ def build_street(S):
     # v12 planters along the kerb: a bronze trough with a brass lip and soil 6 cm under it (the hedge on each is an engine prop,
     # world9.js; they were stone crates with a flat green top)
     for xx in range(-44, 42, 8):
-        if abs(xx) < 4: continue
+        if abs(xx) < 12: continue   # v12 (the user: decorations blocking the entrance): none on the line from the taxi bay and the crossing to the doors
         pa, pb, pz0, pz1 = xx - 0.9, xx + 0.9, k - 1.6, k - 0.6; br = lin('#3a2c20')
         acc.box(pa, 0.0, pz0, pb, 0.50, pz0 + 0.06, MAT['powder'], br); acc.box(pa, 0.0, pz1 - 0.06, pb, 0.50, pz1, MAT['powder'], br)
         acc.box(pa, 0.0, pz0 + 0.06, pa + 0.06, 0.50, pz1 - 0.06, MAT['powder'], br); acc.box(pb - 0.06, 0.0, pz0 + 0.06, pb, 0.50, pz1 - 0.06, MAT['powder'], br)   # between the long walls

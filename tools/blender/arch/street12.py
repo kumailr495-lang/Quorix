@@ -245,8 +245,8 @@ def plain_bay(acc, glow, lit, a, b, g, zf, far, wall, wcol, trim, tcol):
     acc.box(a - 0.02, g - 0.80, zf - 0.06, b + 0.02, g + 0.03, far + 0.02, trim, mix(tcol, BLACK, 0.15))          # the band the fascias make next door
     px0, px1 = a + 0.7, b - 0.7
     if px1 - px0 > 1.2:   # a blind panel in a raised frame (the frame's four sides, uprights between the rails)
-        for py0, py1 in ((1.0, 1.1), (g - 1.5, g - 1.4)): acc.box(px0, py0, zf + 0.085, px1, py1, zf + 0.14, trim, tcol)
-        for qx0, qx1 in ((px0 + 0.005, px0 + 0.1), (px1 - 0.1, px1 - 0.005)): acc.box(qx0, 1.08, zf + 0.09, qx1, g - 1.48, zf + 0.14, trim, tcol)
+        for py0, py1 in ((1.0, 1.1), (g - 1.45, g - 1.35)): acc.box(px0, py0, zf + 0.085, px1, py1, zf + 0.14, trim, tcol)   # the top rail 8 cm or more over the lantern
+        for qx0, qx1 in ((px0 + 0.005, px0 + 0.1), (px1 - 0.1, px1 - 0.005)): acc.box(qx0, 1.08, zf + 0.09, qx1, g - 1.43, zf + 0.14, trim, tcol)
     cx = (a + b) / 2   # the lantern: a back plate, a lit box under a cap
     acc.box(cx - 0.08, 2.28, zf + 0.09, cx + 0.08, 2.77, zf + 0.14, MAT['powder'], FRAME)
     acc.box(cx - 0.11, 2.72, zf - 0.1, cx + 0.11, 2.76, zf + 0.1, MAT['powder'], FRAME)
@@ -271,16 +271,82 @@ def end_block(acc, glow, lit, atlas, halos, rnd, xe, sx, za, zb, H, g, fh, P, ba
     ground(acc, glow, lit, atlas, halos, 0.0, L, g, 0.0, P, shops, wall, wcol, trim, tcol, D=4.4)   # a deeper room than the row's: a counter, an aisle and booths, or a stage and tables
     top = upper(acc, atlas, rnd, 0.0, L, g, H, 0.0, P, bays, fh, wall, wcol, trim, tcol, lit_p=lp, tint=tint, glow=glow, lit=lit, wash=(lin(wash[0]), wash[1]) if wash else None)
     # the roof sign over the venue: a box on two posts behind the parapet, its picture on the front
-    v0, v1 = venue[0][0], venue[0][1]; cx = (v0 + v1) / 2; sw, sh = 7.8, 2.6; rt = top - 0.5
-    for px in (cx - 2.6, cx + 2.6): acc.box(px - 0.07, rt - 0.02, 0.62, px + 0.07, top + 0.55 + sh, 0.76, MAT['powder'], FRAME)
-    acc.box(cx - sw / 2 - 0.1, top + 0.5, 0.44, cx + sw / 2 + 0.1, top + 0.7 + sh, 0.64, MAT['powder'], lin('#0c0c0e'))
-    atlas.append({'k': 'blade', 'v': sign, 'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.428, 'yaw': math.pi, 'w': sw, 'h': sh, 'e': 1.5, 'fx': 1})
-    halos.append({'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.2, 'r': 4.2, 'c': list(lin('#ff5a6a' if sign == 'diner' else '#8aa0ff')), 'k': 0.22})
-    lit.area((cx, top + 0.6 + sh / 2, 0.2), (sw / 2, 0, 0), (0, sh / 2, 0), (0, -0.35, -1), lin('#ff7a84' if sign == 'diner' else '#98aaff'), 7.0, 26, 'f', 3, 2)
+    if sign and venue:
+        v0, v1 = venue[0][0], venue[0][1]; cx = (v0 + v1) / 2; sw, sh = 7.8, 2.6; rt = top - 0.5
+        for px in (cx - 2.6, cx + 2.6): acc.box(px - 0.07, rt - 0.02, 0.62, px + 0.07, top + 0.55 + sh, 0.76, MAT['powder'], FRAME)
+        acc.box(cx - sw / 2 - 0.1, top + 0.5, 0.44, cx + sw / 2 + 0.1, top + 0.7 + sh, 0.64, MAT['powder'], lin('#0c0c0e'))
+        atlas.append({'k': 'blade', 'v': sign, 'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.428, 'yaw': math.pi, 'w': sw, 'h': sh, 'e': 1.5, 'fx': 1})
+        halos.append({'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.2, 'r': 4.2, 'c': list(lin('#ff5a6a' if sign == 'diner' else '#8aa0ff')), 'k': 0.22})
+        lit.area((cx, top + 0.6 + sh / 2, 0.2), (sw / 2, 0, 0), (0, sh / 2, 0), (0, -0.35, -1), lin('#ff7a84' if sign == 'diner' else '#98aaff'), 7.0, 26, 'f', 3, 2)
     for o in (acc, glow, lit): o.frame()
     for q in atlas[na:]: x_, _, z_ = T((q['x'], q['y'], q['z'])); q['x'], q['z'] = x_, z_; q['yaw'] = q.get('yaw', 0) + dyaw
     for q in halos[nh:]: x_, _, z_ = T((q['x'], q['y'], q['z'])); q['x'], q['z'] = x_, z_
     return top
+
+
+def side_spans(S):
+    """the side streets' x spans: 8 m each, from the block across the street's end to the row's corner lot"""
+    ST = S['STREET']; return (ST['x0'] - 6.0, ST['x0'] + 2.0), (ST['x1'] - 2.0, ST['x1'] + 6.0)
+
+
+ZT, ZC = 56.0, 63.0   # the side streets: where their flanking blocks end (the lane turns there), and the front of the block closing each
+
+
+def side_windows(acc, atlas, rnd, xe, sx, za, zb, g, top, fh, trim, tcol, lit_p=0.55, win_w=1.3, win_h=1.6):
+    """windows on a block's plain side wall over a side street (sx -1: the wall faces east, +1: west), between za and zb"""
+    if sx < 0: T = lambda p: (xe - p[2], p[1], za + p[0]); R = lambda n: (-n[2], n[1], n[0]); dyaw = -math.pi / 2
+    else: T = lambda p: (xe + p[2], p[1], zb - p[0]); R = lambda n: (n[2], n[1], -n[0]); dyaw = math.pi / 2
+    na = len(atlas); acc.frame(T, R); L = zb - za; nb = max(1, int((L - 0.8) / 2.6))
+    for k in range(int((top - g - 0.9) / fh)):
+        ys = g + 0.9 + k * fh
+        for b in range(nb):
+            c = (b + 0.5) * L / nb; window(acc, atlas, rnd, c - win_w / 2, c + win_w / 2, ys, ys + win_h, 0.0, 0.0, trim, tcol, lit_p)
+    acc.frame()
+    for q in atlas[na:]: x_, _, z_ = T((q['x'], q['y'], q['z'])); q['x'], q['z'] = x_, z_; q['yaw'] = q.get('yaw', 0) + dyaw
+
+
+def side_street(acc, glow, lit, atlas, halos, rnd, S, xa, xb, turn):
+    """a two-way lane north from the main road between x xa and xb: 1 m footways on granite kerbs, a 6 m carriageway; blocks either
+    side up to ZT, where the lane turns (turn -1 west, +1 east) behind the outer block, and a block across its head at ZC. A car turning
+    out of the hidden leg comes into view only as it rounds the corner (checked from every point a player can stand on)"""
+    ST = S['STREET']; r1, far = ST['road'][1], ST['far']; ASPH, ASPH_T = lin('#3a3a3e'), lin('#3c3c40'); PAV, GRN = lin('#a49d93'), lin('#9a958e')
+    lx0, lx1 = (xa - 16.0, xb - 1.0) if turn < 0 else (xa + 1.0, xb + 16.0)          # the hidden leg's carriageway
+    acc.box(xa + 1.0, -0.45, r1, xb - 1.0, -0.15, ZT + 1.0, MAT['asphalt'], ASPH, top=MAT['asphalt'], topcol=ASPH_T)
+    acc.box(lx0 if turn < 0 else xb - 1.0, -0.45, ZT + 1.0, lx1 if turn > 0 else xa + 1.0, -0.15, ZC - 1.0, MAT['asphalt'], ASPH, top=MAT['asphalt'], topcol=ASPH_T)
+    acc.box(xa + 1.0, -0.45, ZT + 1.0, xb - 1.0, -0.15, ZC - 1.0, MAT['asphalt'], ASPH, top=MAT['asphalt'], topcol=ASPH_T)
+    # footways: the outer one (along the block across the street's end, then round the corner under the outer block's end), the inner
+    # one (along the corner lot and the inner block, to the block across the head), and the one along that block's front
+    o0, o1 = (xa, xa + 1.0) if turn < 0 else (xb - 1.0, xb); i0, i1 = (xb - 1.0, xb) if turn < 0 else (xa, xa + 1.0)
+    for (a, b) in ((o0, o1), (i0, i1)):
+        acc.box(a, -0.3, r1, b, 0.0, r1 + 0.18, MAT['granite'], GRN)                                   # the corner, in line with the main kerb
+        kx = (b - 0.15, b) if (a, b) == (o0, o1) and turn < 0 or (a, b) == (i0, i1) and turn > 0 else (a, a + 0.15)
+        pz1 = ZT if (a, b) == (o0, o1) else ZC - 1.0
+        acc.box(kx[0], -0.3, r1 + 0.18, kx[1], 0.0, pz1, MAT['granite'], GRN)                            # its kerb, on the carriageway side
+        acc.box(a if kx[0] > a else kx[1], -0.3, r1 + 0.18, kx[0] if kx[0] > a else b, 0.0, pz1, MAT['paving'], PAV)
+    # round the corner, under the outer block's end: a kerb and footway along the leg's near side
+    ox0, ox1 = (lx0, o1) if turn < 0 else (o0, lx1)
+    acc.box(ox0, -0.3, ZT, ox1, 0.0, ZT + 0.85, MAT['paving'], PAV); acc.box(ox0, -0.3, ZT + 0.85, ox1, 0.0, ZT + 1.0, MAT['granite'], GRN)
+    # along the head block's front, the full width of the lane and the leg
+    hx0, hx1 = (lx0, xb) if turn < 0 else (xa, lx1)
+    acc.box(hx0, -0.3, ZC - 1.0, hx1, 0.0, ZC - 0.85, MAT['granite'], GRN); acc.box(hx0, -0.3, ZC - 0.85, hx1, 0.0, ZC, MAT['paving'], PAV)
+    # the blocks: the outer one runs on from the block across the street's end; the inner one stands behind the corner lot. Their ground
+    # storeys differ from the head block's and their piers from the end block's, so nothing they share at a corner lies in one plane
+    if turn < 0:
+        end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 0.5, ZT, 15.6, 4.3, 3.3, 0.28, 4, 'brick', '#7a4232', 'stone', '#b0a490', 0.6,
+                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], None, ('#ffd9b0', 1.6), None)
+        end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 7.6, ZC, 18.2, 4.3, 3.4, 0.28, 4, 'plaster', '#a89a86', 'stone', '#8e8676', 0.55,
+                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffe2c0', 1.6), None)
+    else:
+        end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 0.5, ZT, 14.8, 4.5, 3.4, 0.26, 4, 'microcement', '#5a5e66', 'chrome', '#8a9098', 0.6,
+                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], '#cfe2ff', ('#d8e6ff', 1.6), None)
+        end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 7.6, ZC, 16.4, 4.3, 3.4, 0.28, 4, 'brick', '#6e3a2c', 'concrete', '#8a8478', 0.55,
+                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffd9a8', 1.6), None)
+    # the block across the lane's head (it faces down the lane: the same front as the row's)
+    hx = (xa - 18.0, xb + 8.0) if turn < 0 else (xa - 8.0, xb + 18.0); mid = (hx[0] + hx[1]) / 2
+    ground(acc, glow, lit, atlas, halos, hx[0], hx[1], 4.4, ZC, 0.3, [(hx[0], mid - 3.0, 'wall', 1), (mid - 3.0, mid + 3.0, 'shut', 1), (mid + 3.0, hx[1], 'wall', 1)],
+           MAT['stone'], lin('#b5a68c'), MAT['travertine'], lin('#d8ccb4'))
+    upper(acc, atlas, rnd, hx[0], hx[1], 4.4, 17.0, ZC, 0.3, 8, 3.3, MAT['stone'], lin('#b5a68c'), MAT['travertine'], lin('#d8ccb4'), lit_p=0.65,
+          glow=glow, lit=lit, wash=(lin('#ffe0b8'), 1.8))
 
 
 def far_side(acc, glow, lit, S, extras):
@@ -288,19 +354,22 @@ def far_side(acc, glow, lit, S, extras):
     ST, F = S['STREET'], S['FACADE']; x0, x1, far = ST['x0'], ST['x1'], ST['far']; rnd = random.Random(12)
     atlas, halos = extras.setdefault('atlas', []), extras.setdefault('halos', [])
     E = 6.0   # how far the buildings run past the walkable street at each end
+    SW, SE = side_spans(S)   # the two side streets (x from, x to)
     # (xa, xb, height, ground storey, floor height, pier relief, bays, wall material, colour, trim material, colour, share of lit windows, shops, window tint)
     LOTS = [
-        (x0 - E, -36.0, 14.6, 4.3, 3.3, 0.30, 5, 'brick', '#8a4a36', 'stone', '#b8ac98', 0.5, [(x0 - E, -42.5, 'bakery', 1), (-42.5, -36.0, 'records', -1)], None),
+        (SW[1], -36.0, 14.6, 4.3, 3.3, 0.30, 4, 'brick', '#8a4a36', 'stone', '#b8ac98', 0.5, [(SW[1], -41.5, 'bakery', 1), (-41.5, -36.0, 'records', -1)], None),
         (-36.0, -24.0, 19.4, 4.8, 3.5, 0.36, 4, 'travertine', '#6a6258', 'nero', '#3a3632', 0.62, [(-36.0, -24.0, 'hotel', 1)], '#ffd9a0'),
         (-24.0, -13.2, 12.4, 4.2, 3.6, 0.26, 3, 'plaster', '#c8b8a0', 'stone', '#9a8c78', 0.45, [(-24.0, -13.2, 'cafe', -1)], None),
         (-11.2, 3.2, 16.8, 4.4, 3.4, 0.32, 5, 'stone', '#b09a7a', 'travertine', '#d8ccb4', 0.5, [(-11.2, -3.6, 'books', 1), (-3.6, 3.2, 'florist', -1)], None),
         (3.2, 15.2, 21.2, 4.6, 3.3, 0.22, 4, 'microcement', '#4a4e56', 'chrome', '#8a9098', 0.7, [(3.2, 15.2, 'pixel', -1)], '#cfe2ff'),
         (15.2, 27.4, 13.4, 4.2, 3.3, 0.30, 4, 'brick', '#6e3a2c', 'concrete', '#8a8478', 0.5, [(15.2, 21.6, 'ramen', 1), (21.6, 27.4, 'chemist', -1)], None),
-        (27.4, x1 + E, 17.4, 4.4, 3.4, 0.28, 6, 'plaster', '#8e949a', 'stone', '#b0a898', 0.5, [(27.4, 38.0, 'gallery', -1), (38.0, x1 + E, 'shut', 1)], None),
+        (27.4, SE[0], 17.4, 4.4, 3.4, 0.28, 5, 'plaster', '#8e949a', 'stone', '#b0a898', 0.5, [(27.4, 38.0, 'gallery', -1), (38.0, SE[0], 'shut', 1)], None),
     ]
     WASH = {-36.0: ('#ffd9a8', 2.6), -11.2: ('#ffe2bc', 2.0), 3.2: ('#cfe0ff', 2.2), 27.4: ('#ffe6c8', 1.4), -24.0: ('#ffdcb0', 1.2)}   # by a lot's west end: colour, strength
-    tops = {}
+    tops = {}; corner = {}
     for (xa, xb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint) in LOTS:
+        if xa == SW[1]: corner['w'] = (g, H - 0.5, fh, MAT[tm], lin(tc))
+        if xb == SE[0]: corner['e'] = (g, H - 0.5, fh, MAT[tm], lin(tc))
         ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, MAT[wm], lin(wc), MAT[tm], lin(tc))
         wsh = WASH.get(xa)
         tops[xa] = upper(acc, atlas, rnd, xa, xb, g, H, far, P, bays, fh, MAT[wm], lin(wc), MAT[tm], lin(tc), lit_p=lp, tint=tint,
@@ -348,6 +417,13 @@ def far_side(acc, glow, lit, S, extras):
         atlas.append({'k': 'blade', 'v': 'cross', 'x': xf, 'y': 4.2, 'z': far - 0.75, 'yaw': s * math.pi / 2, 'w': 0.7, 'h': 0.7, 'e': 1.5, 'fx': 1})
     acc.box(26.2, 3.85, far - 1.1, 26.28, 4.6, far - 0.4, MAT['powder'], lin('#101114'))
     halos.append({'x': 26.24, 'y': 4.2, 'z': far - 0.75, 'r': 1.1, 'c': list(lin('#40e080')), 'k': 0.4})
+    # v12 (the user: the taxi should come from somewhere and go somewhere): a lane runs north at each end of the row, between the corner
+    # lot and the block across the street's end; 16 m up it turns behind its corner block, where cars come from and go (never in view)
+    extras['traffic'] = {'zt': ZT, 'zc': ZC, 'sw': list(SW), 'se': list(SE)}   # the lanes' plan, for the engine's routes (www/js/traffic.js)
+    for key, (xa, xb), turn in (('w', SW, -1), ('e', SE, 1)):
+        g, top, fh, tm_, tc_ = corner[key]
+        side_windows(acc, atlas, rnd, xb if turn < 0 else xa, 1 if turn < 0 else -1, far, far + 7.6, g, top, fh, tm_, tc_)
+        side_street(acc, glow, lit, atlas, halos, rnd, S, xa, xb, turn)
     # the street's ends (the user's arrow: a black wall with windows pasted on it): a building across each, built by the same hands
     # as the row and turned a quarter turn. A jazz room closes the west vista, an all-night diner the east; each has a roof sign
     F1 = F - 1.0
