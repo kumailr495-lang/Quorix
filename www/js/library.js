@@ -80,7 +80,7 @@ export const NAMED = {
   // v11 the taxi's cabin (tools/blender/cabin.py): tan leather seats, matte plastics, a woven headliner, cabin carpet, piano-black bezels
   leather_tan: [8, '#7a6652'], plastic_matte: [13, '#3a3a40'], plastic_dark: [13, '#1e1e22'], headliner: [9, '#9a9388'], carpet_cabin: [5, '#2c2c30'], gloss_black: [15, '#0b0b0d'],
   // v12 the lobby's exhibit and photo set (tools/blender/decor12.py): the projector's green enamel, the director's chairs' canvas
-  enamel_green: [15, '#2e4a3c'], canvas_black: [9, '#19191b'],
+  enamel_green: [15, '#2e4a3c'], canvas_black: [9, '#19191b'], bark: [18, '#4a3a2e'], leaves: [1, '#22381c'], soil: [18, '#2a2420'], bark_olive: [18, '#6e6252'], leaves_olive: [1, '#6a7a5c'], travertine_dark: [41, '#a89884'],
 };
 const _c = new THREE.Color();
 export function named(name) { const k = String(name || '').toLowerCase().replace(/[^a-z_]/g, '').replace(/_+$/, ''); const e = NAMED[k] || NAMED[k.replace(/_lod\d$/, '')]; return e ? { id: e[0], tint: _c.set(e[1]).toArray() } : null; }

@@ -15,8 +15,8 @@ const CELL = {};
 // a shop's back wall is drawn in a 334 x 238 design space and stored at 506 x 360: you can walk up to the glass (at 334 px it was a blur)
 SHOPS.forEach((k, i) => { CELL['shop:' + k] = [(i % 4) * 510 + 2, Math.floor(i / 4) * 364 + 2, 506, 360]; CELL['sign:' + k] = [(i % 4) * 510 + 2, 1096 + Math.floor(i / 4) * 68, 506, 64]; });
 for (let i = 0; i < 8; i++) CELL['win:' + i] = [310 + i * 114, 1304, 110, 150];
-Object.assign(CELL, { 'bill:a': [1228, 1304, 368, 200], 'bill:b': [1600, 1304, 404, 136], 'blade:lumiere': [2, 1304, 150, 710], 'blade:hotel': [158, 1304, 120, 662], 'blade:cross': [1600, 1446, 100, 100],
-  'road:zebra': [310, 1460, 124, 154], 'road:taxi': [440, 1460, 420, 126], 'blade:diner': [870, 1512, 330, 110], 'blade:jazz': [1228, 1512, 330, 110] });
+Object.assign(CELL, { 'blade:lumiere': [2, 1304, 150, 710], 'blade:hotel': [158, 1304, 120, 662], 'blade:cross': [1600, 1446, 100, 100],
+  'road:zebra': [310, 1460, 124, 154], 'road:taxi': [440, 1460, 420, 126] });
 
 // ------------------------------------------------------------------ small drawing helpers
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -113,11 +113,6 @@ function winDraw(g, v, w, h, R) {
   const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
 }
 function bladeDraw(g, k, w, h) {
-  if (k === 'diner' || k === 'jazz') {   // the wall signs on the buildings at the street's ends: a tube outline, a word, a star or a note
-    g.fillStyle = '#08080a'; g.fillRect(0, 0, w, h); const col = k === 'diner' ? '#ff4a5a' : '#7a90ff', c2 = k === 'diner' ? '#ffd26a' : '#ff8ad4';
-    g.shadowColor = col; g.shadowBlur = 12; g.strokeStyle = col; g.lineWidth = 4; rr(g, 8, 8, w - 16, h - 16, h * 0.3); g.stroke(); g.shadowBlur = 0; g.textAlign = 'center'; g.textBaseline = 'middle';
-    neon(g, k === 'diner' ? 'DINER' : 'JAZZ', w * 0.56, h * 0.53, `800 ${h * 0.56}px ${SANS}`, col, 14);
-    g.shadowColor = c2; g.shadowBlur = 10; g.fillStyle = c2; g.font = `700 ${h * 0.5}px ${SANS}`; g.fillText(k === 'diner' ? '★' : '♪', w * 0.14, h * 0.52); g.shadowBlur = 0; g.textBaseline = 'alphabetic'; return; }
   if (k === 'cross') { g.fillStyle = '#050806'; g.fillRect(0, 0, w, h); g.shadowColor = '#40ff90'; g.shadowBlur = 10; g.fillStyle = '#30e080'; g.fillRect(w * 0.38, h * 0.14, w * 0.24, h * 0.72); g.fillRect(w * 0.14, h * 0.38, w * 0.72, h * 0.24); g.shadowBlur = 0; return; }
   const lum = k === 'lumiere'; wallFill(g, w, h, lum ? '#0c1630' : '#141416', lum ? '#080e20' : '#0a0a0c');
   g.strokeStyle = lum ? '#c9a35e' : '#8a8a90'; g.lineWidth = 2; g.strokeRect(w * 0.1, w * 0.1, w * 0.8, h - w * 0.2);
@@ -132,13 +127,6 @@ function bladeDraw(g, k, w, h) {
   else { g.fillStyle = '#c9a35e'; g.font = `600 ${w * 0.4}px ${SERIF}`; g.fillText('✦', w / 2, h * 0.075); g.font = `500 ${w * 0.13}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${w * 0.03}px`; g.fillText('CINEMAS', w / 2, h * 0.955); if ('letterSpacing' in g) g.letterSpacing = '0px'; }
   g.textBaseline = 'alphabetic';
 }
-function billDraw(g, k, w, h) {
-  if (k === 'a') { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#06262c'); gr.addColorStop(1, '#0c0a1e'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#7ae0d0'; g.shadowColor = '#7ae0d0'; g.shadowBlur = 16; g.lineWidth = 5; g.beginPath(); g.arc(w * 0.27, h * 0.5, h * 0.3, 0, 7); g.stroke(); g.shadowBlur = 0; glowDot(g, w * 0.27, h * 0.5, h * 0.5, 'rgba(122,224,208,0.25)');
-    g.fillStyle = '#f2f6f4'; g.textAlign = 'left'; g.font = `600 ${h * 0.34}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.05}px`; g.fillText('AURA', w * 0.5, h * 0.55); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.font = `400 ${h * 0.085}px ${SANS}`; g.fillStyle = '#a8d8d0'; g.fillText('eau de nuit', w * 0.51, h * 0.72); }
-  else { wallFill(g, w, h, '#101c3c', '#0a1024'); g.strokeStyle = '#c9a35e'; g.lineWidth = 3; g.strokeRect(5, 5, w - 10, h - 10); g.textAlign = 'center'; g.fillStyle = '#e8c98a'; g.font = `600 ${h * 0.42}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.08}px`; g.fillText('LUMIÈRE', w / 2, h * 0.52); if ('letterSpacing' in g) g.letterSpacing = '0px';
-    g.font = `500 ${h * 0.13}px ${SANS}`; g.fillStyle = '#f4efe6'; }
-}
 function roadDraw(g, k, w, h) {
   g.clearRect(0, 0, w, h);
   if (k === 'zebra') { g.fillStyle = '#e8e6de'; const n = 7; for (let i = 0; i < n; i++) g.fillRect(i * w / n + w / n * 0.2, 0, w / n * 0.6, h); }
@@ -150,8 +138,7 @@ function drawAtlas(k = 1) {
   const cell = (key, fn) => { const [x, y, w, h] = CELL[key]; g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y); g.__fit = [x, x + w]; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; fn(w, h); g.__fit = null; g.restore(); };
   SHOPS.forEach((k, i) => { cell('shop:' + k, (w, h) => { g.scale(w / SW, h / SH); SHOP_DRAW[k](g, SW, SH, rng(101 + i * 7)); }); cell('sign:' + k, (w, h) => { g.fillStyle = '#121316'; g.fillRect(0, 0, w, h); SIGN_DRAW[k](g, w, h); }); });
   for (let i = 0; i < 8; i++) cell('win:' + i, (w, h) => winDraw(g, i, w, h, rng(977 + i * 13)));
-  for (const k of ['lumiere', 'hotel', 'cross', 'diner', 'jazz']) cell('blade:' + k, (w, h) => bladeDraw(g, k, w, h));
-  for (const k of ['a', 'b']) cell('bill:' + k, (w, h) => billDraw(g, k, w, h));
+  for (const k of ['lumiere', 'hotel', 'cross']) cell('blade:' + k, (w, h) => bladeDraw(g, k, w, h));
   for (const k of ['zebra', 'taxi']) cell('road:' + k, (w, h) => roadDraw(g, k, w, h));
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.flipY = false; return t;
 }

@@ -82,7 +82,18 @@ export class Crowd {
     mk('cafe', 'vendor', 'Leo', 'cafe', 'barM', null, { x: -20.45, y: 0, z: -11.3, yaw: -Math.PI / 2 });   // v10: the barista behind the cafe counter
     mk('usher', 'usher', 'Marcel', 'usher', 'usher', 'usher'); mk('server', 'server', 'Rahul', 'server', 'server', 'server');
     this.staff.server.cart = true; this.cart = makeCart(this.mats, this.scene);
-    this.setDensity(this.density);
+    this.setDensity(this.density); this.streetFolk();
+  }
+  // v12 (the user: people on the street): passers-by on the far pavement, each in a stretch of their own (no two ever meet head-on on
+  // its narrow walking line, between the tree pits and the cafe's tables), stopping at a shop window now and then; and three who stay
+  // put: a doorman at the hotel, a couple at a cafe table, someone outside the ramen bar
+  streetFolk() {
+    const Z = 38.55, legs = [[-30, -24.2], [-12, 2], [3, 12], [15, 30]];
+    legs.forEach(([x0, x1], i) => { const a = this.spawn({ rec: randomRecipe(this.seed()), role: 'street', x: (x0 + x1) / 2, y: 0, z: Z, yaw: Math.PI / 2, state: 'street', speed: rnd(0.95, 1.25) });
+      a.idle = IDLES[(i + 2) % IDLES.length]; a.next = this.now + rnd(500, 4000);
+      a.leg = () => { const tx = rnd(x0, x1); a.go([{ x: tx, y: 0, z: Z }], () => { a.yaw = 0; a.next = this.now + rnd(2500, 9000); }); }; });
+    for (const [x, z, yaw, idle] of [[-30.0, 39.35, Math.PI, 'Idle_FoldArms_Loop'], [-19.2, 38.45, 0.25, 'Idle_Talking_Loop'], [-18.5, 38.5, -0.6, 'Idle_Loop'], [19.1, 39.25, 2.6, 'Idle_TalkingPhone_Loop']]) {
+      const a = this.spawn({ rec: randomRecipe(this.seed()), role: 'street', x, y: 0, z, yaw, state: 'still' }); a.idle = idle; }
   }
   // NPC density applies at once (v8: "the NPC setting doesn't change anything until restart"): guests join or leave the lobby now
   setDensity(d) {
@@ -273,7 +284,7 @@ export class Crowd {
     for (const a of [...this.agents]) {
       if (!a.alive) continue; this.step(a, dt, player);
       a.room = this.world.roomAt(a.x, a.y, a.z) || a.room; const vis_ = !!a.room && vis.has(a.room), d = Math.hypot(a.x - cam.x, a.z - cam.z);
-      if (vis_ && d < 38) near.push([a, d]); else if (a.ch) a.ch.group.visible = false;
+      if (vis_ && d < (a.role === 'street' ? 60 : 38)) near.push([a, d]); else if (a.ch) a.ch.group.visible = false;
     }
     // the nearest few seated viewers are full people; everyone else seated is the GPU crowd
     near.sort((p, q) => p[1] - q[1]); let skinned = 0; const cap = P.people + 6;
@@ -287,6 +298,7 @@ export class Crowd {
   }
   step(a, dt, player) {
     if (a.role === 'remote') { a.walkT = a.remoteWalk || 0; return; }   // v9.3: another player (mpui.js moves them from their phone's messages)
+    if (a.state === 'street' && !a.path && this.now >= a.next && a.leg) a.leg();   // v12 a passer-by's next stretch of window-shopping
     const now = this.now;
     if (a.state === 'standing') { a.sitT += dt; a.sit = Math.max(0, 1 - a.sitT / 1.1); if (a.sit <= 0) { if (a.viewer && a.viewer.seat.npc === a.viewer) { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.go(a.exitPath, () => { if (a.viewer) a.viewer.state = 'gone'; this.remove(a); }, { state: 'leavingHall' }); } return; }
     if (a.state === 'sitting') { a.sitT += dt; a.sit = Math.min(1, a.sitT / 1.2); const s = a.viewer.seat; a.x += (s.x - a.x) * Math.min(1, dt * 4); a.z += (s.z - a.z) * Math.min(1, dt * 4); a.y += (s.y - a.y) * Math.min(1, dt * 6);

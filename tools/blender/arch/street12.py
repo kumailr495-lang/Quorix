@@ -31,7 +31,7 @@ def window(acc, atlas, rnd, o0, o1, ys, yh, far, P, sill_mat, sill_col, lit_p, f
                   'e': (0.75 + rnd.random() * 0.5) if on else 0.07, 'tint': tint if (tint and on) else None})
 
 
-def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tcol, win_h=1.75, sill_h=0.85, pier_w=0.7, cor=0.5, lit_p=0.5, depth=7.6, tint=None, balcony=(), glow=None, lit=None, wash=None, wash_last=True):
+def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tcol, win_h=1.75, sill_h=0.85, pier_w=0.7, cor=0.5, lit_p=0.5, depth=7.6, tint=None, balcony=(), glow=None, lit=None, wash=None, wash_last=True, glass=False):
     """the floors over the shops, from y0 up to the cornice at H - 0.5: the mass, piers, spandrels, windows under lintels, a string course
     over the shop fronts, cornice, parapet and coping. wash = (colour, strength): a small uplight on the string course at each pier, so the
     front reads at night (the user: "make the buildings much more visible")"""
@@ -51,15 +51,23 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
             acc.box(o0 - 0.02, prev, far - P + 0.06, o1 + 0.02, ys - 0.03, far + 0.05, wall, sp)
             window(acc, atlas, rnd, o0, o1, ys, yh, far, P, trim, tcol, lit_p, tint=tint); prev = yh
             acc.box(o0 - 0.03, yh - 0.01, far - P + 0.02, o1 + 0.03, yh + 0.17, far + 0.04, trim, tcol)   # the lintel: 4 cm proud of the spandrel, 2 cm behind the piers
-            if k in balcony:   # a shallow balcony: a slab under the sill, a rail on balusters (each set 2 cm into the slab and the rail)
-                bz0, bz1 = far - P - 0.62, far - P + 0.02
-                acc.box(o0 - 0.1, ys - 0.2, bz0, o1 + 0.1, ys - 0.07, bz1, trim, tcol)   # 2 cm up into the sill
-                acc.box(o0 - 0.1, ys + 0.78, bz0, o1 + 0.1, ys + 0.83, bz0 + 0.05, MAT['powder'], FRAME)
-                for sx in (o0 - 0.1, o1 + 0.05): acc.box(sx, ys + 0.78, bz0 + 0.05, sx + 0.05, ys + 0.83, bz1, MAT['powder'], FRAME)   # the returns, from the rail's back
-                nb = max(3, int((o1 - o0 + 0.2) / 0.16))
-                for j in range(nb + 1):
-                    bxx = o0 - 0.1 + 0.012 + j * (o1 - o0 + 0.2 - 0.024 - 0.02) / nb
-                    acc.box(bxx, ys - 0.09, bz0 + 0.015, bxx + 0.02, ys + 0.8, bz0 + 0.035, MAT['powder'], FRAME)
+            if k in balcony:   # v12 (the user: balconies, not billboards): a 1 m balcony; slab under the sill, a rail (on balusters, or a
+                # glass panel on the modern block), a planter of greenery at one end. The lot's last bay stops 15 cm short of the rainwater pipe
+                bz0, bz1 = far - P - 1.0, far - P + 0.02; ba, bb = o0 - 0.1, (o1 - 0.05 if i == bays - 1 else o1 + 0.1)
+                acc.box(ba, ys - 0.2, bz0, bb, ys - 0.07, bz1, trim, tcol)   # 2 cm up into the sill, 2 cm into the piers' faces
+                acc.box(ba, ys + 0.78, bz0, bb, ys + 0.83, bz0 + 0.05, MAT['powder'], FRAME)
+                for sx in (ba, bb - 0.05): acc.box(sx, ys + 0.78, bz0 + 0.05, sx + 0.05, ys + 0.83, bz1, MAT['powder'], FRAME)   # the returns, from the rail's back into the piers
+                if glass:   # a laminated glass panel under the rail, in a channel set into the slab (its faces 1 cm inside the rail's)
+                    acc.box(ba + 0.04, ys - 0.09, bz0 + 0.015, bb - 0.04, ys + 0.79, bz0 + 0.035, MAT['glass'], lin('#6a7a84'))
+                    acc.box(ba + 0.02, ys - 0.08, bz0 - 0.004, bb - 0.02, ys - 0.03, bz0 + 0.054, MAT['powder'], FRAME)
+                else:
+                    nb = max(3, int((bb - ba) / 0.16))
+                    for j in range(nb + 1):
+                        bxx = ba + 0.012 + j * (bb - ba - 0.024 - 0.02) / nb
+                        acc.box(bxx, ys - 0.09, bz0 + 0.015, bxx + 0.02, ys + 0.8, bz0 + 0.035, MAT['powder'], FRAME)
+                px0 = ba + 0.12 if (i + k) % 2 == 0 else bb - 0.12 - 0.9   # the planter: on the slab (2 cm into it), clear of the rail
+                acc.box(px0, ys - 0.09, bz0 + 0.12, px0 + 0.9, ys + 0.22, bz0 + 0.42, MAT['powder'], lin('#2a2622'))
+                acc.box(px0 + 0.04, ys + 0.2, bz0 + 0.16, px0 + 0.86, ys + 0.52, bz0 + 0.38, MAT['velvet'], lin('#2c4a26'))   # its greenery, 2 cm down into the box
         acc.box(o0 - 0.02, prev, far - P + 0.06, o1 + 0.02, top + 0.03, far + 0.05, wall, sp)
     acc.box(xa, y0 - 0.02, far - P - 0.10, xb, y0 + 0.20, far - P, trim, tcol)   # the string course: against the piers' faces (not into them: its end would lie in the end pier's side), 5 cm down over the fascias
     if wash and lit is not None:
@@ -259,26 +267,17 @@ def plain_bay(acc, glow, lit, a, b, g, zf, far, wall, wcol, trim, tcol):
     return cx
 
 
-def end_block(acc, glow, lit, atlas, halos, rnd, xe, sx, za, zb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint, wash, sign):
+def end_block(acc, glow, lit, atlas, halos, rnd, xe, sx, za, zb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint, wash):
     """a building across the street's end, facing down it: the row's own builders in a frame turned a quarter turn (local x runs along
-    the front, local z back into the building). sx -1: the west end (faces east), +1: the east end. sign: its roof sign's picture"""
+    the front, local z back into the building). sx -1: the west end (faces east), +1: the east end"""
     L = zb - za
     if sx < 0: T = lambda p: (xe - p[2], p[1], za + p[0]); R = lambda n: (-n[2], n[1], n[0]); dyaw = -math.pi / 2
     else: T = lambda p: (xe + p[2], p[1], zb - p[0]); R = lambda n: (n[2], n[1], -n[0]); dyaw = math.pi / 2
     na, nh = len(atlas), len(halos); wall, wcol, trim, tcol = MAT[wm], lin(wc), MAT[tm], lin(tc)
     for o in (acc, glow, lit): o.frame(T, R)
-    venue = [q for q in shops if q[2] != 'wall']
     # the plain bays first (ground() builds the pilasters and the shops between them; a 'wall' unit is built here)
     ground(acc, glow, lit, atlas, halos, 0.0, L, g, 0.0, P, shops, wall, wcol, trim, tcol, D=4.4)   # a deeper room than the row's: a counter, an aisle and booths, or a stage and tables
     top = upper(acc, atlas, rnd, 0.0, L, g, H, 0.0, P, bays, fh, wall, wcol, trim, tcol, lit_p=lp, tint=tint, glow=glow, lit=lit, wash=(lin(wash[0]), wash[1]) if wash else None)
-    # the roof sign over the venue: a box on two posts behind the parapet, its picture on the front
-    if sign and venue:
-        v0, v1 = venue[0][0], venue[0][1]; cx = (v0 + v1) / 2; sw, sh = 7.8, 2.6; rt = top - 0.5
-        for px in (cx - 2.6, cx + 2.6): acc.box(px - 0.07, rt - 0.02, 0.62, px + 0.07, top + 0.55 + sh, 0.76, MAT['powder'], FRAME)
-        acc.box(cx - sw / 2 - 0.1, top + 0.5, 0.44, cx + sw / 2 + 0.1, top + 0.7 + sh, 0.64, MAT['powder'], lin('#0c0c0e'))
-        atlas.append({'k': 'blade', 'v': sign, 'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.428, 'yaw': math.pi, 'w': sw, 'h': sh, 'e': 1.5, 'fx': 1})
-        halos.append({'x': cx, 'y': top + 0.6 + sh / 2, 'z': 0.2, 'r': 4.2, 'c': list(lin('#ff5a6a' if sign == 'diner' else '#8aa0ff')), 'k': 0.22})
-        lit.area((cx, top + 0.6 + sh / 2, 0.2), (sw / 2, 0, 0), (0, sh / 2, 0), (0, -0.35, -1), lin('#ff7a84' if sign == 'diner' else '#98aaff'), 7.0, 26, 'f', 3, 2)
     for o in (acc, glow, lit): o.frame()
     for q in atlas[na:]: x_, _, z_ = T((q['x'], q['y'], q['z'])); q['x'], q['z'] = x_, z_; q['yaw'] = q.get('yaw', 0) + dyaw
     for q in halos[nh:]: x_, _, z_ = T((q['x'], q['y'], q['z'])); q['x'], q['z'] = x_, z_
@@ -334,14 +333,14 @@ def side_street(acc, glow, lit, atlas, halos, rnd, S, xa, xb, turn):
     # storeys differ from the head block's and their piers from the end block's, so nothing they share at a corner lies in one plane
     if turn < 0:
         end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 0.5, ZT, 15.6, 4.3, 3.3, 0.28, 4, 'brick', '#4a2a20', 'stone', '#6e665a', 0.3,
-                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], None, ('#ffd9b0', 0.8), None)
+                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], None, ('#ffd9b0', 0.8))
         end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 7.6, ZC, 18.2, 4.3, 3.4, 0.28, 4, 'plaster', '#4e4840', 'stone', '#6a645a', 0.3,
-                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffe2c0', 0.8), None)
+                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffe2c0', 0.8))
     else:
         end_block(acc, glow, lit, atlas, halos, rnd, xb, 1, far + 0.5, ZT, 14.8, 4.5, 3.4, 0.26, 4, 'microcement', '#3a3e44', 'chrome', '#6a7078', 0.3,
-                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], '#cfe2ff', ('#d8e6ff', 0.8), None)
+                  [(0.0, 5.0, 'wall', 1), (5.0, 10.3, 'shut', 1), (10.3, ZT - far - 0.5, 'wall', 1)], '#cfe2ff', ('#d8e6ff', 0.8))
         end_block(acc, glow, lit, atlas, halos, rnd, xa, -1, far + 7.6, ZC, 16.4, 4.3, 3.4, 0.28, 4, 'brick', '#4a281e', 'concrete', '#66625a', 0.3,
-                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffd9a8', 0.8), None)
+                  [(0.0, 4.8, 'wall', 1), (4.8, 10.6, 'shut', 1), (10.6, ZC - far - 7.6, 'wall', 1)], None, ('#ffd9a8', 0.8))
     # the block across the lane's head (it faces down the lane: the same front as the row's)
     hx = (xa - 18.0, xb + 8.0) if turn < 0 else (xa - 8.0, xb + 18.0); mid = (hx[0] + hx[1]) / 2
     ground(acc, glow, lit, atlas, halos, hx[0], hx[1], 4.4, ZC, 0.3, [(hx[0], mid - 3.0, 'wall', 1), (mid - 3.0, mid + 3.0, 'shut', 1), (mid + 3.0, hx[1], 'wall', 1)],
@@ -367,6 +366,7 @@ def far_side(acc, glow, lit, S, extras):
         (27.4, SE[0], 17.4, 4.4, 3.4, 0.28, 5, 'plaster', '#44484e', 'stone', '#7a7468', 0.3, [(27.4, 38.0, 'gallery', -1, 'closed'), (38.0, SE[0], 'shut', 1)], None),
     ]
     WASH = {-36.0: ('#ffd2a0', 2.2), -11.2: ('#ffdcb4', 1.1), 3.2: ('#cfe0ff', 1.2)}   # by a lot's west end: colour, strength (midnight: the hotel's, and two lower ones)
+    BALC = {SW[1]: (1,), -24.0: (0, 1), -11.2: (0, 2), 3.2: (1, 2, 3), 15.2: (1,), 27.4: (1, 2)}   # v12: the floors with balconies, by a lot's west end (the hotel has none: its blade sign)
     tops = {}; corner = {}
     for (xa, xb, H, g, fh, P, bays, wm, wc, tm, tc, lp, shops, tint) in LOTS:
         if xa == SW[1]: corner['w'] = (g, H - 0.5, fh, MAT[tm], lin(tc))
@@ -374,7 +374,7 @@ def far_side(acc, glow, lit, S, extras):
         ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, MAT[wm], lin(wc), MAT[tm], lin(tc))
         wsh = WASH.get(xa)
         tops[xa] = upper(acc, atlas, rnd, xa, xb, g, H, far, P, bays, fh, MAT[wm], lin(wc), MAT[tm], lin(tc), lit_p=lp, tint=tint,
-                         balcony=(0, 1) if wm == 'plaster' and xa == -24.0 else ((1,) if xa == -11.2 else ()), glow=glow, lit=lit, wash=(lin(wsh[0]), wsh[1]) if wsh else None, wash_last=xa != 27.4)
+                         balcony=BALC.get(xa, ()), glass=xa == 3.2, glow=glow, lit=lit, wash=(lin(wsh[0]), wsh[1]) if wsh else None, wash_last=xa != 27.4)
         # a rainwater pipe down the lot's east edge (5 cm off the piers' face on two brackets), and what stands on the roof
         px = xb - 0.2; pz = far - P - 0.11
         acc.cyl(px, pz, 0.05, 0.02, tops[xa] - 0.9, MAT['powder'], lin('#26272b'), n=8)
@@ -397,21 +397,6 @@ def far_side(acc, glow, lit, S, extras):
         atlas.append({'k': 'blade', 'v': 'hotel', 'x': xf, 'y': 9.8, 'z': far - 1.045, 'yaw': s * math.pi / 2, 'w': 1.25, 'h': 6.9, 'e': 1.3, 'fx': 0})
     halos.append({'x': -30.07, 'y': 9.8, 'z': far - 1.05, 'r': 2.6, 'c': list(lin('#ffd08a')), 'k': 0.2})
     lit.spot((-30.07, 6.0, far - 1.05), lin('#ffd08a'), 2.2, 9, 'f', (0, -1, -0.1), 40, 80)
-    # the modern block's LED screen over its shop, and a rooftop billboard on the brick block at the east
-    acc.box(4.4, 9.2, far - 0.36, 14.0, 14.6, far - 0.2, MAT['powder'], lin('#0c0c0e'))
-    BZ = lin('#6a6e76')   # the bezel: 4 cm proud of the screen, its uprights 5 mm shy of the rails' faces; a walkway on brackets under it
-    for by0, by1 in ((9.08, 9.22), (14.58, 14.72)): acc.box(4.28, by0, far - 0.40, 14.12, by1, far - 0.135, MAT['metal'], BZ)   # back into the piers, the lintels and the spandrels
-    for bx0, bx1 in ((4.285, 4.42), (13.98, 14.115)): acc.box(bx0, 9.2, far - 0.395, bx1, 14.6, far - 0.14, MAT['metal'], BZ)
-    acc.box(4.2, 8.70, far - 1.0, 14.2, 8.76, far - 0.2, MAT['metal'], lin('#3a3c42'))
-    for bx in (4.9, 9.2, 13.5): acc.box(bx - 0.04, 8.36, far - 0.9, bx + 0.04, 8.72, far - 0.2, MAT['powder'], FRAME)
-    acc.box(4.2, 9.70, far - 0.99, 14.2, 9.75, far - 0.94, MAT['powder'], FRAME)
-    for j in range(6): bx = 4.22 + j * (9.96 - 0.05) / 5; acc.box(bx, 8.74, far - 0.985, bx + 0.05, 9.72, far - 0.945, MAT['powder'], FRAME)
-    atlas.append({'k': 'bill', 'v': 'a', 'x': 9.2, 'y': 11.9, 'z': far - 0.372, 'yaw': math.pi, 'w': 9.2, 'h': 5.0, 'e': 1.0, 'fx': 0})
-    lit.area((9.2, 11.9, far - 0.6), (4.4, 0, 0), (0, 2.4, 0), (0, -0.25, -1), lin('#9ec8ff'), 9.0, 22, 'f', 3, 2)
-    tE = tops[15.2]
-    for bx in (17.0, 25.6): acc.box(bx - 0.08, tE - 0.02, far + 0.9, bx + 0.08, tE + 4.6, far + 1.06, MAT['powder'], FRAME)
-    acc.box(16.4, tE + 1.3, far + 0.74, 26.2, tE + 4.7, far + 0.92, MAT['powder'], lin('#0c0c0e'))
-    atlas.append({'k': 'bill', 'v': 'b', 'x': 21.3, 'y': tE + 3.0, 'z': far + 0.728, 'yaw': math.pi, 'w': 9.5, 'h': 3.2, 'e': 1.1, 'fx': 0})
     # the chemist's green cross on a bracket
     acc.box(26.2, 4.6, far - 1.0, 26.28, 4.68, far - 0.28, MAT['powder'], FRAME)
     for s, xf in ((1, 26.292), (-1, 26.188)):
@@ -423,13 +408,16 @@ def far_side(acc, glow, lit, S, extras):
     extras['traffic'] = {'zt': ZT, 'zc': ZC, 'sw': list(SW), 'se': list(SE)}   # the lanes' plan, for the engine's routes (www/js/traffic.js)
     for key, (xa, xb), turn in (('w', SW, -1), ('e', SE, 1)):
         g, top, fh, tm_, tc_ = corner[key]
+        # v12 (the user: crosswalks): a zebra over the lane's mouth, where the far pavement's walkers cross it
+        atlas.append({'k': 'road', 'v': 'zebra', 'x': (xa + xb) / 2, 'y': -0.144, 'z': (S['STREET']['road'][1] + far) / 2 + 0.1, 'yaw': math.pi / 2, 'w': 2.6, 'h': xb - xa - 2.6, 'e': 0.16, 'flat': 1})
         side_windows(acc, atlas, rnd, xb if turn < 0 else xa, 1 if turn < 0 else -1, far, far + 7.6, g, top, fh, tm_, tc_)
         side_street(acc, glow, lit, atlas, halos, rnd, S, xa, xb, turn)
     # the street's ends (the user's arrow: a black wall with windows pasted on it): a building across each, built by the same hands
-    # as the row and turned a quarter turn. A jazz room closes the west vista, an all-night diner the east; each has a roof sign
+    # as the row and turned a quarter turn. A jazz room closes the west vista, an all-night diner the east (v12: no roof signs, the user
+    # found the billboards odd; each venue's name is on its shopfront)
     F1 = F - 1.0
     end_block(acc, glow, lit, atlas, halos, rnd, x0 - E, -1, F1, far + 0.5, 18.6, 4.6, 3.4, 0.30, 6, 'stone', '#5e5446', 'travertine', '#8a7e6a', 0.35,
-              [(0.0, 6.2, 'wall', 1), (6.2, 18.2, 'jazz', 1), (18.2, far + 0.5 - F1, 'wall', 1)], '#ffd9a8', ('#ffd8b0', 1.3), 'jazz')
+              [(0.0, 6.2, 'wall', 1), (6.2, 18.2, 'jazz', 1), (18.2, far + 0.5 - F1, 'wall', 1)], '#ffd9a8', ('#ffd8b0', 1.3))
     end_block(acc, glow, lit, atlas, halos, rnd, x1 + E, 1, F1, far + 0.5, 15.2, 4.5, 3.5, 0.26, 6, 'plaster', '#544a42', 'stone', '#6e675c', 0.35,
-              [(0.0, 5.0, 'wall', 1), (5.0, 17.5, 'diner', -1), (17.5, far + 0.5 - F1, 'wall', 1)], None, ('#ffe0c0', 1.1), 'diner')
+              [(0.0, 5.0, 'wall', 1), (5.0, 17.5, 'diner', -1), (17.5, far + 0.5 - F1, 'wall', 1)], None, ('#ffe0c0', 1.1))
     return atlas, halos

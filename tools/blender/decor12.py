@@ -13,7 +13,7 @@ All original designs, LOD0 only (they are small or seen from inside the lobby: w
 
 Frame: +X the front (the engine's +Z at yaw 0), +Z up, floor at Z = 0 (reel_wall: its back on the wall at X = 0). Parts embed 1-3 cm
 into what they stand on or join, and no two faces of different parts lie in one plane."""
-import bpy, bmesh, math, sys, os, argparse, json
+import bpy, bmesh, math, sys, os, argparse, json, random
 from mathutils import Vector, Matrix
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lbl
@@ -23,7 +23,9 @@ argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 ap = argparse.ArgumentParser(); ap.add_argument('--out', default='www/models'); ap.add_argument('--only', default='')
 A = ap.parse_args(argv)
 for k, v in {'enamel_green': ((0.035, 0.07, 0.05), 0.35, 0.0), 'canvas_black': ((0.012, 0.012, 0.013), 0.85, 0.0), 'oak': ((0.36, 0.22, 0.11), 0.5, 0.0),
-             'paint_red': ((0.32, 0.02, 0.025), 0.4, 0.0), 'steel': ((0.55, 0.56, 0.58), 0.35, 1.0), 'gloss_black': ((0.006, 0.006, 0.007), 0.12, 0.0)}.items():
+             'paint_red': ((0.32, 0.02, 0.025), 0.4, 0.0), 'steel': ((0.55, 0.56, 0.58), 0.35, 1.0), 'gloss_black': ((0.006, 0.006, 0.007), 0.12, 0.0),
+             'bark': ((0.07, 0.05, 0.035), 0.9, 0.0), 'leaves': ((0.03, 0.07, 0.025), 0.8, 0.0), 'soil': ((0.03, 0.025, 0.02), 1.0, 0.0),
+             'bark_olive': ((0.12, 0.10, 0.08), 0.9, 0.0), 'leaves_olive': ((0.10, 0.13, 0.08), 0.8, 0.0), 'travertine_dark': ((0.30, 0.26, 0.21), 0.4, 0.0)}.items():
     lbl.MAT_DEF.setdefault(k, v)
 RX = lambda deg: Matrix.Rotation(math.radians(deg), 4, 'X')
 
@@ -145,7 +147,84 @@ def backdrop_stand():
     part('Top', 0, 'blackmetal', rb((0.04, W + 0.04, 0.05), 0.006), T(0, 0, H + 0.005))                       # over both posts' tops, 1 cm inside their faces
 
 
-BUILD = {'projector_vintage': projector_vintage, 'reel_wall': reel_wall, 'directors_chair': directors_chair, 'ring_light': ring_light, 'merch_shelf': merch_shelf, 'backdrop_stand': backdrop_stand}
+def _taper(bm, pts, r0, r1, sides=10):
+    """a closed, tapering tube along a polyline (a trunk or a branch): radius r0 at the first point to r1 at the last, both ends capped"""
+    n = len(pts); rings = []
+    for i, p in enumerate(pts):
+        a = pts[max(0, i - 1)]; b = pts[min(n - 1, i + 1)]; t = (Vector(b) - Vector(a)).normalized()
+        up = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0)); x = t.cross(up).normalized(); y = t.cross(x).normalized(); r = r0 + (r1 - r0) * i / (n - 1)
+        rings.append([bm.verts.new(Vector(p) + (x * math.cos(2 * math.pi * k / sides) + y * math.sin(2 * math.pi * k / sides)) * r) for k in range(sides)])
+    for i in range(n - 1):
+        for k in range(sides): k2 = (k + 1) % sides; bm.faces.new((rings[i][k], rings[i][k2], rings[i + 1][k2], rings[i + 1][k]))
+    bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
+
+
+def _clump(c, r, seed, sub=3):
+    """a clump of leaves: an icosphere squashed a little and lumped by smooth noise (closed, so it can be one part)"""
+    from mathutils import noise
+    def build(bm):
+        bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)   # sub 3: 320 faces
+        off = Vector((seed * 3.1, seed * 1.7, seed * 2.3))
+        for v in bm.verts:
+            n = v.co.normalized(); k = 1.0 + 0.22 * noise.noise(v.co * 1.6 + off) + 0.08 * noise.noise(v.co * 4.2 + off)
+            v.co = Vector((n.x * r * k, n.y * r * k, n.z * r * k * 0.82)) + Vector(c)
+    return build
+
+
+def _crown(ends, per, reach, rad, seed, mat, up=0.55):
+    """an airy crown: from each limb's end, twigs out to small leaf clumps (each twig starts 3 cm inside the limb's end and ends 4 cm
+    inside its clump; a clump also sits on every limb end), so the crown has gaps and an uneven edge instead of a few big balls"""
+    rnd = random.Random(seed)
+    for i, e in enumerate(ends):
+        e = Vector(e); part('Leaves', 0, mat, _clump(tuple(e), rad[1], seed + i * 17, 2))
+        for j in range(per):
+            a = rnd.uniform(0, 2 * math.pi); u = rnd.uniform(0.15, 1.0) * up
+            d = Vector((math.cos(a), math.sin(a), u)).normalized() * rnd.uniform(*reach); q = e + d; r = rnd.uniform(*rad)
+            part('Twig', 0, 'bark' if mat == 'leaves' else 'bark_olive', lambda bm, a_=tuple(e - d.normalized() * 0.03), b_=tuple(q - d.normalized() * (r - 0.04)): _taper(bm, [a_, b_], 0.022, 0.012, 5))
+            part('Leaves', 0, mat, _clump(tuple(q), r, seed + i * 17 + j + 1, 2))
+
+
+def street_tree():
+    """a street tree in its pavement pit (v12, the user: trees on the street): a cast-iron grate (its top 8 mm over the paving, 2 cm into
+    it), a leaning trunk, four limbs and a crown of leaf clumps. Every clump holds a limb's end or overlaps a neighbour (nothing floats)"""
+    # levels (tops): the paving 0, the soil 6 mm, the bars 12 mm, the frame and the ring 18 mm (no two tops within 5 mm)
+    for (x0, y0, x1, y1) in ((-0.6, -0.6, 0.6, -0.5), (-0.6, 0.5, 0.6, 0.6), (-0.6, -0.5, -0.5, 0.5), (0.5, -0.5, 0.6, 0.5)):
+        part('GrateFrame', 0, 'blackmetal', rb((x1 - x0, y1 - y0, 0.038), 0.003, (1, 1, 1), 1), T((x0 + x1) / 2, (y0 + y1) / 2, -0.001))
+    part('GrateRing', 0, 'blackmetal', lambda bm: lathe(bm, [(0.24, -0.02), (0.31, -0.02), (0.31, 0.018), (0.24, 0.018)], 24))
+    for k in range(8):   # the radial bars, from inside the ring into the frame (1 cm into both)
+        a = math.radians(22.5 + 45 * k); L = (0.52 / max(abs(math.cos(a)), abs(math.sin(a)))) - 0.29
+        part('GrateBar', 0, 'blackmetal', rb((L, 0.03, 0.028), 0.003, (1, 1, 1), 1), T(math.cos(a) * (0.30 + L / 2), math.sin(a) * (0.30 + L / 2), -0.002) @ RZ(math.degrees(a)))
+    part('Soil', 0, 'soil', lambda bm: lathe(bm, [(1e-4, -0.014), (0.25, -0.014), (0.25, 0.006), (1e-4, 0.006)], 24))   # into the ring and round the trunk
+    trunk = [(0, 0, -0.02), (0.04, 0.0, 1.1), (0.02, 0.03, 2.2), (-0.03, 0.02, 3.0)]
+    part('Trunk', 0, 'bark', lambda bm: _taper(bm, trunk, 0.15, 0.10, 12))
+    limbs = [(math.radians(a), z0, rr, zt) for a, z0, rr, zt in ((25, 2.3, 1.25, 4.3), (115, 2.6, 1.1, 4.7), (205, 2.45, 1.2, 4.4), (295, 2.75, 1.0, 4.9))]
+    ends = []
+    for i, (a, z0, rr, zt) in enumerate(limbs):   # each limb starts 5 cm inside the trunk and bends up and out
+        p0 = (math.cos(a) * 0.04, math.sin(a) * 0.04, z0); pm = (math.cos(a) * rr * 0.55, math.sin(a) * rr * 0.55, (z0 + zt) / 2 + 0.25); p1 = (math.cos(a) * rr, math.sin(a) * rr, zt)
+        part('Limb', 0, 'bark', lambda bm, q=(p0, pm, p1): _taper(bm, list(q), 0.075, 0.04, 8)); ends.append(p1)
+    _crown(ends + [(0.0, 0.0, 3.0)], 6, (0.55, 1.05), (0.42, 0.62), 40, 'leaves', up=0.9)
+
+
+def olive_tree():
+    """an old olive tree in a stone planter (v12, the user: "trees inside like a medieval tree"): three stems twisting round each other
+    out of the soil, a knotted trunk where they meet, five limbs and a silver-green crown. The planter is a turned travertine bowl on a
+    foot; the stems start 6 cm under the soil, the limbs inside the trunk, every clump holds a limb's end or overlaps a neighbour"""
+    part('PlanterFoot', 0, 'travertine_dark', lambda bm: lathe(bm, [(1e-4, 0.0), (0.46, 0.0), (0.46, 0.08), (0.40, 0.12), (1e-4, 0.12)], 40))
+    part('Planter', 0, 'travertine_dark', lambda bm: lathe(bm, [(1e-4, 0.10), (0.42, 0.10), (0.66, 0.42), (0.74, 0.62), (0.76, 0.70), (0.68, 0.70), (0.66, 0.66), (1e-4, 0.66)], 48))   # its floor 2 cm into the foot
+    part('Soil', 0, 'soil', lambda bm: lathe(bm, [(1e-4, 0.62), (0.665, 0.62), (0.66, 0.672), (1e-4, 0.672)], 40))   # 6 mm over the bowl's inner floor, into its wall
+    for k in range(3):   # the stems: helices round the axis, from under the soil up into the trunk's knot
+        a0 = 2 * math.pi * k / 3
+        pts = [(0.16 * math.cos(a0 + t * 2.4), 0.16 * math.sin(a0 + t * 2.4), 0.60 + t * 1.1) for t in [i / 6 for i in range(7)]]
+        part('Stem', 0, 'bark_olive', lambda bm, q=pts: _taper(bm, q, 0.11, 0.08, 10))
+    part('Knot', 0, 'bark_olive', _clump((0.0, 0.0, 1.72), 0.24, 3, 2))   # where the stems meet: a lumpy burl
+    ends = []
+    for i, (a, rr, zt) in enumerate(((10, 1.0, 2.75), (82, 0.85, 3.05), (154, 1.05, 2.8), (226, 0.9, 3.1), (298, 1.0, 2.9))):
+        a = math.radians(a); p0 = (math.cos(a) * 0.05, math.sin(a) * 0.05, 1.70); pm = (math.cos(a) * rr * 0.5, math.sin(a) * rr * 0.5, (1.7 + zt) / 2 + 0.15); p1 = (math.cos(a) * rr, math.sin(a) * rr, zt)
+        part('Limb', 0, 'bark_olive', lambda bm, q=(p0, pm, p1): _taper(bm, list(q), 0.06, 0.03, 8)); ends.append(p1)
+    _crown(ends, 6, (0.35, 0.7), (0.26, 0.4), 70, 'leaves_olive', up=0.6)
+
+
+BUILD = {'projector_vintage': projector_vintage, 'street_tree': street_tree, 'olive_tree': olive_tree, 'reel_wall': reel_wall, 'directors_chair': directors_chair, 'ring_light': ring_light, 'merch_shelf': merch_shelf, 'backdrop_stand': backdrop_stand}
 
 
 def reset():

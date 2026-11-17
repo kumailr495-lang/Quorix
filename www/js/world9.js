@@ -361,7 +361,10 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   const LX = 15.3, LZ = 11.0;
   for (const a of [0, 90, 180, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', LX + 2.4 * Math.cos(r), 0, LZ + 2.4 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }   // square to the axes: their collision boxes stay tight
   for (const a of [45, 135, 225, 315]) { const r = a * RAD; add('lobby', 'armchair_deco', LX + 3.4 * Math.cos(r), 0, LZ + 3.4 * Math.sin(r), Math.round((-r - Math.PI / 2) / (Math.PI / 2)) * Math.PI / 2, { swap: BOUCLE }); }
-  add('lobby', 'table_lounge', LX, 0, LZ); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, 16.2], [20.9, 16.2], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
+  add('lobby', 'table_lounge', LX, 0, LZ); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
+  // v12 (the user: "trees inside like a medieval tree"): an old olive tree in a travertine bowl in each front corner, by the glass (seen
+  // from the street too); they replace the corner palms
+  for (const x of [-20.5, 20.5]) add('lobby', 'olive_tree', x, 0, 16.0, x < 0 ? 0.6 : 2.4, { collide: false, round: 0.8 });
   for (const [x, yaw] of [[-6.0, 0.35], [6.0, -0.35]]) add('lobby', 'poster_totem', x, 0, 16.3, yaw);   // v10: out of the fountain court; v11 its posters: TOTEM_POSTERS
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
@@ -436,6 +439,12 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (let x = -44; x < 42; x += 8) if (Math.abs(x) >= 12 && Math.abs(Math.abs(x) - 20) >= 1) add('street', 'hedge_block', x, 0, 24.9, 0, { collide: false, ground: false });   // none under the lamps at +-20
   for (const x of [-14, -11.2, -8.4, -5.6, 14]) add('street', 'bollard_light', x, 0, 25.6);   // v12: none by the crossing, none along the taxi bay (x 6 to 13)
   add('street', 'planter_hedge', -15, 0, 21.2); add('street', 'planter_hedge', 15, 0, 21.2); add('street', 'planter_tree', -26, 0, 22); add('street', 'planter_tree', 26, 0, 22);
+  // v12 (the user: "balconies, an outer extension of shops, people, crosswalks, lamps, trees, plants"): the far pavement gets street trees
+  // in grated pits between its lamps (none on the crossing's landing), Café Noir's tables out under its awning, and box planters by the
+  // open door of the ramen bar (the hotel's door has its canopy). The trees' trunks collide (a round 0.3 m), the crowns stand over the walkers' heads
+  for (const x of [-42.5, -34.5, -9.6, 5.4, 13.6, 33.0]) add('street', 'street_tree', x, 0, 37.6, (x * 7.3) % 6.28, { ground: false, collide: false, round: 0.3 });
+  for (const tx of [-22.4, -19.2, -16.0]) { add('street', 'bistro_table', tx, 0, 39.05); add('street', 'bistro_chair', tx - 0.62, 0, 39.05, Math.PI / 2); add('street', 'bistro_chair', tx + 0.62, 0, 39.05, -Math.PI / 2); }
+  for (const x of [17.6, 20.6]) add('street', 'planter_hedge', x, 0, 39.2, 0, { scale: 0.7 });
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
   // v9.3 hall entrances (the user's ScreenX entrance photo; tools/blender/arch/rooms.py builds the portals): the hall's name in face-lit
   // letters over each portal, its number beside it, a bin; red armchairs along the bridge

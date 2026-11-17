@@ -17,7 +17,7 @@ export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club',
   // v10 (tools/blender/decor10.py): the fountain court, light columns, pendant clouds, the cafe, rugs, standees, the popcorn cart
   'fountain_tier', 'pendant_cloud', 'espresso_machine', 'cake_case', 'cafe_counter', 'rug_round', 'rug_runner', 'standee_base', 'popcorn_cart', 'bistro_table', 'bistro_chair', 'bar_stool', 'pos_terminal',
   // v11 the taxi's cabin for the Story arrival (tools/blender/cabin.py)
-  'taxi_cabin', 'hedge_block', 'projector_vintage', 'reel_wall', 'directors_chair', 'ring_light', 'merch_shelf', 'backdrop_stand'];
+  'taxi_cabin', 'hedge_block', 'projector_vintage', 'reel_wall', 'directors_chair', 'ring_light', 'merch_shelf', 'backdrop_stand', 'street_tree', 'olive_tree'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
