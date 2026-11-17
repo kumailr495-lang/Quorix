@@ -45,7 +45,8 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Ask | Status |
 |---|---|
 | The outside judged first: buildings, details, visible | Done (X2) |
-| Billboards out; balconies, shop extensions, people, crosswalks, lamps, trees, plants (11-17) | Open: Y4 |
+| Billboards out; balconies, shop extensions, people, crosswalks, lamps, trees, plants (11-17) | Partly: billboards out, balconies, shop fronts, people, crossings, cafe tables in; trees still blobby |
+| The outside from scratch: styling, curves, triangles, not boxes; the cinema front and the street buildings (11-17) | Open: three night concepts sent (A Bombay Deco, B Streamline, C Crystal) and a street concept; building the one picked |
 | Taxi comes from somewhere and leaves; not blocking the doors | Done (X2b) |
 | Car model 10x, night feeling in the cab, driver's head inside the roof | Done (X2d, W5, X1) |
 
