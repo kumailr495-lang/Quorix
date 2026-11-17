@@ -137,7 +137,7 @@ function billDraw(g, k, w, h) {
     g.strokeStyle = '#7ae0d0'; g.shadowColor = '#7ae0d0'; g.shadowBlur = 16; g.lineWidth = 5; g.beginPath(); g.arc(w * 0.27, h * 0.5, h * 0.3, 0, 7); g.stroke(); g.shadowBlur = 0; glowDot(g, w * 0.27, h * 0.5, h * 0.5, 'rgba(122,224,208,0.25)');
     g.fillStyle = '#f2f6f4'; g.textAlign = 'left'; g.font = `600 ${h * 0.34}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.05}px`; g.fillText('AURA', w * 0.5, h * 0.55); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.font = `400 ${h * 0.085}px ${SANS}`; g.fillStyle = '#a8d8d0'; g.fillText('eau de nuit', w * 0.51, h * 0.72); }
   else { wallFill(g, w, h, '#101c3c', '#0a1024'); g.strokeStyle = '#c9a35e'; g.lineWidth = 3; g.strokeRect(5, 5, w - 10, h - 10); g.textAlign = 'center'; g.fillStyle = '#e8c98a'; g.font = `600 ${h * 0.42}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.08}px`; g.fillText('LUMIÈRE', w / 2, h * 0.52); if ('letterSpacing' in g) g.letterSpacing = '0px';
-    g.font = `500 ${h * 0.13}px ${SANS}`; g.fillStyle = '#f4efe6'; g.fillText('FOUR SCREENS  ·  NOW SHOWING  ·  ACROSS THE STREET', w / 2, h * 0.8); }
+    g.font = `500 ${h * 0.13}px ${SANS}`; g.fillStyle = '#f4efe6'; }
 }
 function roadDraw(g, k, w, h) {
   g.clearRect(0, 0, w, h);

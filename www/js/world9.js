@@ -219,7 +219,7 @@ class Travelator {
 }
 // the lift (lift9.js): a through car with its controls in the world
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
-const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 320, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512 };   // canvas pixels per metre for boards with text or fine figures
+const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 640, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512 };   // canvas pixels per metre for boards with text or fine figures
 const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 function panelTexture(id, w, h, hooks) {
   const ppm = DENSE[id.split('_')[0]] || 128, px = Math.min(2048, Math.max(256, Math.round(w * ppm))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
@@ -332,24 +332,10 @@ export const PANEL_DRAW = {
     for (const [hmin, hmax, fill, edge, lit] of [[0.3, 0.55, '#1b1f45', 'rgba(217,180,106,.35)', false], [0.2, 0.42, '#121433', 'rgba(217,180,106,.6)', false], [0.1, 0.3, '#08091a', '#d9b46a', true]]) { let x = -10; while (x < W) { const bw = h * (0.1 + r() * 0.18); tower(x, bw, h * (hmin + r() * (hmax - hmin)), fill, edge, lit); x += bw + h * r() * 0.05; } }
     g.fillStyle = '#c9a35e'; g.fillRect(0, 0, W, Math.max(2, h * 0.012)); g.fillRect(0, h - Math.max(2, h * 0.012), W, Math.max(2, h * 0.012)); g.restore(); },
   // v10 art: original pictures drawn here (no outside images): a Deco sunburst, colour fields, a gold fan, the projector's beam, a city at dusk
-  art: (g, w, h, id) => { const n = +id.split('_')[1], r = rng(n * 13 + 1);
-    if (n === 1) { g.fillStyle = '#0f3b3c'; g.fillRect(0, 0, w, h); const cx = w / 2, cy = h * 0.72;
-      for (let i = 0; i < 18; i++) { const a0 = Math.PI + Math.PI * i / 18; g.fillStyle = i % 2 ? '#d9b46a' : '#efe0b3'; g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, h, a0, a0 + Math.PI / 36); g.closePath(); g.fill(); }
-      g.fillStyle = '#0f3b3c'; g.beginPath(); g.arc(cx, cy, w * 0.27, Math.PI, 0); g.fill(); g.fillStyle = '#d9b46a'; g.beginPath(); g.arc(cx, cy, w * 0.2, Math.PI, 0); g.fill(); g.fillRect(0, cy, w, h - cy);
-      g.fillStyle = '#0f3b3c'; for (let k = 0; k < 4; k++) g.fillRect(0, cy + (h - cy) * (0.16 + 0.21 * k), w, (h - cy) * 0.08); }
-    else if (n === 2) { g.fillStyle = '#d8c7a8'; g.fillRect(0, 0, w, h); const cols = ['#7a1e2c', '#c9852c', '#1d2340'];
-      for (let k = 0; k < 3; k++) { g.fillStyle = cols[k]; g.filter = `blur(${Math.max(1, w * 0.012)}px)`; g.fillRect(w * 0.09, h * (0.07 + k * 0.3), w * 0.82, h * 0.25); } g.filter = 'none'; }
-    else if (n === 3) { g.fillStyle = '#121214'; g.fillRect(0, 0, w, h); const cx = w / 2, cy = h * 0.92;
-      for (let k = 10; k >= 1; k--) { g.fillStyle = k % 2 ? '#c9a35e' : '#121214'; g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, w * 0.088 * k, Math.PI * 1.04, Math.PI * 1.96); g.closePath(); g.fill(); }
-      g.strokeStyle = '#efe0b3'; g.lineWidth = Math.max(1, w * 0.006); for (let i = 0; i <= 12; i++) { const a = Math.PI * (1.04 + 0.92 * i / 12); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * w * 0.88, cy + Math.sin(a) * w * 0.88); g.stroke(); } }
-    else if (n === 4) { const bg = g.createLinearGradient(0, 0, w, 0); bg.addColorStop(0, '#05060c'); bg.addColorStop(1, '#151b36'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
-      const sx = w * 0.86; g.fillStyle = '#e9e4d6'; g.fillRect(sx, h * 0.2, w * 0.05, h * 0.6);
-      const beam = g.createLinearGradient(w * 0.07, 0, sx, 0); beam.addColorStop(0, 'rgba(255,240,200,.8)'); beam.addColorStop(1, 'rgba(255,240,200,.1)'); g.fillStyle = beam; g.beginPath(); g.moveTo(w * 0.07, h * 0.47); g.lineTo(sx, h * 0.2); g.lineTo(sx, h * 0.8); g.lineTo(w * 0.07, h * 0.53); g.fill();
-      for (let i = 0; i < 220; i++) { const t = r(), x = w * 0.07 + t * (sx - w * 0.07), y = h * 0.5 + (r() - 0.5) * 2 * (h * 0.03 + t * h * 0.3); g.fillStyle = `rgba(255,245,215,${0.25 + r() * 0.55})`; g.fillRect(x, y, 1.5, 1.5); }
-      g.fillStyle = '#2a2a30'; g.fillRect(w * 0.01, h * 0.41, w * 0.07, h * 0.18); g.fillStyle = '#c9a35e'; g.beginPath(); g.arc(w * 0.03, h * 0.38, h * 0.06, 0, Math.PI * 2); g.arc(w * 0.07, h * 0.38, h * 0.06, 0, Math.PI * 2); g.fill(); }
-    else { const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#1b1f4a'); sky.addColorStop(0.62, '#b8513a'); sky.addColorStop(1, '#e3b25f'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
-      g.fillStyle = '#f2ebdd'; g.beginPath(); g.arc(w * 0.8, h * 0.22, h * 0.08, 0, Math.PI * 2); g.fill();
-      let x = 0; while (x < w) { const bw = w * (0.05 + r() * 0.08), bh = h * (0.18 + r() * 0.42); g.fillStyle = '#120f1c'; g.fillRect(x, h - bh, bw + 1, bh); for (let yy = h - bh + 6; yy < h - 6; yy += 7) for (let xx = x + 3; xx < x + bw - 3; xx += 6) if (r() < 0.3) { g.fillStyle = '#f2c46a'; g.fillRect(xx, yy, 2, 3); } x += bw; } } },
+  // v12 (the user: "paintings"): public-domain masterpieces from the Art Institute of Chicago (CC0 images, docs/LICENSES.md), each panel
+  // at its painting's own proportions so nothing is cropped; drawn when the picture arrives (a dark ground until then)
+  art: (g, w, h, id) => { const A = ARTWORK[id]; g.fillStyle = '#16120e'; g.fillRect(0, 0, w, h); if (!A) return;
+    const im = new Image(); im.onload = () => { g.drawImage(im, 0, 0, w, h); if (g.canvas.__tex) g.canvas.__tex.needsUpdate = true; }; im.src = 'art/' + A[0] + '.jpg'; },
   // v10 the cafe's menu board and its name over it (rooms.py places them on the walnut wall)
   cafemenu: (g, w, h) => { g.fillStyle = '#16110d'; g.fillRect(0, 0, w, h); g.strokeStyle = '#c9a35e'; g.lineWidth = Math.max(2, h * 0.012); g.strokeRect(h * 0.05, h * 0.05, w - h * 0.1, h - h * 0.1);
     const cols = [['COFFEE', [['Espresso', 160], ['Americano', 190], ['Cappuccino', 210], ['Café latte', 220], ['Mocha', 240]]], ['TEA & MORE', [['Masala chai', 150], ['Iced tea', 180], ['Hot chocolate', 220], ['Cold coffee', 230]]], ['SWEETS', [['Cheesecake', 260], ['Brownie', 180], ['Croissant', 160], ['Blueberry muffin', 170]]]];
@@ -396,12 +382,14 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // doors (their boards are FRAMED panels), a seating corner by the restrooms under its own small cloud
   add('lobby', 'fountain_tier', 0, 0, 10.0, 0, { round: 1.68, grp: 2 });   // grp 2: its lit water shimmers (materials.js GLOW_VERT)
   add('lobby', 'pendant_cloud', LX, LOBBY.ceil - 0.002, LZ, 0, { collide: false, ground: false, detail: 1 });   // over the lounge
-  for (const [cx, cz] of [[-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false });
+  // v12 (the user: "the carpet ... extends so badly and looks so bad"): no patterned rugs; a plain crimson pile with a charcoal edge where
+  // people sit, and a crimson runner from the doors to the brand ring (floor only: no ropes on the door axis)
+  const CRIMSON = { carpet_deco: [MAT.velvet, [0.20, 0.011, 0.019]], velvet_navy: [MAT.velvet, [0.022, 0.022, 0.026]] };
+  for (const [cx, cz] of [[-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false, swap: CRIMSON });
+  add('lobby', 'rug_runner', 0, 0, (13.3 + FACADE_Z - 0.45) / 2, 0, { collide: false, swap: CRIMSON, scale: [0.8, 1, (FACADE_Z - 0.45 - 13.3) / 4.0] });   // 0.22 m short of the ring's brass
   add('lobby', 'popcorn_cart', -12.6, 0, 2.6, Math.PI / 2 + 0.35);
-  // the box office queue and the concessions approach each get a patterned runner (the user: "make the reception and the buy area much defined")
-  add('lobby', 'rug_runner', -13.7, 0, 9.1, 0, { collide: false, scale: [0.5, 1, 1.75] }); add('lobby', 'rug_runner', -14.75, 0, -4.0, Math.PI / 2, { collide: false, scale: [0.62, 1, 0.92] });
   for (const [x, yaw] of [[-6.6, 0.885], [6.6, -0.885]]) add('lobby', 'standee_base', x, 0, 12.6, yaw, { collide: 0.02 });
-  add('lobby', 'rug_round', 19.4, 0, -10.8, 0, { collide: false }); add('lobby', 'side_table', 19.4, 0, -10.8);
+  add('lobby', 'rug_round', 19.4, 0, -10.8, 0, { collide: false, swap: CRIMSON }); add('lobby', 'side_table', 19.4, 0, -10.8);
   add('lobby', 'armchair_deco', 18.4, 0, -10.8, Math.PI / 2, { swap: SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null }); add('lobby', 'armchair_deco', 20.4, 0, -10.8, -Math.PI / 2, { swap: SAPPHIRE.velvet_ivory ? { velvet_mustard: SAPPHIRE.velvet_ivory } : null });
   add('lobby', 'pendant_cloud', 19.4, L1 - 0.322, -10.8, 0.6, { collide: false, ground: false, scale: 0.5, detail: 1 });
   // v10 cafe (the user: "the cafe and the latte much more defined"): the front counter with bar stools, the espresso machine on the back
@@ -508,6 +496,9 @@ function dressRooms(world) {
 // (depth + 4 mm), so a wall picture's centre is that far in front of the wall's face
 const ESC_BOX_Z = (() => { const [zi0, zi1] = escProfile(ESC.up).incline; return zi0 - 0.6 - 2.45 / (L1 - 0.85) * (zi0 - zi1); })();   // the back of the boxed-in escalator feet (rooms.py zk1)
 const ART = { room: 'lobby', yaw: 0, z: -13.6 + 0.034, frameCol: '#3e2618', frameMat: MAT.wood }, PIC = (o) => ({ room: 'lobby', depth: 0.03, ...o });
+// v12 the paintings: file (www/art), width / height; a slot's size is the largest at that proportion inside its box (fit: max w, max h)
+const ARTWORK = { art_1: ['vangogh_self', 0.785], art_2: ['two_sisters', 0.806], art_3: ['childs_bath', 0.659], art_4: ['rainy_day', 1.287], art_5: ['nocturne', 1.513], art_6: ['grande_jatte', 1.492], art_7: ['bedroom', 1.277] };
+const fitArt = (id, mw, mh) => { const a = ARTWORK[id][1]; return mw / mh > a ? { w: +(mh * a).toFixed(3), h: mh } : { w: mw, h: +(mw / a).toFixed(3) }; };
 const FRAMED = [
   PIC({ id: 'photowall', x: -7.0, y: 1.30, z: -5.48, yaw: 0, w: 3.10, h: 2.36, emit: 0.35, frame: 'thin' }),   // v12 between the backdrop stand's posts (7 mm into each, and into its top bar)
   PIC({ id: 'plaque_proj', x: CORE.x0 - 1.2 - 0.5 - 0.034, y: 0.62, z: -3.0, yaw: -Math.PI / 2, w: 0.42, h: 0.12, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the projector's plinth (world9.js DRESS)
@@ -515,8 +506,10 @@ const FRAMED = [
   PIC({ id: 'picto_m', x: 21.56 - 0.034, y: 1.35, z: -3.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
   PIC({ id: 'picto_f', x: 21.56 - 0.034, y: 1.35, z: 1.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
   ...[-7.7, 1.8, 11.3].map((z, i) => PIC({ id: 'mural_' + i, x: 21.6 - 0.034, y: 7.6, z, yaw: -Math.PI / 2, w: 9.2, h: 2.4, emit: 0.25, frame: 'thin' })),
-  ...[[-15.4, 1], [-12.8, 2], [-10.2, 3]].map(([x, n]) => PIC({ ...ART, id: 'art_' + n, x, y: 2.25, z: ART.z + 0.014, w: 0.8, h: 1.1 })),   // on the cafe's walnut (14 mm)
-  PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, z: ART.z + 0.014, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, z: ART.z + 0.014, w: 1.6, h: 1.1, frameCol: '#c9a35e', frameMat: MAT.brass }),   // on the rear wall's walnut (14 mm)
+  ...[[-15.4, 1], [-12.8, 2], [-10.2, 3]].map(([x, n]) => PIC({ ...ART, id: 'art_' + n, x, y: 2.25, z: ART.z + 0.014, ...fitArt('art_' + n, 0.8, 1.1), emit: 0.12 })),   // on the cafe's walnut (14 mm)
+  PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, z: ART.z + 0.014, ...fitArt('art_4', 1.6, 1.1), emit: 0.12, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, z: ART.z + 0.014, ...fitArt('art_5', 1.6, 1.1), emit: 0.12, frameCol: '#c9a35e', frameMat: MAT.brass }),   // on the rear wall's walnut (14 mm)
+  // v12 a gallery wall: two more over the east wall's velvet benches, on its stone panels (the pictograms' depth)
+  ...[['art_6', 5.0, 2.0, 1.4], ['art_7', -6.5, 1.7, 1.4]].map(([id, z, mw, mh]) => PIC({ id, x: 21.56 - 0.034, y: 2.35, z, yaw: -Math.PI / 2, ...fitArt(id, mw, mh), emit: 0.24, frameCol: '#c9a35e', frameMat: MAT.brass })),
   ...[[-6.6, 0.885, 'cosmos'], [6.6, -0.885, 'agent327']].map(([x, yaw, f]) => PIC({ id: `poster_${f}_s`, x: x + Math.sin(yaw) * 0.018, y: 0.98, z: 12.6 + Math.cos(yaw) * 0.018, yaw, w: 1.1, h: 1.7, emit: 0.6 })),
   ...[[9.85, 'bunny'], [11.55, 'llamigos']].map(([x, f]) => PIC({ id: `poster_${f}_s`, x, y: 1.12, z: ESC_BOX_Z - 0.034, yaw: Math.PI, w: 0.9, h: 1.4, emit: 0.6 })),   // v11 on the walnut under the escalators
   ...[[6.0, 'hero'], [14.5, 'wingit']].map(([x, f]) => PIC({ room: 'corridor', id: `poster_${f}_s`, x, y: L1 + 0.98, z: BRIDGE.z0 + 0.8 + 0.018, yaw: 0, w: 1.1, h: 1.7, emit: 0.6 })),
@@ -767,12 +760,15 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     // v11 a neighbouring room's furniture is drawn only from the rooms it can be made out from: the corridor's, the restrooms' and the
     // street's from the lobby (and their own room), the lobby's wherever the lobby itself is drawn. It switches only when you pass from
     // one room to another, as the rooms themselves do, never part way across a room (a threshold inside a room would make things pop).
-    // From the corridor this hides the street's and the restrooms' furniture, 40 m away through two openings: about 57,000 triangles.
-    const here = room || 'lobby', show = { corridor: here === 'corridor' || here === 'lobby', wc: here === 'wc' || here === 'lobby', street: here === 'street' || here === 'lobby' };
+    // v12 (the user: nothing may disappear while still in sight): which room sees which furniture is measured, not guessed:
+    // tools/blender/arch/pvs.py ray-tests every prop mesh from every room's eye points. The street's is seen from the corridor (through
+    // the lobby glass) and once from the restrooms' door, so it is hidden only in the spine and the halls; the lobby's deep props are seen
+    // from the street through the glass (the chandelier among them), so they are never hidden
+    const here = room || 'lobby', show = { corridor: here === 'corridor' || here === 'lobby', wc: here === 'wc' || here === 'lobby', street: here === 'street' || here === 'lobby' || here === 'corridor' || here === 'wc' };
     for (const k in show) { const rm = world.rooms[k]; if (!rm) continue; if (!rm.propMeshes || !rm.propMeshes.length) rm.propMeshes = rm.group.children.filter((o) => o.name === k + '-props' || o.name === k + '-propglow');   // looked up again until the props exist (reflections are captured before them)
       for (const m of rm.propMeshes) m.visible = all || world.propCull === false || show[k]; }
     const lob = world.rooms.lobby; if (lob) { if (!lob.deepMeshes || !lob.deepMeshes.length) lob.deepMeshes = lob.group.children.filter((o) => o.name === 'lobby-propsdeep' || o.name === 'lobby-propglowdeep');
-      for (const m of lob.deepMeshes) m.visible = all || world.propCull === false || here !== 'street'; }
+      for (const m of lob.deepMeshes) m.visible = true; }
   };
   world.update = (dt, actors, now) => {
     for (const d of world.doors) d.update(dt, actors); const lob = world.rooms.lobby.group.visible;

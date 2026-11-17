@@ -140,6 +140,14 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   LED wall slides posters past its edges). `?textcheck=1` logs every fit in `window.__textFit`. Small 3D lettering is avoided (font
   T-junctions): captions are engine panels (`plaque_proj`).
 - **docs/ASKS-LEDGER.md**: every ask since the v8 phone test, grouped, with its status. Update it when an ask moves.
+- **Lobby look (Y3, the user's v8 photos are the benchmark)**: Nero Marquina floor (id 33, soft gloss), red marble (id 34 is the
+  `rosso` scan again; rooms.py `ROSSO` tint) for the border, the brand disc and every column, dark walnut flutes behind the counters,
+  darker stone panels on the east wall, a crimson lacquer outer cove. No patterned rugs: world9.js `CRIMSON` swap on the remaining carpets
+  and a runner from the doors to the brand ring (floor only, no ropes on the door axis).
+- **Paintings**: www/art/*.jpg, public-domain works from the Art Institute of Chicago (CC0; docs/LICENSES.md); world9.js `ARTWORK`
+  (file, width/height) and `fitArt` size each frame to its painting, so nothing is cropped.
+- **What a room may hide** is measured: `blender ... --python tools/blender/arch/pvs.py -- --eyes OUT/eyes.json --engine OUT/engine.json`
+  (from zcheck.sh's dump) prints which rooms see each prop mesh. world9.js setVisibility hides a mesh only from rooms that never see it.
 
 ## v11 (2026-11-14; docs/V11-RESEARCH.md)
 - **Escalator and lift hall** (the user: "make the escalator and the elevator area one and a separate area"): building.js `CORE`, rooms.py

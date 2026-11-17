@@ -48,8 +48,9 @@ export const LIB = {
   // light emitters inside instanced props (seat under-glow, cup-holder rings): the tint is the light colour, drawn at full strength
   32: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 1, metal: 0, nstr: 0, spec: 0, emit: 1, macro: 0 },
   // v7 (docs/V7-DESIGN.md): polished Nero Marquina (lobby), honed limestone and the corridor carpet, polished black terrazzo, granite pavers
-  33: { tex: 'nero', mode: 'abs', mpt: 1.6, rough: 0.07, metal: 0, nstr: 0.15, spec: 1.5, macro: 0.06, detile: 1 },
-  34: { tex: 'nero_gold', mode: 'abs', mpt: 1.6, rough: 0.08, metal: 0, nstr: 0.15, spec: 1.4, macro: 0.06, detile: 1 },
+  33: { tex: 'nero', mode: 'abs', mpt: 1.6, rough: 0.12, metal: 0, nstr: 0.15, spec: 1.2, macro: 0.06, detile: 1 },   // v12: a soft gloss, not a mirror
+  // v12 (the user's v8 photos): id 34 is Rosso Levanto again (v9.1 had pointed it at the black-and-gold scan; neroGold, 43, is that one)
+  34: { tex: 'rosso', mode: 'abs', mpt: 1.6, rough: 0.12, metal: 0, nstr: 0.15, spec: 1.2, macro: 0.06, detile: 1 },
   35: { tex: 'travertine', mode: 'abs', mpt: 1.2, rough: 0.3, metal: 0, nstr: 0.1, spec: 0.8, emit: 0.9, macro: 0 },
   36: { tex: 'stone_rel', mode: 'rel', mpt: 1.2, rough: 0.5, metal: 0, nstr: 0.5, spec: 0.6, macro: 0.15, detile: 1 },
   37: { tex: 'carpet_dolby', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6, macro: 0.18 },

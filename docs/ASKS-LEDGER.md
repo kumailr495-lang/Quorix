@@ -22,10 +22,10 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 
 | Ask | Status |
 |---|---|
-| Premium, like the v8 lobby (dark, red, brass, glowing type) | Open: Y3 brings the interior back to that language |
+| Premium, like the v8 lobby (dark, red, brass, glowing type) | Done for the lobby 11-17 (black marble, red marble, crimson cove, runner); corridor and halls next |
 | Midnight, not evening (street) | Done 11-17 (X2g) |
 | No emptiness anywhere, decorations that make sense | Partly: lobby dressed (exhibit, photo spot, cafe, fountain); corridor and halls next |
-| Carpets, an old tree, a statue, paintings (11-17) | Open: Y3 |
+| Carpets, an old tree, a statue, paintings (11-17) | Partly: carpets and seven real paintings done; the statue and the tree are next |
 | Good textures, not one colour; real scans | Done for floors and walls (CC0 scans); props partly |
 | Lighting not hard, accents, less bounce | Partly: Cycles bakes; to be re-graded in Y3 |
 | Reflections not too strong | Partly: soft by default; re-check in Y3 |
@@ -36,7 +36,7 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Ask | Status |
 |---|---|
 | No z-fighting, no see-through, nothing floating or disconnected | Done for the built rooms and checked props: zcheck 0/0, glb_check, connect |
-| Nothing disappearing while in sight (11-17) | Open: Y5 (the lobby's deep props hide from the street) |
+| Nothing disappearing while in sight (11-17) | Done for furniture: visibility rules now come from a ray test (pvs.py); LOD audit open |
 | Text never cropped in pictures (11-13, 11-17) | Done 11-17 (Y1): every canvas line fits its picture; photo wall redesigned |
 | Full screen, no blocked strip | Partly: cutout handled; not seen on the phone |
 

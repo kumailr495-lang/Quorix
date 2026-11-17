@@ -92,13 +92,16 @@ def lights_grid(lit, acc, glow, x0, z0, x1, z1, y, step, col, I, r, ch='h', can=
                 acc.cyl(x, z, 0.08, y - 0.02, y + 0.001, MAT['metal'], lin('#2a2a2e'), n=12)
                 glow.quad((x - 0.055, y - 0.022, z - 0.055), (x + 0.055, y - 0.022, z - 0.055), (x + 0.055, y - 0.022, z + 0.055), (x - 0.055, y - 0.022, z + 0.055), col, 2.2)
 
+ROSSO = lin('#c4847e')   # v12 the lobby's red marble, a shade deeper than the scan
+
+
 def grand_column(acc, glow, lit, cx, cz, H, r=0.42):
     """v11 (the user: "the pillars are half made and placed in the lobby"): a column that carries the roof. Black-and-gold marble shaft on a
     stepped plinth, a brass band at 3 m, a stepped Deco capital in brass under the ceiling with a lit ring, an uplight in the floor on four
     sides. Everything is a closed cylinder; steps differ in radius, so no two faces share a plane."""
     brass = lin('#b8893c')
     acc.cyl(cx, cz, r + 0.16, 0.0, 0.14, MAT['neroGold'], lin('#ffffff'), n=32); acc.cyl(cx, cz, r + 0.07, 0.14, 0.22, MAT['brass'], brass, n=32)
-    acc.cyl(cx, cz, r, 0.22, H - 0.86, MAT['neroGold'], lin('#ffffff'), n=32)
+    acc.cyl(cx, cz, r, 0.22, H - 0.86, MAT['rosso'], ROSSO, n=32)   # v12: red marble shafts (the user's v8 photos)
     acc.cyl(cx, cz, r + 0.014, 2.96, 3.04, MAT['brass'], brass, n=32)
     for rr, ya, yb in ((r + 0.05, H - 0.86, H - 0.7), (r + 0.15, H - 0.7, H - 0.52), (r + 0.28, H - 0.52, H - 0.3), (r + 0.4, H - 0.3, H - 0.2)):
         acc.cyl(cx, cz, rr, ya, yb, MAT['brass'], brass, n=32)
@@ -262,23 +265,24 @@ def build_lobby(S):
     acc, glow = Acc(), Glow(); lit = Lights([x0, z0, x1, z1], H)
     P = {k: lin(v) for k, v in S['PALETTE']['lobby'].items()}; B = {k: lin(v) for k, v in S['PALETTE']['brand'].items()}
     rnd = random.Random(3)
-    # floor: warm stone; a brand ring inlaid in front of the doors (champagne terrazzo ring, ink terrazzo disc)
-    slab(acc, x0, z0, x1, z1, 0.0, 0.3, MAT['lobbyMarble'], lin('#f7f2ea'))   # exactly the room: the neighbours' floors meet it at the doors
+    # floor (v12, the user's v8 photos are the benchmark for premium): polished Nero Marquina, a red marble border and a red marble disc
+    # in a champagne terrazzo ring in front of the doors
+    slab(acc, x0, z0, x1, z1, 0.0, 0.3, MAT['nero'], lin('#e6e6e6'))   # exactly the room: the neighbours' floors meet it at the doors
     # v9.1: a black-and-gold marble border 0.5 m in from the walls (Allu-style), 5 mm proud (v11: 3 mm is under the depth buffer's step
     # across the lobby); it stops at the doors and the counters
     for (bx0, bz0, bx1, bz1) in ((x0 + 0.5, z0 + 0.5, x0 + 0.8, z1 - 0.5), (x1 - 0.8, z0 + 0.5, x1 - 0.5, z1 - 0.5), (x0 + 0.8, z1 - 0.8, -2.6, z1 - 0.5), (2.6, z1 - 0.8, x1 - 0.8, z1 - 0.5)):
         if bx0 < -16.6 and bx1 < -16.0: continue   # behind the box office and the concessions: the staff side
-        acc.box(bx0, 0.0, bz0, bx1, 0.005, bz1, MAT['neroGold'], lin('#ffffff'))
+        acc.box(bx0, 0.0, bz0, bx1, 0.005, bz1, MAT['rosso'], ROSSO)
     for i in range(48):
         a0, a1 = 2 * math.pi * i / 48, 2 * math.pi * (i + 1) / 48
-        for r0, r1, mat, col, yy in ((0.0, 2.6, MAT['neroGold'], lin('#ffffff'), 0.005),   # v9.1: black-and-gold marble (it read as a black hole)
+        for r0, r1, mat, col, yy in ((0.0, 2.6, MAT['rosso'], ROSSO, 0.005),   # v12 red marble (v9.1 black-and-gold read as a black hole on cream)
                                       (2.6, 3.0, MAT['terrazzo'], P['champagne'], 0.006), (3.0, 3.08, MAT['brass'], B['gold'], 0.008)):
             cx, cz = 0.0, 10.0
             p = [(cx + r0 * math.cos(a0), yy, cz + r0 * math.sin(a0)), (cx + r1 * math.cos(a0), yy, cz + r1 * math.sin(a0)), (cx + r1 * math.cos(a1), yy, cz + r1 * math.sin(a1)), (cx + r0 * math.cos(a1), yy, cz + r0 * math.sin(a1))]
             acc.quad(p[0], p[3], p[2], p[1], mat, col) if r0 > 0 else acc.tri(p[0], p[2], p[1], mat, col)
     # roof slab and walls (thickness 0.4; the facade is glass between bronze mullions)
     slab(acc, x0 + 0.02, z0 + 0.02, x1 - 0.02, z1 - 0.02, H + 0.4, 0.4, MAT['paint'], P['charcoal'])   # inside the walls
-    acc.wall((x0 + 0.2, z0), (x0 + 0.2, z1), -0.3, H + 0.4, 0.4, MAT['fluted'], P['champagne'])                     # west
+    acc.wall((x0 + 0.2, z0), (x0 + 0.2, z1), -0.3, H + 0.4, 0.4, MAT['fluted'], lin('#4a3226'))                     # west: v12 dark walnut flutes
     acc.wall((x1 - 0.2, z1), (x1 - 0.2, z0), -0.3, H + 0.4, 0.4, MAT['paint'], mix(P['charcoal'], P['stone'], 0.25),     # east: restroom door
              openings=[(z1 - (-1.0) - 1.1, z1 - (-1.0) + 1.1, 2.6, -0.3)])
     # v9.1: the east wall was one flat colour (the user: "empty", "one colour pasted everywhere"): honed travertine panels 1.2 x 2.0 m with
@@ -290,7 +294,7 @@ def build_lobby(S):
         zb_ = min(zz + 1.2, z1 - 0.4)
         for yy, hh in ((0.15, 2.51), (2.66, 1.75), (4.41, 1.74)):
             if yy < 2.6 and zb_ > zw0 - 0.25 and zz < zw1 + 0.25: continue   # the door
-            acc.box(xe - 0.04, yy + 0.006, zz + 0.006, xe, yy + hh - 0.006, zb_ - 0.006, MAT['travertine'], lin('#f4efe7'))
+            acc.box(xe - 0.04, yy + 0.006, zz + 0.006, xe, yy + hh - 0.006, zb_ - 0.006, MAT['travertine'], lin('#8c7c6e'))   # v12 a darker stone
         zz = zb_
     acc.box(xe - 0.05, 6.15, z0 + 0.4, xe, 6.2, z1 - 0.4, MAT['brass'], P['champagne'])
     for zf in (zw0 - 0.06, zw1):
@@ -326,7 +330,7 @@ def build_lobby(S):
         glow_facing(glow, (gx_ - 0.09, L1 - 0.322, zc_ - 0.09), (gx_ + 0.09, L1 - 0.322, zc_ - 0.09), (gx_ + 0.09, L1 - 0.322, zc_ + 0.09), (gx_ - 0.09, L1 - 0.322, zc_ + 0.09), (0, -1, 0), lin('#ffdcb0'), 2.4)
         lit.spot((gx_, L1 - 0.36, zc_), lin('#ffd8a8'), 1.5, 5.0, 'h', (0, -1, 0), 24, 52)
     for cx in (-18.0, -10.0, -2.0, 6.0, 18.0):
-        acc.cyl(cx, MZ['z1'] - 0.5, 0.3, 0.12, L1 - 0.44, MAT['neroGold'], lin('#ffffff'), n=24)
+        acc.cyl(cx, MZ['z1'] - 0.5, 0.3, 0.12, L1 - 0.44, MAT['rosso'], ROSSO, n=24)   # v12 red marble like the court's
         acc.cyl(cx, MZ['z1'] - 0.5, 0.36, 0.0, 0.12, MAT['brass'], P['champagne'], n=24); acc.cyl(cx, MZ['z1'] - 0.5, 0.34, L1 - 0.44, L1 - 0.32, MAT['brass'], P['champagne'], n=24)
         lit.spot((cx, 0.05, MZ['z1'] - 0.12), lin('#ffd9a8'), 0.6, 4.5, 'h', (0, 1, -0.25), 15, 35)   # an uplight grazing each column
     # the rail runs round the void except where the escalators arrive (its back edge, over the steps: v9 route test found it closed)
@@ -346,7 +350,8 @@ def build_lobby(S):
         for (ccx, ccz) in COLS:
             clear = min(math.hypot(px - ccx, pz - ccz) for px, pz in pts) - 0.35 - COL_CAP_R
             if clear < 0.1: raise SystemExit(f'ceiling ring {R0} m passes {clear:.2f} m from the column at ({ccx}, {ccz}): move one of them')
-        acc.sweep(pts, [(-0.35, yy), (-0.35, yy - 0.28), (0.35, yy - 0.28), (0.35, yy)], MAT['paint'], mix(P['charcoal'], P['stone'], 0.15), closed=True)
+        outer = R0 == RINGS[0][0]   # v12: the outer cove is crimson lacquer (the v8 lobby's red ring); the inner two stay charcoal
+        acc.sweep(pts, [(-0.35, yy), (-0.35, yy - 0.28), (0.35, yy - 0.28), (0.35, yy)], MAT['lacquer'] if outer else MAT['paint'], lin('#7a1420') if outer else mix(P['charcoal'], P['stone'], 0.15), closed=True)
         sc = lambda px, pz, k: (RCX + (px - RCX) * k, RCZ + (pz - RCZ) * k)
         for i in range(64):
             (ax, az), (bx, bz) = pts[i], pts[i + 1]; a1, b1, b2, a2 = sc(ax, az, 0.97), sc(bx, bz, 0.97), sc(bx, bz, 0.94), sc(ax, az, 0.94)

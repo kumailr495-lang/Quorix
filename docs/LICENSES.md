@@ -35,6 +35,7 @@ non-commercial clause, and no real person's voice or likeness.
 | Film posters and light/cue tracks | `www/films/*.jpg`, `*.json` | made from the Blender open movies by `tools/films/analyse.py` | CC BY 3.0 / 4.0, credited in the app (Credits) |
 | Open films (streamed or saved on the phone, not in the APK) | archive.org | Blender Foundation / Blender Studio | CC BY 3.0 / 4.0, credited in the booking sheet and Credits |
 | YouTube links | YouTube's own embedded player | the viewer's link | YouTube Terms of Service (the app does not download or alter it) |
+| Seven paintings in the lobby: Caillebotte, *Paris Street; Rainy Day* (1877, AIC 20684); Whistler, *Nocturne: Blue and Gold, Southampton Water* (1872, 56905); van Gogh, *Self-Portrait* (1887, 80607) and *The Bedroom* (1889, 28560); Renoir, *Two Sisters (On the Terrace)* (1881, 14655); Cassatt, *The Child's Bath* (1893, 111442); Seurat, *A Sunday on La Grande Jatte* (1884-86, 27992) | `www/art/*.jpg` (843 px, re-encoded) | Art Institute of Chicago open access (api.artic.edu, IIIF), every work marked `is_public_domain` | CC0 1.0 (AIC: images of public-domain works) |
 
 ## Wrapper (tools/android/)
 
