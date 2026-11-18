@@ -59,6 +59,13 @@ def lights_along(lit, path, y, col, ipm, every=3.0, d=0.3, r=7.0):
             lit.line((a[0], y, a[1]), (b[0], y, b[1]), col, ipm, r, 'f', (-tz / L, -0.15, tx / L)); acc_.append(b); run = 0.0
 
 
+def disc_z(glow, x, y, z, r, col, k):
+    """a round light facing the street (+z): an octagon in three quads (a porthole's glass)"""
+    oc = [(x + r * math.cos(math.pi / 8 + q * math.pi / 4), y + r * math.sin(math.pi / 8 + q * math.pi / 4)) for q in range(8)]
+    for qd in ((0, 1, 2, 3), (0, 3, 4, 7), (4, 5, 6, 7)):
+        glow_facing(glow, *[(oc[q][0], oc[q][1], z) for q in qd], (0, 0, 1), col, k)
+
+
 def wing_paths(F, xe, side, a_from):
     """a wing's face path for one side (+1 east, -1 west), oriented so 'left of travel' is outward: from the corner at angle a_from
     (degrees on the east corner; 180 = at the glass edge, 90 = where the corner meets the wing face) round to the wing face, then along it
@@ -168,4 +175,105 @@ def build(acc, glow, lit, F, xw, xe, extras):
             acc.prism(bar, 5.05, 5.17, MAT['powder'], BRONZE, smooth=30.0)
             glow_facing(glow, (x - pw / 2 + 0.05, 5.044, zw + 0.15), (x + pw / 2 - 0.05, 5.044, zw + 0.15), (x + pw / 2 - 0.05, 5.044, zw + 0.35), (x - pw / 2 + 0.05, 5.044, zw + 0.35), (0, -1, 0), lin('#ffe8c8'), 2.0)
             lit.area((x, 5.0, zw + 0.3), (pw / 2 - 0.1, 0, 0), (0, 0, 0.1), (0, -1, -0.5), lin('#ffe3be'), 2.4, 7, 'h', 3, 1)
+    behind(acc, glow, lit, F, atlas)
     return panels, atlas
+
+
+def behind(acc, glow, lit, F, atlas):
+    """v12b (the user, 11-18: "there's no design for the theatre outside, just a front; add some design to it and extensions"): the wings
+    were 13.5 m of blank render and nothing stood behind the front. Now the building has depth and a skyline:
+      tower    a D-shaped tower over the east corner drum (r 2.5, its flat back on the facade line + 0.1) to 23 m: five lit glass slots,
+               three speed rings near the top, a cap with a gold soffit, a mast with a red light (the fin answers it on the west)
+      crown    a stepped crown over the letters (three steps to 18.4 m) with a gold sunburst and gold lines on its steps
+      lounges  a set-back upper storey on each wing (1.6 m deep, 1.35 m behind the wing's face, up to 17.6 m): a ribbon of lit windows
+               behind slim bronze mullions, an eyebrow roof with a gold soffit (the west one stops at the fin)
+      wings    over each showcase a glass-block window in a bronze frame, under the cornice a porthole in a bronze ring
+      canopy   a slim black canopy across the glass front, its ends following the drums, a gold line on its edge, downlights;
+               it runs into the marquee's sides"""
+    BR = lin('#5a4128')
+    # ---------------------------------------------------------------- the east tower
+    tx, tz, tr = GX + RC, F + 0.1, 2.5
+    D = arc(tx, tz, tr, 0.0, math.pi, 24)
+    acc.prism(D, 13.45, 23.0, MAT['plaster'], CREAM, smooth=30.0)   # 5 cm into the wing, through the drum's top
+    for th_ in (18.0, 54.0, 90.0, 126.0, 162.0):   # the lit glass slots, 6 mm off the curve
+        t = math.radians(th_); nx, nz = math.cos(t), math.sin(t); px, pz = tx + (tr + 0.006) * nx, tz + (tr + 0.006) * nz; ux, uz = -nz * 0.16, nx * 0.16
+        glow_facing(glow, (px - ux, 15.0, pz - uz), (px + ux, 15.0, pz + uz), (px + ux, 21.0, pz + uz), (px - ux, 21.0, pz - uz), (nx, 0.0, nz), lin('#ffd9a0'), 1.9)
+        lit.line((px + nx * 0.3, 15.2, pz + nz * 0.3), (px + nx * 0.3, 20.8, pz + nz * 0.3), lin('#ffd9a0'), 0.18, 4.0, 'f', (nx, 0.0, nz))
+    ring = arc(tx, tz, tr, math.pi, 0.0, 24)   # clockwise: outward on the left
+    for y in (21.5, 21.9, 22.3):
+        acc.band(ring, y, y + 0.12, -0.02, 0.06, MAT['tblack'], BLACKG); strip(glow, ring, 0.066, y + 0.04, y + 0.08, GOLDN, 2.6)
+    cap = arc(tx, tz + 0.02, tr + 0.2, 0.0, math.pi, 24)
+    acc.prism(cap, 22.98, 23.3, MAT['plaster'], CREAM, smooth=30.0)   # 2 cm into the tower, its back 2 cm in front of the tower's
+    soffit_strip(glow, ring, 0.06, 0.15, 22.974, GOLDN, 2.4)
+    acc.cyl(tx, F + 1.0, 0.05, 23.28, 26.6, MAT['metal'], lin('#2a2a2e'), n=8)   # the mast, 2 cm into the cap
+    acc.box(tx - 0.07, 26.58, F + 0.93, tx + 0.07, 26.74, F + 1.07, MAT['powder'], lin('#1a1a1c'))
+    for (nx, nz) in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        cx_, cz_ = tx + nx * 0.076, F + 1.0 + nz * 0.076; ux, uz = -nz * 0.05, nx * 0.05
+        glow_facing(glow, (cx_ - ux, 26.6, cz_ - uz), (cx_ + ux, 26.6, cz_ + uz), (cx_ + ux, 26.72, cz_ + uz), (cx_ - ux, 26.72, cz_ - uz), (nx, 0, nz), lin('#ff2a1a'), 3.0)
+    for a in (35.0, 90.0, 145.0):   # floodlights on the wing roof washing the tower
+        t = math.radians(a); lit.spot((tx + 3.4 * math.cos(t), 13.7, tz + 3.4 * math.sin(t)), lin('#ffe0b8'), 2.6, 12, 'h', (-math.cos(t) * 0.3, 1.0, -math.sin(t) * 0.3), 14, 30)
+    # ---------------------------------------------------------------- the crown over the letters
+    zc0, zc1 = F + 3.95, F + 4.35
+    crown = [(-6.6, 14.56), (6.6, 14.56), (6.6, 16.0), (4.9, 16.0), (4.9, 17.2), (3.0, 17.2), (3.0, 18.4), (-3.0, 18.4), (-3.0, 17.2), (-4.9, 17.2), (-4.9, 16.0), (-6.6, 16.0)]
+    acc.prism_z(crown, zc0, zc1, MAT['plaster'], CREAM)   # 2 cm into the band's top, behind its cornice
+    zg = zc1 + 0.006
+    for (x0_, x1_, y_) in ((4.9, 6.6, 16.0), (3.0, 4.9, 17.2), (-3.0, 3.0, 18.4), (-6.6, -4.9, 16.0), (-4.9, -3.0, 17.2)):   # gold lines under each step's edge
+        glow_facing(glow, (x0_ + 0.03, y_ - 0.08, zg), (x1_ - 0.03, y_ - 0.08, zg), (x1_ - 0.03, y_ - 0.03, zg), (x0_ + 0.03, y_ - 0.03, zg), (0, 0, 1), GOLDN, 2.6)
+    for (x_, y0_, y1_) in ((6.6, 14.85, 16.0), (4.9, 16.0, 17.2), (3.0, 17.2, 18.4)):   # and up each riser
+        for sg in (-1, 1):
+            xa_, xb_ = sorted((sg * (x_ - 0.03), sg * (x_ - 0.08)))
+            glow_facing(glow, (xa_, y0_ + 0.03, zg), (xb_, y0_ + 0.03, zg), (xb_, y1_ - 0.08, zg), (xa_, y1_ - 0.08, zg), (0, 0, 1), GOLDN, 2.6)
+    for ang, L in ((10, 4.7), (30, 3.9), (50, 4.1), (70, 3.4), (90, 3.1), (110, 3.4), (130, 4.1), (150, 3.9), (170, 4.7)):   # the sunburst
+        t = math.radians(ang); dx, dy = math.cos(t), math.sin(t); px, py = -dy * 0.025, dx * 0.025
+        a0, a1 = (dx * 0.7, 15.0 + dy * 0.7), (dx * L, 15.0 + dy * L)
+        glow_facing(glow, (a0[0] - px, a0[1] - py, zg), (a1[0] - px, a1[1] - py, zg), (a1[0] + px, a1[1] + py, zg), (a0[0] + px, a0[1] + py, zg), (0, 0, 1), GOLDN, 2.2)
+    sun = [(0.5 * math.cos(math.pi * i / 8), 15.0 + 0.5 * math.sin(math.pi * i / 8)) for i in range(9)]
+    for i in range(0, 8, 2):
+        glow_facing(glow, (0.0, 15.0, zg), (sun[i][0], sun[i][1], zg), (sun[i + 1][0], sun[i + 1][1], zg), (sun[i + 2][0], sun[i + 2][1], zg), (0, 0, 1), GOLDN, 2.4)
+    lit.area((0.0, 16.4, zc1 + 1.2), (4.5, 0, 0), (0, 1.2, 0), (0, -0.25, -1), lin('#ffe2b8'), 2.0, 9, 'f', 4, 2)
+    # ---------------------------------------------------------------- the lounges on the wings
+    zb_, zf_ = F + 0.05, F + 1.65
+    for side in (-1, 1):
+        xa, xb = (26.8, 40.6) if side > 0 else (28.4, 40.6)   # east: from inside the tower; west: from inside the fin
+        xr = xb - 0.8
+        plan = [(xa, zb_), (xr, zb_)] + arc(xr, (zb_ + zf_) / 2, 0.8, -math.pi / 2, math.pi / 2, 12)[1:-1] + [(xr, zf_), (xa, zf_)]
+        plan = [(side * x, z) for x, z in plan]
+        acc.prism(plan, 13.45, 17.6, MAT['plaster'], CREAM, smooth=30.0)   # 5 cm into the wing's roof
+        w0, w1 = xa + 0.8, xr - 0.2   # the window ribbon on the straight face
+        glow_facing(glow, (side * w0, 14.9, zf_ + 0.006), (side * w1, 14.9, zf_ + 0.006), (side * w1, 16.75, zf_ + 0.006), (side * w0, 16.75, zf_ + 0.006), (0, 0, 1), lin('#ffd2a0'), 1.5)
+        for (ya_, yb_) in ((14.78, 14.86), (16.79, 16.87)):   # sill and head, 2 cm into the face, 8 cm proud
+            x0_, x1_ = sorted((side * (w0 - 0.2), side * (w1 + 0.2))); acc.box(x0_, ya_, zf_ - 0.02, x1_, yb_, zf_ + 0.08, MAT['powder'], BR)
+        nm = int((w1 - w0) / 1.5)
+        for j in range(nm + 1):   # the mullions, ends in the sill and the head
+            xm = side * (w0 + j * (w1 - w0) / nm); acc.box(xm - 0.03, 14.82, zf_ - 0.02, xm + 0.03, 16.83, zf_ + 0.06, MAT['powder'], BR)
+        lit.line((side * w0, 15.8, zf_ + 0.4), (side * w1, 15.8, zf_ + 0.4), lin('#ffd2a0'), 0.25, 5.0, 'f', (0, -0.2, 1))
+        ea = xa if side > 0 else 28.6   # the eyebrow: west of the fin it stops 14 cm short of the blade sign's plane
+        zbb = zb_ + 0.03   # its back 3 cm in front of the lounge's (their two backs would share a plane where they overlap)
+        brow = [(ea, zbb), (xr, zbb)] + arc(xr, (zbb + zf_ + 0.9) / 2, (zf_ + 0.9 - zbb) / 2, -math.pi / 2, math.pi / 2, 12)[1:-1] + [(xr, zf_ + 0.9), (ea, zf_ + 0.9)]
+        acc.prism([(side * x, z) for x, z in brow], 17.55, 17.8, MAT['plaster'], CREAM, smooth=30.0)
+        s0, s1 = sorted((side * (ea + 0.3), side * (xr - 0.1)))
+        glow_facing(glow, (s0, 17.544, zf_ + 0.55), (s1, 17.544, zf_ + 0.55), (s1, 17.544, zf_ + 0.7), (s0, 17.544, zf_ + 0.7), (0, -1, 0), GOLDN, 2.4)
+        lit.line((s0, 17.4, zf_ + 0.6), (s1, 17.4, zf_ + 0.6), GOLDN, 0.2, 4.0, 'f', (0, -1, 0.3))
+        # ------------------------------------------------------------ glass-block windows and portholes over the showcases
+        for xc in (31.0, 37.0, 43.0):
+            x = side * xc; zw = F + WD
+            acc.box(x - 0.86, 6.42, zw - 0.02, x + 0.86, 9.68, zw + 0.05, MAT['powder'], BR)
+            atlas.append({'k': 'blocks', 'v': 'glass', 'x': x, 'y': 8.05, 'z': zw + 0.056, 'yaw': 0, 'w': 1.6, 'h': 3.1, 'e': 0.95, 'fx': 0})
+            lit.area((x, 8.05, zw + 0.35), (0.7, 0, 0), (0, 1.4, 0), (0, 0, 1), lin('#ffd2a0'), 1.0, 5, 'f', 2, 2)
+            for half in ((0.0, math.pi), (math.pi, 2 * math.pi)):   # the porthole's ring in two halves (an annulus is no simple polygon)
+                out_ = [(x + 0.58 * math.cos(half[0] + (half[1] - half[0]) * i / 12), 12.15 + 0.58 * math.sin(half[0] + (half[1] - half[0]) * i / 12)) for i in range(13)]
+                in_ = [(x + 0.47 * math.cos(half[0] + (half[1] - half[0]) * i / 12), 12.15 + 0.47 * math.sin(half[0] + (half[1] - half[0]) * i / 12)) for i in range(13)]
+                acc.prism_z(out_ + in_[::-1], zw - 0.02, zw + 0.06, MAT['brass'], lin('#9a7340'))
+            disc_z(glow, x, 12.15, zw + 0.006, 0.46, lin('#ffcf8a'), 1.7)
+            lit.point((x, 12.15, zw + 0.5), lin('#ffcf8a'), 0.25, 3.5, 'f')
+    # ---------------------------------------------------------------- the canopy across the glass front
+    zs = [F + 0.012 + (2.2 - 0.012) * i / 6 for i in range(7)]
+    east = [(GX + RC - math.sqrt(max(0.0, 2.85 ** 2 - (z - F) ** 2)), z) for z in zs]
+    cplan = [(-x, z) for x, z in east] + east[::-1]
+    acc.prism(cplan, 4.98, 5.24, MAT['lacquer'], lin('#0a0a0c'), smooth=30.0)   # its ends 15 cm inside the drums; through the marquee's sides
+    for (x0_, x1_) in ((-east[-1][0] + 0.05, -7.6), (7.6, east[-1][0] - 0.05)):
+        glow_facing(glow, (x0_, 5.07, F + 2.206), (x1_, 5.07, F + 2.206), (x1_, 5.13, F + 2.206), (x0_, 5.13, F + 2.206), (0, 0, 1), GOLDN, 2.6)
+    for i, x in enumerate([-20.0 + 2.5 * j for j in range(17)]):
+        if abs(x) < 8.2: continue
+        octagon(glow, x, 4.974, F + 1.2, 0.05, BULB, 3.0)
+        if i % 2 == 0: lit.spot((x, 4.9, F + 1.2), lin('#ffd9a8'), 1.6, 7, 'h', (0, -1, 0), 25, 60)

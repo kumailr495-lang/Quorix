@@ -61,7 +61,10 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Street buildings: curves, triangles, "an illusion" that looks real | In progress: gables, Deco crown, curved gable, sawtooth, drum, wavy balconies; windows interior-mapped |
 | Trees that look real | Done 11-17: crowns of leaf cards (a drawn leaf atlas, alpha cut, both faces, wind) on the street trees and the olives; the olive's ball-shaped knot is now a trunk; the blob planter trees in front of the cinema are potted olives |
 | Premium recliners that really recline, with sound; cup holders that take your drink or popcorn | Done 11-17: your seat's back and footrest move with a motor sound, two buttons when seated; the console holders take and give back what you hold |
-| Exits off the screen wall, the screen wall to wall | Open (moves doors, nav and exit routes) |
+| Exits off the screen wall, the screen wall to wall | In progress 11-18: the screens run wall to wall; each hall's exits are in its side walls, onto passages that step down to the spine (built, baking) |
+| The street's shop names: no glow, simple (11-18) | Done 11-18: flat lettering on dark fascias, no halos, no flicker; the hotel blade plain |
+| The cinema had no design outside, just a front; extensions; the street buildings to suit (11-18) | Done 11-18: an east corner tower with lit slots and a mast, a stepped crown with a gold sunburst over the name, set-back lit upper storeys on both wings, glass-block windows and portholes on the wings, a canopy across the glass; the tall glass block opposite lost a floor so the cinema leads the skyline |
+| Premium, big, comfortable seats and their detailing (11-18) | In progress: recliner, rocker, classic seat and console rebuilt (thicker cushions, rolled fronts, seams, walnut back panels, brass number plates, padded arms, lit cup holders); wider centres come with the hall rebuild |
 | Light bounce, laser projection look, Dolby Atmos, corridors | Open |
 | Taxi interior, glitches, premium lighting | Open |
 | LODs for every object (asked 6-12) | Open: levels for what is drawn separately (people, cars, trees, seats); merged room props stay one mesh |

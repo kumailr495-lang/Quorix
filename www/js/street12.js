@@ -16,7 +16,7 @@ const CELL = {};
 SHOPS.forEach((k, i) => { CELL['shop:' + k] = [(i % 4) * 510 + 2, Math.floor(i / 4) * 364 + 2, 506, 360]; CELL['sign:' + k] = [(i % 4) * 510 + 2, 1096 + Math.floor(i / 4) * 68, 506, 64]; });
 for (let i = 0; i < 8; i++) CELL['win:' + i] = [310 + i * 114, 1304, 110, 150];
 Object.assign(CELL, { 'blade:lumiere': [2, 1304, 150, 710], 'blade:hotel': [158, 1304, 120, 662], 'blade:cross': [1600, 1446, 100, 100],
-  'road:zebra': [310, 1460, 124, 154], 'road:taxi': [440, 1460, 420, 126], 'bulbs:row': [870, 1600, 256, 32] });
+  'road:zebra': [310, 1460, 124, 154], 'road:taxi': [440, 1460, 420, 126], 'bulbs:row': [870, 1600, 256, 32], 'blocks:glass': [1140, 1650, 160, 310] });
 
 // ------------------------------------------------------------------ small drawing helpers
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -141,6 +141,14 @@ function bulbsDraw(g, w, h) {
   g.fillStyle = '#1c150d'; g.fillRect(0, 0, w, h); g.fillStyle = '#3a2c18'; g.fillRect(0, h * 0.42, w, h * 0.16);
   for (let i = 0; i < 8; i++) { const x = (i + 0.5) * w / 8, y = h / 2; glowDot(g, x, y, h * 0.5, 'rgba(255,190,110,0.55)'); g.fillStyle = '#ffe9c0'; g.beginPath(); g.arc(x, y, h * 0.27, 0, 7); g.fill(); glowDot(g, x - h * 0.06, y - h * 0.06, h * 0.16, 'rgba(255,255,250,0.95)'); }
 }
+// v12 the cinema's wings (the user: "no design for the theatre outside, just a front"): glass-block windows lit from inside, five blocks
+// across and ten up, each a soft amber square with a brighter heart in dark mortar
+function blocksDraw(g, w, h) {
+  g.fillStyle = '#2a2018'; g.fillRect(0, 0, w, h); const nx = 5, ny = 10, bw = w / nx, bh = h / ny;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const x = i * bw + 2, y = j * bh + 2, ww = bw - 4, hh = bh - 4, gr = g.createRadialGradient(x + ww / 2, y + hh / 2, 1, x + ww / 2, y + hh / 2, ww * 0.75);
+    const k = 0.82 + 0.18 * Math.sin(i * 1.7 + j * 0.9); gr.addColorStop(0, `rgba(255,${Math.round(214 * k)},${Math.round(150 * k)},1)`); gr.addColorStop(1, `rgba(${Math.round(190 * k)},${Math.round(130 * k)},70,1)`);
+    g.fillStyle = gr; rr(g, x, y, ww, hh, 3); g.fill(); g.fillStyle = 'rgba(255,248,230,0.35)'; g.fillRect(x + 3, y + 3, ww * 0.35, 2); }
+}
 function drawAtlas(k = 1) {
   // k: the canvas's share of the design size (the low preset draws it at half: a quarter of the memory)
   const c = document.createElement('canvas'); c.width = AW * k; c.height = AH * k; const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.scale(k, k);
@@ -149,7 +157,7 @@ function drawAtlas(k = 1) {
   for (let i = 0; i < 8; i++) cell('win:' + i, (w, h) => winDraw(g, i, w, h, rng(977 + i * 13)));
   for (const k of ['lumiere', 'hotel', 'cross']) cell('blade:' + k, (w, h) => bladeDraw(g, k, w, h));
   for (const k of ['zebra', 'taxi']) cell('road:' + k, (w, h) => roadDraw(g, k, w, h));
-  cell('bulbs:row', (w, h) => bulbsDraw(g, w, h));
+  cell('bulbs:row', (w, h) => bulbsDraw(g, w, h)); cell('blocks:glass', (w, h) => blocksDraw(g, w, h));
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.flipY = false; return t;
 }
 
