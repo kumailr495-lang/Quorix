@@ -23,7 +23,9 @@ function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (Math.imul(s, 1
 const rr = (g, x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
 const glowDot = (g, x, y, r, col) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r); };
 const wallFill = (g, w, h, top, bot) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, top); gr.addColorStop(1, bot); g.fillStyle = gr; g.fillRect(0, 0, w, h); };
-const neon = (g, text, x, y, font, col, blur) => { g.font = font; g.shadowColor = col; g.shadowBlur = blur; g.fillStyle = col; g.fillText(text, x, y); g.shadowBlur = blur * 0.4; g.fillStyle = '#ffffff'; g.globalAlpha = 0.75; g.fillText(text, x, y); g.globalAlpha = 1; g.shadowBlur = 0; };
+// v12 (the user, 11-18: the glow on the street's names "looks so bad", make them simple): lettering is drawn flat, one colour, no blur and no
+// white core; the signs are lit letters on dark fascias, not neon
+const neon = (g, text, x, y, font, col) => { g.font = font; g.fillStyle = col; g.fillText(text, x, y); };
 function shelves(g, x, y, w, h, n, wood, item, R) {
   const sh = h / n;
   for (let i = 0; i < n; i++) { const yy = y + (i + 1) * sh; g.fillStyle = wood; g.fillRect(x, yy - 3, w, 4); let xx = x + 3; while (xx < x + w - 6) { const iw = item(g, xx, yy - 3, sh - 8, R); xx += iw + 1 + R() * 2; } }
@@ -39,9 +41,13 @@ const SHOP_DRAW = {
     for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(232,226,210,0.75)'; g.fillRect(w * 0.11, h * (0.25 + i * 0.04), w * (0.18 + R() * 0.14), 2); g.fillRect(w * 0.42, h * (0.25 + i * 0.04), w * 0.05, 2); }
     shelves(g, w * 0.56, h * 0.12, w * 0.38, h * 0.42, 3, '#6a4a30', jar(['#e8e0d0', '#c9a35e', '#7a4a2a', '#2a2a2e']), R);
     for (const x of [0.2, 0.5, 0.8]) { g.strokeStyle = '#111'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(w * x, 0); g.lineTo(w * x, h * 0.07); g.stroke(); glowDot(g, w * x, h * 0.09, 46, 'rgba(255,196,120,0.85)'); } },
-  florist: (g, w, h, R) => { wallFill(g, w, h, '#eeeae0', '#cfc8ba'); const cols = ['#c8364a', '#e6a23c', '#f2ead8', '#b04a8c', '#d86a3a', '#7a4aa8', '#e87a9a'];
-    for (let i = 0; i < 46; i++) { const x = 10 + R() * (w - 20), y = h * 0.25 + R() * h * 0.6, r = 5 + R() * 9; g.fillStyle = '#3d6b3a'; g.fillRect(x - 1, y, 2, 20 + R() * 20); g.fillStyle = cols[Math.floor(R() * cols.length)]; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(x - r * 0.3, y - r * 0.3, r * 0.4, 0, 7); g.fill(); }
-    for (let i = 0; i < 5; i++) { const x = w * (0.1 + i * 0.2); g.fillStyle = '#2f5a30'; for (let k = 0; k < 9; k++) { g.beginPath(); g.ellipse(x + (R() - 0.5) * 26, R() * h * 0.2, 9, 14, R() * 3, 0, 7); g.fill(); } } },
+  florist: (g, w, h, R) => { wallFill(g, w, h, '#2e3a32', '#1c241f');   // v12 (11-18): a dim green room, not a white wall of blobs
+    const pot = (gg, x, y, hh, RR) => { const pw = 12 + RR() * 8; gg.fillStyle = ['#8a6a4a', '#d8d2c6', '#2a2a2e'][Math.floor(RR() * 3)]; gg.fillRect(x, y - hh * 0.35, pw, hh * 0.35);
+      gg.fillStyle = ['#3d5a38', '#4a6a40', '#2f4a30'][Math.floor(RR() * 3)]; gg.beginPath(); gg.ellipse(x + pw / 2, y - hh * 0.5, pw * 0.62, hh * 0.24, 0, 0, 7); gg.fill(); return pw + 6; };
+    shelves(g, w * 0.06, h * 0.12, w * 0.88, h * 0.5, 2, '#5a4632', pot, R);
+    for (let i = 0; i < 7; i++) { const x = w * (0.08 + i * 0.13), y = h * 0.8; g.fillStyle = '#6a6e72'; g.fillRect(x, y, 20, h * 0.2);
+      g.fillStyle = '#34502e'; g.fillRect(x + 4, y - 18, 12, 18); g.fillStyle = ['#a8323e', '#e8e0d2', '#c87a86', '#d8a040'][i % 4]; g.beginPath(); g.ellipse(x + 10, y - 20, 13, 7, 0, 0, 7); g.fill(); }
+    glowDot(g, w * 0.5, 0, 120, 'rgba(255,236,200,0.25)'); },
   records: (g, w, h, R) => { wallFill(g, w, h, '#2a2036', '#16101e'); const cols = ['#d24a3a', '#e8c040', '#3a8ad2', '#e8e8e8', '#9a4ad2', '#40c0a0', '#f07a2a', '#1a1a1e'];
     for (let j = 0; j < 4; j++) for (let i = 0; i < 9; i++) { const x = 10 + i * (w - 20) / 9, y = 12 + j * (h - 60) / 4, s = (w - 20) / 9 - 6; g.fillStyle = cols[Math.floor(R() * cols.length)]; g.fillRect(x, y, s, s); g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x + s / 2, y + s / 2, s * (0.2 + R() * 0.15), 0, 7); g.fill(); }
     g.shadowColor = '#b070ff'; g.shadowBlur = 14; g.strokeStyle = '#d0a8ff'; g.lineWidth = 3; g.beginPath(); g.moveTo(8, h - 34); g.lineTo(w - 8, h - 34); g.stroke(); g.shadowBlur = 0; },
@@ -84,19 +90,19 @@ const SHOP_DRAW = {
       if (i % 3 === 0) g.fillRect(x, y + ph * 0.55, pw, ph * 0.45); else if (i % 3 === 1) { g.beginPath(); g.arc(x + pw / 2, y + ph * 0.45, pw * 0.3, 0, 7); g.fill(); } else { g.beginPath(); g.moveTo(x, y + ph); g.lineTo(x + pw, y + ph * 0.3); g.lineTo(x + pw, y + ph); g.fill(); }
       g.fillStyle = '#2a2a2e'; g.fillRect(x + pw / 2 - 9, y - 12, 18, 3); g.fillStyle = 'rgba(40,40,44,0.7)'; g.fillRect(x + pw + 8, y + ph - 9, 12, 7); } g.fillStyle = '#b8b2a6'; g.fillRect(0, h * 0.93, w, h * 0.07); },
 };
-const SIGN_DRAW = {
-  books: (g, w, h) => { g.fillStyle = '#e8c98a'; g.font = `600 ${h * 0.56}px ${SERIF}`; g.textAlign = 'center'; g.fillText('PAGES & CO.', w / 2, h * 0.58); g.font = `500 ${h * 0.17}px ${SANS}`; g.fillStyle = '#b89a66'; g.fillText('B O O K S E L L E R S', w / 2, h * 0.86); },
-  cafe: (g, w, h) => { g.textAlign = 'center'; neon(g, 'Café Noir', w / 2, h * 0.72, `italic 600 ${h * 0.74}px ${SERIF}`, '#ffb060', 12); },
-  florist: (g, w, h) => { g.textAlign = 'center'; neon(g, 'P E T A L', w / 2, h * 0.62, `300 ${h * 0.54}px ${SANS}`, '#ff9ac0', 12); g.font = `500 ${h * 0.17}px ${SANS}`; g.fillStyle = '#e8c8d4'; g.fillText('FLOWERS  ·  PLANTS', w / 2, h * 0.9); },
-  records: (g, w, h) => { g.textAlign = 'center'; neon(g, 'RECORD ROOM', w / 2, h * 0.7, `800 ${h * 0.56}px ${SANS}`, '#b070ff', 14); },
-  ramen: (g, w, h) => { g.textAlign = 'center'; neon(g, 'MIDNIGHT RAMEN', w / 2, h * 0.7, `700 ${h * 0.52}px ${SANS}`, '#ff4030', 14); },
-  chemist: (g, w, h) => { g.fillStyle = '#18c070'; g.fillRect(w * 0.06, h * 0.2, h * 0.2, h * 0.6); g.fillRect(w * 0.06 - h * 0.2, h * 0.4, h * 0.6, h * 0.2); g.textAlign = 'center'; g.fillStyle = '#eef6f2'; g.font = `700 ${h * 0.5}px ${SANS}`; g.fillText('24 H  CHEMIST', w * 0.55, h * 0.68); },
-  pixel: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#ffffff'; g.font = `800 ${h * 0.6}px ${SANS}`; g.fillText('PIXEL', w / 2, h * 0.6); g.fillStyle = '#58b0ff'; g.fillRect(w * 0.38, h * 0.7, w * 0.24, 3); g.font = `500 ${h * 0.16}px ${SANS}`; g.fillStyle = '#a8c8e8'; g.fillText('PHONES  ·  SOUND  ·  PLAY', w / 2, h * 0.94); },
-  hotel: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#e8c98a'; g.font = `600 ${h * 0.56}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.14}px`; g.fillText('HOTEL ASTOR', w / 2, h * 0.7); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
-  bakery: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#f2e6c8'; g.font = `italic 600 ${h * 0.62}px ${SERIF}`; g.fillText('Daily Bread', w / 2, h * 0.66); g.font = `500 ${h * 0.16}px ${SANS}`; g.fillStyle = '#c8b890'; g.fillText('B A K E R Y', w / 2, h * 0.92); },
-  diner: (g, w, h) => { g.textAlign = 'center'; neon(g, 'ALL NIGHT DINER', w / 2, h * 0.72, `800 ${h * 0.58}px ${SANS}`, '#ff5a6a', 14); },
-  jazz: (g, w, h) => { g.textAlign = 'center'; neon(g, 'Indigo Room', w * 0.4, h * 0.74, `italic 600 ${h * 0.74}px ${SERIF}`, '#8aa0ff', 13); g.font = `500 ${h * 0.2}px ${SANS}`; g.fillStyle = '#ff9ad8'; g.fillText('JAZZ  ·  SUPPER', w * 0.8, h * 0.62); },
-  gallery: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#f0ece2'; g.font = `300 ${h * 0.5}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.22}px`; g.fillText('GALERIE NORD', w / 2, h * 0.68); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
+const SIGN_DRAW = {   // v12 (11-18): plain names in cream, bone or brass on the dark fascia; one quiet accent at most
+  books: (g, w, h) => { g.fillStyle = '#e2cfa4'; g.font = `600 ${h * 0.52}px ${SERIF}`; g.textAlign = 'center'; g.fillText('PAGES & CO.', w / 2, h * 0.58); g.font = `500 ${h * 0.16}px ${SANS}`; g.fillStyle = '#a89470'; g.fillText('B O O K S E L L E R S', w / 2, h * 0.86); },
+  cafe: (g, w, h) => { g.textAlign = 'center'; neon(g, 'Café Noir', w / 2, h * 0.7, `italic 600 ${h * 0.66}px ${SERIF}`, '#e8d2aa'); },
+  florist: (g, w, h) => { g.textAlign = 'center'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.12}px`; neon(g, 'PETAL', w / 2, h * 0.6, `400 ${h * 0.5}px ${SANS}`, '#ece4d8'); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.font = `500 ${h * 0.15}px ${SANS}`; g.fillStyle = '#a8a094'; g.fillText('FLOWERS  ·  PLANTS', w / 2, h * 0.88); },
+  records: (g, w, h) => { g.textAlign = 'center'; neon(g, 'RECORD ROOM', w / 2, h * 0.68, `700 ${h * 0.5}px ${SANS}`, '#e8e4dc'); },
+  ramen: (g, w, h) => { g.textAlign = 'center'; neon(g, 'MIDNIGHT RAMEN', w / 2, h * 0.68, `700 ${h * 0.46}px ${SANS}`, '#efe6d6'); g.fillStyle = '#b8402e'; g.fillRect(w * 0.44, h * 0.8, w * 0.12, h * 0.035); },
+  chemist: (g, w, h) => { g.fillStyle = '#2f9a64'; g.fillRect(w * 0.06, h * 0.24, h * 0.16, h * 0.52); g.fillRect(w * 0.06 - h * 0.18, h * 0.42, h * 0.52, h * 0.16); g.textAlign = 'center'; g.fillStyle = '#eceee8'; g.font = `600 ${h * 0.46}px ${SANS}`; g.fillText('24 H  CHEMIST', w * 0.55, h * 0.66); },
+  pixel: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#eef0f2'; g.font = `700 ${h * 0.56}px ${SANS}`; g.fillText('PIXEL', w / 2, h * 0.6); g.font = `500 ${h * 0.15}px ${SANS}`; g.fillStyle = '#9aa4b0'; g.fillText('PHONES  ·  SOUND  ·  PLAY', w / 2, h * 0.9); },
+  hotel: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#e2cfa4'; g.font = `600 ${h * 0.52}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.14}px`; g.fillText('HOTEL ASTOR', w / 2, h * 0.68); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
+  bakery: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#efe4cc'; g.font = `italic 600 ${h * 0.58}px ${SERIF}`; g.fillText('Daily Bread', w / 2, h * 0.64); g.font = `500 ${h * 0.15}px ${SANS}`; g.fillStyle = '#b0a284'; g.fillText('B A K E R Y', w / 2, h * 0.9); },
+  diner: (g, w, h) => { g.textAlign = 'center'; neon(g, 'ALL NIGHT DINER', w / 2, h * 0.68, `700 ${h * 0.5}px ${SANS}`, '#efe8e0'); g.fillStyle = '#b8323e'; g.fillRect(w * 0.42, h * 0.8, w * 0.16, h * 0.035); },
+  jazz: (g, w, h) => { g.textAlign = 'center'; neon(g, 'Indigo Room', w * 0.42, h * 0.7, `italic 600 ${h * 0.66}px ${SERIF}`, '#e4dcf0'); g.font = `500 ${h * 0.17}px ${SANS}`; g.fillStyle = '#a8a0c0'; g.fillText('JAZZ  ·  SUPPER', w * 0.8, h * 0.62); },
+  gallery: (g, w, h) => { g.textAlign = 'center'; g.fillStyle = '#ece8de'; g.font = `300 ${h * 0.46}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.22}px`; g.fillText('GALERIE NORD', w / 2, h * 0.66); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
 };
 // eight windows of other people's evenings: each picture is the back wall of a room; street12.js ATLAS_FRAG (fx 4) puts it 3.6 m behind
 // the glass and builds the side walls, floor and ceiling round it from its edges (interior mapping), with curtains, blinds or a sheer
@@ -111,17 +117,17 @@ function winDraw(g, v, w, h, R) {
   if (v === 6) { g.fillStyle = 'rgba(20,14,10,0.85)'; g.beginPath(); g.arc(w * 0.55, h * 0.5, w * 0.1, 0, 7); g.fill(); g.fillRect(w * 0.43, h * 0.58, w * 0.24, h * 0.42); }
 }
 function bladeDraw(g, k, w, h) {
-  if (k === 'cross') { g.fillStyle = '#050806'; g.fillRect(0, 0, w, h); g.shadowColor = '#40ff90'; g.shadowBlur = 10; g.fillStyle = '#30e080'; g.fillRect(w * 0.38, h * 0.14, w * 0.24, h * 0.72); g.fillRect(w * 0.14, h * 0.38, w * 0.72, h * 0.24); g.shadowBlur = 0; return; }
+  if (k === 'cross') { g.fillStyle = '#0c100e'; g.fillRect(0, 0, w, h); g.fillStyle = '#2f9a64'; g.fillRect(w * 0.38, h * 0.14, w * 0.24, h * 0.72); g.fillRect(w * 0.14, h * 0.38, w * 0.72, h * 0.24); return; }
   const lum = k === 'lumiere'; wallFill(g, w, h, lum ? '#0c1630' : '#141416', lum ? '#080e20' : '#0a0a0c');
   g.strokeStyle = lum ? '#c9a35e' : '#8a8a90'; g.lineWidth = 2; g.strokeRect(w * 0.1, w * 0.1, w * 0.8, h - w * 0.2);
   // the bulbs round the edge: the chase in the shader brightens them in a wave travelling up
   const nb = Math.round(h / (w * 0.115)), col = lum ? '#ffe2a8' : '#ffd0a0';
-  for (let i = 0; i <= nb; i++) for (const x of [0.05, 0.95]) glowDot(g, w * x, w * 0.05 + i * (h - w * 0.1) / nb, w * 0.045, col);
-  for (let i = 1; i < 8; i++) for (const y of [w * 0.05, h - w * 0.05]) glowDot(g, w * i / 8, y, w * 0.045, col);
+  if (lum) { for (let i = 0; i <= nb; i++) for (const x of [0.05, 0.95]) glowDot(g, w * x, w * 0.05 + i * (h - w * 0.1) / nb, w * 0.045, col);
+    for (let i = 1; i < 8; i++) for (const y of [w * 0.05, h - w * 0.05]) glowDot(g, w * i / 8, y, w * 0.045, col); }   // v12 (11-18): only the cinema's own blade keeps its bulbs
   const word = lum ? 'LUMIÈRE' : 'HOTEL', n = word.length, y0 = h * (lum ? 0.14 : 0.2), dy = (h * (lum ? 0.78 : 0.62)) / n;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  for (let i = 0; i < n; i++) neon(g, word[i], w / 2, y0 + (i + 0.5) * dy, `${lum ? 600 : 700} ${Math.min(dy * 0.92, w * 0.82)}px ${lum ? SERIF : SANS}`, lum ? '#ffcf8a' : '#ffe8c8', 10);
-  if (!lum) { g.fillStyle = '#ff4a3a'; g.shadowColor = '#ff4a3a'; g.shadowBlur = 12; g.font = `700 ${w * 0.5}px ${SANS}`; g.fillText('★', w / 2, h * 0.1); g.shadowBlur = 0; g.fillStyle = '#e8c98a'; g.font = `600 ${w * 0.3}px ${SERIF}`; g.fillText('ASTOR', w / 2, h * 0.9); }
+  for (let i = 0; i < n; i++) neon(g, word[i], w / 2, y0 + (i + 0.5) * dy, `600 ${Math.min(dy * 0.86, w * 0.74)}px ${SERIF}`, lum ? '#ffcf8a' : '#e2cfa4');
+  if (!lum) { g.fillStyle = '#a8946a'; g.fillRect(w * 0.3, h * 0.105, w * 0.4, 2); g.fillStyle = '#e2cfa4'; g.font = `600 ${w * 0.26}px ${SERIF}`; g.fillText('ASTOR', w / 2, h * 0.9); }
   else { g.fillStyle = '#c9a35e'; g.font = `600 ${w * 0.4}px ${SERIF}`; g.fillText('✦', w / 2, h * 0.075); g.font = `500 ${w * 0.13}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${w * 0.03}px`; g.fillText('CINEMAS', w / 2, h * 0.955); if ('letterSpacing' in g) g.letterSpacing = '0px'; }
   g.textBaseline = 'alphabetic';
 }

@@ -67,7 +67,10 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
                         acc.box(bxx, ys - 0.09, bz0 + 0.015, bxx + 0.02, ys + 0.8, bz0 + 0.035, MAT['powder'], FRAME)
                 px0 = ba + 0.12 if (i + k) % 2 == 0 else bb - 0.12 - 0.9   # the planter: on the slab (2 cm into it), clear of the rail
                 acc.box(px0, ys - 0.09, bz0 + 0.12, px0 + 0.9, ys + 0.22, bz0 + 0.42, MAT['powder'], lin('#2a2622'))
-                acc.box(px0 + 0.04, ys + 0.2, bz0 + 0.16, px0 + 0.86, ys + 0.52, bz0 + 0.38, MAT['velvet'], lin('#2c4a26'))   # its greenery, 2 cm down into the box
+                for j in range(3):   # v12 (a green block read as a box): three round shrubs, 2 cm down into the box, each a body and a crown
+                    sx_, ht = px0 + 0.18 + j * 0.27, ys + 0.38 + 0.03 * ((j * 7 + i) % 3)
+                    acc.cyl(sx_, bz0 + 0.27, 0.14 + 0.005 * ((j + k) % 2), ys + 0.2, ht, MAT['velvet'], lin('#2c4a26'), n=7)
+                    acc.cyl(sx_, bz0 + 0.27, 0.085, ht - 0.02, ht + 0.07, MAT['velvet'], lin('#34562c'), n=5)
         acc.box(o0 - 0.02, prev, far - P + 0.06, o1 + 0.02, top + 0.03, far + 0.05, wall, sp)
     if glass:   # v12 (the user: "curves"): the modern block's balconies run the lot's width as waves: a white slab whose front swings 0.4 to
         # 1.1 m out (two waves, each floor's shifted), 8 cm into the piers and 2 cm into the spandrels; a glass rail along the wave, a steel
@@ -99,8 +102,9 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
 # what stands inside each kind of shop (boxes in the shop's own frame: u across from its left wall, v up, w back from the glass), and its
 # light: (colour, strength). Colours are the shop's palette; the back wall carries its picture from the atlas
 def fit_out(kind, W, D, g):
-    B = []   # (u0, v0, w0, u1, v1, w1, material, colour)
+    B = []   # (u0, v0, w0, u1, v1, w1, material, colour), or ('cyl', u, v0, w, r, v1, material, colour): an upright cylinder
     C = lambda u0, v0, w0, u1, v1, w1, m, c: B.append((u0, v0, w0, u1, v1, w1, MAT[m], lin(c)))
+    Y = lambda u, v0, w, r, v1, m, c: B.append(('cyl', u, v0, w, r, v1, MAT[m], lin(c)))
     if kind == 'books':
         C(0.5, 0.03, 0.9, W - 1.6, 0.82, 1.7, 'oak', '#8a6238')                                   # the long table of new titles
         for i in range(5): C(0.7 + i * (W - 2.6) / 5, 0.82, 1.05, 0.7 + i * (W - 2.6) / 5 + 0.34, 0.82 + 0.08 + 0.05 * (i % 3), 1.5, 'paint', ['#8c2f2a', '#2f5d8c', '#c9a35e', '#3d6b4a', '#6b3d6b'][i])
@@ -113,11 +117,15 @@ def fit_out(kind, W, D, g):
             C(u - 0.75, 0.03, 0.7, u - 0.45, 0.46, 1.0, 'leather', '#6a3a1e'); C(u + 0.45, 0.03, 0.7, u + 0.75, 0.46, 1.0, 'leather', '#6a3a1e')               # stools
     elif kind == 'florist':
         for i in range(3): C(0.4, 0.03, 0.45 + i * 0.55, W - 0.4, 0.3 + i * 0.3, 0.95 + i * 0.55, 'wood', '#4a3626')                                              # three tiers
-        cols = ['#c8364a', '#e6a23c', '#e8e0d0', '#b04a8c', '#d86a3a', '#7a4aa8']
+        cols = ['#9a2a36', '#e2dccf', '#b86a78', '#c89040', '#7a2a40']   # v12 (11-18): muted bunches, not a box of colours
         for i in range(3):
             for j in range(int((W - 1.0) / 0.42)):
-                u = 0.6 + j * 0.42; w = 0.6 + i * 0.55; v = 0.3 + i * 0.3
-                C(u - 0.09, v, w - 0.09, u + 0.09, v + 0.2, w + 0.09, 'powder', '#2a2a2e'); C(u - 0.14, v + 0.2, w - 0.14, u + 0.14, v + 0.46, w + 0.14, 'velvet', cols[(i * 2 + j) % 6])   # a pot and its blooms
+                u = 0.6 + j * 0.42; w = 0.7 + i * 0.55; v = 0.3 + i * 0.3
+                Y(u, v - 0.02, w, 0.1, v + 0.26, 'chrome', '#7a7e82')                       # a zinc bucket, 2 cm into the tier
+                Y(u, v + 0.24, w, 0.06, v + 0.48, 'velvet', '#2e4a2a')                      # the stems and leaves, 2 cm into the bucket, up among the heads
+                cf = cols[(i * 2 + j) % 5]
+                for du, dw, r, y0 in ((-0.045, 0.02, 0.055, 0.40), (0.04, -0.02, 0.06, 0.43), (0.0, 0.035, 0.05, 0.46)):   # three heads at three heights (one tall
+                    Y(u + du, v + y0, w + dw, r, v + y0 + 0.07, 'velvet', cf)                 # cylinder read as a box from the street)
     elif kind == 'records':
         for u in (0.5, 2.0, 3.5):
             if u + 1.2 > W - 0.3: break
@@ -172,7 +180,7 @@ def fit_out(kind, W, D, g):
 LOOK = {   # per shop kind: interior wall and floor, light colour and strength, sign colour for its halo, awning (or None), the front's frame
     'books': ('#6a4a30', 'oak', '#8a6a48', '#ffd9a8', 1.0, '#ffd08a', '#23412f', '#1f3a2c'),
     'cafe': ('#3a3028', 'travertine', '#cdbfa8', '#ffcf96', 1.1, '#ffb060', '#5a1c22', '#2e1d16'),
-    'florist': ('#e6e2d8', 'concrete', '#b8b4ac', '#fff0dc', 1.2, '#ff9ac0', None, '#d9d2c2'),
+    'florist': ('#4e584c', 'concrete', '#6e6a62', '#fff0dc', 1.2, '#ff9ac0', None, '#d9d2c2'),   # v12 (11-18): a dim sage room, its back wall's green
     'records': ('#221a2c', 'concrete', '#3a3a40', '#c8a0ff', 0.9, '#b070ff', None, '#1c1a22'),
     'ramen': ('#3a1c14', 'wood', '#3a2a1e', '#ffb070', 1.0, '#ff4030', None, '#3a1612'),
     'chemist': ('#eef2f4', 'porcelain', '#e8eaec', '#eaf4ff', 1.3, '#40e080', None, '#dfe6e8'),
@@ -219,11 +227,13 @@ def ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, wall, wcol, t
         acc.box(a - 0.02, 0.0, far + D, b + 0.02, g + 0.03, far + D + 0.3, MAT['plaster'], lin(iw))
         acc.box(a - 0.02, g - 0.14, far - 0.05, b + 0.02, g + 0.0, far + D + 0.02, MAT['plaster'], lin('#d8d2c8'))
         atlas.append({'k': 'shop', 'v': kind, 'x': (a + b) / 2, 'y': (0.03 + g - 0.14) / 2, 'z': far + D - 0.012, 'yaw': math.pi, 'w': W, 'h': g - 0.17, 'e': 0.16 if shut_ else 0.55})
-        for (u0, v0, w0, u1, v1, w1, m, c) in fit_out(kind, W, D, g): acc.box(b - u1, v0, far + w0, b - u0, v1, far + w1, m, c)   # u runs from the shop's left as seen from the street (+x to -x)
+        for it in fit_out(kind, W, D, g):   # u runs from the shop's left as seen from the street (+x to -x)
+            if it[0] == 'cyl': _, u, v0, w, r, v1, m, c = it; acc.cyl(b - u, far + w, r, v0, v1, m, c, n=8)
+            else: u0, v0, w0, u1, v1, w1, m, c = it; acc.box(b - u1, v0, far + w0, b - u0, v1, far + w1, m, c)
         # the front: fascia (6 cm proud, 3 cm up into the floors above), door, riser, glass 2 cm into everything round it
         acc.box(a - 0.02, g - 0.80, zf - 0.06, b + 0.02, g + 0.03, far + 0.02, MAT['powder'], lin('#121316'))
-        atlas.append({'k': 'sign', 'v': kind, 'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.072, 'yaw': math.pi, 'w': min(W - 0.5, 4.6), 'h': 0.52, 'e': 0.55 if shut_ else 1.25, 'fx': 1 if kind in ('ramen', 'records') and not shut_ else 0})
-        halos.append({'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.25, 'r': 1.5, 'c': list(lin(hc)), 'k': 0.08 if shut_ else 0.22})
+        # v12 (the user, 11-18: the glow on the names "looks so bad", make them simple): lit letters on the fascia, no halo, no flicker
+        atlas.append({'k': 'sign', 'v': kind, 'x': (a + b) / 2, 'y': g - 0.385, 'z': zf - 0.072, 'yaw': math.pi, 'w': min(W - 0.5, 4.6), 'h': 0.52, 'e': 0.42 if shut_ else 0.8, 'fx': 0})
         # v12 (the user's arrows: a door that read as a wire outline, a front with no structure): the front is a frame in the shop's
         # own colour. Posts run from the pavement into the fascia, a transom crosses the whole front at the door's head, mullions
         # divide the window, a sill caps the riser; the door is a framed leaf (stiles, a kick rail, a top rail) on a stone threshold
@@ -471,15 +481,13 @@ def far_side(acc, glow, lit, S, extras):
     acc.box(-30.2, 6.2, far - 1.75, -29.95, 13.4, far - 0.34, MAT['powder'], lin('#101114'))
     for yb in (7.2, 12.4): acc.box(-30.15, yb, far - 0.38, -30.0, yb + 0.1, far + 0.02, MAT['powder'], FRAME)
     for s, xf in ((1, -29.938), (-1, -30.212)):
-        atlas.append({'k': 'blade', 'v': 'hotel', 'x': xf, 'y': 9.8, 'z': far - 1.045, 'yaw': s * math.pi / 2, 'w': 1.25, 'h': 6.9, 'e': 1.3, 'fx': 0})
-    halos.append({'x': -30.07, 'y': 9.8, 'z': far - 1.05, 'r': 2.6, 'c': list(lin('#ffd08a')), 'k': 0.2})
+        atlas.append({'k': 'blade', 'v': 'hotel', 'x': xf, 'y': 9.8, 'z': far - 1.045, 'yaw': s * math.pi / 2, 'w': 1.25, 'h': 6.9, 'e': 0.8, 'fx': 0})
     lit.spot((-30.07, 6.0, far - 1.05), lin('#ffd08a'), 2.2, 9, 'f', (0, -1, -0.1), 40, 80)
     # the chemist's green cross on a bracket
     acc.box(26.2, 4.6, far - 1.0, 26.28, 4.68, far - 0.28, MAT['powder'], FRAME)
     for s, xf in ((1, 26.292), (-1, 26.188)):
-        atlas.append({'k': 'blade', 'v': 'cross', 'x': xf, 'y': 4.2, 'z': far - 0.75, 'yaw': s * math.pi / 2, 'w': 0.7, 'h': 0.7, 'e': 1.5, 'fx': 1})
+        atlas.append({'k': 'blade', 'v': 'cross', 'x': xf, 'y': 4.2, 'z': far - 0.75, 'yaw': s * math.pi / 2, 'w': 0.7, 'h': 0.7, 'e': 0.8, 'fx': 0})
     acc.box(26.2, 3.85, far - 1.1, 26.28, 4.6, far - 0.4, MAT['powder'], lin('#101114'))
-    halos.append({'x': 26.24, 'y': 4.2, 'z': far - 0.75, 'r': 1.1, 'c': list(lin('#40e080')), 'k': 0.4})
     # v12 (the user: the taxi should come from somewhere and go somewhere): a lane runs north at each end of the row, between the corner
     # lot and the block across the street's end; 16 m up it turns behind its corner block, where cars come from and go (never in view)
     extras['traffic'] = {'zt': ZT, 'zc': ZC, 'sw': list(SW), 'se': list(SE)}   # the lanes' plan, for the engine's routes (www/js/traffic.js)
