@@ -309,6 +309,19 @@ void main() {
   #include <colorspace_fragment>
 }`;
 // ---------------- hand props (popcorn bucket, cup): vertex colours, lit by their holder's probe (shared uniform objects) ----------------
+// v12 leaf cards (foliage.js; the user: the trees looked like blobs): the atlas cut at alpha 0.5, both faces drawn, lit per vertex like the
+// furniture (the house and fixed layers, normals out of the crown's middle), a little wind; the cut eases in the small mips so thin
+// leaves far off do not fade to nothing
+const FOLIAGE_VERT = `attribute vec3 color; attribute vec3 lh; attribute vec3 lf; uniform float uHouse; uniform float uFix; uniform float uTime;
+varying vec3 vAlb; varying vec3 vLight; varying vec2 vUv; varying float vDist;
+void main() { vAlb = color; vUv = uv; vLight = lh * uHouse + lf * uFix; vec4 wp = modelMatrix * vec4(position, 1.0); float ph = dot(wp.xz, vec2(0.71, 0.53));
+  wp.xyz += vec3(sin(uTime * 1.3 + ph), 0.0, cos(uTime * 1.1 + ph * 1.3)) * 0.022; vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
+const FOLIAGE_FRAG = COMMON_FRAG + `uniform sampler2D map; varying vec3 vAlb; varying vec3 vLight; varying vec2 vUv; varying float vDist;
+void main() { vec4 t = texture2D(map, vUv); vec2 dx = dFdx(vUv) * 512.0, dy = dFdy(vUv) * 512.0; float mip = max(0.0, 0.5 * log2(max(dot(dx, dx), dot(dy, dy))));
+  if (t.a * (1.0 + 0.35 * mip) < 0.5) discard;
+  vec3 col = t.rgb * vAlb * vLight * (gl_FrontFacing ? 1.0 : 0.82); gl_FragColor = vec4(lumFog(lumTone(col), vDist), 1.0);
+  #include <colorspace_fragment>
+}`;
 const PROP_VERT = `attribute vec3 color; varying vec3 vAlb; varying vec3 vWN; varying vec3 vWP; varying float vDist;
 void main() { vAlb = color; vWN = normalize(mat3(modelMatrix) * normal); vec4 wp = modelMatrix * vec4(position, 1.0); vWP = wp.xyz; vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv; }`;
 const PROP_FRAG = COMMON_FRAG + `uniform vec3 uAmb; uniform vec3 uKey; uniform vec3 uKeyDir; uniform vec3 uScreenL; varying vec3 vAlb; varying vec3 vWN; varying vec3 vWP; varying float vDist;
@@ -394,6 +407,7 @@ export class Materials {
   picMat(map) { return this._t(mk(TEX_VERT, PIC_FRAG, { ...G, uRep: { value: new THREE.Vector2(1, 1) }, map: { value: map }, uGain: { value: 1 }, uRaw: { value: 0 }, uHole: { value: 0 }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } })); }
   glassMat(tint = 0x8fa3b8, alpha = 0.08) { if (!this._glass) this._glass = this._t(mk(GLASS_VERT, GLASS_FRAG, { ...G, uTint: { value: new THREE.Color(tint) }, uAlpha: { value: alpha } }, { transparent: true, depthWrite: false, side: THREE.DoubleSide })); return this._glass; }
   peopleMat(face) { return this._t(mk(PEOPLE_VERT, PEOPLE_FRAG, { ...G, uFace: { value: face }, uEyes: { value: new THREE.Vector2(0, 3) }, uMouth: { value: new THREE.Vector2(0, 1) }, uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.6, 0.55, 0.5) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) }, uPal: { value: Array.from({ length: 8 }, () => new THREE.Color(0.5, 0.5, 0.5)) } })); }
+  foliageMat(U, map) { return this._t(mk(FOLIAGE_VERT, FOLIAGE_FRAG, { ...G, uHouse: U.uHouse, uFix: U.uFix, map: { value: map } }, { side: THREE.DoubleSide })); }
   propMat(PU) { return this._t(mk(PROP_VERT, PROP_FRAG, { ...G, uAmb: PU.uAmb, uKey: PU.uKey, uKeyDir: PU.uKeyDir, uScreenL: PU.uScreenL })); }
   ledWallMat() { if (!this._led) this._led = this._t(mk(LED_VERT, LED_FRAG, { uTime: G.uTime, uA: { value: new THREE.Color('#0b3cff') }, uB: { value: new THREE.Color('#7fd2ff') }, uGain: { value: 1.0 }, uVid: { value: null }, uVidOn: { value: 0 }, uRaw: { value: 0 }, uLen: { value: new THREE.Vector2(9, 3) } })); return this._led; }
   crowdMat(U) { return this._t(mk(CROWD_VERT, CROWD_FRAG, { ...G, uHouse: U.uHouse, uScreen: U.uScreen })); }

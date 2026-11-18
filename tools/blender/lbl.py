@@ -145,11 +145,13 @@ def warp(bm, fn):
 PARTS = []   # objects built since the last reset (one asset)
 
 
-def part(name, lod, mat, build, mtx=Matrix.Identity(4), deform=None, smooth=True):
-    """One object: build(bm) adds geometry in local space; deform(co) bends it; mtx places it."""
+def part(name, lod, mat, build, mtx=Matrix.Identity(4), deform=None, smooth=True, own_uv=False):
+    """One object: build(bm) adds geometry in local space; deform(co) bends it; mtx places it. own_uv (v12 leaf cards): the builder
+    set its own uvs and its faces' winding (single-sided cards: no normal recalculation, no box projection)"""
     bm = bmesh.new(); build(bm)
     if deform: warp(bm, deform)
-    bm.transform(mtx); bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces)); box_uv(bm)
+    bm.transform(mtx)
+    if not own_uv: bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces)); box_uv(bm)
     me = bpy.data.meshes.new(f'{name}_LOD{lod}'); bm.to_mesh(me); bm.free()
     if smooth: me.shade_smooth(); me.set_sharp_from_angle(angle=math.radians(50))
     else: me.shade_flat()

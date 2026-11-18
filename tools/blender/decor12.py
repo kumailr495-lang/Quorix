@@ -25,7 +25,8 @@ A = ap.parse_args(argv)
 for k, v in {'enamel_green': ((0.035, 0.07, 0.05), 0.35, 0.0), 'canvas_black': ((0.012, 0.012, 0.013), 0.85, 0.0), 'oak': ((0.36, 0.22, 0.11), 0.5, 0.0),
              'paint_red': ((0.32, 0.02, 0.025), 0.4, 0.0), 'steel': ((0.55, 0.56, 0.58), 0.35, 1.0), 'gloss_black': ((0.006, 0.006, 0.007), 0.12, 0.0),
              'bark': ((0.07, 0.05, 0.035), 0.9, 0.0), 'leaves': ((0.03, 0.07, 0.025), 0.8, 0.0), 'soil': ((0.03, 0.025, 0.02), 1.0, 0.0),
-             'bark_olive': ((0.12, 0.10, 0.08), 0.9, 0.0), 'leaves_olive': ((0.10, 0.13, 0.08), 0.8, 0.0), 'travertine_dark': ((0.30, 0.26, 0.21), 0.4, 0.0)}.items():
+             'bark_olive': ((0.12, 0.10, 0.08), 0.9, 0.0), 'leaves_olive': ((0.10, 0.13, 0.08), 0.8, 0.0), 'travertine_dark': ((0.30, 0.26, 0.21), 0.4, 0.0),
+             'foliage': ((0.05, 0.09, 0.035), 0.8, 0.0), 'foliage_olive': ((0.14, 0.17, 0.11), 0.8, 0.0)}.items():
     lbl.MAT_DEF.setdefault(k, v)
 RX = lambda deg: Matrix.Rotation(math.radians(deg), 4, 'X')
 
@@ -171,17 +172,45 @@ def _clump(c, r, seed, sub=3):
     return build
 
 
+def _cards(clumps, seed, cells, per=9, size=(1.6, 2.2)):
+    """v12 (the user: the trees looked bad, blobs): a crown of leaf cards instead of lumpy balls. Each clump (centre, radius) gets
+    `per` quads through and around its centre at random turns and tilts, 1.6 to 2.2 radii across, each mapped to one cell of the
+    engine's 2 x 2 leaf atlas (www/js/foliage.js; glTF v runs down the picture, Blender's up). Their normals point out of the crown's
+    middle, so the light reads round; the engine draws them two-sided with an alpha cut and a little wind"""
+    rnd = random.Random(seed)
+    cx = sum(c[0] for c, r in clumps) / len(clumps); cy = sum(c[1] for c, r in clumps) / len(clumps); cz = sum(c[2] for c, r in clumps) / len(clumps)
+    def build(bm):
+        uvl = bm.loops.layers.uv.verify(); nrm = []
+        for c, r in clumps:
+            for k in range(per):
+                h = r * rnd.uniform(*size) / 2; o = Vector((rnd.uniform(-0.45, 0.45), rnd.uniform(-0.45, 0.45), rnd.uniform(-0.35, 0.35))) * r
+                yaw, tilt = rnd.uniform(0, 2 * math.pi), rnd.uniform(-0.9, 0.9)
+                ax = Vector((math.cos(yaw), math.sin(yaw), 0.0)); ay = Vector((-math.sin(yaw) * math.cos(tilt), math.cos(yaw) * math.cos(tilt), math.sin(tilt)))
+                p0 = Vector(c) + o; vs = [bm.verts.new(p0 + ax * (sx * h) + ay * (sy * h)) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+                f = bm.faces.new(vs); cu, cv = cells[rnd.randrange(len(cells))]
+                for l, (u, v) in zip(f.loops, ((0, 1), (1, 1), (1, 0), (0, 0))):   # cell corners, glTF v down = Blender 1 - v
+                    l[uvl].uv = (cu * 0.5 + 0.004 + u * 0.492, 1.0 - (cv * 0.5 + 0.004 + v * 0.492))
+        return bm
+    return build, (cx, cy, cz)
+
+
 def _crown(ends, per, reach, rad, seed, mat, up=0.55):
     """an airy crown: from each limb's end, twigs out to small leaf clumps (each twig starts 3 cm inside the limb's end and ends 4 cm
     inside its clump; a clump also sits on every limb end), so the crown has gaps and an uneven edge instead of a few big balls"""
-    rnd = random.Random(seed)
+    rnd = random.Random(seed); clumps = []
     for i, e in enumerate(ends):
-        e = Vector(e); part('Leaves', 0, mat, _clump(tuple(e), rad[1], seed + i * 17, 2))
+        e = Vector(e); clumps.append((tuple(e), rad[1]))
         for j in range(per):
             a = rnd.uniform(0, 2 * math.pi); u = rnd.uniform(0.15, 1.0) * up
             d = Vector((math.cos(a), math.sin(a), u)).normalized() * rnd.uniform(*reach); q = e + d; r = rnd.uniform(*rad)
-            part('Twig', 0, 'bark' if mat == 'leaves' else 'bark_olive', lambda bm, a_=tuple(e - d.normalized() * 0.03), b_=tuple(q - d.normalized() * (r - 0.04)): _taper(bm, [a_, b_], 0.022, 0.012, 5))
-            part('Leaves', 0, mat, _clump(tuple(q), r, seed + i * 17 + j + 1, 2))
+            part('Twig', 0, 'bark' if mat == 'leaves' else 'bark_olive', lambda bm, a_=tuple(e - d.normalized() * 0.03), b_=tuple(q - d.normalized() * (r * 0.5)): _taper(bm, [a_, b_], 0.022, 0.012, 5))
+            clumps.append((tuple(q), r))
+    olive = mat != 'leaves'
+    build, mid = _cards(clumps, seed + 5, [(0, 1), (1, 1)] if olive else [(0, 0), (1, 0)], per=10 if olive else 9)
+    ob = part('Leaves', 0, 'foliage_olive' if olive else 'foliage', build, own_uv=True, smooth=False)
+    me = ob.data; mid = Vector(mid)   # normals out of the crown's middle (lifted a little: the tops read lighter)
+    try: me.normals_split_custom_set_from_vertices([((ob.matrix_world @ v.co) - mid + Vector((0, 0, 0.6))).normalized() for v in me.vertices])
+    except Exception as ex: print('leaf normals', ex)
 
 
 def street_tree():
@@ -207,7 +236,7 @@ def street_tree():
 
 def olive_tree():
     """an old olive tree in a stone planter (v12, the user: "trees inside like a medieval tree"): three stems twisting round each other
-    out of the soil, a knotted trunk where they meet, five limbs and a silver-green crown. The planter is a turned travertine bowl on a
+    out of the soil, growing into one short trunk, five limbs and a silver-green crown. The planter is a turned travertine bowl on a
     foot; the stems start 6 cm under the soil, the limbs inside the trunk, every clump holds a limb's end or overlaps a neighbour"""
     part('PlanterFoot', 0, 'travertine_dark', lambda bm: lathe(bm, [(1e-4, 0.0), (0.46, 0.0), (0.46, 0.08), (0.40, 0.12), (1e-4, 0.12)], 40))
     part('Planter', 0, 'travertine_dark', lambda bm: lathe(bm, [(1e-4, 0.10), (0.42, 0.10), (0.66, 0.42), (0.74, 0.62), (0.76, 0.70), (0.68, 0.70), (0.66, 0.66), (1e-4, 0.66)], 48))   # its floor 2 cm into the foot
@@ -216,10 +245,11 @@ def olive_tree():
         a0 = 2 * math.pi * k / 3
         pts = [(0.16 * math.cos(a0 + t * 2.4), 0.16 * math.sin(a0 + t * 2.4), 0.60 + t * 1.1) for t in [i / 6 for i in range(7)]]
         part('Stem', 0, 'bark_olive', lambda bm, q=pts: _taper(bm, q, 0.11, 0.08, 10))
-    part('Knot', 0, 'bark_olive', _clump((0.0, 0.0, 1.72), 0.24, 3, 2))   # where the stems meet: a lumpy burl
+    # where the stems meet they grow into one short trunk (v12: a round burl there read as a ball); the stems end inside it
+    part('Trunk', 0, 'bark_olive', lambda bm: _taper(bm, [(0.0, 0.0, 1.30), (0.03, 0.01, 1.62), (0.01, 0.03, 1.98)], 0.235, 0.13, 14))
     ends = []
     for i, (a, rr, zt) in enumerate(((10, 1.0, 2.75), (82, 0.85, 3.05), (154, 1.05, 2.8), (226, 0.9, 3.1), (298, 1.0, 2.9))):
-        a = math.radians(a); p0 = (math.cos(a) * 0.05, math.sin(a) * 0.05, 1.70); pm = (math.cos(a) * rr * 0.5, math.sin(a) * rr * 0.5, (1.7 + zt) / 2 + 0.15); p1 = (math.cos(a) * rr, math.sin(a) * rr, zt)
+        a = math.radians(a); p0 = (math.cos(a) * 0.05, math.sin(a) * 0.05, 1.80); pm = (math.cos(a) * rr * 0.5, math.sin(a) * rr * 0.5, (1.7 + zt) / 2 + 0.15); p1 = (math.cos(a) * rr, math.sin(a) * rr, zt)
         part('Limb', 0, 'bark_olive', lambda bm, q=(p0, pm, p1): _taper(bm, list(q), 0.06, 0.03, 8)); ends.append(p1)
     _crown(ends, 6, (0.35, 0.7), (0.26, 0.4), 70, 'leaves_olive', up=0.6)
 

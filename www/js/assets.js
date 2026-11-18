@@ -11,7 +11,7 @@ export const ASSETS = {};
 // seat_giant stay in tools/kiln and www/models but are no longer loaded; v7 retired the v5 lobby set: column_fluted(_5), chandelier_ring,
 // banquette_round, torchere_deco, back_bar, pendant_dish, which also stay in the repo)
 // v9: only what the v9 rooms use (world9.js DRESS and the hall seat families, intro9.js's taxi); the v7/v8 props stay in www/models
-export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club', 'seat_classic', 'arm_classic', 'sofa_curve', 'table_lounge', 'planter_tall', 'planter_hedge', 'planter_tree',
+export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club', 'seat_classic', 'arm_classic', 'sofa_curve', 'table_lounge', 'planter_tall', 'planter_hedge',
   'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi', 'car_sedan',
   'armchair_deco', 'side_table', 'torchere_deco', 'chandelier_cascade', 'letters_lumiere_lit', 'letters_max', 'letters_curve', 'letters_classic', 'letters_x270', 'num_1', 'num_2', 'num_3', 'num_4', 'basin_vessel', 'tap_brass', 'urinal',
   // v10 (tools/blender/decor10.py): the fountain court, light columns, pendant clouds, the cafe, rugs, standees, the popcorn cart
@@ -43,12 +43,12 @@ function prepare(scene, name) {
     const geo = o.geometry.clone(), mw = new THREE.Matrix4().multiplyMatrices(PRE, o.matrixWorld); geo.applyMatrix4(mw);
     if (!geo.attributes.normal) geo.computeVertexNormals();
     const grp = o.parent && o.parent.isGroup && o.parent.children.length > 1 && o.parent.children.every((q) => q.isMesh) ? o.parent.uuid : o.uuid;   // one glTF node split by material
-    solidify(geo, mw.determinant() < 0, (TWO_SIDED[name] || []).includes(parts.length), name + '#' + parts.length, grp);
-    const mn = (o.material && o.material.name) || '', glow = /^glow/i.test(mn);
+    const mn = (o.material && o.material.name) || '', glow = /^glow/i.test(mn), leaf = /^foliage/i.test(mn);   // v12 leaf cards: open on purpose, drawn two-sided
+    if (!leaf) solidify(geo, mw.determinant() < 0, (TWO_SIDED[name] || []).includes(parts.length), name + '#' + parts.length, grp);
     const nm = named(mn) || { id: 0, tint: (o.material && o.material.color ? o.material.color.toArray() : [0.5, 0.5, 0.5]) };
     const c = o.material && o.material.color ? o.material.color.toArray() : [1, 1, 1], ei = o.material && o.material.emissiveIntensity != null ? o.material.emissiveIntensity : 1;
     const em = o.material && o.material.emissive ? o.material.emissive.toArray().map((v) => v * ei) : c;
-    parts.push({ geo, id: nm.id, tint: nm.tint, glow, glowColor: em.some((v) => v > 0) ? em : c, lod, name: o.name.replace(/_\d+$/, ''), matName: mn });   // LOD tiers repeat names (loader adds _2)
+    parts.push({ geo, id: nm.id, tint: leaf ? [1, 1, 1] : nm.tint, glow, leaf, glowColor: em.some((v) => v > 0) ? em : c, lod, name: o.name.replace(/_\d+$/, ''), matName: mn });   // LOD tiers repeat names (loader adds _2)
     if (lod === 0) { geo.computeBoundingBox(); box.union(geo.boundingBox); }
   });
   if (CHECK) checkNodes();
@@ -61,7 +61,7 @@ function prepare(scene, name) {
 // bollard rings): they get their back faces too, as the GLBs' double-sided materials meant. The list is measured offline, not on the
 // phone: ?assetcheck=1 recomputes it and warns when a GLB changed (tools/dev/seethru.mjs --assets runs that check).
 // v12: car_taxi and car_sedan list their plate and sign lettering (a few T-junction edges the font leaves); their bodies are closed
-export const TWO_SIDED = { sofa_curve: [17], planter_tree: [3, 4, 5], rope_velvet: [0], lamp_post: [3], bollard_light: [1], // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
+export const TWO_SIDED = { sofa_curve: [17], rope_velvet: [0], lamp_post: [3], bollard_light: [1], // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
   letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [0, 1, 2], car_taxi: [80, 81, 90, 91], car_sedan: [80, 81] };
 const CHECK = typeof location !== 'undefined' && /[?&]assetcheck=1/.test(location.search);
 // ?assetcheck=1: the open edges of a glTF node are counted over all its primitives together. A mesh with several materials comes in as one
@@ -107,6 +107,7 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
   for (const p of A.parts) {
     if (p.lod !== lod || (o.only && !p.name.startsWith(o.only))) continue;
     if (p.glow) { const k = (o.glowK ?? 1) * (o.glowMul && o.glowMul[p.name] != null ? o.glowMul[p.name] : 1); if (k <= 0) continue; room.gacc.add(p.geo, mtx, (o.glowColor || p.glowColor).map((v) => v * k), { grp: o.grp ?? 0 }); continue; }
+    if (p.leaf) { if (room.facc) room.facc.add(p.geo, mtx, o.leafTint || p.tint, { mat: 0, uv: 'mesh', occ: 1 }); continue; }   // v12 leaf cards: world9 draws them with the foliage shader
     const sw = o.swap && o.swap[p.matName];   // swap a named material for this placement: { velvet_teal: [libraryId, linearRgb] }
     (room.pacc || room.acc).add(p.geo, mtx, sw ? sw[1] : o.tints && o.tints[p.name] ? o.tints[p.name] : p.tint, { mat: sw ? sw[0] : p.id, uv: 'mesh', occ: o.occ ?? 1 });
   }
@@ -125,7 +126,7 @@ function solidProp(name, b) { const h = b.max.y - b.min.y, w = b.max.x - b.min.x
 // over = per-hall material swaps keyed by mesh name or material name, each with an optional library id and tint
 export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null, pick = null) {
   const A = ASSETS[name]; if (!A) return null; const acc = new Acc(), m = extra || new THREE.Matrix4();
-  for (const p of A.parts) { if (p.lod !== lod || (pick && !pick(p.name))) continue;   // pick: only the parts it keeps (recline.js: the back, the footrest)
+  for (const p of A.parts) { if (p.lod !== lod || p.leaf || (pick && !pick(p.name))) continue;   // pick: only the parts it keeps (recline.js: the back, the footrest)
     if (p.glow) { const g = p.geo.clone(); g.setAttribute('occ', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(1), 1)); acc.add(g, m, p.glowColor, { mat: MAT.emit, uv: 'mesh' }); continue; }   // seat LEDs, cup-holder rings
     // cheap baked occlusion for an instanced prop: undersides and low parts darker
     const g = p.geo.clone(), P = g.attributes.position, N = g.attributes.normal, occ = new Float32Array(P.count);

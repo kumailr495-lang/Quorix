@@ -14,6 +14,7 @@ import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
 import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
+import { leafAtlas } from './foliage.js';
 import { posterURL, filmById } from './films.js';
 import { Lift } from './lift9.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
@@ -437,7 +438,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const x of [-7.9, -6.1]) add('lobby', 'directors_chair', x, 0, -4.7, 0);
   add('lobby', 'ring_light', -7.0, 0, -2.7, Math.PI);
   add('lobby', 'merch_shelf', -21.35, 0, 2.1, Math.PI / 2);
-  for (const x of [-40, -34, 34, 40]) add('street', 'planter_tree', x, 0, 22.8);   // v12: between the wings' showcases, 1.8 m off their faces
+  for (const x of [-40, -34, 34, 40]) add('street', 'olive_tree', x, 0, 22.8, (x * 1.7) % 6.28, { collide: false, round: 0.8 });   // v12: between the wings' showcases, 1.8 m off their faces; the potted olives of the lobby (leaf cards, not the old blob crown)
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
   // v11 (the user: "a pole is blocking the view"): none in front of the canopy. v12: each lamp's arm reaches over the kerb (it lay along the
   // pavement); the light and its halo are at the head (tools/blender/arch/rooms.py); a clipped hedge stands in every bronze trough
@@ -484,7 +485,7 @@ function dressRooms(world) {
     if (u.kind === 'basin') { L.push({ room: u.room, name: 'basin_vessel', x: u.x + 0.02, y: u.y, z: u.z, yaw: 0, o: { collide: false, ground: false } }); L.push({ room: u.room, name: 'tap_brass', x: u.x - 0.2, y: u.y, z: u.z, yaw: Math.PI / 2, o: { collide: false, ground: false } }); }
     if (u.kind === 'urinal') L.push({ room: u.room, name: 'urinal', x: u.x, y: 0, z: u.z - 0.245, yaw: 0, o: { collide: 0.05, ground: false } }); }
   for (const key in byRoom) {
-    const room = world.rooms[key]; if (!room) continue; const host = { pacc: new Acc(), gacc: new Acc(), bins: [], col: (x0, z0, x1, z1, y0, y1) => { for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) world.walls.add(ax, az, bx, bz, y0, y1); },
+    const room = world.rooms[key]; if (!room) continue; const host = { pacc: new Acc(), gacc: new Acc(), facc: new Acc(), bins: [], col: (x0, z0, x1, z1, y0, y1) => { for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) world.walls.add(ax, az, bx, bz, y0, y1); },
       ring: (cx, cz, r, y0, y1, n = 16) => { const R = r / Math.cos(Math.PI / n); for (let k = 0; k < n; k++) { const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n; world.walls.add(cx + R * Math.cos(a0), cz + R * Math.sin(a0), cx + R * Math.cos(a1), cz + R * Math.sin(a1), y0, y1); } } };
     const framed = FRAMED.filter((f) => f.room === key); for (const f of framed) framePanel(host.pacc, f);
     const det = world.engine && world.engine.preset ? world.engine.preset.detail ?? 1 : 1;   // v10: the low preset skips purely decorative extras (o.detail 1)
@@ -492,7 +493,7 @@ function dressRooms(world) {
     // v12 the lobby's furniture in two meshes: what the street sees through the glass, and the deep set (the mezzanine, and small things more
     // than 14 m behind the glass, a few pixels from the pavement) drawn only from inside. The review: the lobby's props were 147k of the
     // street's 339k triangles, and the inside is about to get fuller
-    const deep = key === 'lobby' ? { ...host, pacc: new Acc(), gacc: new Acc() } : null;
+    const deep = key === 'lobby' ? { ...host, pacc: new Acc(), gacc: new Acc(), facc: new Acc() } : null;
     for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y;
       const sz = A.box.getSize(new THREE.Vector3()), small = Math.max(sz.x, sz.z) * (typeof p.o.scale === 'number' ? p.o.scale : 1) < 1.6;
       const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
@@ -501,6 +502,9 @@ function dressRooms(world) {
     if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
     if (deep && deep.pacc.count) { const g = toGeometry(deep.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-propsdeep'; room.group.add(m); }
     if (deep && deep.gacc.count) { const g = toGeometry(deep.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglowdeep'; room.group.add(m); }
+    for (const [h_, nm] of [[host, key + '-foliage'], [deep, key + '-foliagedeep']]) if (h_ && h_.facc.count) {   // v12 leaf cards (foliage.js)
+      const g = toGeometry(h_.facc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.foliageMat(room.U, world.leafTex || (world.leafTex = leafAtlas(world.mats.texSize < 512 ? 256 : 512))));
+      m.matrixAutoUpdate = false; m.name = nm; room.group.add(m); }
     for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });
     for (const f of framed) addPanel(world, room, f);
     for (const t of TOTEM_POSTERS) if (t.room === key) addPanel(world, room, t);
@@ -797,9 +801,9 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     // the lobby glass) and once from the restrooms' door, so it is hidden only in the spine and the halls; the lobby's deep props are seen
     // from the street through the glass (the chandelier among them), so they are never hidden
     const here = room || 'lobby', show = { corridor: here === 'corridor' || here === 'lobby', wc: here === 'wc' || here === 'lobby', street: here === 'street' || here === 'lobby' || here === 'corridor' || here === 'wc' };
-    for (const k in show) { const rm = world.rooms[k]; if (!rm) continue; if (!rm.propMeshes || !rm.propMeshes.length) rm.propMeshes = rm.group.children.filter((o) => o.name === k + '-props' || o.name === k + '-propglow');   // looked up again until the props exist (reflections are captured before them)
+    for (const k in show) { const rm = world.rooms[k]; if (!rm) continue; if (!rm.propMeshes || !rm.propMeshes.length) rm.propMeshes = rm.group.children.filter((o) => o.name === k + '-props' || o.name === k + '-propglow' || o.name === k + '-foliage');   // looked up again until the props exist (reflections are captured before them)
       for (const m of rm.propMeshes) m.visible = all || world.propCull === false || show[k]; }
-    const lob = world.rooms.lobby; if (lob) { if (!lob.deepMeshes || !lob.deepMeshes.length) lob.deepMeshes = lob.group.children.filter((o) => o.name === 'lobby-propsdeep' || o.name === 'lobby-propglowdeep');
+    const lob = world.rooms.lobby; if (lob) { if (!lob.deepMeshes || !lob.deepMeshes.length) lob.deepMeshes = lob.group.children.filter((o) => o.name === 'lobby-propsdeep' || o.name === 'lobby-propglowdeep' || o.name === 'lobby-foliagedeep');
       for (const m of lob.deepMeshes) m.visible = true; }
   };
   world.update = (dt, actors, now) => {

@@ -56,16 +56,16 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 |---|---|
 | Outside: Streamline front (concept B picked) | Done 11-17: curved band, speed lines, round corners, fin, round marquee |
 | Lobby lounge: curved sofas not on one circle | Done 11-17: three sofas on the table's own circle, two chairs close the C |
-| Halls: "the inside sucks" | In progress: folded MAX walls, CURVE sound-wave fins, 270 acoustic clouds, poster pre-show screen |
-| Curve hall: seats not following the curve | Open: check after its bake |
+| Halls: "the inside sucks" | Done 11-17: folded MAX walls, CURVE sound-wave fins, 270 acoustic clouds, poster pre-show screen |
+| Curve hall: seats not following the curve | Checked 11-17: a top-down render shows every row on an arc round the screen; waiting for a screenshot if one spot still looks off |
 | Street buildings: curves, triangles, "an illusion" that looks real | In progress: gables, Deco crown, curved gable, sawtooth, drum, wavy balconies; windows interior-mapped |
-| Trees that look real | Open: leaf cards |
-| Premium recliners that really recline, with sound; cup holders that take your drink or popcorn | Open |
+| Trees that look real | Done 11-17: crowns of leaf cards (a drawn leaf atlas, alpha cut, both faces, wind) on the street trees and the olives; the olive's ball-shaped knot is now a trunk; the blob planter trees in front of the cinema are potted olives |
+| Premium recliners that really recline, with sound; cup holders that take your drink or popcorn | Done 11-17: your seat's back and footrest move with a motor sound, two buttons when seated; the console holders take and give back what you hold |
 | Exits off the screen wall, the screen wall to wall | Open (moves doors, nav and exit routes) |
 | Light bounce, laser projection look, Dolby Atmos, corridors | Open |
 | Taxi interior, glitches, premium lighting | Open |
 | LODs for every object (asked 6-12) | Open: levels for what is drawn separately (people, cars, trees, seats); merged room props stay one mesh |
-| Lobby much better or from scratch; outside better still | Open |
+| Lobby much better or from scratch; outside better still | Open. Noted for it: the florist's window (white wall, blob flowers, box pots), the box hedges and balcony planters still look blocky |
 
 ## Theatres
 

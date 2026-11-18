@@ -40,7 +40,7 @@ for e in EYES: EYE.setdefault(room_of(e['tag']), []).append((e['x'], e['eye'], e
 for k in EYE:   # at most 400 eye points a room, spread over it (a seeded sample)
     pts = EYE[k]; EYE[k] = np.asarray(pts if len(pts) <= 400 else rnd.sample(pts, 400), np.float64)
 
-TARGET = re.compile(r'^(street|lobby|wc|corridor|spine)/\1-(props|propglow|propsdeep|propglowdeep)$')
+TARGET = re.compile(r'^(street|lobby|wc|corridor|spine)/\1-(props|propglow|propsdeep|propglowdeep|foliage|foliagedeep)$')
 out = {}
 for ni, name in enumerate(NAMES):
     if not TARGET.match(name) or name in out: continue
