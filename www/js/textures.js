@@ -130,14 +130,14 @@ export function guideSignTexture() {
   const w = 2048, h = 256, c = makeCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#121114'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(201,160,97,.9)'; g.fillRect(0, h - 8, w, 8);
   const cell = (x, n, label, arrow, kind) => { g.fillStyle = ACCENT[kind]; g.font = `600 150px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(n, x + 90, h * 0.52);
     g.textAlign = 'left'; g.fillStyle = '#f5ede3'; g.font = `600 54px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = '6px'; g.fillText(label, x + 190, h * 0.42); g.fillStyle = 'rgba(245,237,227,.7)'; g.font = `400 40px ${SANS}`; g.fillText(arrow, x + 190, h * 0.72); };
-  cell(40, '1', 'CURVED PREMIUM', '←  left', 'curved'); cell(720, '2', 'IMAX', '↑  straight ahead', 'imax'); cell(1370, '3', 'STANDARD', 'right  →', 'standard');
+  cell(40, '1', 'CURVED PREMIUM', '←  left', 'curved'); cell(720, '2', 'MAX', '↑  straight ahead', 'imax'); cell(1370, '3', 'STANDARD', 'right  →', 'standard');
   g.fillStyle = 'rgba(201,160,97,.35)'; g.fillRect(690, 40, 3, h - 80); g.fillRect(1340, 40, 3, h - 80);
   return tex(c);
 }
 // gallery art prints: the history of the cinema told in deco graphics (no invented film titles)
 export const PRINTS = [
   { a: '#14110f', b: '#c9a061', t: 'LUMIÈRE', s: 'Since 1895 · The first picture show', shape: 'beam' },
-  { a: '#0c1420', b: '#4c9dff', t: 'IMAX', s: 'Screen 2 · 22 metres of picture', shape: 'frame' },
+  { a: '#0c1420', b: '#4c9dff', t: 'MAX', s: 'Screen 2 · 22 metres of picture', shape: 'frame' },
   { a: '#1a0d10', b: '#e8a25a', t: 'CURVED', s: 'Screen 1 · Premium recliners', shape: 'arc' },
   { a: '#0b1716', b: '#4fd1c5', t: 'STANDARD', s: 'Screen 3 · Classic stadium hall', shape: 'reel' },
   { a: '#120f16', b: '#d97a8a', t: 'ENCORE', s: 'Stay for the credits', shape: 'curtain' },

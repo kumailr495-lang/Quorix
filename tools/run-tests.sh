@@ -15,5 +15,7 @@ for f in "$ROOT"/www/js/*.js "$ROOT"/www/js/lang/*.js; do node --check "$f"; don
 echo "== bakes"; node "$ROOT/tools/dev/check-bakes.mjs" "$ROOT/www"
 # every room built from the current building.js/hallmath.js must match its bake (needs python3 + numpy; skipped where missing, e.g. Termux)
 if python3 -c "import numpy" 2>/dev/null; then T="$(mktemp -d)"; node "$ROOT/tools/dev/export-spec.mjs" "$T/spec.json" >/dev/null && python3 "$ROOT/tools/blender/arch/build.py" --check --spec "$T/spec.json"; rm -rf "$T"; else echo "spec check skipped (python3 + numpy missing)"; fi
+# v12b the page's CSP allows the import map by its hash: an edited import map without a new hash would stop the game loading
+node -e "const fs=require('fs'),c=require('crypto'),s=fs.readFileSync('$ROOT/www/index.html','utf8'),m=/<script type=\"importmap\">([\s\S]*?)<\/script>/.exec(s),h='sha256-'+c.createHash('sha256').update(m[1]).digest('base64');if(!s.includes(h)){console.error('CSP: the import map hash '+h+' is not in index.html');process.exit(1)}console.log('== csp ok (import map '+h.slice(0,18)+'...)')"
 echo "== lint-comments"; cd "$ROOT" && node tools/dev/lint-comments.mjs www/js/*.js tools/kiln/build.mjs tools/dev/*.mjs
 python3 "$ROOT/tools/dev/lint_comments_py.py"

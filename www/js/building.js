@@ -5,12 +5,14 @@
 // One-way flow (v8 feedback F2-F6): in through the ticket gate, up the escalator, along the long dim corridor, in at the top of the hall;
 // out at the bottom, beside the screen, into the bright spine with a travelator, straight back into the lobby. Entry doors only open
 // inwards, exit doors only outwards, and nothing on L1 leads into the spine.
-import { HALLS, makeHall } from './hallmath.js';
+import { HALLS, makeHall, SCREEN_GAP, WALL } from './hallmath.js';
 export const HALL = Object.fromEntries(HALLS.map((s) => [s.id, makeHall(s)]));
 export const L1 = HALL.MAX.total;   // the first floor = the MAX hall's rear aisle (its rake top)
 export const FACADE = 18, LOBBY = { x0: -22, x1: 22, z0: -14, z1: FACADE, ceil: 9.6 }, MEZZ = { z0: -14, z1: -7.4, void: { x0: 8.6, x1: 12.8, z0: -9.8, z1: -7.4 } };
-// the spine is 4.5 m high under the bridge and the pantry (they are its roof) and 6.4 m south of zHi, where the raised halls' exit doors open
-export const SPINE = { x0: -4.2, x1: 4.2, z0: Math.min(HALL.CURVE.zc - HALL.CURVE.width / 2, HALL.X270.zc - HALL.X270.width / 2) - 0.4, z1: -14, ceil: 4.5, zHi: -27.0, ceilHi: 6.4 };
+// v12b the exit passages: a flight is PASS_W wide; the spine runs on past the last halls far enough to take the passages south of them
+export const PASS_W = 1.4, EXIT_RISE = 0.172, EXIT_TREAD = 0.3;
+// the spine is 4.5 m high under the bridge and the pantry (they are its roof) and 6.4 m south of zHi, where the exit passages open
+export const SPINE = { x0: -4.2, x1: 4.2, z0: Math.min(HALL.CURVE.zc - HALL.CURVE.width / 2, HALL.X270.zc - HALL.X270.width / 2) - WALL - PASS_W, z1: -14, ceil: 4.5, zHi: -27.0, ceilHi: 6.4 };
 const RO = (h) => h.xRear - 0.4 * h.dir;   // a hall's rear wall, outer face
 export const BRIDGE = { x0: RO(HALL.MAX) - 6, x1: RO(HALL.CLASSIC) + 6, z0: -22, z1: -14, ceil: 4.2 };
 // the flank corridors run behind the front halls' rear walls; a link leads from each to the rear hall's entrance (v9.1: from the halls' sizes)
@@ -59,25 +61,45 @@ export const DOORS = [
   { id: 'spineOut', rooms: ['spine', 'lobby'], kind: 'pair', axis: 'x', x: 0, z: -14, w: 3.2, h: 3.0, y: 0, oneWay: 'spine' },
   { id: 'mezzPortal', rooms: ['lobby', 'corridor'], kind: 'open', axis: 'x', x: 10.2, z: -14, w: 5.6, h: 3.4, y: L1 },
 ];
-// every hall: the front floor is lifted so its rear aisle is level with L1 (no stairs on the way in); the rear entry door at L1 (in only);
-// two exit doors in the screen wall at the front corners (out only), each onto a landing in the spine with a stair down to G along the
-// spine wall, running towards the hall's centre line so it never passes another hall's door
-export const EXIT_STAIRS = [];
-for (const h of Object.values(HALL)) {
+// every hall: the front floor is lifted so its rear aisle is level with L1 (no stairs on the way in); the rear entry door at L1 (in only).
+// v12b (the user, 11-18: "move the exit door to not on the front of the screen and then cover that area with screens"): two exit doors in
+// the side walls at the front (out only), in front of the screen's edge, each onto an exit passage outside the wall. The passage keeps the
+// hall's front floor level at the door, steps down inside itself towards the spine (a flight PASS_W wide along the hall's wall) and opens
+// into the spine at ground level; two halls side by side share the passage between them, each with its own flight on its own side. The
+// door stands far enough back from the screen wall for its flight to end 1 m short of the spine.
+export const EXIT_PASSAGES = [];
+const H_ = Object.values(HALL);
+for (const h of H_) {
   h.y0 = Math.round((L1 - h.total) * 1000) / 1000;
   const e = h.toWorld(h.entryU, h.depthIn);
   DOORS.push({ id: h.id + 'In', rooms: ['corridor', h.key], kind: 'pair', axis: 'z', x: h.xRear - 0.2 * h.dir, z: e.z, w: 1.9, h: 2.5, y: L1, oneWay: 'corridor', hall: h.id });
-  h.exits.forEach((x, i) => {
-    const w = h.toWorld(x.u, 0), id = h.id + 'Out' + i;
-    DOORS.push({ id, rooms: [h.key, 'spine'], kind: 'push', axis: 'z', x: h.xScreenWall + 0.2 * h.dir, z: w.z, w: 1.8, h: 2.4, y: h.y0, oneWay: h.key, hall: h.id });
-    if (h.y0 > 0.02) {
-      // the landing spans the door, its frame and 3 cm (lh = 0.9 + 0.12 + 0.03; v11: at +-0.95 m the frame hung 7 cm past it) and the
-      // first step starts after it (at 0.85 m the two overlapped: z-fighting)
-      const n = Math.ceil(h.y0 / 0.172 - 1e-6), toC = Math.sign(h.zc - w.z), wallX = h.side < 0 ? SPINE.x0 : SPINE.x1, inX = -Math.sign(wallX), lh = 1.05;
-      EXIT_STAIRS.push({ door: id, hall: h.id, x0: wallX, x1: wallX + inX * 1.7, zDoor: w.z, landing: 2 * lh, lh, dir: toC, n, rise: h.y0 / n, tread: 0.3, y0: h.y0,
-        zTop: w.z + toC * lh, zBot: w.z + toC * (lh + n * 0.3) });
-    }
+  const n = h.y0 > 0.02 ? Math.ceil(h.y0 / EXIT_RISE - 1e-6) : 0, edge = Math.max(0, h.screenD(h.W / 2));
+  const d0 = Math.round(Math.max(edge + 0.6, n * EXIT_TREAD + 0.4 - (SCREEN_GAP + WALL) + 1.0) * 100) / 100;
+  // one exit per side wall: sg -1 the wall at u = -width/2, +1 at +width/2; the door spans d0 .. d0 + 1.8 along the wall
+  h.exits = [-1, 1].map((sg, i) => {
+    const c = h.toWorld(sg * (h.width / 2 + WALL / 2), d0 + 0.9), id = h.id + 'Out' + i, zSide = Math.sign(c.z - h.zc);
+    DOORS.push({ id, rooms: [h.key, 'spine'], kind: 'push', axis: 'x', x: c.x, z: c.z, w: 1.8, h: 2.4, y: h.y0, oneWay: h.key, hall: h.id, from: -zSide });
+    return { sg, u: sg * (h.width / 2), d0, d1: d0 + 1.8, door: id, zSide, n, rise: n ? h.y0 / n : 0 };
   });
+}
+// the passages, per side of the spine from north to south: north of the first hall, between each two, south of the last
+for (const side of [-1, 1]) {
+  const hs = H_.filter((h) => h.side === side).sort((a, b) => b.zc - a.zc), xs = side < 0 ? SPINE.x0 : SPINE.x1, zN = (h) => h.zc + h.width / 2 + WALL, zS = (h) => h.zc - h.width / 2 - WALL;
+  const spans = [{ z0: zN(hs[0]), z1: zN(hs[0]) + PASS_W, s: hs[0], n: null }];
+  for (let i = 0; i + 1 < hs.length; i++) spans.push({ z0: zN(hs[i + 1]), z1: zS(hs[i]), n: hs[i], s: hs[i + 1] });
+  spans.push({ z0: zS(hs[hs.length - 1]) - PASS_W, z1: zS(hs[hs.length - 1]), n: hs[hs.length - 1], s: null });
+  for (const sp of spans) {
+    const flights = [], toSpine = side < 0 ? 1 : -1;   // the way down: towards the spine along x
+    for (const [h, zSide] of [[sp.n, -1], [sp.s, 1]]) {   // the hall north of the passage opens on its south wall (zSide -1), the one south on its north wall
+      if (!h) continue; const ex = h.exits.find((q) => q.zSide === zSide), dTop = ex.d0 - 0.4, w = h.toWorld(0, dTop);
+      const za = zSide < 0 ? sp.z1 - PASS_W : sp.z0, zb = za + PASS_W;   // the flight runs along its hall's wall
+      flights.push({ hall: h.id, door: ex.door, z0: za, z1: zb, zWall: zSide < 0 ? sp.z1 : sp.z0, xTop: w.x, xDoor: h.toWorld(0, ex.d0 + 0.9).x, xFar: h.toWorld(0, ex.d1 + 0.3).x, dir: toSpine, n: ex.n, rise: ex.rise, tread: EXIT_TREAD, y0: h.y0 });
+    }
+    const far = side < 0 ? Math.min(...flights.map((f) => f.xFar)) : Math.max(...flights.map((f) => f.xFar)), top = Math.max(...flights.map((f) => f.y0));
+    const under = sp.z1 > BRIDGE.z0 - 0.5;   // north of the first halls the passage runs under the bridge: its ceiling stays under the bridge's slab
+    EXIT_PASSAGES.push({ id: (side < 0 ? 'W' : 'E') + EXIT_PASSAGES.filter((p) => p.side === side).length, side, x0: Math.min(xs, far), x1: Math.max(xs, far), xSpine: xs, z0: sp.z0, z1: sp.z1,
+      ceil: Math.round(Math.min(under ? L1 - 0.45 : 99, Math.max(3.2, top + 2.9)) * 100) / 100, flights });
+  }
 }
 // rooms: kind drives the Blender builder; level = the lowest floor in it; vis = rooms drawn when you are in it (portal culling)
 export const ROOMS = {
@@ -120,7 +142,7 @@ export const NAV = {
     // v11: walkers cross the lobby in front of the gate line (z 4.0), not through it. Inside the zone: the ticket leaf, the landing, the
     // escalators' feet and the lift's door (liftG); the exit leaves are in front of the down escalator (exitIn). On the first floor the
     // lift opens onto the gallery (liftL1), which meets the mezzanine at galS; galB rounds the escalator void's corner
-    gateW: [6.2, 0, 6.6], downOut: [11.7, 0, 5.2], east: [14.5, 0, 5.4], eastC: [18.2, 0, 5.0], exitIn: [11.7, 0, 2.8], liftLob: [14.5, 0, 2.8], flankW3: [BRIDGE.x0 + 3, L1, -56.5],
+    gateW: [6.2, 0, 6.6], downOut: [11.7, 0, 5.2], east: [14.5, 0, 5.4], eastC: [18.2, 0, 5.0], exitIn: [11.7, 0, 2.8], liftLob: [14.5, 0, 2.8], flankW3: [BRIDGE.x0 + 3, L1, (LINK_W.z0 + LINK_W.z1) / 2],
     gate: [9.7, 0, 5.4], gateIn: [9.7, 0, 2.8], escBot: [9.7, 0, 0.4], escTop: [9.7, L1, -12.6], mezz: [9.7, L1, -11.6],
     downTop: [11.7, L1, -12.6], downBot: [11.7, 0, 0.6], liftG: [14.5, 0, 1.6], liftL1: [14.5, L1, -2.6], galS: [14.5, L1, -8.4], galB: [13.6, L1, -11.6],
     portal: [10.2, L1, -15.2], bridgeE: [BRIDGE.x1 - 3, L1, -18.0], bridgeW: [BRIDGE.x0 + 3, L1, -18.0], bridgeC: [0, L1, -18.0], pantry: [0, L1, -23.0],

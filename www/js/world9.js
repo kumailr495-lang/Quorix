@@ -9,8 +9,8 @@ import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
-import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_STAIRS, CORE } from './building.js';
-import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
+import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE } from './building.js';
+import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL, atmosSpots } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
 import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
@@ -27,6 +27,12 @@ export const STEP_UP = 0.4, HEAD = 1.75;
 const FILL = { corridor: 0.42, street: 0.03 };
 // v10 softer light per room (materials.js uSoft): how much of the soft curve each room takes; halls less (their dark is the point)
 const SOFT = { lobby: 0.85, corridor: 0.8, spine: 0.75, wc: 0.75, street: 0.6 };
+// v12c where the lobby's living props stand (anim12.js puts its particles in the same frames): [x, y, z, yaw]
+export const LIFE = {
+  kettles: [[-21.30, 0.96, -7.55, Math.PI / 2], [-21.30, 0.96, -6.65, Math.PI / 2]],   // tools/blender/zones12.py popcorn_kettle, on the parlour's back counter
+  espresso: [-21.12, 0.96, -12.3, Math.PI / 2],   // zones12.py espresso_lever, its back 3.4 cm under the bottle shelves' ends, 4.4 cm under their lips
+  fountain: [0, 0, 10.0, 0],   // statue12.py fountain_muse
+};
 export const LEVEL = { hallMax: 0.5, hallCurve: 0.5, hallClassic: 0.55, hall270: 0.5, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
 function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 14) { A[i + 3] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 4] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 5] *= A[i + 7] ? Math.min(k, 10) : k; }
   for (const ch of ['h', 'f']) for (const s of ['up', 'down']) L.amb[ch][s] = L.amb[ch][s].map((v) => v * (ch === 'h' ? k : Math.min(k, 10))); }   // a face lower than STEP_UP above your feet is a step you walk over; above HEAD it is overhead
@@ -37,6 +43,7 @@ export function roomAt(x, y, z) {
   for (const h of HALLS) { const q = h.toLocal(x, z); if (Math.abs(q.u) <= h.width / 2 + 0.05 && q.d >= -SCREEN_GAP - WALL && q.d <= h.depthIn + WALL) return h.key; }
   if (y > L1 - 1.2) for (const r of CORR) if (IN(r, x, z)) return 'corridor';
   if (IN(SPINE, x, z) && z < SPINE.z1 - 0.02) return 'spine';
+  for (const p of EXIT_PASSAGES) if (IN(p, x, z, WALL + 0.05) && y < p.ceil) return 'spine';   // v12b the exit passages (and their doors' thresholds in the halls' walls) belong to the spine (before the corridor's ground-floor fallback: two run under the bridge)
   if (IN(LOBBY, x, z)) return 'lobby';
   if (IN(WC, x, z)) return 'wc';
   if (IN(STREET, x, z, 0.5)) return 'street';
@@ -47,12 +54,17 @@ export function roomAt(x, y, z) {
 // v11: the lift stands in front of the mezzanine, beside the escalators; on the first floor a gallery joins its rear door to the mezzanine
 const CAB = { x0: LIFT.x0, x1: LIFT.x1, z0: LIFT.z0 - 0.01, z1: LIFT.z1 + 0.01 };
 const onMezz = (x, z) => (z >= MEZZ.z0 && z <= MEZZ.z1 && !IN(MEZZ.void, x, z)) || IN(GALLERY, x, z);
+// v12b the exit passages' floors: level with the hall at its door, a flight down towards the spine along the hall's wall, then ground level
 function stairY(x, z, y) {
-  for (const s of EXIT_STAIRS) {
-    if (x < Math.min(s.x0, s.x1) || x > Math.max(s.x0, s.x1)) continue;
-    const t = (z - s.zTop) * s.dir, back = (z - s.zDoor) * s.dir;
-    if (t < 0 && back > -s.lh) { if (y > s.y0 - 0.8) return s.y0; continue; }
-    if (t >= 0 && t < s.n * s.tread) { const ys = s.y0 - (Math.floor(t / s.tread) + 1) * s.rise; if (y > ys - 0.8) return ys; }
+  for (const p of EXIT_PASSAGES) {
+    if (!IN(p, x, z, WALL + 0.05)) continue;
+    for (const f of p.flights) {   // a flight reaches on through its hall's wall to the door (the threshold is level with the landing)
+      if (z < f.z0 - (f.zWall === f.z0 ? WALL + 0.05 : 0.02) || z > f.z1 + (f.zWall === f.z1 ? WALL + 0.05 : 0.02)) continue;
+      const t = (x - f.xTop) * f.dir;   // metres down the flight from its top edge (negative: on the landing at the door)
+      if (t < 0) { if (y > f.y0 - 0.8) return f.y0; continue; }
+      if (f.n && t < f.n * f.tread) { const ys = f.y0 - (Math.floor(t / f.tread) + 1) * f.rise; if (y > ys - 0.8) return ys; }
+    }
+    return 0;
   }
   return null;
 }
@@ -116,7 +128,7 @@ function clipBand(tri, y0, y1) {   // Sutherland-Hodgman against y >= y0 and y <
 class Door {
   constructor(world, d) {
     Object.assign(this, { id: d.id, def: d, x: d.x, z: d.z, y: d.y || 0, w: d.w, h: d.h, axis: d.axis, kind: d.kind, rooms: d.rooms, hall: d.hall || null, open: 0, target: 0 });
-    this.from = d.hall ? -HALL[d.hall].dir : d.oneWay === 'spine' ? -1 : 0; this.reach = d.kind === 'slide' ? 2.8 : 2.2;
+    this.from = d.from ?? (d.hall ? -HALL[d.hall].dir : d.oneWay === 'spine' ? -1 : 0); this.reach = d.kind === 'slide' ? 2.8 : 2.2;   // v12b the side exits say which side they open from
     this.group = new THREE.Group(); this.group.position.set(d.x, this.y, d.z); this.group.rotation.y = d.axis === 'x' ? 0 : Math.PI / 2; this.group.updateMatrixWorld(true);
     if (d.kind === 'open') return;
     const room = world.rooms[d.oneWay && world.rooms[d.oneWay] ? d.oneWay : d.rooms[0]] || world.rooms[d.rooms[1]], half = d.w / 2, into = -(this.from || 1);
@@ -220,7 +232,7 @@ class Travelator {
 }
 // the lift (lift9.js): a through car with its controls in the world
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
-const DENSE = { cafemenu: 320, cafesign: 256, picto: 256, art: 640, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512, attraction: 150 };   // canvas pixels per metre for boards with text or fine figures
+const DENSE = { kettlehead: 1280, cafemenu: 320, cafesign: 256, picto: 256, art: 640, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512, attraction: 150 };   // canvas pixels per metre for boards with text or fine figures
 const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 function panelTexture(id, w, h, hooks) {
   const ppm = DENSE[id.split('_')[0]] || 128, px = Math.min(2048, Math.max(256, Math.round(w * ppm))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
@@ -245,6 +257,9 @@ function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.
   g.font = `600 ${lab}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('LIFT', x + h * 0.68, h * 0.5); ls('0px');
   g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.3, h * 0.48); }
 export const PANEL_DRAW = {
+  // v12c the cabinet poppers' headers (zones12.py popcorn_kettle): POPCORN in red on cream, a red rule above and below
+  kettlehead: (g, w, h) => { g.fillStyle = '#efe4c8'; g.fillRect(0, 0, w, h); g.fillStyle = '#a3141e'; g.fillRect(0, h * 0.06, w, h * 0.07); g.fillRect(0, h * 0.87, w, h * 0.07);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 ${h * 0.62}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.12}px`; g.fillText('POPCORN', w / 2, h * 0.53); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   // v12 the heritage corner's two posters: original 1950s-style cinema bills (no real film, no real studio)
   // v12 the bills' lines keep inside their gold border (g.__fit, textures.js)
   vintage: (g, w, h, id) => { const b = /_b$/.test(id); g.__fit = [w * 0.07, w * 0.93]; const bg = g.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, b ? '#2a1a12' : '#0e1a2c'); bg.addColorStop(1, b ? '#120a06' : '#05080f'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
@@ -257,10 +272,11 @@ export const PANEL_DRAW = {
       g.fillStyle = '#f2ebdd'; g.font = `700 ${h * 0.14}px ${SERIF}`; g.fillText('1952', w / 2, h * 0.39); g.fillStyle = '#d8b46a'; g.font = `600 ${h * 0.05}px ${SERIF}`; ls(`${h * 0.01}px`); g.fillText('A HOUSE OF PICTURES', w / 2, h * 0.79); ls('0px'); g.font = `500 ${h * 0.03}px ${SANS}`; g.fillStyle = '#b8a07a'; g.fillText('SINCE THE FIRST REEL', w / 2, h * 0.87); }
     g.strokeStyle = 'rgba(216,180,106,0.6)'; g.lineWidth = Math.max(2, h * 0.005); g.strokeRect(h * 0.015, h * 0.015, w - h * 0.03, h - h * 0.03); g.__fit = null; },
   // v12 the projector's caption on its plinth: engraved lettering on brushed brass
-  plaque: (g, w, h) => { const bg = g.createLinearGradient(0, 0, w, h); bg.addColorStop(0, '#b8914f'); bg.addColorStop(0.5, '#d9b878'); bg.addColorStop(1, '#a8803f'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  plaque: (g, w, h, id) => { const bg = g.createLinearGradient(0, 0, w, h); bg.addColorStop(0, '#b8914f'); bg.addColorStop(0.5, '#d9b878'); bg.addColorStop(1, '#a8803f'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
     g.globalAlpha = 0.08; g.fillStyle = '#000'; for (let y = 0; y < h; y += 2) g.fillRect(0, y, w, 1); g.globalAlpha = 1; g.textAlign = 'center'; g.textBaseline = 'middle'; const ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; };
-    g.fillStyle = '#2a1d0c'; g.font = `700 ${h * 0.20}px ${SERIF}`; ls(`${h * 0.03}px`); g.fillText('35 MM PROJECTOR · 1952', w / 2, h * 0.38); ls('0px');
-    g.fillStyle = '#3b2a12'; g.font = `500 ${h * 0.17}px ${SERIF}`; g.fillText('It ran in this house until the last reel of 1998', w / 2, h * 0.72); },
+    const T = id === 'plaque_muse' ? ['THALIA · MUSE OF COMEDY', 'From the Royal Cast Collection · SMK, Copenhagen'] : ['35 MM PROJECTOR · 1952', 'It ran in this house until the last reel of 1998'];
+    g.fillStyle = '#2a1d0c'; g.font = `700 ${h * 0.20}px ${SERIF}`; ls(`${h * 0.03}px`); g.fillText(T[0], w / 2, h * 0.38); ls('0px');
+    g.fillStyle = '#3b2a12'; g.font = `500 ${h * 0.17}px ${SERIF}`; g.fillText(T[1], w / 2, h * 0.72); },
   // v12 the photo spot's step-and-repeat: the wordmark and a star in gold on deep navy, offset row by row, a soft light in the middle
   photowall: (g, w, h) => { const bg = g.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, w * 0.7); bg.addColorStop(0, '#1a2a52'); bg.addColorStop(1, '#0a1128'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
     // five whole marks a row, the wordmark and the star swapping places row by row (the user: no word cut off at the edges)
@@ -375,22 +391,33 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
   for (const x of [-14.4, -13.0]) for (let z = 5.6; z < 12.5; z += 1.75) add('lobby', 'rope_velvet', x, 0, z + 0.875, Math.PI / 2, { collide: 0.02 });
-  for (const [z, yaw] of [[-7.6, Math.PI / 2], [-6.5, Math.PI / 2], [-3.0, Math.PI / 2], [-1.7, Math.PI / 2]]) add('lobby', z > -5 ? 'drinks_fountain' : 'popcorn_machine', -21.62, 0.92, z, yaw, { collide: false, ground: false });
-  add('lobby', 'candy_wall', -21.7, 0, 0.0, Math.PI / 2);
+  // v12c (the user: "make reception and bar and popcorn area like dedicated areas", "make them better 3d detailed and animations"): the
+  // parlour's back counter (rooms.py: 0.75 m deep in front of the wall's face at x -21.6; the old machines stood half inside the wall)
+  // carries two cabinet poppers, two soda towers and stacks of tubs (tools/blender/zones12.py); the front counter two heated cases and two
+  // tills; the ticket desk four tills; the candy wall stands in its own bay at the back counter's north end
+  for (const k of LIFE.kettles) add('lobby', 'popcorn_kettle', k[0], k[1], k[2], k[3], { collide: false, ground: false });
+  for (const z of [-4.6, -3.75]) add('lobby', 'drinks_tower', -21.30, 0.96, z, Math.PI / 2, { collide: false, ground: false });
+  for (const z of [-8.65, -8.38, -5.7, -5.43]) add('lobby', 'tub_stack', -21.42, 0.96, z, 0, { collide: false, ground: false });
+  for (const z of [-7.3, -1.9]) add('lobby', 'popcorn_case', -17.15, 1.0, z, Math.PI / 2, { collide: false, ground: false });
+  for (const z of [-5.0, -0.3]) add('lobby', 'till_pos', -17.2, 1.0, z, Math.PI / 2, { collide: false, ground: false });   // their screens face the staff
+  for (const z of [5.6, 7.6, 9.6, 11.6]) add('lobby', 'till_pos', -17.0, 1.06, z, Math.PI / 2, { collide: false, ground: false });
+  add('lobby', 'candy_wall', -21.42, 0, 0.0, Math.PI / 2);   // 1 cm off the wall's face
   for (const [x, z] of [[-16.2, -9.6], [6.0, 2.4], [-2.4, -12.6], [19.8, -2.6], [-14.8, 2.6]]) add('lobby', 'bin_brass', x, 0, z);
   add('lobby', 'bench_velvet', 21.25, 0, 5.0, Math.PI / 2); add('lobby', 'bench_velvet', 21.25, 0, -6.5, Math.PI / 2);
   // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
   for (const [cx, cz, sw] of [[-11.6, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
-  add('lobby', 'chandelier_cascade', 0, 8.55, (GATE.z + 14.2) / 2, 0, { collide: false, ground: false });   // v11: at the centre of the ceiling rings, over the fountain (rooms.py RCX, RCZ)
+  add('lobby', 'chandelier_deco', 0, LOBBY.ceil, (GATE.z + 14.2) / 2, 0, { collide: false, ground: false });   // v12c ("the new ceiling looks shit"): a waterfall of lit glass rods on three brass rings, its rose 2 cm up into the dome (zones12.py); at the centre of the rings (rooms.py RCX, RCZ)
   // v10 (the user: "the lobby is too big and empty: fill it with lighting, paintings, pillars, sofas, a fountain"; docs/V10-RESEARCH.md):
   // a fountain on the brand ring on the entrance axis (walkers part round it: building.js foyerW/E; v11: the four columns round the court
   // are the building's own, full height, tools/blender/arch/rooms.py grand_column), a
   // pendant cloud over the east waiting areas, rugs under the seating groups, a popcorn cart by the box office, film standees facing the
   // doors (their boards are FRAMED panels), a seating corner by the restrooms under its own small cloud
-  add('lobby', 'fountain_tier', 0, 0, 10.0, 0, { round: 1.68, grp: 2 });   // grp 2: its lit water shimmers (materials.js GLOW_VERT)
-  add('lobby', 'pendant_cloud', LX, LOBBY.ceil - 0.002, LZ, 0, { collide: false, ground: false, detail: 1 });   // over the lounge
+  // v12 (the user: "a statue"): the fountain holds Thalia, the muse of comedy, gilded on a red marble plinth (tools/blender/statue12.py,
+  // public domain: docs/LICENSES.md); her caption is a brass plaque on the plinth's front flat (PIC 'plaque_muse')
+  add('lobby', 'fountain_muse', ...LIFE.fountain, { round: 1.68, grp: 2 });   // grp 2: its lit jets shimmer (materials.js GLOW_VERT)
+  add('lobby', 'pendant_cloud', LX, LOBBY.ceil - 0.45 + 0.002, LZ, 0, { collide: false, ground: false, detail: 1 });   // over the lounge, hung from the coffer beams' soffits (v12 rooms.py lobby12: 0.45 m deep, its plate 2 mm up into them)
   // v12 (the user: "the carpet ... extends so badly and looks so bad"): no patterned rugs; a plain crimson pile with a charcoal edge where
   // people sit, and a crimson runner from the doors to the brand ring (floor only: no ropes on the door axis)
   const CRIMSON = { carpet_deco: [MAT.velvet, [0.20, 0.011, 0.019]], velvet_navy: [MAT.velvet, [0.022, 0.022, 0.026]] };
@@ -404,10 +431,10 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v10 cafe (the user: "the cafe and the latte much more defined"): the front counter with bar stools, the espresso machine on the back
   // counter facing you, a lit cake case, the card reader, five bistro tables under a small pendant cloud (rooms.py builds the walnut wall,
   // the back counter, the shelves and the menu)
-  add('lobby', 'cafe_counter', -19.6, 0, -11.5, Math.PI / 2, { scale: [1.12, 1, 1] });   // 3.9 m: no gap at either end to slip behind it
-  add('lobby', 'espresso_machine', -21.25, 0.96, -12.3, Math.PI / 2, { collide: false, ground: false });
+  add('lobby', 'bar_walnut', -19.6, 0, -11.5, Math.PI / 2);   // v12c zones12.py: 3.9 m, no gap at either end to slip behind it
+  add('lobby', 'espresso_lever', ...LIFE.espresso, { collide: false, ground: false });
   add('lobby', 'cake_case', -19.6, 1.04, -12.55, Math.PI / 2, { collide: false, ground: false });
-  add('lobby', 'pos_terminal', -19.62, 1.04, -10.4, -Math.PI / 2, { collide: false, ground: false });
+  add('lobby', 'till_pos', -19.78, 1.04, -10.15, Math.PI / 2, { collide: false, ground: false });
   for (const z of [-12.6, -11.7, -10.8, -9.9]) add('lobby', 'bar_stool', -18.72, 0, z, -Math.PI / 2);
   for (const [tx, tz] of [[-15.4, -12.5], [-12.8, -12.5], [-10.2, -12.5], [-14.1, -10.3], [-11.5, -10.3]]) { add('lobby', 'bistro_table', tx, 0, tz); add('lobby', 'bistro_chair', tx - 0.62, 0, tz, Math.PI / 2); add('lobby', 'bistro_chair', tx + 0.62, 0, tz, -Math.PI / 2); }
   add('lobby', 'pendant_cloud', -12.8, L1 - 0.322, -11.4, 0, { collide: false, ground: false, scale: 0.55, detail: 1 });
@@ -452,6 +479,20 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const x of [-42.5, -34.5, -9.6, 5.4, 13.6, 33.0]) add('street', 'street_tree', x, 0, 37.6, (x * 7.3) % 6.28, { ground: false, collide: false, round: 0.3 });
   for (const tx of [-22.4, -19.2, -16.0]) { add('street', 'bistro_table', tx, 0, 39.05); add('street', 'bistro_chair', tx - 0.62, 0, 39.05, Math.PI / 2); add('street', 'bistro_chair', tx + 0.62, 0, 39.05, -Math.PI / 2); }
   for (const x of [17.6, 20.6]) add('street', 'planter_hedge', x, 0, 39.2, 0, { scale: 0.7 });
+  // v12b (the user, 11-19: "the outside ... the road being so empty"): the street furnished (tools/blender/street_props12.py). Near pavement:
+  // a bench facing the road in front of each wing with a bin beside it, a hydrant by the kerb each side of the forecourt, parking meters
+  // on the kerb along the lay-by where cars park, a bike stand by the cinema's west glass (clear of the doors' axis). Far pavement: a
+  // bench by the chemist, two bins and two hydrants, all off the walkers' line (z 38.55, npc9.js streetFolk)
+  for (const x of [-24.5, 24.5]) { add('street', 'bench_street', x, 0, 23.55, 0); add('street', 'bin_street', x + Math.sign(x) * 1.6, 0, 23.75, 0); }
+  for (const x of [-17.5, 17.5]) add('street', 'hydrant', x, 0, 25.45, Math.PI);
+  for (const x of [-43.5, -33.5, -23.5, 23.5, 33.5, 42.5]) add('street', 'parking_meter', x, 0, 25.75, 0, { collide: 0.02 });
+  add('street', 'bike_stand', -9.0, 0, 20.6, Math.PI / 2);
+  add('street', 'bench_street', 25.5, 0, 39.3, Math.PI); add('street', 'bin_street', -11.0, 0, 39.4, 0); add('street', 'bin_street', 23.7, 0, 39.45, 0);
+  for (const x of [-28.0, 10.6]) add('street', 'hydrant', x, 0, 37.0, 0);
+  // parked cars in the lay-by (lights off, facing the near lane's way), clear of the taxi's bay and its way in and out (x -8 to 21): one
+  // more each side on the medium and high presets
+  const PARKED = [[-34.5, [0.86, 0.86, 0.84]], [30.0, [0.012, 0.012, 0.014]], [-41.0, [0.05, 0.09, 0.2], 1], [37.0, [0.3, 0.03, 0.035], 1]];
+  for (const [x, rgb, d] of PARKED) add('street', 'car_sedan', x, 0, STREET.road[0] - 1.75, Math.PI / 2, { lod: 1, glowK: 0, swap: { car_red: [MAT.lacquer, rgb] }, detail: d || 0 });
   for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
   // v9.3 hall entrances (the user's ScreenX entrance photo; tools/blender/arch/rooms.py builds the portals): the hall's name in face-lit
   // letters over each portal, its number beside it, a bin; red armchairs along the bridge
@@ -475,6 +516,8 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const x of [6.0, 14.5]) add('corridor', 'standee_base', x, L1, BRIDGE.z0 + 0.8, 0, { collide: 0.02 });
   // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup)
   for (const h of Object.values(HALL)) { const w = h.toWorld(h.entryU - Math.sign(h.entryU) * 1.4, h.depthIn - 0.5); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z); }
+  // v12b Dolby Atmos: the overhead speakers, hung from each hall's ceiling in two rows, each turned to face across the seats
+  for (const h of Object.values(HALL)) for (const s of atmosSpots(h)) { const w = h.toWorld(s.u, s.d); add(h.key, 'speaker_array', w.x, h.y0 + h.ceil + 0.002, w.z, h.yawOf(s.u > 0 ? -Math.PI / 2 : Math.PI / 2), { collide: false, ground: false, scale: 0.7 }); }
   return L;
 })();
 function dressRooms(world) {
@@ -484,8 +527,14 @@ function dressRooms(world) {
   for (const u of world.uses) { const L = byRoom[u.room] || (byRoom[u.room] = []);
     if (u.kind === 'basin') { L.push({ room: u.room, name: 'basin_vessel', x: u.x + 0.02, y: u.y, z: u.z, yaw: 0, o: { collide: false, ground: false } }); L.push({ room: u.room, name: 'tap_brass', x: u.x - 0.2, y: u.y, z: u.z, yaw: Math.PI / 2, o: { collide: false, ground: false } }); }
     if (u.kind === 'urinal') L.push({ room: u.room, name: 'urinal', x: u.x, y: 0, z: u.z - 0.245, yaw: 0, o: { collide: 0.05, ground: false } }); }
+  // v12b rooftop plant on the far side's flat decks (street12.py extras.roofs): a water tank 1.5 m behind the parapet, where the street
+  // sees it over the parapet, its ladder towards the street; a condenser with its vent further back, clear of the lot's stair bulkhead
+  const SX = world.rooms.street && world.rooms.street.x; for (const r of (SX && SX.roofs) || []) { const L = byRoom.street || (byRoom.street = []);
+    L.push({ room: 'street', name: 'roof_tank', x: r.x1 - 3.2, y: r.y, z: r.z + 1.5, yaw: Math.PI, o: { collide: false, ground: false } });
+    L.push({ room: 'street', name: 'roof_ac', x: r.bulk[1] + 2.4, y: r.y, z: r.z + 3.4, yaw: Math.PI, o: { collide: false, ground: false } }); }
   for (const key in byRoom) {
     const room = world.rooms[key]; if (!room) continue; const host = { pacc: new Acc(), gacc: new Acc(), facc: new Acc(), bins: [], col: (x0, z0, x1, z1, y0, y1) => { for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) world.walls.add(ax, az, bx, bz, y0, y1); },
+      poly: (pts, y0, y1) => { for (let k = 0; k < pts.length; k++) { const a = pts[k], b = pts[(k + 1) % pts.length]; world.walls.add(a[0], a[1], b[0], b[1], y0, y1); } },   // v12b an oriented footprint (assets.js placeAsset)
       ring: (cx, cz, r, y0, y1, n = 16) => { const R = r / Math.cos(Math.PI / n); for (let k = 0; k < n; k++) { const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n; world.walls.add(cx + R * Math.cos(a0), cz + R * Math.sin(a0), cx + R * Math.cos(a1), cz + R * Math.sin(a1), y0, y1); } } };
     const framed = FRAMED.filter((f) => f.room === key); for (const f of framed) framePanel(host.pacc, f);
     const det = world.engine && world.engine.preset ? world.engine.preset.detail ?? 1 : 1;   // v10: the low preset skips purely decorative extras (o.detail 1)
@@ -498,9 +547,12 @@ function dressRooms(world) {
       const sz = A.box.getSize(new THREE.Vector3()), small = Math.max(sz.x, sz.z) * (typeof p.o.scale === 'number' ? p.o.scale : 1) < 1.6;
       const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
       const e = cen[p.name] || (cen[p.name] = { n: 0, tris: 0 }), ld = p.o.lod ?? 0; e.n++; for (const q of A.parts) if (q.lod === ld && (!p.o.only || q.name.startsWith(p.o.only))) e.tris += (q.geo.index ? q.geo.index.count : q.geo.attributes.position.count) / 3; }
-    if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
+    // v12c the lobby's props draw their glass see-through (the poppers' cabinets, the heated cases, the fountain's water); the street keeps
+    // its cars' glass dark (they have no cabins)
+    const propGlass = (g, nm) => { if (key !== 'lobby') return; const gl = splitGlass(g); if (!gl) return; const gm = new THREE.Mesh(gl, world.mats.glassMat()); gm.renderOrder = 3; gm.matrixAutoUpdate = false; gm.name = nm; room.group.add(gm); };
+    if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); propGlass(g, key + '-propglass'); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
     if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
-    if (deep && deep.pacc.count) { const g = toGeometry(deep.pacc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-propsdeep'; room.group.add(m); }
+    if (deep && deep.pacc.count) { const g = toGeometry(deep.pacc); room.lights.bake(g); propGlass(g, key + '-propglassdeep'); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-propsdeep'; room.group.add(m); }
     if (deep && deep.gacc.count) { const g = toGeometry(deep.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglowdeep'; room.group.add(m); }
     for (const [h_, nm] of [[host, key + '-foliage'], [deep, key + '-foliagedeep']]) if (h_ && h_.facc.count) {   // v12 leaf cards (foliage.js)
       const g = toGeometry(h_.facc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.foliageMat(room.U, world.leafTex || (world.leafTex = leafAtlas(world.mats.texSize < 512 ? 256 : 512))));
@@ -519,12 +571,14 @@ const ART = { room: 'lobby', yaw: 0, z: -13.6 + 0.034, frameCol: '#3e2618', fram
 const ARTWORK = { art_1: ['vangogh_self', 0.785], art_2: ['two_sisters', 0.806], art_3: ['childs_bath', 0.659], art_4: ['rainy_day', 1.287], art_5: ['nocturne', 1.513], art_6: ['grande_jatte', 1.492], art_7: ['bedroom', 1.277] };
 const fitArt = (id, mw, mh) => { const a = ARTWORK[id][1]; return mw / mh > a ? { w: +(mh * a).toFixed(3), h: mh } : { w: mw, h: +(mw / a).toFixed(3) }; };
 const FRAMED = [
+  ...LIFE.kettles.map((k, i) => PIC({ id: 'kettlehead_' + i, x: k[0] + 0.268, y: k[1] + 0.90, z: k[2], yaw: Math.PI / 2, w: 0.56, h: 0.085, emit: 0.85, frame: 'none' })),   // v12c
   PIC({ id: 'photowall', x: -7.0, y: 1.30, z: -5.48, yaw: 0, w: 3.10, h: 2.36, emit: 0.35, frame: 'thin' }),   // v12 between the backdrop stand's posts (7 mm into each, and into its top bar)
+  PIC({ id: 'plaque_muse', x: 0, y: 0.86, z: 10.0 + 1.082 * Math.cos(Math.PI / 8) + 0.034, yaw: 0, w: 0.62, h: 0.19, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the fountain plinth's front flat (statue12.py PA)
   PIC({ id: 'plaque_proj', x: CORE.x0 - 1.2 - 0.5 - 0.034, y: 0.62, z: -3.0, yaw: -Math.PI / 2, w: 0.42, h: 0.12, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the projector's plinth (world9.js DRESS)
   ...[['a', -5.6], ['b', -0.4]].map(([v, z]) => PIC({ id: 'vintage_' + v, x: CORE.x0 - 0.034, y: 1.75, z, yaw: -Math.PI / 2, w: 1.0, h: 1.45, emit: 0.45 })),   // v12 either side of the reel wall
   PIC({ id: 'picto_m', x: 21.56 - 0.034, y: 1.35, z: -3.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
   PIC({ id: 'picto_f', x: 21.56 - 0.034, y: 1.35, z: 1.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
-  ...[-7.7, 1.8, 11.3].map((z, i) => PIC({ id: 'mural_' + i, x: 21.6 - 0.034, y: 7.6, z, yaw: -Math.PI / 2, w: 9.2, h: 2.4, emit: 0.25, frame: 'thin' })),
+  ...[-7.7, 1.8, 11.3].map((z, i) => PIC({ id: 'mural_' + i, x: 21.6 - 0.034, y: 7.5, z, yaw: -Math.PI / 2, w: 9.2, h: 2.2, emit: 0.25, frame: 'thin' })),   // v12 under the cove band (rooms.py lobby12: its underside at 8.85)
   ...[[-15.4, 1], [-12.8, 2], [-10.2, 3]].map(([x, n]) => PIC({ ...ART, id: 'art_' + n, x, y: 2.25, z: ART.z + 0.014, ...fitArt('art_' + n, 0.8, 1.1), emit: 0.12 })),   // on the cafe's walnut (14 mm)
   PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, z: ART.z + 0.014, ...fitArt('art_4', 1.6, 1.1), emit: 0.12, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, z: ART.z + 0.014, ...fitArt('art_5', 1.6, 1.1), emit: 0.12, frameCol: '#c9a35e', frameMat: MAT.brass }),   // on the rear wall's walnut (14 mm)
   // v12 a gallery wall: two more over the east wall's velvet benches, on its stone panels (the pictograms' depth)
@@ -539,6 +593,7 @@ const TOTEM_POSTERS = [[-6.0, 0.35, 'sintel', 'cosmos'], [6.0, -0.35, 'hero', 'w
   ({ room: 'lobby', id: `poster_${f}_t${i}`, x: x + s * Math.sin(yaw) * 0.087, y: 1.26, z: 16.3 + s * Math.cos(yaw) * 0.087, yaw: s > 0 ? yaw : yaw + Math.PI, w: 0.8, h: 1.22, emit: 0.7 })));
 const UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
 function framePanel(acc, p) {   // the board (front 3 mm behind the picture) and four bars round it, 2.2 cm proud of the picture
+  if (p.frame === 'none') return;   // v12c a picture on a bed its prop already has (the poppers' headers)
   const t = p.frame === 'thin' ? 0.025 : 0.05, d = p.depth ?? 0.03, col = p.frameCol || '#c9a35e', mat = p.frameMat ?? MAT.brass;
   const R = new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y, p.z), new THREE.Quaternion().setFromAxisAngle(UP, p.yaw), ONE), put = (w, h, dd, x, y, z, c, m) => acc.add(boxGeo(w, h, dd), R.clone().multiply(M(x, y, z)), c, { mat: m });
   put(p.w + 0.004, p.h + 0.004, d, 0, 0, -d / 2 - 0.003, p.board || '#121214', MAT.powder);

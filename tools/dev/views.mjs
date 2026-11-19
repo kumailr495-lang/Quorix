@@ -30,7 +30,7 @@ for (const h of Object.values(HALL)) {
   add(h.key + '-seat', mid.x, mid.y, mid.z, mid.yaw, 0.08, mid.y + SEAT[mid.kind].eye, 75);
   // front row, standing in the side aisle on the exit's side, looking at the exit corner
   const r0 = h.rows[0], aw = (h.aisle[0] + h.aisle[1]) / 2, ex = h.exits.find((e) => e.u > 0) || h.exits[0];
-  const p = h.toWorld(aw, r0.dHip - 0.2), q = h.toWorld(ex.u, ex.d);
+  const p = h.toWorld(aw, r0.dHip - 0.2), q = h.toWorld(ex.u, (ex.d0 + ex.d1) / 2);   // v12b: the side exit
   add(h.key + '-exit', p.x, h.y0 + r0.y, p.z, yawTo(q.x - p.x, q.z - p.z), 0.05);
   const e = h.toWorld(h.entryU - Math.sign(h.entryU) * 2.4, h.depthIn - 0.7), c = h.toWorld(0, 0);
   add(h.key + '-entry', e.x, h.y0 + h.total, e.z, yawTo(c.x - e.x, c.z - e.z), -0.12);

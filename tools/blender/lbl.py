@@ -179,7 +179,7 @@ def cup_holder(lod, x, y, ztop, ring_mat, glow=None, r_out=0.043, name='Cup', se
     ri = r_out - 0.008
     part(f'{name}Ring', lod, ring_mat, lambda bm: lathe(bm, [(ri, ztop - 0.006), (r_out + 0.002, ztop - 0.006), (r_out + 0.002, ztop + 0.002), (r_out - 0.001, ztop + 0.007), (ri + 0.002, ztop + 0.008), (ri, ztop + 0.005)], seg), T(x, y, 0))
     part(f'{name}Well', lod, 'plastic_black', lambda bm: disc(bm, ri + 0.0005, ztop - 0.004, ztop + 0.002, max(12, seg - 4)), T(x, y, 0))
-    if glow: part(f'{name}Glow', lod, glow, lambda bm: lathe(bm, [(ri - 0.003, ztop + 0.0015), (ri + 0.0005, ztop + 0.0015), (ri + 0.0005, ztop + 0.0035), (ri - 0.003, ztop + 0.0035)], seg), T(x, y, 0), smooth=False)
+    if glow: part(f'{name}Glow', lod, glow, lambda bm: lathe(bm, [(ri - 0.003, ztop + 0.0025), (ri + 0.0005, ztop + 0.0025), (ri + 0.0005, ztop + 0.0045), (ri - 0.003, ztop + 0.0045)], seg), T(x, y, 0), smooth=False)   # v12b: its top 2.5 mm over the well's (1.5 mm fought far off)
 
 
 

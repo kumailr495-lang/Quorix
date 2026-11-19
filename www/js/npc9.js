@@ -7,8 +7,8 @@
 // Paths: building.js NAV (lobby, escalators, corridor, spine) and hallmath.seatRoute (door, rear aisle, side aisle, row lane, seat).
 import * as THREE from 'three';
 import { Person, CrowdRenderer, DATA, randomRecipe, staffRecipe, sitHeight } from './people.js';
-import { POSTS, NAV, HALL, L1, ESC, SPINE, ZONE, LOBBY } from './building.js';
-import { seatRoute, SEAT, SCREEN_GAP } from './hallmath.js';
+import { POSTS, NAV, HALL, L1, ESC, SPINE, ZONE, LOBBY, EXIT_PASSAGES } from './building.js';
+import { seatRoute, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { pick } from './i18n.js';
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), adiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b)), rnd = (a, b) => a + Math.random() * (b - a);
 const HIDDEN = { visible: false }, SEAT_H = { rocker: 0.44, recliner: 0.5, sofa: 0.5, pod: 0.5 }, RECLINE = { rocker: 0.18, recliner: 0.32, sofa: 0.2, pod: 0.26 };
@@ -99,10 +99,11 @@ export class Crowd {
   setDensity(d) {
     d = { few: 'low', normal: 'medium', many: 'high' }[d] || d; this.density = d in DENSITY ? d : 'medium'; const want = DENSITY[this.density];
     while (this.guests.length > want) { const g = this.guests.pop(); this.remove(g); }
-    while (this.guests.length < want) this.guests.push(this.newGuest(this.guests.length));
+    while (this.guests.length < want) { const g = this.newGuest(this.guests.length); if (!g) break; this.guests.push(g); }
   }
   newGuest(i) {
-    const M = this.millNet(), free = M.spots.filter((s) => !s.by), s = free.length ? free[(i + Math.floor(this.seedBase)) % free.length] : M.spots[i % M.spots.length], rec = randomRecipe(this.seed()), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
+    const M = this.millNet(), free = M.spots.filter((s) => !s.by); if (!free.length) return null;   // v12b: never two guests on one spot (npc-clear found two)
+    const s = free[(i + Math.floor(this.seedBase)) % free.length], rec = randomRecipe(this.seed()), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
     const a = this.spawn({ rec, role: 'guest', voice, x: s.x, y: 0, z: s.z, yaw: s.face + rnd(-0.6, 0.6), state: 'mill', talkable: true }); a.spot = [s.x, s.z]; a.millSpot = s; s.by = a; a.next = this.now + rnd(4000, 14000); a.idle = IDLES[i % IDLES.length]; return a;
   }
   // the guests' lobby (see PUBLIC): each hand-placed spot is checked against the building; one that fails moves to the nearest place within
@@ -194,11 +195,23 @@ export class Crowd {
     let y = L1; for (const p of seatRoute(H, seat)) { const w = H.toWorld(p.u, p.d); y = fy(w.x, w.z, y); pts.push({ x: w.x, y, z: w.z }); }
     return pts;
   }
+  // v12b the exits are in the side walls at the front: down your side's aisle to the front, across to the door, through it onto the passage's landing
   exitRoute(h, seat) {
-    const H = h.cfg, row = H.rows[seat.row], laneE = (row.lane[0] + row.lane[1]) / 2, sideA = (seat.a >= 0 ? 1 : -1) * (H.aisle[0] + H.aisle[1]) / 2, ex = H.exits[seat.a >= 0 ? 1 : 0], pts = [];
+    const H = h.cfg, row = H.rows[seat.row], laneE = (row.lane[0] + row.lane[1]) / 2, sg = seat.a >= 0 ? 1 : -1, sideA = sg * (H.aisle[0] + H.aisle[1]) / 2, ex = H.exits.find((q) => q.sg === sg) || H.exits[0], pts = [];
     let y = seat.y; const add = (a, e) => { const q = H.fromRow(a, e), w = H.toWorld(q.u, q.d); y = this.world.floorY(w.x, w.z, y); pts.push({ x: w.x, y, z: w.z }); };
-    add(seat.a, laneE); add(sideA, laneE); add(sideA, 0.6); const d = H.toWorld(ex.u, 0.3); pts.push({ x: d.x, y: H.y0, z: d.z }); const o = H.toWorld(ex.u, ex.d - 1.2); pts.push({ x: o.x, y: H.y0, z: o.z });
+    const dc = (ex.d0 + ex.d1) / 2; add(seat.a, laneE); add(sideA, laneE); add(sideA, dc + 0.6);
+    for (const u of [H.width / 2 - 0.6, H.width / 2 + WALL + 0.7]) { const w = H.toWorld(ex.sg * u, dc); pts.push({ x: w.x, y: H.y0, z: w.z }); }
+    const o = H.toWorld(ex.sg * (H.width / 2 + WALL + 0.7), ex.d0 + 0.1); pts.push({ x: o.x, y: H.y0, z: o.z });
     return pts;
+  }
+  // from a hall's exit door down its passage into the spine and along it to the lobby (staff going back to their posts)
+  passageOut(door) {
+    for (const p of EXIT_PASSAGES) for (const f of p.flights) {
+      if (f.door !== door.id) continue; const zc = (f.z0 + f.z1) / 2, toS = p.side < 0 ? 1 : -1, xs = Math.sign(p.xSpine) * 1.6, inn = door.z + door.from * 1.0;
+      return [{ x: door.x, y: f.y0, z: inn }, { x: door.x, y: f.y0, z: zc }, { x: f.xTop - toS * 0.2, y: f.y0, z: zc }, { x: f.xTop + toS * (f.n * f.tread + 0.4), y: 0, z: zc },
+        { x: p.xSpine + toS * 0.8, y: 0, z: zc }, { x: xs, y: 0, z: zc }, { x: xs, y: 0, z: -15.6 }];
+    }
+    return [];
   }
   onShowPhase(hallId, phase) {
     const list = this.viewers[hallId] || [];
@@ -227,8 +240,9 @@ export class Crowd {
     usher.follow = player; return true;
   }
   sendHome(a) { if (!a.home) return; const back = [], r = this.world.roomAt(a.x, a.y, a.z);
-    if (r && r.startsWith('hall')) { const d = this.world.doors.find((q) => q.hall === HALL_ID[r] && q.id.includes('Out0')); if (d) { const H = HALL[HALL_ID[r]]; back.push({ x: d.x + H.dir * 1.0, y: H.y0, z: d.z }, { x: d.x - H.dir * 1.0, y: H.y0, z: d.z }); } }
-    if (r === 'corridor' || (r && r.startsWith('hall'))) for (const n of navPath('spineS', 'lobbyBack')) back.push({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] });
+    if (r && r.startsWith('hall')) { const d = this.world.doors.find((q) => q.hall === HALL_ID[r] && q.id.includes('Out0')); if (d) back.push(...this.passageOut(d)); }   // v12b through the side exit and its passage
+    if (r === 'corridor') for (const n of navPath('spineS', 'lobbyBack')) back.push({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] });
+    if (r && r.startsWith('hall')) back.push({ x: NODES.lobbyBack[0], y: 0, z: NODES.lobbyBack[2] });
     back.push({ x: a.home.x, y: a.home.y || 0, z: a.home.z }); a.follow = null; a.go(back, () => { a.state = 'post'; a.yaw = a.home.yaw; }, { speed: 1.5, state: 'returning' }); }
   // ---------------------------------------------------------- the seat bell: the server comes with his cart and the tablet
   // v10 (the user: "only one server, and if anyone else calls it he is the next in queue"): one server for every seat; a call while he

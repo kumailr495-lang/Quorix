@@ -99,8 +99,10 @@ const FLOOR = [0.085, 0.095, 0.13];
 export function carFloor(H) { for (let i = 0; i < 3; i++) H[i] = Math.max(H[i], FLOOR[i]); return H; }
 
 // ------------------------------------------------------------------ passing cars
-// a few saloons in three paints (one instanced mesh per paint: one draw each), out of a hidden leg every 9 to 20 s, never more than three
-const PAINTS = [null, { car_red: { id: MAT.lacquer, tint: [0.56, 0.58, 0.62] } }, { car_red: { id: MAT.lacquer, tint: [0.035, 0.05, 0.11] } }];   // red, silver, navy (assets.js swaps by material name)
+// saloons in five paints (one instanced mesh per paint: one draw each), out of a hidden leg every 6 to 14 s, never more than five (v12b,
+// the user: the road "so empty"; it was three, every 9 to 20 s)
+const PAINTS = [null, { car_red: { id: MAT.lacquer, tint: [0.56, 0.58, 0.62] } }, { car_red: { id: MAT.lacquer, tint: [0.035, 0.05, 0.11] } },
+  { car_red: { id: MAT.lacquer, tint: [0.78, 0.78, 0.76] } }, { car_red: { id: MAT.lacquer, tint: [0.02, 0.06, 0.035] } }];   // red, silver, navy, pearl, racing green (assets.js swaps by material name)
 export class Traffic {
   constructor(world, mats, sound, plan) {
     this.world = world; this.sound = sound; this.cars = []; this.meshes = []; this.t = 0; this.next = 6 + Math.random() * 6; this.blockers = []; this.paused = false;
@@ -118,12 +120,12 @@ export class Traffic {
   comingTo(x, lane, within = 26) { return this.cars.some((c) => Math.abs(c.z - lane) < 1.2 && x - c.x > -3 && x - c.x < within && Math.abs(Math.sin(c.h) - 1) < 0.2); }
   update(dt, player, extra = []) {
     if (!this.routes || !this.meshes.length) return; this.t += dt;
-    if (!this.paused && this.t > this.next && this.cars.length < 3) {
+    if (!this.paused && this.t > this.next && this.cars.length < 5) {
       const way = Math.random() < 0.55 ? 'east' : 'west', R = this.routes[way], used = new Set(this.cars.map((c) => c.mesh.id + ':' + c.slot));
       const busy = this.cars.some((c) => c.route === R && c.s < 18); if (!busy) {
         let mesh = null, slot = -1; for (const m of this.meshes.slice().sort(() => Math.random() - 0.5)) { for (let k = 0; k < 2; k++) if (!used.has(m.id + ':' + k)) { mesh = m; slot = k; break; } if (mesh) break; }
         if (mesh) { const c = { route: R, s: 0, v: 6, x: 0, z: 0, h: 0, mesh, slot, r: 1.9, snd: this.sound.vehicle ? this.sound.vehicle() : null }; this.cars.push(c); }
-        this.next = this.t + 9 + Math.random() * 11; }
+        this.next = this.t + 6 + Math.random() * 8; }
     }
     const obs = [{ x: player.x, z: player.z, r: 1.5 }, ...extra, ...this.cars];
     for (let i = this.cars.length - 1; i >= 0; i--) { const c = this.cars[i]; if (drive(c, dt, obs)) { if (c.snd) c.snd.stop(); this.cars.splice(i, 1); } else if (c.snd) c.snd.set(c.x, c.z, c.v, this.hear ?? 1); }

@@ -9,6 +9,7 @@
 //  * v10: the cafe (its room tone and, when you buy, the machine's pump and a cup), the fountain's water, the popcorn cart (BigSoundBank
 //    2561, 0913, 3049, 0410; CC0), each heard by how near you are
 import { Sound } from './sound.js';
+import { atmosSpots } from './hallmath.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), rnd = (a, b) => a + Math.random() * (b - a);
 const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_rain', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge', 'cafe', 'fountain', 'espresso', 'cup'];
 export class Sound9 extends Sound {
@@ -34,7 +35,7 @@ export class Sound9 extends Sound {
     set('lounge', a.room === 'lobby' ? 0.05 : a.room === 'wc' ? 0.015 : 0, 1.5);
     set('street', a.room === 'street' ? 0.5 : a.room === 'lobby' ? 0.08 * clamp(1 - Math.abs(18 - a.z) / 14) : 0);
     set('escalator', a.room === 'lobby' ? 0.12 * clamp(1 - (a.escDist ?? 99) / 9) : 0, 0.4);
-    set('popcorn', a.room === 'lobby' ? 0.25 * clamp(1 - (a.popcornDist ?? 99) / 8) : 0, 0.5);
+    set('popcorn', a.room === 'lobby' ? 0.25 * clamp(1 - (a.popcornDist ?? 99) / 8) * (0.15 + 0.85 * (a.popcornRate ?? 1)) : 0, 0.5);   // v12c louder while the kettles pop (anim12.js)
     set('cafe', a.room === 'lobby' ? 0.32 * clamp(1 - (a.cafeDist ?? 99) / 10) ** 1.5 : 0, 0.6);
     set('fountain', a.room === 'lobby' ? 0.3 * clamp(1 - (a.fountainDist ?? 99) / 11) ** 1.6 : a.room === 'street' ? 0.02 : 0, 0.5);
     this.music.gain.setTargetAtTime(0, t, 0.5);   // the recorded bar ambience replaces the synth lounge chords
@@ -114,7 +115,8 @@ export class Sound9 extends Sound {
     const H = hall.cfg, y0 = H.y0, W = H.W, w = H.width, S = [], P = (u, d, y, f, g = 1) => { const p = H.toWorld(u, d); S.push([p.x, y0 + y, p.z, f, g]); };
     P(-W * 0.4, 0, H.hB + H.H * 0.5, 'L'); P(0, 0, H.hB + H.H * 0.5, 'C'); P(W * 0.4, 0, H.hB + H.H * 0.5, 'R');
     for (const s of [-1, 1]) { P(s * w / 2, H.depthIn * 0.35, H.total * 0.6 + 2.6, s < 0 ? 'SL' : 'SR', 0.8); P(s * w / 2, H.depthIn * 0.7, H.total * 0.8 + 2.6, s < 0 ? 'SL' : 'SR', 0.8); P(s * w * 0.42, H.depthIn, H.total + 2.4, s < 0 ? 'SL' : 'SR', 0.7); }
-    for (const [u, d] of [[-0.3, 0.25], [0.3, 0.25], [-0.3, 0.7], [0.3, 0.7]]) P(u * w, d * H.depthIn, H.ceil - 0.4, u < 0 ? 'TL' : 'TR', 0.45);
+    const top = atmosSpots(H);   // v12b the height layer through the hall's own overhead speakers (the ones you can see hung from its ceiling)
+    for (const t of top) P(t.u, t.d, H.ceil - 0.5, t.u < 0 ? 'TL' : 'TR', 1.8 / Math.max(4, top.length));
     return S;
   }
   startFilm(hallKey, src) {

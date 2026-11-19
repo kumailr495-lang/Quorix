@@ -133,7 +133,7 @@ def build(acc, glow, lit, F, xw, xe, extras):
     outline = [(-hw, F + 0.002)] + arc(-hw + r, F + d - r, r, math.pi, math.pi / 2, 16) + arc(hw - r, F + d - r, r, math.pi / 2, 0.0, 16) + [(hw, F + 0.002)]
     acc.prism(outline, y0, y1, MAT['lacquer'], lin('#0a0a0c'), smooth=30.0)
     edge = outline[1:-1]   # west side to east side round the front
-    cap = [(-hw - 0.04, F + 0.002)] + offset(edge, 0.04) + [(hw + 0.04, F + 0.002)]
+    cap = [(-hw - 0.04, F + 0.012)] + offset(edge, 0.04) + [(hw + 0.04, F + 0.012)]   # its back 1 cm in front of the body's (one plane: zcheck, seen through the glass)
     acc.prism(cap, y1 - 0.04, y1 + 0.04, MAT['brass'], lin('#c9a35e'), smooth=30.0)
     inset = [(-hw + 0.1, F + 0.1)] + offset(edge, -0.1) + [(hw - 0.1, F + 0.1)]
     acc.prism(inset, y0 - 0.08, y0 + 0.02, MAT['brass'], lin('#c9a35e'), smooth=30.0)   # the soffit, 2 cm up into the body

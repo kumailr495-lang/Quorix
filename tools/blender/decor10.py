@@ -263,7 +263,7 @@ def bistro_table(lod=0):
     """a cafe table: calacatta round top with a brass edge on a black column and a domed cast foot (0.75 m high, 0.65 m across)"""
     seg = 40 if lod == 0 else 20
     part('Top', lod, 'marble_calacatta', lambda bm: lathe(bm, ring(1e-4, 0.32, 0.728, 0.752), seg))
-    part('Edge', lod, 'brass', lambda bm: lathe(bm, ring(0.3201, 0.327, 0.726, 0.754), seg))
+    part('Edge', lod, 'brass', lambda bm: lathe(bm, ring(0.3201, 0.334, 0.726, 0.754), seg))   # v12b: 14 mm proud (7 mm faced the top's side from across the street: zcheck)
     part('Column', lod, 'paint_black', lambda bm: lathe(bm, [(1e-4, 0.05), (0.032, 0.05), (0.026, 0.4), (0.03, 0.70), (0.07, 0.712), (0.07, 0.728), (1e-4, 0.728)], 16))
     part('Foot', lod, 'paint_black', lambda bm: lathe(bm, [(1e-4, 0.0), (0.24, 0.0), (0.24, 0.015), (0.16, 0.045), (0.05, 0.06), (1e-4, 0.062)], seg))
 
@@ -271,7 +271,7 @@ def bistro_table(lod=0):
 def bistro_chair(lod=0):
     """a bentwood cafe chair: walnut seat with a cane panel, four splayed legs on a ring, a hooped back (front +X)"""
     part('Seat', lod, 'walnut_dark', lambda bm: lathe(bm, [(1e-4, 0.43), (0.205, 0.43), (0.215, 0.45), (0.205, 0.47), (1e-4, 0.47)], 32))
-    part('Cane', lod, 'fluted_plaster', lambda bm: lathe(bm, ring(1e-4, 0.17, 0.47, 0.474), 32))
+    part('Cane', lod, 'fluted_plaster', lambda bm: lathe(bm, ring(1e-4, 0.17, 0.465, 0.476), 32))   # v12b: 6 mm over the seat, 5 mm into it (4 mm over it fought from 40 m)
     legs = [(0.15 * math.cos(a), 0.15 * math.sin(a)) for a in (math.radians(45), math.radians(135), math.radians(225), math.radians(315))]
     for x, y in legs:
         part('Leg', lod, 'walnut_dark', lambda bm, x=x, y=y: ctube(bm, [(x, y, 0.43), (x * 1.25, y * 1.25, 0.2), (x * 1.45, y * 1.45, 0.0)], 0.016, 8))

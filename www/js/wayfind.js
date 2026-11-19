@@ -35,6 +35,6 @@ export class Wayfinder {
     // close to the point you were sent to and more to come: look to the next one
     if (ai < pts.length - 1 && Math.hypot(pts[ai].x - p.x, pts[ai].z - p.z) < 1.0) ai++;
     let dist = Math.hypot(pts[ai].x - p.x, pts[ai].z - p.z); for (let i = ai; i < pts.length - 1; i++) dist += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y, pts[i + 1].z - pts[i].z);
-    this.cur = { key: g.key, vars: g.vars, aim: pts[ai], dist }; return this.cur;
+    this.cur = { key: g.key, vars: g.vars, aim: pts[ai], dist, pts, ai }; return this.cur;   // v12b pts/ai: guide.js draws the way to the farthest point in sight
   }
 }

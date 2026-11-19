@@ -1,7 +1,7 @@
 """LUMIERE v9 - one complete auditorium as a model, from the hall spec (www/js/hallmath.js via tools/dev/export-spec.mjs).
 Modelled in the hall's own frame: u across (+u = the viewer's right), y up from the front floor, d from the picture's centre line
 towards the rear; geo.frame_y places it. Everything is a closed solid: walls with door reveals, a stepped rake with real aisle steps,
-the masking wall that wraps the screen to both side walls (no empty sides, photo 3), exit portals at the front corners, a light-lock
+the masking wall that wraps the screen to both side walls (no empty sides, photo 3; v12b: the screen runs wall to wall, the exits are in the side walls), a light-lock
 baffle at the entrance, and lights only where nothing crosses a seat: step nosings in the aisles, the walls and the ceiling."""
 import math, random
 from geo import Acc, Glow, Lights, MAT, lin, mix, frame_y, cross, sub
@@ -82,13 +82,17 @@ def build_hall(h, L1):
     # ---------------------------------------------------------------- structure (closed solids)
     acc.box(-W2 - WALL, -0.35, Dw - WALL, W2 + WALL, 0.0, depth + WALL, MAT['hallCarpet'], carpet)
     acc.box(-W2 - WALL, ceil, Dw - WALL, W2 + WALL, ceil + 0.36, depth + WALL, MAT['paint'], th['ceil'])
-    exitU, ent = abs(h['exits'][0]['u']), h['entryU']
-    acc.wall((W2 + WALL, Dw - WALL / 2), (-W2 - WALL, Dw - WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'],
-             openings=[(WALL + W2 - exitU - 0.9, WALL + W2 - exitU + 0.9, 2.4, -0.35), (WALL + W2 + exitU - 0.9, WALL + W2 + exitU + 0.9, 2.4, -0.35)])   # the floor is the threshold
+    ent = h['entryU']
+    # v12b (the user, 11-18: "move the exit door to not on the front of the screen"): the screen wall is closed; the exits are in the side
+    # walls (building.js h.exits: d0..d1 along the wall), each opening the door's width + 2 x 12 cm of frame, 2.52 m high (door 2.4 + head)
+    acc.wall((W2 + WALL, Dw - WALL / 2), (-W2 - WALL, Dw - WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'])
+    EX = {e['sg']: e for e in h['exits']}
     acc.wall((-W2 - WALL, depth + WALL / 2), (W2 + WALL, depth + WALL / 2), -0.35, ceil + 0.36, WALL, MAT['paint'], th['wall2'],
              openings=[(WALL + W2 + ent - 0.95, WALL + W2 + ent + 0.95, top + 2.5, top)])
     for sg in (-1, 1):
-        acc.wall((sg * (W2 + WALL / 2), Dw - WALL), (sg * (W2 + WALL / 2), depth + WALL), -0.35, ceil + 0.36, WALL, MAT['acoustic'], th['wall'], trim=(WALL, WALL))   # v11: between the end walls (over their corners they shared their faces)
+        e_ = EX[sg]; o0 = e_['d0'] - 0.12 - (Dw - WALL)
+        acc.wall((sg * (W2 + WALL / 2), Dw - WALL), (sg * (W2 + WALL / 2), depth + WALL), -0.35, ceil + 0.36, WALL, MAT['acoustic'], th['wall'], trim=(WALL, WALL),
+                 openings=[(o0, o0 + 1.8 + 0.24, 2.52, -0.35)])   # v11: between the end walls (over their corners they shared their faces); v12b: the exit
     # ---------------------------------------------------------------- the rake
     n = len(rows)
     for r in range(1, n):
@@ -155,7 +159,7 @@ def build_hall(h, L1):
     def sd(u): return (Rs - math.sqrt(max(0.0, Rs * Rs - u * u))) if Rs else 0.0
     def sd1(u): return (u / math.sqrt(max(1e-6, Rs * Rs - u * u))) if Rs else 0.0   # slope of the curve, d(sd)/du
     md = lambda u: sd(u) + 0.04
-    PU, BAY_H = h['bay'][0], (2.45 if h.get('panels') else 2.55)   # v9.1b: a portal in the masking beside the picture, the door behind it (v9.3 X-270: under its raised picture)
+    PU, BAY_H = W2 + 1.0, 0.0   # v12b: no portals in the masking any more (the exits are in the side walls): the picture runs wall to wall
     us = sorted(set([-W2 - 0.05, W2 + 0.05, -Wp, Wp, -PU, PU] + [(-Wp + 2 * Wp * i / 24) for i in range(25)]
                     + [sg * (Wp + (PU - Wp) * i / 4) for i in range(5) for sg in (-1, 1)] + [sg * (PU + (W2 - PU) * i / 6) for i in range(7) for sg in (-1, 1)]))
     us = [u for u in us if -W2 - 0.06 <= u <= W2 + 0.06]
@@ -178,7 +182,7 @@ def build_hall(h, L1):
         d = md(u)
         if face > 0: acc.quad((u, ya, d - 0.06), (u, yb, d - 0.06), (u, yb, d), (u, ya, d), MAT['velvet'], th['mask'])
         else: acc.quad((u, ya, d), (u, yb, d), (u, yb, d - 0.06), (u, ya, d - 0.06), MAT['velvet'], th['mask'])
-    jamb(-Wp, hB, hB + Hp, 1); jamb(Wp, hB, hB + Hp, -1); jamb(-PU, 0, BAY_H, -1); jamb(PU, 0, BAY_H, 1)
+    jamb(-Wp, hB, hB + Hp, 1); jamb(Wp, hB, hB + Hp, -1)
     for i in range(24):   # brass line under and over the picture ("a little more defined")
         ua, ub = -Wp + 2 * Wp * i / 24, -Wp + 2 * Wp * (i + 1) / 24; da, db = md(ua) + 0.01, md(ub) + 0.01   # 1 cm proud (4 mm z-fought at a distance)
         for yy in (hB - 0.05, hB + Hp + 0.01):
@@ -203,13 +207,16 @@ def build_hall(h, L1):
         p = T((c[0] + nu * 0.04, yc, c[1] + nd * 0.04)); panels.append({'id': pid, 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0 + math.atan2(nu, nd), 'w': w_, 'h': h_, 'emit': 1})
         lit.point((c[0] + nu * 0.35, yc, c[1] + nd * 0.35), lin('#2bd07a'), 0.3, 3.5, 'f')
     panels = []
-    for sg in (-1, 1):   # over each portal: a lit EXIT sign on the masking; in the passage behind: a dim light (it stays on in the film)
-        uc = sg * (PU + W2) / 2; i_ = 0 if sg < 0 else 1
-        sign_on_mask(uc, BAY_H + (0.17 if h.get('panels') else 0.3), 0.72, 0.26, f"exitsign_{h['id']}_{i_}")
-        lit.point((sg * (W2 - 0.9), 2.3, (Dw + md(sg * (W2 - 0.9))) / 2), lin('#ffd2a0'), 0.35, 3.0, 'h')
-        lit.point((sg * (W2 - 0.9), 2.0, (Dw + md(sg * (W2 - 0.9))) / 2), lin('#ffd2a0'), 0.1, 2.5, 'f')
-        p = T((sg * exitU, 2.62, Dw + 0.055)); panels.append({'id': f"exitsign_{h['id']}_{2 + i_}", 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0, 'w': 0.6, 'h': 0.22, 'emit': 1})
-        acc.box(sg * exitU - 0.33, 2.48, Dw, sg * exitU + 0.33, 2.76, Dw + 0.05, MAT['powder'], lin('#16181b'))
+    for sg in (-1, 1):   # v12b each side exit: a bronze frame round the opening on the hall's face, a lit EXIT sign over it (on X-270: beside it,
+        e_ = EX[sg]; i_ = 0 if sg < 0 else 1; dA, dB = e_['d0'], e_['d1']; fu0, fu1 = sorted((sg * W2, sg * (W2 - 0.035)))   # under the side screen's bottom edge)
+        for (da_, db_, ya_, yb_) in ((dA - 0.12, dA, 0.0, 2.4), (dB, dB + 0.12, 0.0, 2.4), (dA - 0.12, dB + 0.12, 2.4, 2.52)):   # jambs under the head (zcheck: over it they shared its faces)
+            acc.box(fu0, ya_, da_, fu1, yb_, db_, MAT['metal'], lin('#2a2c30'))
+        ds, ys = ((dA + dB) / 2, 2.72) if not h.get('panels') else (dA - 0.62, 2.12)
+        su0, su1 = sorted((sg * W2, sg * (W2 - 0.05)))
+        acc.box(su0, ys - 0.13, ds - 0.36, su1, ys + 0.13, ds + 0.36, MAT['powder'], lin('#16181b'))
+        p = T((sg * (W2 - 0.056), ys, ds)); panels.append({'id': f"exitsign_{h['id']}_{i_}", 'x': p[0], 'y': p[1], 'z': p[2], 'yaw': yaw0 - sg * math.pi / 2, 'w': 0.6, 'h': 0.22, 'emit': 1})
+        lit.point((sg * (W2 - 0.4), ys, ds), lin('#2bd07a'), 0.3, 3.5, 'f')
+        lit.point((sg * (W2 - 0.5), 2.2, (dA + dB) / 2), lin('#ffd2a0'), 0.12, 2.5, 'f')   # a little light on the doors (it stays on in the film)
     if fmt0 == 'curve':   # v9.3 (the user's photo of a curved hall): a lit line along the screen's foot that draws the curve in the dark
         for i in range(48):
             ua, ub = -Wp + 2 * Wp * i / 48, -Wp + 2 * Wp * (i + 1) / 48; da, db = md(ua) + 0.03, md(ub) + 0.03
@@ -218,7 +225,7 @@ def build_hall(h, L1):
     # ---------------------------------------------------------------- side walls: each hall's own wall system, above the local floor
     rnd = random.Random(h['no']); fmt = h['format']; step = 2.4
     SS = h.get('sideScreen'); x_end = SS['d1'] if SS else -1.0
-    d_start = max(0.6, md(W2) + 0.2)
+    d_start = max(0.6, md(W2) + 0.2, max(e['d1'] for e in h['exits']) + 0.4)   # v12b: from behind the exit doors
     def on_wall(sg, off0, off1, y_a, y_b, d_a, d_b, mat, col):
         """a box standing on a side wall's face, from off0 to off1 metres in from it"""
         a, b = sorted((sg * (W2 - off0), sg * (W2 - off1))); acc.box(a, y_a, d_a, b, y_b, d_b, mat, col)
@@ -284,7 +291,11 @@ def build_hall(h, L1):
         for sg in (-1, 1):
             xa, xb = sorted((sg * (W2 - 0.03), sg * W2)); acc.prism_x([(d0s - 0.1, yb0 - 0.1), (d1s + 0.1, yb1 - 0.1), (d1s + 0.1, yt + 0.1), (d0s - 0.1, yt + 0.1)], xa, xb, MAT['velvet'], th['mask'])   # black border
             xa, xb = sorted((sg * (W2 - 0.045), sg * (W2 - 0.03))); acc.prism_x([(d0s, yb0), (d1s, yb1), (d1s, yt), (d0s, yt)], xa, xb, MAT['matte'], th['screen'])        # the projection surface
-            xa, xb = sorted((sg * (W2 - 0.02), sg * W2)); acc.prism_x([(d0s - 0.1, -0.3), (d1s + 0.1, -0.3), (d1s + 0.1, yb1 - 0.12), (d0s - 0.1, yb0 - 0.12)], xa, xb, MAT['acoustic'], th['wall2'])   # wainscot
+            xa, xb = sorted((sg * (W2 - 0.02), sg * W2)); e_ = EX[sg]; yb_at = lambda d_: yb0 + (yb1 - yb0) * (d_ - d0s) / (d1s - d0s)
+            ga, gb = e_['d0'] - 0.16, e_['d1'] + 0.16   # v12b: the wainscot stops round the exit's frame and spans over its head
+            acc.prism_x([(d0s - 0.1, -0.3), (ga, -0.3), (ga, yb_at(ga) - 0.12), (d0s - 0.1, yb0 - 0.12)], xa, xb, MAT['acoustic'], th['wall2'])
+            acc.prism_x([(gb, -0.3), (d1s + 0.1, -0.3), (d1s + 0.1, yb1 - 0.12), (gb, yb_at(gb) - 0.12)], xa, xb, MAT['acoustic'], th['wall2'])
+            acc.prism_x([(ga, 2.56), (gb, 2.56), (gb, yb_at(gb) - 0.12), (ga, yb_at(ga) - 0.12)], xa, xb, MAT['acoustic'], th['wall2'])
             xs_ = sg * (W2 - 0.026); gq((xs_, yb0 - 0.16, d0s), (xs_, yb1 - 0.16, d1s), (xs_, yb1 - 0.13, d1s), (xs_, yb0 - 0.13, d0s), (-sg, 0, 0), th['accent'], 1.6)
             for i in range(4):   # projectors hung under the ceiling near this wall, each throwing onto the opposite wall
                 pd = d0s + (d1s - d0s) * (i + 0.5) / 4; pu = sg * (W2 - 1.3)
@@ -358,7 +369,7 @@ def build_hall(h, L1):
     # ---------------------------------------------------------------- occluders (seats) and probes for the bake
     probes = []
     for s in h['seats']:
-        hw, dep, ht = {'rocker': (0.31, 0.62, 1.04), 'recliner': (0.47, 0.98, 1.08), 'sofa': (0.41, 0.94, 1.0), 'pod': (0.43, 1.0, 1.06)}[s['kind']]
+        hw, dep, ht = {'rocker': (0.35, 0.62, 1.04), 'recliner': (0.5, 0.98, 1.08), 'sofa': (0.45, 0.94, 1.0), 'pod': (0.46, 1.0, 1.06)}[s['kind']]   # v12b wider seats
         u, d, y = s['u'], s['d'], s['y'] - y0
         occ.box(u - hw, y, d - dep * 0.45, u + hw, y + ht, d + dep * 0.55, 0, (0.18, 0.16, 0.15))
         # bake_room.py probe: point above the seat back, normal A up and back (house light on what you see of a seat), normal B

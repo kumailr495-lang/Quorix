@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="en" dir="ltr"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta charset="utf-8">
+<!-- v12b (security pass): only this app's own scripts run (the import map by its hash); media and data from https, wss for the
+     multiplayer relays, the phone's own loopback server; frames only from YouTube's player. Change the hash if the import map changes. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-GqsWfEjHm73zbHa7lGbVXfv95jxypKuCtjd6kntjIRA=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: data: https: http://127.0.0.1:*; connect-src 'self' blob: data: https: wss: http://127.0.0.1:*; frame-src https://www.youtube-nocookie.com https://www.youtube.com; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0a080b"><title>LUMIÈRE</title>
 <link rel="stylesheet" href="css/app.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>

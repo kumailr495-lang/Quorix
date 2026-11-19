@@ -72,13 +72,14 @@ const walks = await p.evaluate(async () => {
       const lock = [pt(h.toWorld(h.entryU, h.depthIn - 0.62)), pt(h.toWorld(h.entryU - sg * 2.0, h.depthIn - 0.62)), pt(h.toWorld(h.entryU - sg * 2.0, h.depthIn - 1.9))];
       out.push({ label: `${h.id}: corridor, entrance, aisle steps, row ${seat.id.replace(/\d+$/, '')} to seat ${seat.id}`, start: [din.x + side * 2.2, B.L1, din.z], pts: [[din.x + side * 0.9, din.z], ...lock, ...route], room: h.key, y: h.y0 + h.rows[r].y });
     }
-    // out: from the front row's lane, along the front to the exit portal, through the exit door, down the stairs, along the spine to the lobby
-    const ex = h.exits[0], st = B.EXIT_STAIRS.find((s) => s.door === h.id + 'Out0'), a = h.toWorld(ex.u, h.screenD(ex.u) + 1.3), bq = h.toWorld(ex.u, -0.6), c = h.toWorld(ex.u, -2.3);   // in front of the exit portal, through it
-    const pts = [pt(bq), pt(c)];
-    if (st) { const xs = (st.x0 + st.x1) / 2; pts.push([xs, st.zDoor], [xs, st.zTop + st.dir * 0.2], [xs, st.zBot + st.dir * 0.6], [c.x < 0 ? -1.6 : 1.6, st.zBot + st.dir * 0.6]); }
-    else pts.push([c.x < 0 ? -1.6 : 1.6, c.z]);
-    pts.push([c.x < 0 ? -1.6 : 1.6, -15.2], [0, -15.2], [0, -12.6], [0, -10]);
-    out.push({ label: `${h.id}: front of the hall, exit door, ${st ? 'exit stairs, ' : ''}spine (fast exit), lobby`, start: [a.x, h.y0, a.z], pts, room: 'lobby', y: 0, tele: 1 });
+    // out (v12b): from the front of the hall to the side exit, through its door onto the passage, down its flight, out of its mouth into the
+    // spine, along the spine to the lobby. Both exits of every hall
+    for (const ex of h.exits) {
+      const dc = (ex.d0 + ex.d1) / 2, a = h.toWorld(ex.sg * (h.width / 2 - 2.0), dc), uF = ex.sg * (h.width / 2 + 0.4 + 0.7);
+      const P = B.EXIT_PASSAGES.find((q) => q.flights.some((f) => f.door === ex.door)), f = P.flights.find((q) => q.door === ex.door), toS = P.side < 0 ? 1 : -1, xs = P.xSpine < 0 ? -1.6 : 1.6;
+      const pts = [pt(h.toWorld(ex.sg * (h.width / 2 - 0.5), dc)), pt(h.toWorld(uF, dc)), pt(h.toWorld(uF, ex.d0 - 0.2)), pt(h.toWorld(uF, ex.d0 - 0.4 - ex.n * 0.3 - 0.5)), [P.xSpine - toS * 0.3, (f.z0 + f.z1) / 2], [P.xSpine + toS * 0.8, (f.z0 + f.z1) / 2], [xs, (f.z0 + f.z1) / 2], [xs, -15.2], [0, -15.2], [0, -12.6], [0, -10]];
+      out.push({ label: `${h.id}: front, ${ex.sg < 0 ? 'left' : 'right'} side exit, ${ex.n ? 'passage stairs' : 'passage'}, spine (fast exit), lobby`, start: [a.x, h.y0, a.z], pts, room: 'lobby', y: 0, tele: 1 });
+    }
   }
   return out;
 });

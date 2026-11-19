@@ -117,6 +117,21 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v12c (2026-11-19: the user, "the textures and models ... lazy, make them better 3d detailed and animations", dedicated zones, the ceiling, the pillars)
+- **Lobby look** (tools/blender/arch/lobby12.py, the user picked each): noir coffered ceiling (black lacquer beams on the court's grid, brass
+  inlays, a downlight per coffer, z beams 30 mm under the x beams, the wall band 60 mm under: crossing soffits must never share a plane),
+  backlit honey-onyx columns (library 35 = the ambientCG Onyx007 scan now, emissive), the three counters restyled in place (ticket desk,
+  popcorn parlour with a bulb marquee, bar with a bottle wall). The statue reads gold: its material is `gilt` (library id 25, part metal; pure
+  metals only reflect the room's dark cube) under three spots in brass cans on the inner ring.
+- **Zone props** (tools/blender/zones12.py, original): popcorn_kettle, drinks_tower, espresso_lever, till_pos, tub_stack, bar_walnut,
+  chandelier_deco, popcorn_case; world9.js `LIFE` holds where the living ones stand. The parlour's back counter is 0.75 m deep in front of the
+  wall's face (x -21.6); the v10 machines stood half inside the wall. The lobby's prop glass is drawn see-through (world9.js `propGlass`;
+  the street's cars keep dark glass: no cabins).
+- **Animation** (www/js/anim12.js `LobbyLife`, ticked in main.js): every particle moves in its vertex shader from a seed and one clock (no
+  uploads): the marquee's chasing bulbs, fountain drops, splashes and rings, popcorn popping in batches (the popcorn sound follows
+  `popRate`), steam at the bar (an order starts it: `steam()`), a sheen across the menu boards. Particles live in each prop's Blender
+  frame (Blender X -> engine Z, Y -> X, Z -> Y, then the yaw), so change a prop's geometry and its numbers in anim12.js together.
+
 ## v12 (2026-11-17; docs/V12-PLAN.md)
 - **Street** (tools/blender/arch/street12.py, www/js/street12.js): seven lots of buildings across the road, framed shopfronts (most shut at
   midnight: `ground()` shop tuples take a fifth 'closed'), a side street north at each end (`side_spans`, `side_street`, `end_block`; the

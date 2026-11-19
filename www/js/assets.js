@@ -12,12 +12,17 @@ export const ASSETS = {};
 // banquette_round, torchere_deco, back_bar, pendant_dish, which also stay in the repo)
 // v9: only what the v9 rooms use (world9.js DRESS and the hall seat families, intro9.js's taxi); the v7/v8 props stay in www/models
 export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club', 'seat_classic', 'arm_classic', 'sofa_curve', 'table_lounge', 'planter_tall', 'planter_hedge',
-  'poster_totem', 'stanchion', 'rope_velvet', 'popcorn_machine', 'drinks_fountain', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi', 'car_sedan',
-  'armchair_deco', 'side_table', 'torchere_deco', 'chandelier_cascade', 'letters_lumiere_lit', 'letters_max', 'letters_curve', 'letters_classic', 'letters_x270', 'num_1', 'num_2', 'num_3', 'num_4', 'basin_vessel', 'tap_brass', 'urinal',
+  'poster_totem', 'stanchion', 'rope_velvet', 'candy_wall', 'bin_brass', 'bench_velvet', 'lamp_post', 'bollard_light', 'car_taxi', 'car_sedan',
+  'armchair_deco', 'side_table', 'torchere_deco', 'letters_lumiere_lit', 'letters_max', 'letters_curve', 'letters_classic', 'letters_x270', 'num_1', 'num_2', 'num_3', 'num_4', 'basin_vessel', 'tap_brass', 'urinal',
   // v10 (tools/blender/decor10.py): the fountain court, light columns, pendant clouds, the cafe, rugs, standees, the popcorn cart
-  'fountain_tier', 'pendant_cloud', 'espresso_machine', 'cake_case', 'cafe_counter', 'rug_round', 'rug_runner', 'standee_base', 'popcorn_cart', 'bistro_table', 'bistro_chair', 'bar_stool', 'pos_terminal',
+  'fountain_muse', 'pendant_cloud', 'cake_case', 'rug_round', 'rug_runner', 'standee_base', 'popcorn_cart', 'bistro_table', 'bistro_chair', 'bar_stool',
   // v11 the taxi's cabin for the Story arrival (tools/blender/cabin.py)
-  'taxi_cabin', 'hedge_block', 'projector_vintage', 'reel_wall', 'directors_chair', 'ring_light', 'merch_shelf', 'backdrop_stand', 'street_tree', 'olive_tree'];
+  'taxi_cabin', 'hedge_block', 'projector_vintage', 'reel_wall', 'directors_chair', 'ring_light', 'merch_shelf', 'backdrop_stand', 'street_tree', 'olive_tree', 'speaker_array',
+  // v12b the street furnished (tools/blender/street_props12.py)
+  'bench_street', 'bin_street', 'hydrant', 'parking_meter', 'bike_stand', 'roof_tank', 'roof_ac',
+  // v12c the lobby's three counters in detail and the dome's chandelier (tools/blender/zones12.py; they replace the v10 popcorn machine, drinks
+  // fountain, espresso machine, cafe counter and till and the v7 ribbon chandelier)
+  'popcorn_kettle', 'drinks_tower', 'espresso_lever', 'till_pos', 'tub_stack', 'bar_walnut', 'chandelier_deco', 'popcorn_case'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
@@ -112,15 +117,21 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
     (room.pacc || room.acc).add(p.geo, mtx, sw ? sw[1] : o.tints && o.tints[p.name] ? o.tints[p.name] : p.tint, { mat: sw ? sw[0] : p.id, uv: 'mesh', occ: o.occ ?? 1 });
   }
   const b = A.box.clone().applyMatrix4(mtx);
+  // v12b (the user, 11-19: no invisible collision from far away): a turned prop collides with its own turned footprint, not the
+  // world-axis box round it (a sofa at 45 degrees stopped you half a metre short of it); square turns keep the plain box
+  const turned = Math.abs(Math.sin(2 * yaw)) > 0.02 && room.poly, foot = (inset) => { const lb = A.box, pts = [];
+    for (const [x_, z_] of [[lb.min.x + inset, lb.min.z + inset], [lb.max.x - inset, lb.min.z + inset], [lb.max.x - inset, lb.max.z - inset], [lb.min.x + inset, lb.max.z - inset]]) { const v = new THREE.Vector3(x_, 0, z_).applyMatrix4(mtx); pts.push([v.x, v.z]); }
+    return pts; };
   if (o.round && room.ring) room.ring((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2, typeof o.round === 'number' ? o.round : (b.max.x - b.min.x) / 2, b.min.y, b.max.y);   // v10: round things (the fountain) get a round collider
-  else if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
-  else if (o.collide !== false && !o.round && solidProp(name, b)) room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y);
+  else if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; if (turned) room.poly(foot(-pad), b.min.y, b.max.y); else room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
+  else if (o.collide !== false && !o.round && solidProp(name, b)) { if (turned) room.poly(foot(0.03), b.min.y, b.max.y); else room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y); }
   if (name.startsWith('bin')) (room.bins || (room.bins = [])).push({ x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2 });   // bins you can drop empty cups into
   return b;
 }
 // v8 (phone feedback: "I am able to go through or in between them"): furniture standing on the floor blocks you and the people; hanging,
 // wall-mounted, flat and walk-through things don't. Footprints over 14 m2 (counters with walk-in gaps, facades) keep their own colliders.
-const NO_COLLIDE = /^(letters|chandelier|pendant|downlight|sconce|speaker|rug|door|seat|arm_|stair|facade|shopfront|torchere|restroom_set|poster|frame|sign|led|light|tap|mirror|basin|urinal|lamp_post)/;
+// v12b (the user, 11-19: "don't give collision to random stuff like grass"): soft and low decor (hedges, grass, leaves, rugs) is walk-through too
+const NO_COLLIDE = /^(letters|chandelier|pendant|downlight|sconce|speaker|rug|door|seat|arm_|stair|facade|shopfront|torchere|restroom_set|poster|frame|sign|led|light|tap|mirror|basin|urinal|lamp_post|hedge|grass|leaves|flowers)/;
 function solidProp(name, b) { const h = b.max.y - b.min.y, w = b.max.x - b.min.x, d = b.max.z - b.min.z; return !NO_COLLIDE.test(name) && b.min.y < 0.35 && h > 0.35 && w > 0.12 && d > 0.12 && w * d < 14; }
 // one merged geometry (per material groups, 'occ' attribute) for instancing, e.g. hall seats. extra: matrix applied after the Kiln->engine turn
 // over = per-hall material swaps keyed by mesh name or material name, each with an optional library id and tint

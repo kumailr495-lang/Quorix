@@ -25,6 +25,8 @@ import { Crowd } from './npc9.js';
 import { Shows } from './film9.js';
 import { Together } from './mpui.js';
 import { Wayfinder } from './wayfind.js';
+import { Guide } from './guide.js';
+import { LobbyLife } from './anim12.js';
 import { media } from './bridge.js';
 import { Input } from './input.js';
 import { Director } from './react.js';
@@ -130,7 +132,8 @@ async function boot() {
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
     order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });
   tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
-  const way = new Wayfinder(world, crowd); let wayT = 0;
+  const way = new Wayfinder(world, crowd); let wayT = 0; const guide = new Guide(engine.scene, world);   // v12b the way on the floor and a light at the goal
+  const life = new LobbyLife(world, engine);   // v12c the lobby's life: popcorn popping, the fountain's water, steam at the bar, the marquee's bulbs, the boards' sheen
   const layoutEd = new LayoutEditor(settings, sound, { onModal, save: () => { saveSettings(settings); applyLayout(settings); } });
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
   const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived(), driver: (k, cx, cz) => { const ln = pick(k); if (cx != null) { driverAgent.x = cx; driverAgent.z = cz; } if (ln) { talk.bubble(driverAgent, ln, 2.6); voice.speak(driverAgent, ln, { full: true }); } } });
@@ -157,7 +160,7 @@ async function boot() {
     if (verb === 'buy') { if (held) { tk.line(pick('bar.bye') || t('ven.full'), [['opt.thanks', 'end']]); ui.toast(t('toast9.handsFull'), 2400); return true; }
       bill.pay(bill.itemPrice(arg), arg); if (game === 'flow') sound.pay();
       if (npc.role === 'server') { npc.say(pick('srv.order')); npc.gesture('give', 1.2); setTimeout(() => { takeItem(arg); npc.say(pick('srv.hand')); }, 1400); tk.line(pick('srv.back'), [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]); return true; }
-      const cafe = npc.role === 'cafe'; npc.gesture(/cola|water/.test(arg) || HOT.test(arg) ? 'pour' : 'scoop', cafe ? 4.2 : 2.2); if (cafe && sound.espresso) sound.espresso(npc); else sound.pour();
+      const cafe = npc.role === 'cafe'; npc.gesture(/cola|water/.test(arg) || HOT.test(arg) ? 'pour' : 'scoop', cafe ? 4.2 : 2.2); if (cafe && sound.espresso) { sound.espresso(npc); if (HOT.test(arg)) life.steam(performance.now()); } else sound.pour();
       setTimeout(() => { npc.gesture('give', 1.2); takeItem(arg); npc.say(pick(cafe ? 'cafe.ready' : 'bar.ready')); }, cafe ? 4300 : 2300); return false; }
     if (verb === 'ticket') { if (!ticket) { tk.line(pick('ush.noTicket'), [['opt.thanks', 'end']]); return true; } checkTicket(npc); return false; }
     if (verb === 'escort') { escort(npc); return false; }
@@ -177,7 +180,8 @@ async function boot() {
   }
   function escort(npc) { const h = world.hallById(ticket.hall), s = seatOf(ticket); world.gate.pass(20000); if (crowd.guide(npc, h, s, player)) { npc.say(pick('ush.lead')); ui.toast(t('toast.followUsher', { name: npc.name }), 2600); settings.seen = { ...(settings.seen || {}), escort: true }; saveSettings(settings); } }
   // "locate my seat" (no red arrow, v8 feedback): your seat's reading light glows for a few seconds
-  let glowSeat = null, glowT = 0; function highlightSeat() { const s = seatOf(ticket); if (!s) return; glowSeat = s; glowT = 10; seatGlow.position.set(s.x, s.y + 0.02, s.z); seatGlow.visible = true; }
+  let glowSeat = null, glowT = 0; function highlightSeat() { const s = seatOf(ticket); if (!s) return; glowSeat = s; glowT = 10; seatGlow.position.set(s.x, s.y + 0.02, s.z); seatGlow.visible = true;
+    const rm = world.rooms[s.hallKey]; if (rm && seatGlow.parent !== rm.group) { if (seatGlow.parent) seatGlow.parent.remove(seatGlow); rm.group.add(seatGlow); } }   // v12b: drawn with its hall only (in the scene's root it shone through the hall's walls)
   const seatGlow = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.42, 40), new THREE.MeshBasicMaterial({ color: 0xe3b25f, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); seatGlow.rotation.x = -Math.PI / 2; seatGlow.visible = false; engine.scene.add(seatGlow);
   // ---------- what you hold ----------
   const itemU = { uAmb: { value: new THREE.Color(0.5, 0.5, 0.5) }, uKey: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKeyDir: { value: new THREE.Vector3(-0.35, 0.8, 0.45).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, itemLight = { amb: itemU.uAmb.value, key: itemU.uKey.value, dir: itemU.uKeyDir.value, screen: itemU.uScreenL.value };
@@ -331,18 +335,19 @@ async function boot() {
       const key = want ? want.h.key : null; if (key !== curFilm) { curFilm = key; if (!key) sound.stopFilm(); } curFilm && (sound._aud = want.a); }
     const hk = r.startsWith('hall') ? r : null, dark = hk && world.hallByKey(hk).room.U.uHouse.value < 0.5;
     sound.setListener({ room: r, x: player.x, z: player.z, yaw: player.yaw, filmAud: curFilm ? sound._aud || 0 : 0, filmLP: curFilm === hk ? 18000 : 1200, crowdLP: hk ? 18000 : 2500, verb: hk ? 0.45 : r === 'corridor' ? 0.25 : 0.12, dark,
-      people: Math.min(1, crowd.agents.filter((a) => a.ch && a.ch.group.visible && dist(a) < 12).length / 10), popcornDist: Math.min(Math.hypot(player.x - (COUNTERS.concessions.x0 - 1), player.z + 5), Math.hypot(player.x + 12.6, player.z - 2.6) + 2), cafeDist: Math.hypot(player.x + 18.5, player.z + 11.4), fountainDist: Math.hypot(player.x, player.z - 10), escDist: Math.hypot(player.x - 10.7, player.z - (ESC.up.zBot - 4)), seated: !!player.seated });
+      people: Math.min(1, crowd.agents.filter((a) => a.ch && a.ch.group.visible && dist(a) < 12).length / 10), popcornDist: Math.min(Math.hypot(player.x + 21.3, player.z + 7.1), Math.hypot(player.x + 12.6, player.z - 2.6) + 2), popcornRate: life.popRate(now), cafeDist: Math.hypot(player.x + 18.5, player.z + 11.4), fountainDist: Math.hypot(player.x, player.z - 10), escDist: Math.hypot(player.x - 10.7, player.z - (ESC.up.zBot - 4)), seated: !!player.seated });
     sound.setHead(cam.position.x, cam.position.y, cam.position.z, player.yaw, player.pitch);
     // held item
     if (itemMesh) { lightT -= dt; if (lightT <= 0) { lightT = 0.3; crowd.lightAt(player.x, player.y + 1.3, player.z, itemLight); } itemIn = Math.min(1, itemIn + dt * 3); itemAnim = Math.max(0, itemAnim - dt * 1.6); const e = Math.sin(itemAnim * Math.PI);
       itemMesh.position.set(0.27 - e * 0.1, -0.3 - (1 - itemIn) * 0.3 + e * 0.17, -0.55 + e * 0.2); itemMesh.rotation.set(0.22 + e * 0.75, -0.35, e * 0.15); itemMesh.scale.setScalar(1.25); }
     if (glowSeat) { glowT -= dt; seatGlow.material.opacity = 0.45 + 0.4 * Math.sin(now * 0.006); if (glowT <= 0 || player.seated) { glowSeat = null; seatGlow.visible = false; } }
+    guide.tick(dt, now); life.update(now);
     const nearLift = mode === 'play' && !modal && !talk.open && !intro.active && !player.seated && !player.busy && r === 'lobby' && Math.hypot(player.x - (LIFT.x0 + LIFT.x1) / 2, player.z - (LIFT.z0 + LIFT.z1) / 2) < 4.5;
     aimBtn = nearLift ? world.lift.pick(cam, player.y, innerWidth / 2, innerHeight / 2, innerWidth, innerHeight, 26) : null; world.lift.setHover(aimBtn && aimBtn.id); document.body.classList.toggle('aim', !!aimBtn);
     if (aimBtn) ui.setPrompt(null); else prompts(r, hk);
     // where to next (wayfind.js): the route a few times a second, the arrow every frame
-    if (mode !== 'play' || modal || talk.open || intro.active || watching || settings.goal === false || dbg) { way.cur = null; ui.setGoal(null); }
-    else { wayT -= dt; if (wayT <= 0) { wayT = 0.2; way.update({ game, ticket, room: r, player }); } const g = way.cur;
+    if (mode !== 'play' || modal || talk.open || intro.active || watching || settings.goal === false || dbg) { way.cur = null; ui.setGoal(null); guide.hide(); }
+    else { wayT -= dt; if (wayT <= 0) { wayT = 0.2; way.update({ game, ticket, room: r, player }); if (way.cur && !player.seated) guide.set(way.cur.pts, way.cur.ai, player); else guide.hide(); } const g = way.cur;
       if (!g) ui.setGoal(null); else { cam.getWorldDirection(fwd); const dx = g.aim.x - player.x, dz = g.aim.z - player.z, fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl;
         ui.setGoal(t(g.key, g.vars), Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz) * 180 / Math.PI, g.dist); } }
     ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
@@ -386,7 +391,7 @@ async function boot() {
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
-  window.__lumiere = { engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, buildMs: performance.now() - t0,
+  window.__lumiere = { engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles

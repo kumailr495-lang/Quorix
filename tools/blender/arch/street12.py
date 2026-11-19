@@ -79,7 +79,10 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
             ys = y0 + k * fh + sill_h; xs_ = [xa + 0.05 + (xb - xa - 0.1) * j / 48 for j in range(49)]
             front = [(x, far - P - (0.75 + 0.35 * math.sin(2 * math.pi * 2 * (x - xa) / (xb - xa) + k * 1.3))) for x in xs_]
             acc.prism(front + [(xb - 0.05, far - P + 0.08), (xa + 0.05, far - P + 0.08)], ys - 0.2, ys - 0.07, MAT['plaster'], lin('#e8e4dc'), smooth=30.0)
-            acc.band(front, ys - 0.09, ys + 0.9, 0.03, 0.05, MAT['glass'], lin('#6a7a84'))
+            gl_ = list(front)   # the glass stops 1 cm short of the cap's ends (they ended in one plane: zcheck)
+            for i0, i1 in ((0, 1), (-1, -2)):
+                (ax_, az_), (bx_, bz_) = gl_[i0], gl_[i1]; L_ = math.hypot(bx_ - ax_, bz_ - az_); gl_[i0] = (ax_ + (bx_ - ax_) * 0.01 / L_, az_ + (bz_ - az_) * 0.01 / L_)
+            acc.band(gl_, ys - 0.09, ys + 0.9, 0.03, 0.05, MAT['glass'], lin('#6a7a84'))
             acc.band(front, ys + 0.88, ys + 0.93, 0.02, 0.06, MAT['powder'], FRAME)
             q0, q1 = offset(front, 0.1), offset(front, 0.16)
             for j in range(len(q0) - 1):
@@ -104,7 +107,7 @@ def upper(acc, atlas, rnd, xa, xb, y0, H, far, P, bays, fh, wall, wcol, trim, tc
 def fit_out(kind, W, D, g):
     B = []   # (u0, v0, w0, u1, v1, w1, material, colour), or ('cyl', u, v0, w, r, v1, material, colour): an upright cylinder
     C = lambda u0, v0, w0, u1, v1, w1, m, c: B.append((u0, v0, w0, u1, v1, w1, MAT[m], lin(c)))
-    Y = lambda u, v0, w, r, v1, m, c: B.append(('cyl', u, v0, w, r, v1, MAT[m], lin(c)))
+    Y = lambda u, v0, w, r, v1, m, c, n=8: B.append(('cyl', u, v0, w, r, v1, MAT[m], lin(c), n))
     if kind == 'books':
         C(0.5, 0.03, 0.9, W - 1.6, 0.82, 1.7, 'oak', '#8a6238')                                   # the long table of new titles
         for i in range(5): C(0.7 + i * (W - 2.6) / 5, 0.82, 1.05, 0.7 + i * (W - 2.6) / 5 + 0.34, 0.82 + 0.08 + 0.05 * (i % 3), 1.5, 'paint', ['#8c2f2a', '#2f5d8c', '#c9a35e', '#3d6b4a', '#6b3d6b'][i])
@@ -124,8 +127,9 @@ def fit_out(kind, W, D, g):
                 Y(u, v - 0.02, w, 0.1, v + 0.26, 'chrome', '#7a7e82')                       # a zinc bucket, 2 cm into the tier
                 Y(u, v + 0.24, w, 0.06, v + 0.48, 'velvet', '#2e4a2a')                      # the stems and leaves, 2 cm into the bucket, up among the heads
                 cf = cols[(i * 2 + j) % 5]
-                for du, dw, r, y0 in ((-0.045, 0.02, 0.055, 0.40), (0.04, -0.02, 0.06, 0.43), (0.0, 0.035, 0.05, 0.46)):   # three heads at three heights (one tall
-                    Y(u + du, v + y0, w + dw, r, v + y0 + 0.07, 'velvet', cf)                 # cylinder read as a box from the street)
+                for du, dw, r, y0, nh in ((-0.045, 0.02, 0.055, 0.40, 9), (0.04, -0.02, 0.06, 0.43, 10), (0.0, 0.035, 0.05, 0.46, 12)):   # three heads at three heights (one tall
+                    Y(u + du, v + y0, w + dw, r, v + y0 + 0.07, 'velvet', cf, nh)             # cylinder read as a box from the street); 9, 10 and 12 sides: no two
+                    # of their faces are parallel where they overlap (with 8 each, zcheck found sides 3-4 mm apart, fighting from across the street)
     elif kind == 'records':
         for u in (0.5, 2.0, 3.5):
             if u + 1.2 > W - 0.3: break
@@ -228,7 +232,7 @@ def ground(acc, glow, lit, atlas, halos, xa, xb, g, far, P, shops, wall, wcol, t
         acc.box(a - 0.02, g - 0.14, far - 0.05, b + 0.02, g + 0.0, far + D + 0.02, MAT['plaster'], lin('#d8d2c8'))
         atlas.append({'k': 'shop', 'v': kind, 'x': (a + b) / 2, 'y': (0.03 + g - 0.14) / 2, 'z': far + D - 0.012, 'yaw': math.pi, 'w': W, 'h': g - 0.17, 'e': 0.16 if shut_ else 0.55})
         for it in fit_out(kind, W, D, g):   # u runs from the shop's left as seen from the street (+x to -x)
-            if it[0] == 'cyl': _, u, v0, w, r, v1, m, c = it; acc.cyl(b - u, far + w, r, v0, v1, m, c, n=8)
+            if it[0] == 'cyl': _, u, v0, w, r, v1, m, c, nn = it; acc.cyl(b - u, far + w, r, v0, v1, m, c, n=nn)
             else: u0, v0, w0, u1, v1, w1, m, c = it; acc.box(b - u1, v0, far + w0, b - u0, v1, far + w1, m, c)
         # the front: fascia (6 cm proud, 3 cm up into the floors above), door, riser, glass 2 cm into everything round it
         acc.box(a - 0.02, g - 0.80, zf - 0.06, b + 0.02, g + 0.03, far + 0.02, MAT['powder'], lin('#121316'))
@@ -404,10 +408,11 @@ def skyline(acc, glow, lit, halos, far, LOTS, tops, SW):
             xm = (xa + xb) / 2; gable(acc, glow, xa + 0.1, xm - 0.05, top, far, 2.6, wall, wcol, trim, tcol); gable(acc, glow, xm + 0.05, xb - 0.1, top, far, 2.6, wall, wcol, trim, tcol, False)
         elif xa == -36.0:   # the hotel: a stepped Deco crown with round ends, a gold line under each step's lip, a flagpole
             xc = (xa + xb) / 2; y = top + 0.01
-            for (hw, h_) in ((4.6, 1.5), (3.3, 1.3), (2.0, 1.1)):
-                pl = arc(xc - hw + 0.9, far + 1.7, 0.9, math.pi / 2, 1.5 * math.pi, 10) + arc(xc + hw - 0.9, far + 1.7, 0.9, -math.pi / 2, math.pi / 2, 10)
+            for i_, (hw, h_) in enumerate(((4.6, 1.5), (3.3, 1.3), (2.0, 1.1))):   # each step 4 cm back from the one under it (one front plane: zcheck)
+                cz_ = far + 1.7 + 0.04 * i_
+                pl = arc(xc - hw + 0.9, cz_, 0.9, math.pi / 2, 1.5 * math.pi, 10) + arc(xc + hw - 0.9, cz_, 0.9, -math.pi / 2, math.pi / 2, 10)
                 acc.prism(pl, y, y + h_ + 0.05, wall, wcol, smooth=30.0)
-                zf_ = far + 0.8 - 0.006   # a gold line across the step's flat street face
+                zf_ = cz_ - 0.9 - 0.006   # a gold line across the step's flat street face
                 gfq(glow, (xc - hw + 0.9, y + h_ - 0.16, zf_), (xc + hw - 0.9, y + h_ - 0.16, zf_), (xc + hw - 0.9, y + h_ - 0.1, zf_), (xc - hw + 0.9, y + h_ - 0.1, zf_), (0, 0, -1), lin('#ffcf8a'), 2.0)
                 y += h_
             acc.cyl(xc, far + 1.7, 0.05, y - 0.02, y + 4.0, MAT['brass'], lin('#c9a35e'), n=8)
@@ -465,6 +470,8 @@ def far_side(acc, glow, lit, S, extras):
         acc.cyl(px, pz, 0.05, 0.02, tops[xa] - 0.9, MAT['powder'], lin('#26272b'), n=8)
         for py in (1.6, g + 2.0, tops[xa] - 2.2): acc.box(px - 0.07, py, pz - 0.02, px + 0.07, py + 0.05, far - P + 0.02, MAT['powder'], lin('#26272b'))
         rt = tops[xa] - 0.5   # the roof's deck (the mass's top)
+        if xa not in (SW[1], -36.0, -11.2, 15.2):   # v12b flat decks, for the engine's rooftop plant (world9.js DRESS: tanks, condensers)
+            extras.setdefault('roofs', []).append({'x0': xa, 'x1': xb, 'y': rt, 'z': far, 'bulk': [xa + 1.2, xa + 3.6], 'tank': xb - 2.6 if bays >= 5 and xa not in (-11.2, 27.4) else None})
         if xa not in (SW[1], -36.0, -11.2, 15.2):   # v12: not through a pitched roof, the sawtooth or the hotel's crown
             acc.box(xa + 1.2, rt - 0.02, far + 2.6, xa + 3.6, rt + 2.3, far + 5.4, MAT['plaster'], mix(lin(wc), BLACK, 0.25))   # the stair's bulkhead
         if bays >= 5 and xa not in (-11.2, 27.4): acc.cyl(xb - 2.6, far + 4.0, 0.95, rt - 0.02, rt + 2.4, MAT['powder'], lin('#3a3c40'), n=14)   # a water tank
