@@ -113,7 +113,9 @@ function dequantize(scene) {
     m.geometry.setAttribute('position', new THREE.BufferAttribute(out, 3)); m.geometry.computeBoundingSphere(); skels.add(m); });
   const done = new Set(); for (const m of skels) { if (!done.has(m.skeleton)) { m.skeleton.calculateInverses(); done.add(m.skeleton); } m.bind(m.skeleton, new THREE.Matrix4()); }
 }
-function boneY(root, name) { let y = 1; root.updateMatrixWorld(true); root.traverse((o) => { if (o.isBone && o.name === name) { const p = new THREE.Vector3(); o.getWorldPosition(p); y = p.y; } }); return y; }
+// v13: any node of that name (the animation files carry their skeleton as plain nodes: with isBone only, the clips' pelvis was never found,
+// the height fell back to 1 and every clip lowered the hips by 8 %: the feet stood 7-9 cm inside the floor, seated people inside the seats)
+function boneY(root, name) { let y = 1; root.updateMatrixWorld(true); root.traverse((o) => { if (o.name === name && (o.isBone || o.type === 'Object3D')) { const p = new THREE.Vector3(); o.getWorldPosition(p); y = p.y; } }); return y; }
 // the library's clips on another body: every bone's rotation, and only the pelvis's translation (scaled to this body's hip height),
 // so the body keeps its own proportions
 function adaptClip(clip, k) {
