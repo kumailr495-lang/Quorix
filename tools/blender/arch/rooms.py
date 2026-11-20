@@ -531,9 +531,14 @@ def build_lobby(S):
     lobby12.zone_fin(acc, glow, lit, xwf, xff, bo['z1'] - 0.02, bo['z1'] + 0.5, H + 0.02, YF - 0.4)
     lobby12.zone_fin(acc, glow, lit, xwf, xff, co['z1'] - 0.24, co['z1'] + 0.28, H + 0.02, YF - 0.4)   # 2 cm into the kiosks' walnut panel
     lobby12.zone_fin(acc, glow, lit, xwf, xff, co['z0'] - 0.5, co['z0'] + 0.02, L1 - 0.30, L1 - 0.72)   # under the mezzanine: 2 cm up into its slab
-    pz = lobby12.sign_board(acc, xwf, 4.25, 5.55, -6.95, -0.85)
-    signs.append({'id': 'zone_popcorn', 'x': pz, 'y': 4.9, 'z': -3.9, 'yaw': math.pi / 2, 'w': 6.0, 'h': 1.2, 'emit': 1})
-    lit.line((xwf + 0.9, 5.75, -6.6), (xwf + 0.9, 5.75, -1.2), lin('#ffe6c8'), 0.25, 3.0, 'h', (-0.6, -1.0, 0.0))   # a wash on it from above
+    # the popcorn's sign stands on its canopy's front edge (on the wall behind, the 5.7 m deep canopy hid it from the whole lobby): the
+    # board 1.5 cm down into the canopy and 6 mm into its top brass band, its north end 2 cm into the fin, its south end 4.5 cm clear of
+    # the mezzanine's fascia behind a brass stile; a brass rail on top (both 15 mm proud of its face, 2 mm into the board)
+    xc, yb0, yb1, zs, zn = -15.9, 3.885, 5.10, MZ['z1'] + 0.15, co['z1'] - 0.22
+    acc.box(xc - 0.08, yb0, zs, xc - 0.02, yb1, zn, MAT['lacquer'], lin('#0b0b0c'))
+    acc.box(xc - 0.085, yb1 - 0.002, zs - 0.027, xc - 0.005, yb1 + 0.023, zn, MAT['brass'], lobby12.BRASS)
+    acc.box(xc - 0.085, yb0, zs - 0.027, xc - 0.005, yb1 - 0.002, zs + 0.002, MAT['brass'], lobby12.BRASS)
+    signs.append({'id': 'zone_popcorn', 'x': xc - 0.02 + 0.006, 'y': (3.92 + yb1) / 2 + 0.01, 'z': (zs + zn - 0.02) / 2, 'yaw': math.pi / 2, 'w': round(zn - 0.02 - zs - 0.2, 3), 'h': round(yb1 - 3.92 - 0.1, 3), 'emit': 1})
     acc.box(-18.24, L1 - 0.86, z0 + 0.38, -18.18, L1 - 0.30, co['z0'] - 0.48, MAT['wood'], lin('#3a2416'))   # the bar's header: the slats end in it, 2 cm into the fin
     acc.box(-18.18, L1 - 0.86, z0 + 0.38, -18.168, L1 - 0.82, co['z0'] - 0.48, MAT['brass'], lobby12.BRASS)   # its brass nosing, 12 mm proud
     signs.append({'id': 'zone_bar', 'x': -18.18 + 0.006, 'y': L1 - 0.56, 'z': (z0 + 0.4 + co['z0'] - 0.5) / 2, 'yaw': math.pi / 2, 'w': 3.4, 'h': 0.40, 'emit': 1})

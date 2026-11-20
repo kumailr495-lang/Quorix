@@ -255,14 +255,6 @@ def zone_fin(acc, glow, lit, xw, xf, z0, z1, ytop, led_top):
     lit.line((xf + 0.09, 0.6, zc), (xf + 0.09, led_top - 0.3, zc), HALO, 0.12, 2.5, 'h', (1.0, 0.0, 0.0))
 
 
-def sign_board(acc, x, y0, y1, z0, z1, frame=0.025):
-    """a black board on the west wall (2 cm into it, 4 cm proud of its face x) in a brass frame 1.5 cm prouder; returns the picture's plane"""
-    acc.box(x - 0.02, y0, z0, x + 0.04, y1, z1, MAT['lacquer'], lin('#0b0b0c'))
-    for (ya, yb, za, zb) in ((y0 - frame, y0, z0 - frame, z1 + frame), (y1, y1 + frame, z0 - frame, z1 + frame), (y0, y1, z0 - frame, z0), (y0, y1, z1, z1 + frame)):
-        acc.box(x - 0.02, ya, za, x + 0.055, yb, zb, MAT['brass'], BRASS)   # rails over stiles: the stiles stop at the rails
-    return x + 0.046
-
-
 # ------------------------------------------------------------------------------------------------ v13 the entrance runner
 def runner_to_ring(acc, cx, cz, rr, hw, z_end, frame=0.06):
     """a crimson carpet runner from z_end (by the doors) to the brand ring (centre (cx, cz), brass edge radius rr), its end cut to the

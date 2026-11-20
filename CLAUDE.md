@@ -135,7 +135,7 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   screens are rooms.py's `kiosk_*` panels at `KIOSK_SCREEN`.
 - **Zones** (the user, 11-20: "make the reception and the areas separated and much more defined"): Nero Marquina fins with lit brass noses
   (lobby12.py `zone_fin`) between the ticket bay (desk + kiosks), the popcorn bay and the bar (that one under the mezzanine, up into its
-  slab); the ticket canopy has a 0.8 m fascia for its name; a framed marquee sign over the popcorn (`sign_board`); a walnut header with the
+  slab); the ticket canopy has a 0.8 m fascia for its name; the popcorn's marquee sign stands on its canopy's front edge (on the wall behind it, the 5.7 m deep canopy hid it from the lobby); a walnut header with the
   bar's name. The names are engine panels `zone_<tickets|kiosk|popcorn|bar>` (world9.js PANEL_DRAW `zone`).
 - **Ceiling paint**: the field, the halo's step, dome and pocket walls use library 13 (`lobby12.PAINT`: flat, no tone blotches); the wall
   paint's macro blotches read as stains on the evenly lit dome.

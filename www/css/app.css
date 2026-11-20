@@ -353,6 +353,10 @@ html[lang=hi] .mi,html[lang=ur] .mi{font-size:clamp(16px,5.4vh,21px)}
   background:radial-gradient(120% 70% at 50% 0%,rgba(122,20,32,.55),transparent 60%),radial-gradient(90% 60% at 50% 110%,rgba(224,178,90,.18),transparent 60%),#0b090c;transition:background .25s}
 #phone.viewfinder .ph-scr{background:transparent}
 body.ph-cam #tools,body.ph-cam #sprint,body.ph-cam #itemBtn,body.ph-cam .round.side,body.ph-cam #prompt{visibility:hidden}
+/* the photo is the whole screen: brackets at its corners while the camera is open */
+body.ph-cam::after{content:'';position:fixed;inset:calc(8px + var(--sat)) calc(8px + var(--sar)) calc(8px + var(--sab)) calc(8px + var(--sal));z-index:29;pointer-events:none;--c:rgba(246,236,216,.85);
+  background:linear-gradient(var(--c),var(--c)) top left/30px 2px,linear-gradient(var(--c),var(--c)) top left/2px 30px,linear-gradient(var(--c),var(--c)) top right/30px 2px,linear-gradient(var(--c),var(--c)) top right/2px 30px,
+  linear-gradient(var(--c),var(--c)) bottom left/30px 2px,linear-gradient(var(--c),var(--c)) bottom left/2px 30px,linear-gradient(var(--c),var(--c)) bottom right/30px 2px,linear-gradient(var(--c),var(--c)) bottom right/2px 30px;background-repeat:no-repeat}
 #phone.viewfinder .ph-dev{background:transparent;box-shadow:0 24px 60px rgba(0,0,0,.45),inset 0 0 0 1px rgba(224,178,90,.55),inset 0 0 0 7px #121014}
 .ph-bar{display:flex;align-items:center;gap:6px;padding:8px 14px 2px;font:600 11px/1 var(--font);color:var(--cream);text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .ph-bar b{flex:1}
