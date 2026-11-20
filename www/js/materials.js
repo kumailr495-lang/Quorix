@@ -4,7 +4,7 @@
 // Never put a `//` comment inside a GLSL line that carries code: it swallows the rest of the line (v4 lesson).
 import * as THREE from 'three';
 import { makeCanvas } from './textures.js';
-import { LIB, libArrays, libResize, PARAMS } from './library.js';
+import { LIB, libArrays, libResize, PARAMS, NUM_IDS } from './library.js';
 export function noiseTexture(size = 128) {   // 4 independent tileable value-noise fields in RGBA
   const c = makeCanvas(size, size), g = c.getContext('2d'), img = g.createImageData(size, size); let s = 9173; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const fields = []; for (let k = 0; k < 4; k++) { const cells = [8, 16, 32, 64][k], lat = new Float32Array(cells * cells); for (let i = 0; i < lat.length; i++) lat[i] = rnd(); const f = new Float32Array(size * size);
@@ -84,7 +84,7 @@ attribute vec2 lmuv; varying vec2 vLm;
 #else
 attribute vec3 lh; attribute vec3 lf; attribute float ls;
 #endif
-uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[144]; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform vec3 uScreenN;
+uniform float uHouse; uniform vec3 uScreen; uniform float uFix; uniform vec4 uP[${NUM_IDS * 3}]; uniform vec3 uScreenD; uniform vec2 uScreenX; uniform vec3 uScreenN;
 varying vec3 vAlb; varying vec3 vLight; varying vec3 vWP; varying vec3 vN; varying float vDist; varying vec2 vUv; varying vec4 vPA; varying vec4 vPB; varying float vLay; varying float vEm; varying vec2 vVar;
 void main() {
   int k = int(matid + 0.5) * 3; vPA = uP[k]; vPB = uP[k + 1]; vLay = uP[k + 2].x; vEm = uP[k + 2].y; vVar = uP[k + 2].zw;
@@ -130,6 +130,9 @@ vec3 envBRDF(vec3 F0, float r, float NoV) {
 }
 void main() {
   vec3 Ng = normalize(vN); vec3 V = normalize(cameraPosition - vWP); vec3 uvl = vec3(vUv, floor(vLay + 0.5));
+#ifdef ALPHA_LEAF
+  if (!gl_FrontFacing) Ng = -Ng;
+#endif
   vec3 Lt = vLight;
 #ifdef USE_LIGHTMAP
   Lt = texture(uLmH, vLm).rgb * (uLmK.x * uHouse) + vec3(uFill * uHouse);
@@ -179,6 +182,9 @@ void main() {
     mapN = texture(uNmaps, uvl).xyz * 2.0 - 1.0;
 #endif
   }
+#ifdef ALPHA_LEAF
+  if (t.a < 0.5) discard;   // v14 a scanned plant's leaf outline (its own draw: the rest of the room keeps early depth)
+#endif
   vec3 alb = vPB.z > 0.5 ? t.rgb * vAlb : vAlb * t.rgb * 2.0;
   vec3 N = Ng;
 #ifdef USE_NMAP
@@ -398,6 +404,13 @@ export class Materials {
     m.name = 'lit-' + key; m.userData.hero = !!U.hero; per[key] = m; return this._t(m);
   }
   litFor(U, geo, inst = false) { return this.litRoom(U, inst); }
+  // v14 the scanned plants' leaves: the room's lit material with an alpha test, drawn from both sides, in a draw of its own
+  leafRoom(U) {
+    let per = this._lit.get(U); if (!per) this._lit.set(U, per = {}); if (per.leaf) return per.leaf;
+    const A = libArrays(this.renderer, this.texSize, true), defines = { ...this.defines, ALPHA_LEAF: '' }; if (this.heroOnly && !U.hero) delete defines.USE_ENV;
+    const m = mk(LIT_VERT, LIT_FRAG, { ...G, ...U, uMaps: { value: A.a }, uNmaps: { value: A.n || A.a }, uP: { value: PARAMS } }, { defines, side: THREE.DoubleSide });
+    m.name = 'lit-leaf'; m.userData.hero = !!U.hero; per.leaf = m; return this._t(m);
+  }
   staticMat(U) { return this._t(mk(STATIC_VERT, STATIC_FRAG, { ...G, ...U })); }
   instMat(U) { return this._t(mk(INST_VERT, STATIC_FRAG, { ...G, ...U })); }
   // glow strips lie on surfaces (LED lines, step nosings, signs): pulled towards the camera in depth so they never z-fight at a distance

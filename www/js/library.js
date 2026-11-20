@@ -5,6 +5,7 @@
 //   mode 'rel': the map is detail around mid-grey stored as linear data; the shader multiplies it by the vertex tint x 2.
 //   mode 'abs': the map has its own colours (parquet, geometric tile, carpet, marble); the tint multiplies it (white = as painted).
 import * as THREE from 'three';
+import { SCAN_LIB, SCAN_NAMED } from './scans.js';
 export const MAT = { paint: 0, fabric: 1, wood: 2, terrazzo: 3, metal: 4, carpet: 5, plaster: 6, tile: 7, leather: 8, acoustic: 9, glass: 10, granite: 11, marble: 12, rubber: 13, chrome: 14, lacquer: 15, hallCarpet: 16, slats: 17, concrete: 18, screen: 19,
   chevron: 20, geotile: 21, deco: 22, fluted: 23, brass: 24, powder: 25, asphalt: 26, paving: 27, brick: 28, porcelain: 29, walltile: 30, calacatta: 31, emit: 32,
   nero: 33, rosso: 34, onyx: 35, stone: 36, dolby: 37, tblack: 38, plaza: 39, perf: 40, velvet: 1, travertine: 41, oak: 42, neroGold: 43, wcWall: 44, wcFloor: 45, microcement: 46, lobbyMarble: 47 };
@@ -66,7 +67,12 @@ export const LIB = {
   46: { tex: 'microcement', mode: 'rel', mpt: 2.2, rough: 0.75, metal: 0, nstr: 0.3, macro: 0.2, detile: 1 },
   47: { tex: 'stone_light', mode: 'abs', mpt: 2.4, rough: 0.1, metal: 0, nstr: 0.6, spec: 1.3, macro: 0.08, detile: 2 },
 };
-export const NUM_IDS = 48;   // uP holds NUM_IDS x 3 vec4 (materials.js uP[144])
+// v14 the CC0 scanned props (tools/textures/scans.py -> scans.js): their own albedo, normal and roughness as layers in the same arrays, so a
+// scanned armchair draws in its room's one call like everything else; ids from 48 up
+for (const [k, v] of Object.entries(SCAN_LIB)) LIB[k] = v;
+export const NUM_IDS = 48 + Object.keys(SCAN_LIB).length;   // uP holds NUM_IDS x 3 vec4 (materials.js uP[NUM_IDS * 3])
+// alpha-tested scan leaves: their layer keeps the PNG's alpha (the leaf's outline) instead of a roughness map
+export const LEAF_IDS = new Set(Object.entries(SCAN_LIB).filter(([, v]) => v.leaf).map(([k]) => +k));
 // Kiln assets name their materials; the name picks a library entry and the tint (sRGB hex)
 export const NAMED = {
   velvet_teal: [1, '#1d5a56'], velvet_ivory: [1, '#d9cfbf'], hedge: [1, '#2a4122'], fluted_black: [23, '#1c1b1d'], velvet_burgundy: [1, '#6e1424'], velvet_navy: [1, '#1e2c4a'], velvet_charcoal: [1, '#2d2f36'], velvet_mustard: [1, '#a77a25'], velvet_rose: [1, '#9a4f5a'],
@@ -84,6 +90,7 @@ export const NAMED = {
   paper_white: [0, '#efe8dc'], gilt: [25, '#d2a659'],
   enamel_green: [15, '#2e4a3c'], canvas_black: [9, '#19191b'], bark: [18, '#4a3a2e'], leaves: [1, '#22381c'], soil: [18, '#2a2420'], bark_olive: [18, '#6e6252'], leaves_olive: [1, '#6a7a5c'], travertine_dark: [41, '#a89884'],
 };
+for (const [k, v] of Object.entries(SCAN_NAMED)) NAMED[k] = v;
 const _c = new THREE.Color();
 export function named(name) { const k = String(name || '').toLowerCase().replace(/[^a-z_]/g, '').replace(/_+$/, ''); const e = NAMED[k] || NAMED[k.replace(/_lod\d$/, '')]; return e ? { id: e[0], tint: _c.set(e[1]).toArray() } : null; }
 // ---- textures ----
@@ -103,7 +110,8 @@ export function libTextures(id, renderer) {
 // encoded on the way in and come back out of the sampler as the same linear values. Layers are resampled to one size.
 export const LAYERS = [...new Set(Object.values(LIB).map((L) => L.tex))];
 // layers that ship <tex>_r.jpg, a roughness map (tools/textures/fetch_cc0.py ROUGH)
-export const ROUGH = new Set(['stone_light', 'paintwall', 'powder', 'travertine', 'oak', 'nero_gold', 'wc_wall', 'wc_floor', 'microcement', 'stone_rel']);
+export const ROUGH = new Set(['stone_light', 'paintwall', 'powder', 'travertine', 'oak', 'nero_gold', 'wc_wall', 'wc_floor', 'microcement', 'stone_rel', ...Object.values(SCAN_LIB).filter((v) => !v.leaf).map((v) => v.tex)]);
+const LEAFTEX = new Set(Object.values(SCAN_LIB).filter((v) => v.leaf).map((v) => v.tex));   // v14 these load <tex>_a.png and keep its alpha
 // per material id, three vec4: (rough, metal, normal strength, sheen), (reflection, relief, abs, 1 / metres per tile), (layer, emission)
 export const PARAMS = (() => { const a = []; for (let id = 0; id < NUM_IDS; id++) { const L = LIB[id] || LIB[0]; a.push(new THREE.Vector4(L.rough, L.metal, L.nstr ?? 0.6, L.sheen || 0), new THREE.Vector4(L.spec ?? 0.8, L.relief ?? 0.25, L.mode === 'abs' ? 1 : 0, 1 / L.mpt), new THREE.Vector4(LAYERS.indexOf(L.tex), L.emit || 0, L.macro ?? (L.emit ? 0 : 0.15), L.detile || 0)); } return a; })();
 let arrays = null;
@@ -117,11 +125,11 @@ export function libArrays(renderer, size = 512, normals = true) {
   const rel = new Set(Object.values(LIB).filter((L) => L.mode === 'rel').map((L) => L.tex)), c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high';
   const load = (url) => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('texture ' + url)); im.src = url; });
   arrays.ready = Promise.all(LAYERS.flatMap((name, i) => [['a', arrays.a], ['n', arrays.n]].filter(([, T]) => T).map(async ([kind, T]) => {
-    try { const im = await load(base + name + '_' + kind + '.jpg'), rim = kind === 'a' && ROUGH.has(name) ? await load(base + name + '_r.jpg').catch(() => null) : null;
+    try { const im = await load(base + name + '_' + kind + (kind === 'a' && LEAFTEX.has(name) ? '.png' : '.jpg')), rim = kind === 'a' && ROUGH.has(name) ? await load(base + name + '_r.jpg').catch(() => null) : null;
       let rp = null; if (rim) { g.clearRect(0, 0, size, size); g.drawImage(rim, 0, 0, size, size); rp = g.getImageData(0, 0, size, size).data; }
       g.clearRect(0, 0, size, size); g.drawImage(im, 0, 0, size, size); const px = g.getImageData(0, 0, size, size).data;
       if (kind === 'a' && rel.has(name)) for (let k = 0; k < px.length; k += 4) { px[k] = enc[px[k]]; px[k + 1] = enc[px[k + 1]]; px[k + 2] = enc[px[k + 2]]; }
-      if (kind === 'a') for (let k = 3; k < px.length; k += 4) px[k] = rp ? rp[k - 3] : 128;
+      if (kind === 'a' && !LEAFTEX.has(name)) for (let k = 3; k < px.length; k += 4) px[k] = rp ? rp[k - 3] : 128;
       T.image.data.set(px, i * size * size * 4); } catch (e) { console.warn(e.message); } }))).then(() => { arrays.a.needsUpdate = true; if (arrays.n) arrays.n.needsUpdate = true; });
   return arrays;
 }

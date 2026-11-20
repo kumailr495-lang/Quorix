@@ -12,7 +12,7 @@ import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
 import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS } from './building.js';
 import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL, atmosSpots } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
-import { texturesReady, named } from './library.js';
+import { texturesReady, named, LEAF_IDS } from './library.js';
 import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
 import { leafAtlas } from './foliage.js';
 import { posterURL, filmById } from './films.js';
@@ -106,6 +106,13 @@ class Walls {
         if (o1 * o2 < 0 && o3 * o4 < 0) return false; } }
     return true;
   }
+}
+// v14 the scanned plants' alpha-tested leaves (library.js LEAF_IDS) out of a room's prop mesh into their own (materials.js leafRoom)
+function splitIds(geo, ids) {
+  const mid = geo.attributes.matid; if (!mid || !geo.index || !ids.size) return null; const I = geo.index.array, keep = [], out = [];
+  for (let t = 0; t < I.length; t += 3) (ids.has(Math.round(mid.getX(I[t]))) ? out : keep).push(I[t], I[t + 1], I[t + 2]);
+  if (!out.length) return null; geo.clearGroups(); geo.setIndex(keep);
+  const g = new THREE.BufferGeometry(); for (const [k, v] of Object.entries(geo.attributes)) g.setAttribute(k, v); g.setIndex(out); return g;
 }
 function splitGlass(geo) {
   const mid = geo.attributes.matid; if (!mid || !geo.index) return null; const I = geo.index.array, keep = [], glass = [];
@@ -414,9 +421,11 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // centre, so the four arcs curved round four points 0.4 m past the table and read as scattered pieces. Now three sofas sit on the table's
   // own 2.0 m circle (seat fronts on it, square to the axes) in a C open to the lobby (west), two boucle chairs close the C facing the
   // table, and the table is half again as wide for a 4 m circle
-  for (const a of [0, 90, 270]) { const r = a * RAD; add('lobby', 'sofa_curve', LX + 2.0 * Math.cos(r), 0, LZ + 2.0 * Math.sin(r), -r - Math.PI / 2, { swap: SAPPHIRE }); }
-  for (const a of [155, 205]) { const r = a * RAD; add('lobby', 'armchair_deco', LX + 2.35 * Math.cos(r), 0, LZ + 2.35 * Math.sin(r), Math.atan2(-Math.cos(r), -Math.sin(r)), { swap: BOUCLE }); }
-  add('lobby', 'table_lounge', LX, 0, LZ, 0, { scale: [1.5, 1, 1.5] }); for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.9, -12.9], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
+  // v14 (the user, 11-20: "every single model extra high quality, GTA 5-6 level"): the lounge in CC0 photoscanned leather (Poly Haven, built by
+  // tools/blender/scans14.py): two black chesterfields face each other across a marble-and-chrome table, a leather armchair at each end
+  add('lobby', 'scan_coffee_table', LX, 0, LZ); add('lobby', 'scan_chesterfield', LX, 0, LZ - 1.62, 0); add('lobby', 'scan_chesterfield', LX, 0, LZ + 1.62, Math.PI);
+  add('lobby', 'scan_armchair', LX - 1.8, 0, LZ, Math.PI / 2); add('lobby', 'scan_armchair', LX + 1.8, 0, LZ, -Math.PI / 2);
+  for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.85, -13.55], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   // v12 (the user: "trees inside like a medieval tree"): an old olive tree in a travertine bowl in each front corner, by the glass (seen
   // from the street too); they replace the corner palms
   for (const x of [-20.5, 20.5]) add('lobby', 'olive_tree', x, 0, 16.0, x < 0 ? 0.6 : 2.4, { collide: false, round: 0.8 });
@@ -435,7 +444,9 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const z of [-5.0, -0.3]) add('lobby', 'till_pos', -17.2, 1.0, z, Math.PI / 2, { collide: false, ground: false });   // their screens face the staff
   for (const z of [5.6, 7.6, 9.6, 11.6]) add('lobby', 'till_pos', -17.0, 1.06, z, Math.PI / 2, { collide: false, ground: false });
   add('lobby', 'candy_wall', -21.42, 0, 0.0, Math.PI / 2);   // 1 cm off the wall's face
-  for (const [x, z] of [[-16.2, -9.6], [6.0, 2.4], [-2.4, -12.6], [19.8, -2.6], [-14.8, 2.6]]) add('lobby', 'bin_brass', x, 0, z);
+  // v14 (the user: "bins are not placed on random places"; cinemas and food courts put them where people leave with something to throw
+  // away: the ends of the counters, the exits, the restroom doors): each stands against a wall or a fin, out of every walking line
+  for (const [x, z] of [[-15.9, 0.66], [-8.4, -13.72], [CORE.x0 - 0.25, 1.0], [-2.75, -13.72], [2.75, -13.72]]) add('lobby', 'bin_brass', x, 0, z);
   add('lobby', 'bench_velvet', 21.25, 0, 5.0, Math.PI / 2); add('lobby', 'bench_velvet', 21.25, 0, -6.5, Math.PI / 2);
   // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
@@ -456,6 +467,14 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v12 (the user: "the carpet ... extends so badly and looks so bad"): no patterned rugs; a plain crimson pile with a charcoal edge where
   // people sit, and a crimson runner from the doors to the brand ring (floor only: no ropes on the door axis)
   const CRIMSON = { carpet_deco: [MAT.velvet, [0.20, 0.011, 0.019]], velvet_navy: [MAT.velvet, [0.022, 0.022, 0.026]] };
+  // v14 (the user, 11-20: "the lobby feels so open"): a second lounge island on the court's west side, between its columns: a chesterfield
+  // each side of a marble table, mid-century lounge chairs at its ends, palms on plant stands, on a crimson rug; every walking line (NAV)
+  // passes 1.3 m or more from it
+  { const WX = -6.2, WZ = 6.6;
+    add('lobby', 'rug_round', WX, 0, WZ, 0, { collide: false, swap: CRIMSON }); add('lobby', 'scan_coffee_table', WX, 0, WZ);
+    add('lobby', 'scan_chesterfield', WX - 1.62, 0, WZ, Math.PI / 2); add('lobby', 'scan_chesterfield', WX + 1.62, 0, WZ, -Math.PI / 2);
+    add('lobby', 'scan_lounge_chair', WX, 0, WZ + 1.75, Math.PI); add('lobby', 'scan_lounge_chair', WX, 0, WZ - 1.75, 0);
+    for (const [dx, dz] of [[-1.75, -1.75], [1.75, 1.75]]) { add('lobby', 'scan_plant_stand', WX + dx, 0, WZ + dz); add('lobby', 'scan_plant', WX + dx, 0.762, WZ + dz, dx * 0.7, { collide: false }); } }
   for (const [cx, cz] of [[-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false, swap: CRIMSON });
   // v13 the entrance runner is floor now (rooms.py lobby12.runner_to_ring: its end cut to the brand ring's arc; this prop stopped 0.22 m short)
   add('lobby', 'popcorn_cart', -12.6, 0, 2.6, Math.PI / 2 + 0.35);
@@ -487,13 +506,15 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('street', 'rug_runner', 0, 0, FACADE_Z + 4.0, 0, { collide: false, scale: [0.62, 1, 1.8], swap: { carpet_deco: [MAT.velvet, [0.34, 0.015, 0.025]] } });
   // v12 (the user: decorations must not block the entrance and the exit; the inside full of them instead): the palms that stood either side
   // of the doors outside now stand either side of them inside
-  for (const x of [-3.5, 3.5]) add('lobby', 'planter_tall', x, 0, FACADE_Z - 1.15);
+  // v14: marble busts on Nero Marquina plinths greet you either side of the doors (a scanned CC0 bust), turned a little toward the doors
+  for (const x of [-3.5, 3.5]) { add('lobby', 'plinth_marble', x, 0, FACADE_Z - 1.15); add('lobby', 'scan_bust', x, 1.042, FACADE_Z - 1.15, x < 0 ? 0.35 : -0.35, { collide: false }); }
   // v12 the lobby told as a cinema (tools/blender/decor12.py): the film-heritage exhibit on the escalator hall's long blank west wall (four
   // reels on walnut, a 1950s projector on a plinth before it); the photo spot on the open floor west of the fountain court, seen as you
   // come in (a step-and-repeat wall between two posts, two director's chairs, a ring light where the camera stands); a shelf of
   // collectible buckets and cups beside the candy wall
   add('lobby', 'reel_wall', CORE.x0 + 0.005, 0, -3.0, -Math.PI / 2, { collide: false, ground: false, scale: 1.5 });
   add('lobby', 'projector_vintage', CORE.x0 - 1.2, 0, -3.0, -Math.PI / 2);
+  for (const [z, nm, sc] of [[-3.95, 'scan_projector8', 0.82], [-2.05, 'scan_cine_camera', 1.0]]) { add('lobby', 'plinth_marble', CORE.x0 - 0.62, 0, z); add('lobby', nm, CORE.x0 - 0.62, 1.042, z, -Math.PI / 2, { collide: false, scale: sc }); }   // v14 scanned (CC0)
   for (const z of [-3.875, -2.125]) add('lobby', 'stanchion', CORE.x0 - 2.1, 0, z);   // a rope before the exhibit, as in a museum
   add('lobby', 'rope_velvet', CORE.x0 - 2.1, 0, -3.0, Math.PI / 2);
   add('lobby', 'backdrop_stand', -7.0, 0, -5.51, 0);
@@ -502,6 +523,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('lobby', 'merch_shelf', -21.35, 0, 2.1, Math.PI / 2);
   for (const x of [-40, -34, 34, 40]) add('street', 'olive_tree', x, 0, 22.8, (x * 1.7) % 6.28, { collide: false, round: 0.8 });   // v12: between the wings' showcases, 1.8 m off their faces; the potted olives of the lobby (leaf cards, not the old blob crown)
   for (const z of [7.9, 2.1, -4.1, -8.9]) add('lobby', 'planter_tall', 21.1, 0, z);
+  add('lobby', 'scan_grandfather_clock', 21.36, 0, 12.5, -Math.PI / 2);   // v14 a scanned (CC0) longcase clock on the east wall by the lounge
   // v11 (the user: "a pole is blocking the view"): none in front of the canopy. v12: each lamp's arm reaches over the kerb (it lay along the
   // pavement); the light and its halo are at the head (tools/blender/arch/rooms.py); a clipped hedge stands in every bronze trough
   for (let x = -40; x <= 40; x += 10) if (Math.abs(x) > 12) add('street', 'lamp_post', x, 0, 25.55, 0, { collide: 0.05 });
@@ -528,7 +550,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // more each side on the medium and high presets
   const PARKED = [[-34.5, [0.86, 0.86, 0.84]], [30.0, [0.012, 0.012, 0.014]], [-41.0, [0.05, 0.09, 0.2], 1], [37.0, [0.3, 0.03, 0.035], 1]];
   for (const [x, rgb, d] of PARKED) add('street', 'car_sedan', x, 0, STREET.road[0] - 1.75, Math.PI / 2, { lod: 1, glowK: 0, swap: { car_red: [MAT.lacquer, rgb] }, detail: d || 0 });
-  for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.75, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
+  for (const z of [-16.2, -40, -60]) { add('spine', 'bin_brass', -3.95, 0, z); add('spine', 'planter_tall', 3.75, 0, z); }
   // v9.3 hall entrances (the user's ScreenX entrance photo; tools/blender/arch/rooms.py builds the portals): the hall's name in face-lit
   // letters over each portal, its number beside it, a bin; red armchairs along the bridge
   const WORD = { MAX: 'letters_max', CURVE: 'letters_curve', CLASSIC: 'letters_classic', X270: 'letters_x270' };
@@ -555,7 +577,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const h of Object.values(HALL)) for (const s of atmosSpots(h)) { const w = h.toWorld(s.u, s.d); add(h.key, 'speaker_array', w.x, h.y0 + h.ceil + 0.002, w.z, h.yawOf(s.u > 0 ? -Math.PI / 2 : Math.PI / 2), { collide: false, ground: false, scale: 0.7 }); }
   return L;
 })();
-const SIT_ON = { sofa_curve: { h: 0.44, w: 0.7 }, armchair_deco: { h: 0.44, n: 1 }, bench_velvet: { h: 0.45, w: 0.62 }, bench_street: { h: 0.45, w: 0.62 }, bar_stool: { h: 0.76, n: 1 }, directors_chair: { h: 0.6, n: 1 } };
+const SIT_ON = { scan_chesterfield: { h: 0.46, w: 0.6 }, scan_armchair: { h: 0.45, n: 1 }, scan_lounge_chair: { h: 0.43, n: 1 }, sofa_curve: { h: 0.44, w: 0.7 }, armchair_deco: { h: 0.44, n: 1 }, bench_velvet: { h: 0.45, w: 0.62 }, bench_street: { h: 0.45, w: 0.62 }, bar_stool: { h: 0.76, n: 1 }, directors_chair: { h: 0.6, n: 1 } };
 function dressRooms(world) {
   const byRoom = {}; for (const p of DRESS) (byRoom[p.room] || (byRoom[p.room] = [])).push(p);
   // v9.1: the restrooms' fittings at their interaction points (tools/blender/arch/rooms.py fixtures; they were points with no mesh):
@@ -589,7 +611,9 @@ function dressRooms(world) {
       const e = cen[p.name] || (cen[p.name] = { n: 0, tris: 0 }), ld = p.o.lod ?? 0; e.n++; for (const q of A.parts) if (q.lod === ld && (!p.o.only || q.name.startsWith(p.o.only))) e.tris += (q.geo.index ? q.geo.index.count : q.geo.attributes.position.count) / 3; }
     // v12c the lobby's props draw their glass see-through (the poppers' cabinets, the heated cases, the fountain's water); the street keeps
     // its cars' glass dark (they have no cabins)
-    const propGlass = (g, nm) => { if (key !== 'lobby') return; const gl = splitGlass(g); if (!gl) return; const gm = new THREE.Mesh(gl, world.mats.glassMat()); gm.renderOrder = 3; gm.matrixAutoUpdate = false; gm.name = nm; room.group.add(gm); };
+    const propGlass = (g, nm) => {
+      const lf = splitIds(g, LEAF_IDS); if (lf) { const lm = new THREE.Mesh(lf, world.mats.leafRoom(room.U)); lm.matrixAutoUpdate = false; lm.name = nm.replace('glass', 'leaves'); room.group.add(lm); }
+      if (key !== 'lobby') return; const gl = splitGlass(g); if (!gl) return; const gm = new THREE.Mesh(gl, world.mats.glassMat()); gm.renderOrder = 3; gm.matrixAutoUpdate = false; gm.name = nm; room.group.add(gm); };
     if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); propGlass(g, key + '-propglass'); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
     if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
     if (deep && deep.pacc.count) { const g = toGeometry(deep.pacc); room.lights.bake(g); propGlass(g, key + '-propglassdeep'); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-propsdeep'; room.group.add(m); }
