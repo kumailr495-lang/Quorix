@@ -7,7 +7,7 @@
 // inwards, exit doors only outwards, and nothing on L1 leads into the spine.
 import { HALLS, makeHall, SCREEN_GAP, WALL } from './hallmath.js';
 export const HALL = Object.fromEntries(HALLS.map((s) => [s.id, makeHall(s)]));
-export const L1 = HALL.MAX.total;   // the first floor = the MAX hall's rear aisle (its rake top)
+export const L1 = 4.662;   // the first floor (v9 it was the MAX hall's rake top; v14 the halls grew: every hall, MAX too, is lifted to it)
 export const FACADE = 18, LOBBY = { x0: -22, x1: 22, z0: -14, z1: FACADE, ceil: 9.6 }, MEZZ = { z0: -14, z1: -7.4, void: { x0: 8.6, x1: 12.8, z0: -9.8, z1: -7.4 } };
 // v12b the exit passages: a flight is PASS_W wide; the spine runs on past the last halls far enough to take the passages south of them
 export const PASS_W = 1.4, EXIT_RISE = 0.172, EXIT_TREAD = 0.3;

@@ -12,7 +12,8 @@ THEME = {
   'max': dict(wall='#121826', wall2='#0b0d12', ceil='#07080b', carpet='#1a2030', riser='#141824', accent='#2f7cff', warm='#ffb46b', wood='#5b3a24', mask='#050608', trim='#2a3140', step='#4d8dff', bay='#3d4556', frame='#8a8f99'),
   'curve': dict(wall='#141b33', wall2='#0d1224', ceil='#0a0e1c', carpet='#232a44', riser='#1a2038', accent='#c9a86a', warm='#ffd59e', wood='#6a4428', mask='#06070c', trim='#c9a86a', step='#ffcf8a', bay='#4b4660', frame='#c9a86a'),
   'classic': dict(wall='#5a1a24', wall2='#3a1118', ceil='#1c1c21', carpet='#3b1a20', riser='#2a1216', accent='#b08d57', warm='#ffd2a0', wood='#4a2a1a', mask='#080506', trim='#b08d57', step='#ffcf8a', cream='#e6d9c2', bay='#c7b597', frame='#b08d57'),
-  'x270': dict(wall='#1f2227', wall2='#16181c', ceil='#0d0f12', carpet='#26292e', riser='#1c1e22', accent='#1f8a8a', warm='#ffe2bf', wood='#3a3a3a', mask='#06070a', trim='#1f8a8a', step='#5fe0d8', panel='#9a9da3', bay='#5d636c', frame='#9aa0a8', screen='#c9ccd1'),
+  # v14 after the user's ScreenX photo: black room, black ceiling with small lights, dark patterned carpet, red leather recliners, red accents
+  'x270': dict(wall='#101115', wall2='#0b0c0f', ceil='#050506', carpet='#1b1e2a', riser='#15171d', accent='#a3242c', warm='#ffe2bf', wood='#2a2a2a', mask='#06070a', trim='#a3242c', step='#ff7a5c', panel='#2a2c31', bay='#3a3d44', frame='#6a6d73', screen='#c9ccd1'),
 }
 
 def up_quad(g, a, b, z0, z1, y, col, k):
@@ -336,20 +337,12 @@ def build_hall(h, L1):
                     acc.box(b[0], ceil - 0.28, b[1], b[2], ceil + 0.01, b[3], MAT['paint'], th['cream'])   # v11: into the ceiling (2 cm under it)
                 lit.line((u - 1.2, ceil - 0.3, d - 1.45), (u + 1.2, ceil - 0.3, d - 1.45), th['warm'], 0.12, 3, 'h', (0, 1, 0.3))
     else:
-        for u in (-W2 * 0.5, 0.0, W2 * 0.5):
-            glow.quad((u - 0.03, cy, 2.0), (u + 0.03, cy, 2.0), (u + 0.03, cy, depth - 1.5), (u - 0.03, cy, depth - 1.5), th['accent'], 1.0)
-        # v12 curved acoustic clouds: shallow barrels across the hall (clear of the side screens' projectors), each hung 0.5 m down on
-        # four rods 2 cm into the ceiling and 2 cm into the cloud, a teal light along both long edges
-        cu = W2 - 2.4; yc0 = ceil - 0.5
-        for dc in [4.0 + 4.6 * i for i in range(int((depth - 5.0) / 4.6))]:
-            prof = [(dc - 1.3 + 2.6 * j / 12, yc0 - 0.32 * math.sin(math.pi * j / 12)) for j in range(13)][::-1] + [(dc - 1.3, yc0 + 0.04), (dc + 1.3, yc0 + 0.04)][::-1]
-            prof = [(dc - 1.3 + 2.6 * j / 12, yc0 - 0.32 * math.sin(math.pi * j / 12)) for j in range(13)] + [(dc + 1.3, yc0 + 0.04), (dc - 1.3, yc0 + 0.04)]
-            acc.prism_x(prof, -cu, cu, MAT['acoustic'], mix(th['panel'], th['wall'], 0.5))
-            for (ru, rd) in ((-cu + 0.6, dc - 0.7), (-cu + 0.6, dc + 0.7), (cu - 0.6, dc - 0.7), (cu - 0.6, dc + 0.7)):
-                acc.cyl(ru, rd, 0.012, yc0 + 0.02, ceil + 0.02, MAT['metal'], lin('#30333a'), n=6)
-            for ed in (dc - 1.3, dc + 1.3):
-                gq((-cu + 0.1, yc0 - 0.006, ed + (0.02 if ed < dc else -0.02)), (cu - 0.1, yc0 - 0.006, ed + (0.02 if ed < dc else -0.02)), (cu - 0.1, yc0 - 0.006, ed + (0.07 if ed < dc else -0.07)), (-cu + 0.1, yc0 - 0.006, ed + (0.07 if ed < dc else -0.07)), (0, -1, 0), th['accent'], 1.4)
-            lit.line((-cu, yc0 - 0.1, dc), (cu, yc0 - 0.1, dc), th['warm'], 0.08, 4.0, 'h', (0, 1, 0))
+        # v14 X-270 (the user's ScreenX photo): a black ceiling with a regular grid of small lights, nothing hanging into the projectors' throw
+        for u in [-W2 + 1.2 + 1.5 * k for k in range(int((2 * W2 - 2.4) / 1.5) + 1)]:
+            for d in [1.5 + 1.5 * k for k in range(int((depth - 2.5) / 1.5) + 1)]:
+                s_ = 0.022
+                glow.quad((u - s_, cy, d - s_), (u + s_, cy, d - s_), (u + s_, cy, d + s_), (u - s_, cy, d + s_), th['warm'], 1.1)
+        lit.ambient(lin('#3a2a2a'), lin('#120c0c'), 0.004, 'f')
     # downlights over the seats only (the walls have their washers): fewer and softer than v9's grid
     nu = max(1, int(round((2 * h['blockHalf']) / 4.4)))
     for u in [-h['blockHalf'] + 1.0 + i * (2 * h['blockHalf'] - 2.0) / nu for i in range(nu + 1)]:
@@ -361,10 +354,8 @@ def build_hall(h, L1):
         pA, pB = P(sg * (a0w + aW) / 2, rows[1]['pf']), P(sg * (a0w + aW) / 2, depth - 0.4)
         lit.line((pA[0], 0.25, pA[1]), (pB[0], top + 0.25, pB[1]), th['step'], 0.06, 2.0, 'f')
     lit.ambient(mix(th['warm'], (1, 1, 1), 0.5), mix(th['wall2'], (0, 0, 0), 0.3), 0.03, 'h')
-    # ---------------------------------------------------------------- entrance light lock: a baffle in front of the door
-    s_ = 1 if ent > 0 else -1; dz = depth - 1.25
-    acc.box(min(ent - s_ * 1.2, s_ * W2), top, dz - 0.06, max(ent - s_ * 1.2, s_ * W2), top + 2.35, dz + 0.06, MAT['acoustic'], th['wall2'])
-    acc.box(min(ent - s_ * 1.2, s_ * W2), top + 2.35, dz - 0.08, max(ent - s_ * 1.2, s_ * W2), top + 2.42, dz + 0.08, MAT['wood'], th['wood'])
+    # v14 (the user, 11-20: "idk why you have this shit wall on entrance of the theatre"; UNIC 8.1.2: a dark vestibule or the door itself
+    # keeps the light out): no baffle, the door opens straight onto the rear aisle and the whole hall; a soft light over the door
     lit.point((ent, top + 2.2, depth - 0.6), th['warm'], 0.25, 2.5, 'h')
     # ---------------------------------------------------------------- occluders (seats) and probes for the bake
     probes = []

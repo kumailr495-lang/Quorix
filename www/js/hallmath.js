@@ -27,30 +27,31 @@ export const CLASSES = {
 };
 // side: -1 = west of the exit spine (the audience faces +x), +1 = east (faces -x). zc: the hall's centre line (world z). width: inner.
 // groups run from the screen to the rear: rows of single seats (n odd) or two-seat sofas (pairs, gap between the sofas).
-// v9.1b (the user, 2026-11-06: "the screens are so small"): every picture runs nearly wall to wall. v12b (the user, 11-18: "move the exit
+// v14 (the user, 11-20: "the theatres are so small"; "seats ... in circular motion"): every hall about 3.5 m wider and 3 m deeper, a row or
+// two more, every hall's rows on arcs facing the picture (rowK); X-270 has red leather recliners like the user's ScreenX photo. v9.1b (the user, 2026-11-06: "the screens are so small"): every picture runs nearly wall to wall. v12b (the user, 11-18: "move the exit
 // door to not on the front of the screen and then cover that area with screens"): the exits left the screen wall for the side walls
 // (building.js EXIT_PASSAGES), so the screen now runs from side wall to side wall (W = width - 0.3, the frame's margin). The height H stays
 // what it was (row A's view of the picture's top is held at 45 deg, UNIC), so the shape widens: aspect = W / H. A 16:9 film keeps its size
 // and the screen's wider sides take the 2.39:1 ones. MAX was IMAX-GT shaped (1.43:1); v11 made it 13.4 m high. X-270's screen already ran
 // corner to corner (hB 2.8: the band of three screens keeps its bottom edge).
 export const HALLS = [
-  { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -37.0, width: 29.2, W: 28.9, H: 13.368, hB: 0.95, sag: 0.0215, D1: 12.6, c: 0.2,
+  { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -38.9, width: 33.0, W: 32.7, H: 14.6, hB: 0.95, sag: 0.0215, D1: 14.4, c: 0.2,
     aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.6, rowK: 34, curtain: false, frame: 0.25,
-    groups: [{ seat: 'rocker', rows: 11, n: 33, pitch: 1.32, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
-      { seat: 'pod', rows: 2, pairs: 9, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },
-  { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -67.8, width: 25.2, W: 24.9, H: 10.7, hB: 1.05, sag: 0.1547, D1: 10.9, c: 0.2,
+    groups: [{ seat: 'rocker', rows: 11, n: 37, pitch: 1.36, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
+      { seat: 'pod', rows: 2, pairs: 10, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },
+  { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -73.3, width: 28.6, W: 28.3, H: 12.0, hB: 1.05, sag: 0.1547, D1: 12.2, c: 0.2,
     aisleW: 1.4, cross: null, rear: 2.6, rowK: 9, curtain: true, frame: 0.25,
-    groups: [{ seat: 'recliner', rows: 6, n: 19, pitch: 1.92, cls: (r) => (r >= 2 && r <= 4 ? 'reclPlus' : 'recl') },
-      { seat: 'sofa', rows: 1, pairs: 8, gap: 0.5, pitch: 2.0, cls: () => 'love' }] },
-  { id: 'CLASSIC', no: 3, key: 'hallClassic', name: 'LUMIERE CLASSIC', format: 'classic', side: 1, zc: -32.7, width: 20.8, W: 20.5, H: 9.561, hB: 1.0, sag: 0, D1: 9.4, c: 0.2,
-    aisleW: 1.25, cross: null, rear: 2.6, rowK: 0, curtain: true, frame: 0.25,
-    groups: [{ seat: 'rocker', rows: 10, n: 23, pitch: 1.3, cls: (r) => (r >= 6 ? 'prime' : 'std') },
-      { seat: 'sofa', rows: 1, pairs: 7, gap: 0.42, pitch: 1.75, cls: () => 'sofa' }] },
+    groups: [{ seat: 'recliner', rows: 7, n: 21, pitch: 1.92, cls: (r) => (r >= 2 && r <= 4 ? 'reclPlus' : 'recl') },
+      { seat: 'sofa', rows: 1, pairs: 9, gap: 0.5, pitch: 2.0, cls: () => 'love' }] },
+  { id: 'CLASSIC', no: 3, key: 'hallClassic', name: 'LUMIERE CLASSIC', format: 'classic', side: 1, zc: -34.7, width: 24.6, W: 24.3, H: 11.0, hB: 1.0, sag: 0, D1: 11.0, c: 0.2,
+    aisleW: 1.25, cross: null, rear: 2.6, rowK: 30, curtain: true, frame: 0.25,
+    groups: [{ seat: 'rocker', rows: 11, n: 27, pitch: 1.3, cls: (r) => (r >= 6 ? 'prime' : 'std') },
+      { seat: 'sofa', rows: 1, pairs: 8, gap: 0.42, pitch: 1.75, cls: () => 'sofa' }] },
   // v9.3 (the user, photo of a real ScreenX hall: "it's connected"): the front screen runs corner to corner and the side screens start at
   // the corners with the same top and bottom, one band round three walls (its bottom edge 2.8 m up: v12b the exits are in the side walls under it)
-  { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE X·270', format: 'x270', side: 1, zc: -57.3, width: 21.2, W: 21.1, H: 10.55, hB: 2.8, rakeHB: 1.25, sag: 0, D1: 9.9, c: 0.2,
-    aisleW: 1.3, cross: null, rear: 2.6, rowK: 0, curtain: false, frame: 0.25, panels: true,
-    groups: [{ seat: 'rocker', rows: 10, n: 23, pitch: 1.3, cls: (r) => (r >= 4 && r <= 7 ? 'x270p' : 'x270') }] },
+  { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE X·270', format: 'x270', side: 1, zc: -63.0, width: 24.8, W: 24.7, H: 12.0, hB: 2.8, rakeHB: 1.25, sag: 0, D1: 11.4, c: 0.2,
+    aisleW: 1.3, cross: null, rear: 2.6, rowK: 30, curtain: false, frame: 0.25, panels: true,
+    groups: [{ seat: 'recliner', rows: 8, n: 19, pitch: 1.92, cls: (r) => (r >= 3 && r <= 5 ? 'x270p' : 'x270') }] },
 ];
 // placement (docs/V9-DESIGN.md section 4): the screen wall stands on the exit spine; the picture plane is SCREEN_GAP in front of it
 export const SPINE = { x0: -4.2, x1: 4.2 }, SCREEN_GAP = 1.25, WALL = 0.4;
