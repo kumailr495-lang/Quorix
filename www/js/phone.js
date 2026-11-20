@@ -47,9 +47,11 @@ export class Phone {
     const w = el('div', 'ph-widgets'), next = el('button', 'ph-wg next'); next.id = 'phNext'; next.addEventListener('click', (e) => { e.stopPropagation(); this.show('ticket'); }); w.appendChild(next);
     const tab = el('button', 'ph-wg tab'); tab.innerHTML = `${icon('i-cash')}<b>${this.h.bill.fmt(this.h.bill.total || 0)}</b><small>${t('phone.tonight')}</small>`; tab.addEventListener('click', (e) => { e.stopPropagation(); this.show('tab'); }); w.appendChild(tab);
     B.appendChild(w); this.nextShow(next);
-    const grid = el('div', 'ph-apps');
-    for (const [k, ic] of APPS) { const a = el('button', 'ph-app'); a.innerHTML = `<i>${icon(ic)}</i><span>${t('phone.app.' + k)}</span>`; a.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.show(k); }); grid.appendChild(a); }
-    B.appendChild(grid); this.tick();
+    // v14 (the user, 11-20: "the phone UI is so bad"; their reference: a frosted phone with colourful icons and a dock): four apps on the
+    // page, four in the dock, each icon its own colour
+    const grid = el('div', 'ph-apps'), dock = el('div', 'ph-dock'), DOCK = new Set(['camera', 'photos', 'friends', 'settings']);
+    for (const [k, ic] of APPS) { const a = el('button', 'ph-app'); a.dataset.k = k; a.innerHTML = `<i>${icon(ic)}</i><span>${t('phone.app.' + k)}</span>`; a.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.show(k); }); (DOCK.has(k) ? dock : grid).appendChild(a); }
+    B.appendChild(grid); B.appendChild(dock); this.tick();
   }
   nextShow(n) {
     const tk = this.h.ticket(); if (!tk) { n.innerHTML = `${icon('i-ticket')}<b>${t('phone.noShow')}</b><small>${t('phone.bookHint')}</small>`; return; }

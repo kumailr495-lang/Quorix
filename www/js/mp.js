@@ -12,7 +12,7 @@ export const newCode = () => { let s = ''; const r = crypto.getRandomValues(new 
 export const cleanCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 const clip = (v, a, b) => Math.max(a, Math.min(b, v));
 const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
-const small = (l) => (l && typeof l === 'object' ? { o: clip(Math.round(num(l.o)), 0, 15), h: clip(Math.round(num(l.h)), 0, 15), s: clip(Math.round(num(l.s, 2)), 0, 15) } : null);
+const small = (l) => (l && typeof l === 'object' ? { o: clip(Math.round(num(l.o)), 0, 15), b: clip(Math.round(num(l.b)), 0, 15), h: clip(Math.round(num(l.h)), 0, 15), s: clip(Math.round(num(l.s, 2)), 0, 15) } : null);
 
 export class Multi {
   constructor(hooks = {}) { this.hooks = hooks; this.room = null; this.peers = new Map(); this.code = null; this.host = false; this.me = null; this.lastShow = null; this.offset = 0; this.t = 0; this.term = 0; }

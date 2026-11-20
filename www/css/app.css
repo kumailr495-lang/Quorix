@@ -67,12 +67,20 @@ h3{margin:0;font:600 20px/1.1 var(--display)}
 .icon:active{transform:scale(.94)}.icon .ic{width:19px;height:19px}.icon.sm{width:32px;height:32px;font:600 16px/1 var(--font)}.icon.faint{opacity:.4}
 .icon.x{background:transparent;border-color:transparent}
 /* ---- loading: the house before the show ---- */
-#loader{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:#000;transition:opacity .9s var(--ease)}
+#loader{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:#000;transition:opacity .9s var(--ease);overflow:hidden}
+.ld-art{position:absolute;inset:0}.ld-art i{position:absolute;inset:-4%;background:#000 center/cover no-repeat;opacity:0;transition:opacity 1.6s var(--ease);animation:kb 16s ease-in-out infinite alternate}
+.ld-art i.on{opacity:1}.ld-art i:nth-child(2n){animation-direction:alternate-reverse}
+@keyframes kb{from{transform:scale(1.02) translate3d(-1.5%,0,0)}to{transform:scale(1.1) translate3d(1.5%,-1%,0)}}
+.ld-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 55%,rgba(0,0,0,.85) 100%)}
+.ld-foot{position:absolute;left:calc(24px + var(--sal));right:calc(24px + var(--sar));bottom:calc(14px + var(--sab));display:flex;flex-direction:column;gap:7px}
+.ld-row{display:flex;justify-content:space-between;font:600 12px/1 var(--font);letter-spacing:.06em;color:rgba(246,236,216,.85);text-shadow:0 1px 3px #000}
+#ldTip{margin:0;font:500 12px/1.35 var(--font);color:rgba(246,236,216,.7);text-shadow:0 1px 3px #000;min-height:16px;transition:opacity .5s}
+#ldTip.out{opacity:0}
 #loader.gone{opacity:0;pointer-events:none}
-.ld-in{text-align:center}
+.ld-in{position:relative;text-align:center;text-shadow:0 2px 18px rgba(0,0,0,.7)}
 .ld-title{font:600 clamp(30px,9vh,56px)/1 var(--display);letter-spacing:.22em;text-indent:.22em;color:var(--stub);opacity:0;animation:fadeIn 1.2s .6s var(--ease) forwards}
 .ld-pre{margin-top:2.4vh;font:italic 500 clamp(13px,4vh,19px)/1 var(--display);color:var(--mute);opacity:0;animation:fadeIn 1.2s 1s var(--ease) forwards}
-.ld-bar{position:absolute;left:50%;bottom:10vh;width:min(34vw,240px);height:3px;transform:translateX(-50%);border-radius:2px;background:rgba(246,236,216,.1);overflow:hidden}
+.ld-bar{position:relative;width:100%;height:3px;border-radius:2px;background:rgba(246,236,216,.16);overflow:hidden}
 .ld-bar i{display:block;height:100%;width:0;border-radius:2px;background:var(--brass);transition:width .4s var(--ease)}
 #ldTip{position:absolute;left:0;right:0;bottom:calc(10vh + 16px);margin:0;text-align:center;font-size:12px;color:var(--dim)}
 .ld-err{position:absolute;bottom:4vh;left:0;right:0;text-align:center;color:var(--alarm);font:500 12px/1.4 var(--font)}
@@ -396,4 +404,48 @@ body.ph-cam::after{content:'';position:fixed;inset:calc(8px + var(--sat)) calc(8
 .ph-flash{position:fixed;inset:0;background:#fff;z-index:60;pointer-events:none;animation:flash .42s ease-out both}
 @keyframes flash{from{opacity:.85}to{opacity:0}}
 .ph-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.ph-ph{aspect-ratio:1;border-radius:6px;overflow:hidden}.ph-ph img{width:100%;height:100%;object-fit:cover;display:block}.ph-big{width:100%;border-radius:8px;display:block}
-@media (prefers-reduced-motion:reduce){#phone .ph-dev,#phone.out .ph-dev,.ph-body{animation:none}}
+@media (prefers-reduced-motion:reduce){.ld-art i{animation:none}#phone .ph-dev,#phone.out .ph-dev,.ph-body{animation:none}}
+
+/* v14 the phone again (the user, 11-20: "the phone UI is so bad"; their frosted-phone reference): a thin dark frame of tinted glass, a
+   vivid wallpaper, frosted widgets, colourful app icons on the page and in a dock (no backdrop-filter: it re-composites the game each frame) */
+#phone .ph-dev{background:linear-gradient(160deg,rgba(40,40,48,.92),rgba(12,12,16,.94));box-shadow:0 20px 50px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.22),inset 0 0 0 3px rgba(0,0,0,.55);border-radius:30px;padding:6px}
+#phone .ph-scr{border-radius:24px;background:radial-gradient(120% 60% at 15% 0%,rgba(255,92,170,.55),transparent 60%),radial-gradient(110% 70% at 100% 35%,rgba(110,70,255,.6),transparent 62%),radial-gradient(120% 80% at 30% 110%,rgba(40,140,255,.5),transparent 60%),linear-gradient(180deg,#1b1030,#0b0a18)}
+#phone.viewfinder .ph-scr{background:transparent}
+.ph-island{width:62px;height:17px;margin-left:-31px;top:11px}
+.ph-bar{color:#fff;padding:9px 16px 2px}
+.ph-time b{font:300 46px/1 var(--font);letter-spacing:-.01em;color:#fff}.ph-time small{color:rgba(255,255,255,.75)}
+.ph-wg{background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);border-radius:16px;color:#fff}
+.ph-wg .ic{color:#fff;opacity:.9}.ph-wg small{color:rgba(255,255,255,.72)}
+.ph-apps{gap:10px 6px;margin-top:2px}
+.ph-app span{color:#fff;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.ph-app i{width:40px;height:40px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35);background:#444}
+.ph-app .ic{width:20px;height:20px;color:#fff}
+.ph-app[data-k=ticket] i{background:linear-gradient(160deg,#ffcf5a,#f08a1c)}.ph-app[data-k=map] i{background:linear-gradient(160deg,#5be38a,#1fa35a)}
+.ph-app[data-k=tab] i{background:linear-gradient(160deg,#5ab8ff,#1f6fe0)}.ph-app[data-k=stubs] i{background:linear-gradient(160deg,#ff6a7a,#d6203a)}
+.ph-app[data-k=camera] i{background:linear-gradient(160deg,#5c5f66,#2a2c31)}.ph-app[data-k=photos] i{background:conic-gradient(from 200deg,#ffb23f,#ff4f7b,#9b5bff,#3fa7ff,#4fdc8a,#ffb23f)}
+.ph-app[data-k=friends] i{background:linear-gradient(160deg,#b98bff,#7a3ff0)}.ph-app[data-k=settings] i{background:linear-gradient(160deg,#9aa0aa,#5c626c)}
+.ph-dock{margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 6px 6px;border-radius:20px;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.ph-dock .ph-app span{display:none}
+.ph-body.ph-k-home{display:flex;flex-direction:column}
+.ph-head{color:#fff}.ph-back{background:rgba(255,255,255,.16)}
+.ph-home{background:rgba(255,255,255,.85)}
+
+/* v14 the play-together bar: drawn icons with their words; the chat docked on the left side under the HUD, not over the middle */
+#mpBar button{width:auto;min-width:44px;height:40px;padding:3px 6px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:9px;transition:transform .15s var(--ease),background .2s}
+#mpBar button .ic{width:16px;height:16px;color:var(--cream)}#mpBar button small{font:600 8.5px/1 var(--font);letter-spacing:.02em;color:var(--mute);white-space:nowrap}
+#mpBar button:active,#mpBar button.pop{transform:scale(.9);background:rgba(224,178,90,.25)}
+#mpChat{left:calc(12px + var(--sal))!important;right:auto!important;transform:none!important;top:calc(96px + var(--sat));bottom:auto!important;width:min(300px,38vw)!important;max-height:calc(100vh - 130px - var(--sat) - var(--sab))}
+#mpChat .mpChatHead{display:flex;align-items:center;justify-content:space-between;font:600 12px/1 var(--font);color:var(--cream);padding:2px 2px 4px}
+#mpChat .mpChatHead .icon{width:28px;height:28px}#mpChat .mpLog{max-height:none;flex:1;min-height:60px}
+#mpChat .btn .ic{width:16px;height:16px}
+
+/* v14 (the user, 11-20: "there's no delay or transition on the play button and the animation"): every button gives under the finger and
+   springs back; panels and sheets open with a short rise and fade instead of appearing at once */
+.btn,.icon,.round,.ph-app i,.chip,#mpBar button,#prompt{transition:transform .16s cubic-bezier(.3,1.6,.5,1),background .2s,opacity .2s,box-shadow .2s}
+.btn:active,.icon:active,.round:active,#prompt:active{transform:scale(.9)}
+.round:active{box-shadow:0 0 0 6px rgba(224,178,90,.18)}
+.scrim:not([hidden])>*{animation:panelIn .32s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes panelIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+#prompt:not([hidden]){animation:promptIn .28s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes promptIn{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.scrim:not([hidden])>*,#prompt:not([hidden]){animation:none}}

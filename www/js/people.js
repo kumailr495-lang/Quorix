@@ -183,8 +183,9 @@ const VERT_RB = `
 #include <common>
 #include <skinning_pars_vertex>
 uniform vec3 uAmb; uniform vec3 uKey; uniform vec3 uKeyDir; uniform vec3 uScreenL;
-varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight; varying float vH;
 void main() {
+  vH = position.y;
   #include <skinbase_vertex>
   #include <beginnormal_vertex>
   #include <skinnormal_vertex>
@@ -195,14 +196,16 @@ void main() {
   vec4 mv = viewMatrix * wp; vDist = -mv.z; gl_Position = projectionMatrix * mv;
 }`;
 const FRAG_RB = COMMON_FRAG + `
-uniform sampler2D uMap; uniform vec4 uDye; uniform vec4 uHairDye; uniform vec3 uSkinYCC; varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+uniform sampler2D uMap; uniform vec4 uDye; uniform vec4 uDye2; uniform vec2 uSplit; uniform vec4 uHairDye; uniform vec3 uSkinYCC; varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight; varying float vH;
 bool skinLike(vec3 c) { vec3 g = sqrt(c); float Y = dot(g, vec3(0.299, 0.587, 0.114)), cb = (g.b - Y) * 0.564, cr = (g.r - Y) * 0.713;
   if (uSkinYCC.x > 0.0) return abs(cb - uSkinYCC.y) < 0.045 && abs(cr - uSkinYCC.z) < 0.05 && Y > uSkinYCC.x * 0.35 && Y < uSkinYCC.x * 1.5;
   return cb > -0.2 && cb < 0.0 && cr > 0.02 && cr < 0.18; }
 vec3 dye(vec3 c, vec3 to) { float y = dot(c, vec3(0.2126, 0.7152, 0.0722)); return to * clamp(pow(y / 0.2, 0.7), 0.12, 2.2) * 0.9; }
 void main() {
   vec4 t = texture2D(uMap, vUv); if (t.a < 0.5) discard; vec3 c = t.rgb;
-  if (uDye.a > 0.5 && vUv.x < 0.5 && vUv.y > 0.5 && !skinLike(c)) c = dye(c, uDye.rgb);
+  // v14 (the user: "I select outfit colour red, it turns both red"): the top and the trousers take their own colours, split at the hip
+  // (uSplit.x: the bind pose's hip height; under uSplit.y, the shoes, nothing changes)
+  if (vUv.x < 0.5 && vUv.y > 0.5 && !skinLike(c)) { if (vH > uSplit.x) { if (uDye.a > 0.5) c = dye(c, uDye.rgb); } else if (vH > uSplit.y && uDye2.a > 0.5) c = dye(c, uDye2.rgb); }
   if (uHairDye.a > 0.5) { bool cards = vUv.x < 0.5 && vUv.y < 0.5, scalp = vUv.x > 0.5 && vUv.y > 0.5 && !(vUv.x < 0.67 && vUv.y > 0.76) && dot(c, vec3(0.2126, 0.7152, 0.0722)) < 0.09 && !skinLike(c);
     if (cards || scalp) c = dye(c, uHairDye.rgb); }
   vec3 N = normalize(gl_FrontFacing ? vN : -vN); vec3 col = c * vLight * 1.15 + 0.05 * vLight * pow(max(N.y * 0.5 + 0.5, 0.0), 4.0);
@@ -211,7 +214,7 @@ void main() {
 }`;
 function rbMaterial(av) {
   return new THREE.ShaderMaterial({ vertexShader: VERT_RB, fragmentShader: FRAG_RB, side: THREE.DoubleSide, uniforms: {
-    uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uMap: { value: av.tex }, uDye: { value: new THREE.Vector4(1, 1, 1, 0) }, uHairDye: { value: new THREE.Vector4(1, 1, 1, 0) }, uSkinYCC: { value: new THREE.Vector3(...(av.skinYCC || [0, 0, 0])) },
+    uExposure: G.uExposure, uBright: G.uBright, uFogColor: G.uFogColor, uFogNear: G.uFogNear, uFogFar: G.uFogFar, uMap: { value: av.tex }, uDye: { value: new THREE.Vector4(1, 1, 1, 0) }, uDye2: { value: new THREE.Vector4(1, 1, 1, 0) }, uSplit: { value: new THREE.Vector2(0.95, 0.1) }, uHairDye: { value: new THREE.Vector4(1, 1, 1, 0) }, uSkinYCC: { value: new THREE.Vector3(...(av.skinYCC || [0, 0, 0])) },
     uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } } });
 }
 const lin = (hex) => new THREE.Color(hex);
@@ -298,13 +301,15 @@ function poseLayers(rig, frame, g, gt, w, face) {
 // a player's own look (Play together): outfit colour, hair colour and height, each an index into these lists (0 = as photographed).
 // The dye keeps the photographed shading: non-skin texels of the body take the colour at their own brightness; hair cards and the dark
 // painted hair on the head take the hair colour (the eyes and mouth corner of the head texture are left alone)
-export const LOOK = { outfit: [null, '#151518', '#e9e5dd', '#9c1c26', '#1d2c50', '#1f4d31', '#b38b3a', '#4d2b6e', '#c4562a'],
+export const LOOK = { outfit: [null, '#151518', '#e9e5dd', '#9c1c26', '#1d2c50', '#1f4d31', '#b38b3a', '#4d2b6e', '#c4562a'], bottom: [null, '#151518', '#2b2f3a', '#1d2c50', '#3a2a1e', '#e9e5dd', '#55555b', '#5b1a22', '#6b5a3a'],
   hair: [null, '#161210', '#4a2c1a', '#8c3c1f', '#c9a25c', '#a3a3a8', '#2c4fa3', '#b33a6e'], height: [0.93, 0.965, 1.0, 1.035, 1.07] };
 export const cleanLook = (l) => { const i = (v, n, d) => (Number.isInteger(v) && v >= 0 && v < n ? v : d); l = l && typeof l === 'object' ? l : {};
-  return { o: i(l.o, LOOK.outfit.length, 0), h: i(l.h, LOOK.hair.length, 0), s: i(l.s, LOOK.height.length, 2) }; };
+  return { o: i(l.o, LOOK.outfit.length, 0), b: i(l.b, LOOK.bottom.length, 0), h: i(l.h, LOOK.hair.length, 0), s: i(l.s, LOOK.height.length, 2) }; };
 export function applyLook(p, look) {
   if (!p || !p.av || !p.mat || !p.mat.uniforms.uDye) return; const L = cleanLook(look), u = p.mat.uniforms, set = (U, hex) => { if (hex) { const c = new THREE.Color(hex); U.value.set(c.r, c.g, c.b, 1); } else U.value.w = 0; };
-  set(u.uDye, LOOK.outfit[L.o]); set(u.uHairDye, LOOK.hair[L.h]); if (p.av.skinYCC) u.uSkinYCC.value.set(...p.av.skinYCC); p.scale = LOOK.height[L.s]; p.model.scale.setScalar(p.scale);
+  set(u.uDye, LOOK.outfit[L.o]); set(u.uDye2, LOOK.bottom[L.b]); set(u.uHairDye, LOOK.hair[L.h]);
+  if (!p._split) { let lo = Infinity, hi = -Infinity; p.root.traverse((o) => { if (o.isSkinnedMesh && o.geometry.attributes.position) { const P = o.geometry.attributes.position; for (let k = 0; k < P.count; k += 7) { const y = P.getY(k); if (y < lo) lo = y; if (y > hi) hi = y; } } });
+    p._split = Number.isFinite(lo) ? [lo + 0.53 * (hi - lo), lo + 0.06 * (hi - lo)] : [0.95, 0.1]; } u.uSplit.value.set(p._split[0], p._split[1]); if (p.av.skinYCC) u.uSkinYCC.value.set(...p.av.skinYCC); p.scale = LOOK.height[L.s]; p.model.scale.setScalar(p.scale);
 }
 const SIT_H = 0.47;   // seat height the library's sitting clips were made for
 export class Person {

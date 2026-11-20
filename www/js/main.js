@@ -65,7 +65,17 @@ async function boot() {
   const settings = loadSettings(), Q = new URLSearchParams(location.search), nav = (navigator.language || 'en').slice(0, 2);
   setLang(settings.lang || (['hi', 'ur', 'es'].includes(nav) ? nav : 'en'));
   const portrait = () => $('#rotate').classList.toggle('need', innerHeight > innerWidth * 1.1); portrait(); addEventListener('resize', portrait);
-  const prog = (p) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; };
+  // v14 the loader: five pieces of key art from the game drift and crossfade every 6 s, the step being built and the percentage over a
+  // progress line, a tip every 6 s; it all stops when the loader fades
+  const LD_STEP = { street: 'load.street', lobby: 'load.lobby', wc: 'load.restrooms', corridor: 'load.gallery', spine: 'load.gallery', doors: 'load.people', reflections: 'load.bake', ready: 'load.ready' };
+  const ldArt = $('#ldArt'), ldTips = [].concat(t('tips') || []), ldTimer = setInterval(() => {
+    if (!ldArt || !document.body.contains(ldArt)) return; const n = ldArt.children.length; let on = [...ldArt.children].findIndex((i) => i.classList.contains('on'));
+    if (n < 5) { const i = document.createElement('i'); i.style.backgroundImage = `url(load/${n + 1}.jpg)`; ldArt.appendChild(i); }
+    const next = (on + 1) % Math.max(ldArt.children.length, 1); [...ldArt.children].forEach((i, k) => i.classList.toggle('on', k === next));
+    const tp = $('#ldTip'); if (tp && ldTips.length) { tp.classList.add('out'); setTimeout(() => { tp.textContent = ldTips[Math.floor(Math.random() * ldTips.length)]; tp.classList.remove('out'); }, 500); } }, 6000);
+  { const tp = $('#ldTip'); if (tp && ldTips.length) tp.textContent = ldTips[Math.floor(Math.random() * ldTips.length)]; }
+  const prog = (p, key) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; const pc = $('#ldPct'); if (pc) pc.textContent = Math.round(p * 100) + '%';
+    const st = $('#ldStep'), k = key && (LD_STEP[key] || (key.startsWith('hall') ? 'load.halls' : null)); if (st && k) st.textContent = t(k, { room: key }); if (p >= 1) clearInterval(ldTimer); };
   try { await Promise.race([Promise.all([document.fonts.load('600 40px Inter'), document.fonts.load('400 14px Inter')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* fonts later */ }
   const engine = new Engine($('#gl'), settings), lowG = settings.graphics === 'low';
   const mats = new Materials({ renderer: engine.renderer, normalMaps: !lowG, reflections: !lowG && settings.reflections !== 'off', heroOnly: heroRefl(settings), texSize: lowG ? 256 : 512, macro: !lowG, detile: settings.graphics === 'high' }); engine.applySettings(settings);
@@ -73,7 +83,7 @@ async function boot() {
   mats.lightMaps = !Q.get('nobake');
   const t0 = performance.now(); let done = 0; const tick = () => prog(0.05 + 0.4 * (++done / 3));
   await Promise.all([loadAssets(ASSET_LIST).then(tick), loadBakes().then(tick), loadPeople().then(tick).catch((e) => console.warn('[lumiere] people models failed', e))]);
-  const world = await buildWorld(engine, mats, (p) => prog(0.45 + 0.5 * p)); await texturesReady(); prog(0.97);
+  const world = await buildWorld(engine, mats, (p, key) => prog(0.45 + 0.5 * p, key)); await texturesReady(); prog(0.97);
   const sound = new Sound9(); sound.surround = !!settings.surround; sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
   const bill = new Bill();
   let ticket = null, room = 'street', mode = 'menu', game = null, modal = false, held = null, visits = 0, sitRelease = null, fading = false;
@@ -422,7 +432,7 @@ async function boot() {
     try { R.compile(engine.scene, engine.camera); engine.scene.traverse((o) => { for (const m of [].concat(o.material || [])) for (const u of Object.values(m.uniforms || {})) { const v = u && u.value; if (v && v.isTexture && !seen.has(v)) { seen.add(v); R.initTexture(v); } } }); } catch (e) { console.warn('warm-up skipped', e); }
     for (const [rm, v] of shown) rm.group.visible = v; }
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
-  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
+  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); clearInterval(ldTimer); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
   window.__lumiere = { engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,

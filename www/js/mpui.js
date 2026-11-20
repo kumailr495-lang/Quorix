@@ -59,7 +59,7 @@ export class Together {
     const leaveB = el('button', { cls: 'btn ghost sm', id: 'mpLeave', text: t('mp.leave') }); leaveB.hidden = !this.active;
     const list = el('div', { id: 'mpList' });
     // v11: the panel is your name, Host, or a code and Join; how you look waits behind one line (your last look is kept)
-    const lookB = el('button', { cls: 'adv-toggle', text: t('mp.look') }), lookBox = el('div', { cls: 'adv' }, [grid, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'), el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size]);
+    const lookB = el('button', { cls: 'adv-toggle', text: t('mp.look') }), lookBox = el('div', { cls: 'adv' }, [grid, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'), el('label', { text: t('mp.bottom') }), swatches('mpBottom', LOOK.bottom, 'b'), el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size]);
     lookBox.hidden = true; lookB.addEventListener('click', () => { lookBox.hidden = !lookBox.hidden; lookB.classList.toggle('on', !lookBox.hidden); });
     const side = el('div', { cls: 'mpEdit' }, [name, el('div', { cls: 'row' }, [hostB, code, joinB]), status, list, lookB, lookBox, leaveB]);
     const d = el('div', { cls: 'dialog' }, [el('div', { cls: 'mpHead' }, [el('h2', { text: t('mp.title') }), close]), el('div', { cls: 'mpTop' }, [prev, side]), el('div', { cls: 'note', text: t('mp.privacy') })]);
@@ -116,10 +116,13 @@ export class Together {
     if (!this.active) { if (this.bdg) { this.bdg.remove(); this.bar.remove(); this.bdg = this.bar = null; } return; }
     if (!this.bdg) {
       this.bdg = el('button', { id: 'mpBadge' }, [el('i'), el('span')]); this.bdg.addEventListener('click', () => this.open());
-      const chatB = this.chatB = el('button', { text: '💬', 'aria-label': 'chat' }, [el('i', { cls: 'dot' })]); chatB.addEventListener('click', () => this.chatBox());
-      const namesB = this.namesB = el('button', { text: '🏷', 'aria-label': t('mp.names') }); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
+      // v14 (the user, 11-20: "instead of making icons you have built this shit emoji thing, I don't even understand the options"): drawn
+      // icons, each with its word under it
+      const btn = (iconId, label) => { const b = el('button', { 'aria-label': label }); b.innerHTML = `<svg class="ic"><use href="#i-${iconId}"/></svg><small>${label}</small>`; return b; };
+      const chatB = this.chatB = btn('chat', t('mp.chatB')); chatB.appendChild(el('i', { cls: 'dot' })); chatB.addEventListener('click', () => this.chatBox());
+      const namesB = this.namesB = btn('tag', t('mp.names')); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
       this.bar = el('div', { id: 'mpBar' }, [chatB, namesB]);
-      for (const [e, ic] of [['wave', '👋'], ['clap', '👏'], ['cheer', '🎉']]) { const b = el('button', { text: ic, 'aria-label': e }); b.addEventListener('click', () => { this.mp.emote(e); this.c.sound && this.c.sound.click(); }); this.bar.appendChild(b); }
+      for (const [e, ic] of [['wave', 'wave'], ['clap', 'clap'], ['cheer', 'party']]) { const b = btn(ic, t('mp.emote.' + e)); b.addEventListener('click', () => { this.mp.emote(e); this.c.sound && this.c.sound.click(); b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300); }); this.bar.appendChild(b); }
       const hud = document.querySelector('#hudTL') || document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
     }
     this.bdg.classList.toggle('host', this.mp.host); this.bdg.querySelector('span').textContent = t('mp.badge', { code: this.mp.code, n: this.mp.count }); this.list();
@@ -127,11 +130,12 @@ export class Together {
   }
   chatBox() {
     if (this.chatEl) { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); return; }
-    const inp = el('input', { maxlength: '140', placeholder: t('mp.chatPh'), autocomplete: 'off' }), send = el('button', { cls: 'btn primary', text: '➤' }), logEl = el('div', { cls: 'mpLog' });
+    const inp = el('input', { maxlength: '140', placeholder: t('mp.chatPh'), autocomplete: 'off' }), send = el('button', { cls: 'btn primary', 'aria-label': t('mp.send') }), logEl = el('div', { cls: 'mpLog' });
     const close = () => { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); };
     const go = () => { const m = inp.value.trim(); if (m) { this.mp.chat(m); this.addLog(this.mp.me.name, m, true); } inp.value = ''; this.renderLog(); };
     send.addEventListener('click', go); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); });
-    this.chatEl = el('div', { id: 'mpChat' }, [logEl, el('div', { cls: 'mpIn' }, [inp, send])]); document.body.appendChild(this.chatEl); this.c.onModal(true);
+    send.innerHTML = '<svg class="ic"><use href="#i-send"/></svg>'; const head = el('div', { cls: 'mpChatHead' }, [el('b', { text: t('mp.chatB') }), el('button', { cls: 'icon x', 'aria-label': t('mp.close') })]); head.lastChild.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>'; head.lastChild.addEventListener('click', () => close());
+    this.chatEl = el('div', { id: 'mpChat' }, [head, logEl, el('div', { cls: 'mpIn' }, [inp, send])]); document.body.appendChild(this.chatEl); this.c.onModal(true);
     this.unread = 0; this.badge(); this.renderLog(); setTimeout(() => inp.focus(), 50);
   }
   addLog(who, text, mine = false, sys = false) { this.log.push({ who, text, mine, sys }); if (this.log.length > 40) this.log.shift(); if (!this.chatEl && !mine && !sys) this.unread++; this.renderLog(); this.badge(); }
@@ -146,7 +150,7 @@ export class Together {
     a.hidden = true; this.remotes.set(p.id, a); this.note(t('mp.joined', { name: p.name }));
     const tag = el('b', { text: p.name }); this.tagLayer.appendChild(tag); this.tags.set(p.id, tag);
   }
-  leave_(p) { const a = this.remotes.get(p.id); if (a) { this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
+  leave_(p) { const a = this.remotes.get(p.id); if (a) { this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); if (a.ring) { a.ring.removeFromParent(); a.ring.geometry.dispose(); a.ring.material.dispose(); a.ring = null; } } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
   freeSeat(a) { if (a.viewer && a.viewer.seat && a.viewer.seat.npc === 'remote') { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.viewer = null; }
   seatByKey(key) { if (!key) return null; const [hk, id] = key.split(':'); const h = this.c.world.hallByKey(hk); if (!h) return null; const s = h.seats.find((q) => q.id === id); return s ? { s, h } : null; }
   // per frame: send me, move them, place their names
@@ -163,6 +167,10 @@ export class Together {
       else { if (a.viewer) { this.freeSeat(a); a.sit = 0; }
         // their camera yaw faces -z at 0; a person faces +z at 0
         a.x += (st.x - a.x) * k; a.y += (st.y - a.y) * k; a.z += (st.z - a.z) * k; const want = st.yaw + Math.PI; a.yaw += Math.atan2(Math.sin(want - a.yaw), Math.cos(want - a.yaw)) * k; a.remoteWalk = st.v > 0.25 ? st.v : 0; }
+      // v14 (the user, 11-20: "there's no difference between the player and the NPCs"): a player stands in a soft gold ring; NPCs never do
+      if (a.ch && !a.ring) { const rg = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.46, 40), new THREE.MeshBasicMaterial({ color: p && p.host ? 0x7fd2ff : 0xe3b25f, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+        rg.rotation.x = -Math.PI / 2; rg.renderOrder = 3; a.ring = rg; this.c.engine.scene.add(rg); }
+      if (a.ring) { a.ring.visible = !!(a.ch && a.ch.group.visible) && !a.viewer; a.ring.position.set(a.x, a.y + 0.02, a.z); a.ring.material.opacity = 0.55 + 0.2 * Math.sin(performance.now() * 0.004); }
       if (!tag) continue; const vis = a.ch && a.ch.group.visible && this.c.settings.mpNames !== false; if (!vis) { tag.style.display = 'none'; continue; }
       this._v.set(a.x, a.y + (a.viewer ? 1.45 : 2.0), a.z).project(cam); const near = Math.hypot(a.x - cam.position.x, a.z - cam.position.z) < 22;
       if (this._v.z > 1 || !near) { tag.style.display = 'none'; continue; }
