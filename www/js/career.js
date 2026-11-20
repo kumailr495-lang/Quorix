@@ -117,7 +117,7 @@ export class Jobs {
   counter() {
     const j = this.job; j.started = true; j.n = 0; j.ok = 0; this.h.onModal(true);
     const P = this.panel = el('div', 'job-panel scrim center'), box = el('div', 'job-box'); P.appendChild(box); document.body.appendChild(P);
-    const head = el('header', 'job-head'), title = el('b', null, t('job.title.counter')), prog = el('span', 'job-prog'), quit = el('button', 'icon x'); quit.setAttribute('aria-label', t('job.quit')); quit.innerHTML = '<svg class="ic"><use href="#i-x"/></svg>';
+    const head = el('header', 'job-head'), title = el('b', null, t('job.title.counter')), prog = el('span', 'job-prog'), quit = el('button', 'icon x'); quit.setAttribute('aria-label', t('job.quit')); quit.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>';
     quit.addEventListener('click', () => this.finishCounter()); head.append(title, prog, quit); box.appendChild(head);
     const who = el('div', 'job-who'), clock = el('i', 'job-clock'), tray = el('div', 'job-tray'), grid = el('div', 'job-menu'), row = el('div', 'job-row');
     box.append(who, clock, tray, grid, row); const serve = el('button', 'btn primary', t('job.serve')), clear = el('button', 'btn ghost', t('job.clear')); row.append(clear, serve);
@@ -142,7 +142,7 @@ export class Jobs {
   gate() {
     const j = this.job; j.started = true; j.n = 0; j.ok = 0; this.h.onModal(true); const films = this.h.films();
     const P = this.panel = el('div', 'job-panel scrim center'), box = el('div', 'job-box'); P.appendChild(box); document.body.appendChild(P);
-    const head = el('header', 'job-head'), prog = el('span', 'job-prog'), quit = el('button', 'icon x'); quit.innerHTML = '<svg class="ic"><use href="#i-x"/></svg>'; quit.addEventListener('click', () => this.finishGate());
+    const head = el('header', 'job-head'), prog = el('span', 'job-prog'), quit = el('button', 'icon x'); quit.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>'; quit.addEventListener('click', () => this.finishGate());
     head.append(el('b', null, t('job.title.gate')), prog, quit); box.appendChild(head);
     const hall = 1 + Math.floor(Math.random() * 4), film = pickOf(films), hh = 18 + Math.floor(Math.random() * 4), time = `${hh}:${Math.random() < 0.5 ? '00' : '30'}`;
     const now = el('div', 'job-now'); now.innerHTML = ''; now.append(el('small', null, t('job.admitting')), el('b', null, `${t('tk.screen')} ${hall} · ${film} · ${time}`)); box.appendChild(now);

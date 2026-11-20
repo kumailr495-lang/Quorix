@@ -135,6 +135,24 @@ The user installed 13.0 and played it. Every point, in their words where short. 
 | Every feature asked in the whole chat | Open (N10): money from jobs + watching, outfits, own hall, multiplayer extras, open world, NPC life |
 | Seen in the screenshots: fps readout over the phone button; status and navigation bars showing; a film title shown as "BrahmÄ stra"; the LED wall's text cut off | Open (N1) |
 
+## The 11-20 v14 push ("finish every feature ... GTA level models ... the lobby feels so open ... multiplayer performance ... money systems, jobs, missions, tasks ... actual in-app streaming ... customizable theatres ... cars, motorcycles")
+
+| Ask | Status (v14.0) |
+|---|---|
+| GTA-level models, every one | Partly: 10 CC0 photoscanned props (Poly Haven) in the lobby as texture layers (no extra draw calls); bin, tufted bench, poster lightbox, snake plant, popcorn wagon, plinth, motorbike rebuilt (glb_check clean). The rest of the ~110 models are the v10-v13 builds |
+| The lobby feels so open; placements that make sense, no stupid filler | Done for this pass: a second lounge island west of the court, the NE lounge in scanned leather, busts on plinths at the doors, a longcase clock, the exhibit's scanned 8 mm projector and cine camera; props-overlap and npc-clear pass |
+| Bins not in random places | Done: only at counter ends, the spine's mouth, the gate exit and walls (research: exits, concessions, restrooms) |
+| Multiplayer performance | Done: compact change-only state (12.5 Hz moving, 1 Hz idle), seat/room meta on change, 110 ms interpolation, real players drawn first, compositor-only name tags |
+| Money system (Lumiere Credits), no YouTube rewards | Done: wallet, history, daily cap 2,500 LC, house films pay per minute watched and on finishing (never YouTube or your own videos), purchases refused when short |
+| Jobs, missions, tasks | Done: popcorn counter, ticket gate and hall cleaning shifts (playable), three mission chains, three daily tasks |
+| Shop, cosmetics, emotes, waiter priority | Done: dance emote (Dance_Loop clip on every phone), three outfit colours, three hall themes, waiter priority pass |
+| Actual in-app streaming | Done: tablet Stream tab: house films and the Internet Archive's public-domain films in genre rows, search, detail sheet, play in your hall |
+| Customizable theatres, presets, sharing | Done within the baked halls: My Theatre recolours seats, walls, carpet and curtains live, presets saved, shared and imported by code. Rows, spacing and screen size stay as built (light maps) |
+| Cars, motorcycles | Done on the cinema's street: drive the parked car (chase camera) or ride the motorbike (rider's view); traffic yields |
+| Taxi driver's hands and wheel | Done: the wheel turns with the taxi's turning, his hands go round with the rim |
+| LUMIERE name cropped | Done: the place pill shows the hall's short name and wraps its second line |
+| Houses with interiors, beaches, skydiving, swimming, a whole enterable city, voice chat, public room browser | Open: beyond one session and a phone WebView's memory; listed for later stages |
+
 ## Theatres
 
 | Ask | Status |

@@ -117,6 +117,34 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v14 (2026-11-20: the 13.0 phone test, then "finish every feature ... GTA level models ... money, jobs, missions, tasks, streaming, customizable theatres, cars, motorcycles"; docs/ASKS-LEDGER.md "v14 push")
+- **Halls**: hallmath.js HALLS bigger with curved rows (rowK), building.js `L1` constant 4.662 (every hall lifted: y0 = L1 - total); halls.py: no
+  baffle, 270's ceiling a light grid. Exits are walked (no fast exit; walk.mjs expects tele 0). Seats named (world9.js seatLabels), seat finder.
+- **Scanned props** (CC0, Poly Haven): `tools/polyhaven/fetch.py RAW id...` (md5-checked) -> `tools/blender/scans14.py` (turn front to +X,
+  stand on Z 0, materials `scan_<name>_<a,b>`, no Decimate: it smeared UV seams) -> gltf-transform weld + simplify (meshoptimizer keeps
+  seams) -> `tools/textures/scans.py` (albedo x AO, normal, roughness at 512 px into www/tex, writes www/js/scans.js SCAN_LIB/SCAN_NAMED).
+  library.js merges them from id 48 up (NUM_IDS; materials.js uP[NUM_IDS*3]; keep NUM_IDS <= 72 for 256 vertex vectors). Alpha leaves
+  (LEAF_IDS) split into their own draw (world9.js splitIds, materials.js leafRoom: ALPHA_LEAF, double-sided). Sources: tools/polyhaven/SOURCES.md.
+- **props14.py** (Blender): bin_brass (dome-top push-door), bench_velvet (diamond tufted), poster_totem, planter_tall, popcorn_cart,
+  plinth_marble, motorcycle. glb_check clean. Bins stand only at counter ends, the spine's mouth, the gate exit and walls.
+- **Credits** (credits.js): LC, 1 LC = the old rupee price, start 1,500, daily earn cap 2,500, history, inventory, checksum with a device salt
+  (client-side only: say so). Bill pays in LC (refused when short; Quick play free). House films pay 6 LC a minute seated/visible/playing
+  (max 300 a film) and 150 on finishing once a day (main.js filmMeter, onEnd); never YouTube or own videos.
+- **Career** (career.js): MISSIONS (3 chains), daily tasks (date-seeded), SHOP; Jobs: counter (order mini-game), gate (ticket checks), clean
+  (litter in a hall's rows -> bin). Events: tut.event wrapper + career.event calls (photo, lift, flush, chat, emote, mpJoin, watchMin, filmEnd).
+  Wayfinding: wayfind.js `st.job` and `toHall`. Phone apps Wallet, Jobs, Tasks, Shop, My Theatre.
+- **Streaming** (tablet.js stream): Internet Archive advancedsearch + metadata (CORS ok), only `licenseurl:*publicdomain*`, h.264/MPEG4, no
+  adult titles; plays as a link (film9.js loadURL) in your hall.
+- **My Theatre** (theatres.js, world9.js themeHall): recolours seats (mat 8/1), shell walls (9), carpet (16), drapes/curtains (1) live; presets,
+  share codes `LT1.<base64 json>` (whitelisted parts, #rrggbb only).
+- **Vehicles** (vehicles.js): the parked car (car_sedan, black) and the motorbike on the kerb; bicycle model, kerbs and traffic hold them;
+  chase cam (car), rider's view (bike); traffic treats you as an obstacle.
+- **Multiplayer** (mp.js): state as 5 ints, change-only (12.5 Hz / 1 Hz heartbeat), 'mt' meta on change, `sample()` 110 ms interpolation;
+  npc9 draws remote players first; name tags move by transform.
+- **Taxi**: the wheel is its own instance turning with the heading rate; the drive gesture's hand targets turn with it (intro9.js STEER).
+- Lessons: Blender Decimate (collapse) smears UV seams on scans: use meshoptimizer; view-glb.mjs flips scan textures (TextureLoader flipY),
+  judge scans in the engine; a probe's synthetic pointer events switch the HUD to keyboard mode (the stick hides): not a bug.
+
 ## v13 (2026-11-20: the user's photos and two master prompts; docs/V13-PLAN.md is the audit and the stages)
 - **Design choices go to the user as a board first.** tools/blender/variants13.py renders column and ceiling variants as Cycles vignettes
   (docs/v13/variants-columns-ceilings.jpg). I built my own pick (P3 + C3) before asking and had to rebuild: the user picked **P2 + C1b**.
