@@ -31,6 +31,7 @@ import { LobbyLife } from './anim12.js';
 import { Credits } from './credits.js';
 import { Career, Jobs } from './career.js';
 import { Theatres } from './theatres.js';
+import { Vehicles } from './vehicles.js';
 import { CATALOG } from './films.js';
 import { media } from './bridge.js';
 import { Input } from './input.js';
@@ -172,6 +173,8 @@ async function boot() {
   const driverAgent = { x: 1.6, y: 0, z: 27.9, name: t('role9.driver'), role: 'driver', voice: 'driver', alive: true, ch: { s: { sit: 1 }, scale: 1 }, group: { visible: true }, crowd };
   // v12 the street's traffic: the taxi leaves after dropping you (intro9.js), saloons pass now and then (traffic.js); both are solid to you
   const traffic = new Traffic(world, mats, sound, world.rooms.street && world.rooms.street.x && world.rooms.street.x.traffic); intro.traffic = traffic;
+  const vehicles = new Vehicles(world, mats, sound);   // v14 your car and motorbike on the street (vehicles.js)
+  const parked = () => vehicles.list.filter((v) => v !== vehicles.cur).map((v) => ({ x: v.x, z: v.z, r: v.kind === 'car' ? 1.9 : 0.8 }));
   bill.onChange = () => ui.setWallet(game === 'flow' ? credits.fmt(credits.bal) : null); credits.onChange(() => bill.onChange());   // v14 the wallet chip: your Lumiere Credits
   function applySettings(gfx) {
     saveSettings(settings); engine.applySettings(settings); { const lo = settings.graphics === 'low'; mats.setQuality({ normalMaps: !lo, macro: !lo, detile: settings.graphics === 'high', texSize: lo ? 256 : 512 }); }   // v13 the preset at once, as at boot
@@ -356,11 +359,12 @@ async function boot() {
     return Math.max(0.86, Math.min(1, Math.max(vw, vh) / engine.baseFov)); }
   function step(dt, now) {
     if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
-    else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); traffic.bodiesNear(player.x, player.z, 2.5, player.dyn); intro.bodiesNear(player.x, player.z, 2.5, player.dyn); player.update(dt); }
+    else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); traffic.bodiesNear(player.x, player.z, 2.5, player.dyn); intro.bodiesNear(player.x, player.z, 2.5, player.dyn); for (const p of parked()) if (Math.abs(p.x - player.x) < 4 && Math.abs(p.z - player.z) < 4) player.dyn.push(p); player.update(dt);
+      if (vehicles.driving) vehicles.update(dt, player, engine.camera, [...traffic.cars, ...(intro.carOn && !intro.inCar ? [intro.car] : [])]); }
     input.update(dt);
     intro.update(dt, player);
     { const hear = world.vis.has('street') ? (world.roomAt(player.x, 1, player.z) === 'street' ? 1 : 0.35) : 0; intro.hear = hear; traffic.hear = hear;
-      traffic.paused = intro.active && intro.t < intro.SHOT_B; traffic.update(dt, player, intro.carOn && !intro.inCar ? [intro.car] : []); }
+      traffic.paused = intro.active && intro.t < intro.SHOT_B; traffic.update(dt, player, [...(intro.carOn && !intro.inCar ? [intro.car] : []), ...parked()]); }
     const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } room = r;
     const cam = engine.camera; world.setVisibility(r, cam.position.x, cam.position.y, cam.position.z);
     const watching = mode === 'play' && !!player.seated && r.startsWith('hall') && shows.isOn(world.hallByKey(r).id);
@@ -403,7 +407,7 @@ async function boot() {
     else prompts(r, hk);
     // where to next (wayfind.js): the route a few times a second, the arrow every frame
     if (mode !== 'play' || modal || talk.open || intro.active || watching || settings.goal === false || dbg) { way.cur = null; ui.setGoal(null); guide.hide(); }
-    else { wayT -= dt; if (wayT <= 0) { wayT = 0.2; way.update({ game, ticket, room: r, player, job: jobs.active ? (w, p) => jobs.goal(w, p) : null }); if (way.cur && !player.seated) guide.set(way.cur.pts, way.cur.ai, player); else guide.hide(); } const g = way.cur;
+    else { wayT -= dt; if (wayT <= 0) { wayT = 0.2; way.update({ game, ticket, room: r, player, job: jobs.active ? (w, p) => jobs.goal(w, p) : null }); if (way.cur && !player.seated && !vehicles.driving) guide.set(way.cur.pts, way.cur.ai, player); else guide.hide(); } const g = way.cur;
       if (!g) ui.setGoal(null); else { cam.getWorldDirection(fwd); const dx = g.aim.x - player.x, dz = g.aim.z - player.z, fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl;
         ui.setGoal(t(g.key, g.vars), Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz) * 180 / Math.PI, g.dist); } }
     ui.setButton('#bBell', mode === 'play' && game === 'flow' && !!player.seated && !!hk && !modal && !(ticket && ticket.tablet));
@@ -413,7 +417,7 @@ async function boot() {
     talk.update(dt, cam, innerWidth, innerHeight); voice.update(); tut.update(dt); if (world.vis.has('lobby')) { led(now); board(now); } if (world.vis.has('street')) marq.update(now);
     slowT -= dt; if (slowT <= 0) { slowT = 0.5;
       const S = (id) => shows.get(id), status = (id) => { const s = S(id); return s.state === 'pending' ? t('show.pending', { time: fmtTime(shows.countdown(id) - 10) }) : s.state === 'countdown' ? t('show9.countdown') : s.state === 'playing' ? (shows.buffering ? t('show.buffering') : t('show.playing')) : s.state === 'ended' ? t('show.ended') : t('show.idle'); };
-      if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.name, S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room9.' + r), '');
+      if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.name.replace('LUMIERE ', ''), S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room9.' + r), '');
       if (ticket && ticket.title) { const s = S(ticket.hall); ui.setTicketChip(t('ticket9.chip', { screen: ticket.hallName.replace('LUMIERE ', ''), seat: ticket.seat }) + (s.state === 'pending' ? ' · ' + fmtTime(shows.countdown(ticket.hall) - 10) : '')); } else ui.setTicketChip(null);
       ui.setFps(`${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`); }
   }
@@ -430,6 +434,8 @@ async function boot() {
   // what can I do here? (the crosshair in the middle picks what you look at)
   function prompts(r, hk) {
     if (mode !== 'play' || talk.open || modal || intro.active) { ui.setPrompt(null); return; }
+    if (vehicles.driving) { ui.setPrompt(t('veh.out'), () => { vehicles.exit(player); sound.thud && sound.thud(); }); return; }   // v14 driving: the button gets you out
+    if (r === 'street' && !player.seated) { const vh = vehicles.near(player.x, player.z); if (vh) { ui.setPrompt(t(vh.kind === 'car' ? 'veh.drive' : 'veh.ride'), () => vehicles.enter(vh)); return; } }
     // v11 (the user: "wasn't the exit supposed to be faster"): once your film is over, the plate says Leave and takes you straight to the
     // lobby (seated or standing anywhere in the hall), instead of walking down to the exit doors by the screen
     const over = !!(hk && ticket && ticket.watched && ticket.hallKey === hk);

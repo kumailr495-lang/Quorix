@@ -36,8 +36,9 @@ A = ap.parse_args(argv)
 for k, v in {'lacquer_red': ((0.30, 0.012, 0.016), 0.16, 0.0), 'lacquer_cream': ((0.75, 0.68, 0.55), 0.2, 0.0), 'popcorn': ((0.85, 0.70, 0.36), 0.8, 0.0),
              'steel': ((0.55, 0.56, 0.58), 0.35, 1.0), 'paint_black': ((0.006, 0.006, 0.007), 0.7, 0.0), 'marble_nero': ((0.02, 0.02, 0.022), 0.25, 0.0),
              'plant': ((0.03, 0.09, 0.025), 0.55, 0.0), 'leaves': ((0.016, 0.04, 0.012), 0.6, 0.0), 'soil': ((0.02, 0.014, 0.01), 0.95, 0.0),
-             'stone_light': ((0.6, 0.57, 0.53), 0.7, 0.0), 'velvet_teal': ((0.012, 0.10, 0.09), 0.9, 0.0), 'tyre': ((0.01, 0.01, 0.01), 0.9, 0.0)}.items():
+             'stone_light': ((0.6, 0.57, 0.53), 0.7, 0.0), 'velvet_teal': ((0.012, 0.10, 0.09), 0.9, 0.0), 'tyre': ((0.01, 0.01, 0.01), 0.9, 0.0), 'paint_cream': ((0.8, 0.74, 0.63), 0.75, 0.0)}.items():
     lbl.MAT_DEF.setdefault(k, v)
+lbl.GLOW_DEF.setdefault('glow_red', ((1.0, 0.10, 0.06), 3.0))
 RX = lambda deg: Matrix.Rotation(math.radians(deg), 4, 'X')
 smooth01 = lambda e0, e1, x: (lambda t: t * t * (3 - 2 * t))(min(1.0, max(0.0, (x - e0) / (e1 - e0))))
 
@@ -327,7 +328,86 @@ def plinth_marble():
     bx('Cap', 'brass', (-0.25, -0.25, 0.995), (0.25, 0.25, 1.04), r=0.008)
 
 
-BUILD = {'bin_brass': bin_brass, 'bench_velvet': bench_velvet, 'poster_totem': poster_totem, 'planter_tall': planter_tall, 'popcorn_cart': popcorn_cart, 'plinth_marble': plinth_marble}
+# ------------------------------------------------------------------------------------------------ motorcycle
+def motorcycle():
+    """a café-racer style motorbike (vehicles.js rides it: +X its nose, the wheels on the floor): 17 in wheels with five cast spokes and
+    brake discs, raked forks, clip-on bars with mirrors, a round chrome headlight, a crimson tank with a brass stripe, a black leather
+    seat, a finned twin engine, a chrome exhaust sweeping back, a swingarm, fenders, a tail light and a plate"""
+    R, WB = 0.32, 1.45
+    for (x, w, front) in ((WB / 2, 0.055, True), (-WB / 2, 0.075, False)):
+        M = T(x, 0, R) @ RX(90)
+        lat('Tyre', 'tyre', [(0.215, -w), (0.255, -w - 0.01), (0.3, -w + 0.008), (R, 0.0), (0.3, w - 0.008), (0.255, w + 0.01), (0.215, w)], M, 40)
+        lat('Rim', 'blackmetal', [(0.19, -w + 0.012), (0.218, -w + 0.012), (0.218, w - 0.012), (0.19, w - 0.012)], M, 36)
+        lat('Hub', 'steel', [(1e-4, -w - 0.02), (0.045, -w - 0.02), (0.05, 0.0), (0.045, w + 0.02), (1e-4, w + 0.02)], M, 18)
+        for k in range(5):
+            a = 2 * math.pi * k / 5 + (0.3 if front else 0.0); d = Vector((math.cos(a), 0, math.sin(a)))
+            tube('Spoke', 'blackmetal', [tuple(Vector((x, 0, R)) + d * 0.045), tuple(Vector((x, 0, R)) + d * 0.12 + Vector((0, 0, 0)) ), tuple(Vector((x, 0, R)) + d * 0.2)], 0.011, 6)
+        for sy in ((1, -1) if front else (-1,)):
+            lat('Disc', 'steel', [(0.06, -0.003), (0.15 if front else 0.12, -0.003), (0.15 if front else 0.12, 0.003), (0.06, 0.003)], T(x, sy * (w + 0.018), R) @ RX(90), 32)
+    # the forks (raked 25 degrees), their lower legs, the triple clamps, clip-on bars with grips and mirrors
+    head = Vector((0.5, 0, 0.9)); fx = WB / 2
+    for sy in (-1, 1):
+        a = Vector((fx, sy * 0.1, R)); b = head + Vector((0, sy * 0.1, 0))
+        tube('ForkLeg', 'blackmetal', [tuple(a), tuple(a + (b - a) * 0.42)], 0.03, 12); tube('Fork', 'chrome', [tuple(a + (b - a) * 0.38), tuple(b + (b - a).normalized() * 0.04)], 0.021, 12)
+        tube('Bar', 'blackmetal', [tuple(head + Vector((-0.02, sy * 0.1, 0.03))), tuple(head + Vector((-0.08, sy * 0.28, 0.06))), tuple(head + Vector((-0.12, sy * 0.36, 0.05)))], 0.012, 8)
+        tube('Grip', 'rubber', [tuple(head + Vector((-0.115, sy * 0.33, 0.052))), tuple(head + Vector((-0.125, sy * 0.4, 0.05)))], 0.017, 10)
+        tube('MirrorStalk', 'chrome', [tuple(head + Vector((-0.1, sy * 0.3, 0.06))), tuple(head + Vector((-0.08, sy * 0.36, 0.2)))], 0.006, 6)
+        lat('Mirror', 'chrome', [(1e-4, -0.012), (0.045, -0.012), (0.05, 0.0), (0.045, 0.012), (1e-4, 0.012)], T(*(head + Vector((-0.08, sy * 0.37, 0.23)))) @ RY(80), 16)
+    bx('Clamp', 'steel', (head.x - 0.05, -0.15, head.z - 0.02), (head.x + 0.05, 0.15, head.z + 0.03), r=0.012)
+    lat('Headlight', 'chrome', [(1e-4, -0.09), (0.06, -0.09), (0.085, -0.04), (0.09, 0.0), (0.09, 0.012), (0.075, 0.016), (1e-4, 0.016)], T(head.x + 0.13, 0, head.z - 0.08) @ RY(90), 24)
+    lat('Lens', 'glow_white', [(1e-4, 0.012), (0.072, 0.012), (0.072, 0.022), (1e-4, 0.024)], T(head.x + 0.13, 0, head.z - 0.08) @ RY(90), 24, smooth=False)
+    # the frame: tubes from the steering head down to the engine and back under the seat to the tail
+    for sy in (-1, 1):
+        tube('Frame', 'blackmetal', [tuple(head + Vector((-0.03, sy * 0.03, -0.04))), (0.32, sy * 0.1, 0.78), (0.0, sy * 0.12, 0.74), (-0.42, sy * 0.1, 0.72), (-0.62, sy * 0.07, 0.74)], 0.019, 10)
+        tube('Down', 'blackmetal', [tuple(head + Vector((0.0, sy * 0.03, -0.06))), (0.36, sy * 0.1, 0.4), (0.2, sy * 0.11, 0.24), (-0.05, sy * 0.11, 0.26)], 0.019, 10)
+        tube('Swingarm', 'blackmetal', [(-0.04, sy * 0.1, 0.4), (-WB / 2, sy * 0.1, R)], 0.024, 10)
+        tube('Shock', 'chrome', [(-0.45, sy * 0.11, 0.72), (-0.6, sy * 0.1, 0.38)], 0.014, 8)
+    # the tank, its brass stripe, the seat, the tail with its light and plate
+    part('Tank', 0, 'lacquer_red', lbl.pillow((0.5, 0.3, 0.2), e=0.03, crown=[(2, 1, 0.03), (1, 1, 0.02), (1, -1, 0.02)]), T(0.2, 0, 0.9))
+    bx('Stripe', 'brass', (-0.04, -0.012, 0.999), (0.44, 0.012, 1.007), r=0.003)
+    part('Seat', 0, 'leather_black', lbl.pillow((0.56, 0.26, 0.08), e=0.02, crown=[(2, 1, 0.02)]), T(-0.3, 0, 0.83))
+    part('Tail', 0, 'lacquer_red', lbl.pillow((0.24, 0.22, 0.1), e=0.025), T(-0.66, 0, 0.82))
+    bx('TailLight', 'glow_red', (-0.79, -0.06, 0.8), (-0.775, 0.06, 0.835))
+    bx('Plate', 'paint_cream', (-0.835, -0.085, 0.6), (-0.825, 0.085, 0.68)); bx('PlateArm', 'blackmetal', (-0.828, -0.015, 0.64), (-0.7, 0.015, 0.8))   # behind the rear fender's tip, not in its plane
+    # front and rear fenders: thin arcs over the tyres
+    for (x, w, a0, a1) in ((WB / 2, 0.112, 20, 140), (-WB / 2, 0.09, 60, 170)):   # the front one 12 mm into the fork legs
+        pts = [(x + (R + 0.04) * math.cos(math.radians(a)), 0, R + (R + 0.04) * math.sin(math.radians(a))) for a in range(a0, a1 + 1, 10)]
+        part('Fender', 0, 'lacquer_red' if x > 0 else 'blackmetal', lambda bm, pts=pts, w=w: lbl.grid_box(bm, [0, 1], [0, 1], [0, 1]) if False else _arc(bm, pts, w, 0.008))
+    # the engine: a crankcase, two finned cylinders leaning forward, the exhaust sweeping back to a chrome silencer
+    bx('Crankcase', 'charcoal', (-0.12, -0.13, 0.26), (0.26, 0.13, 0.5), r=0.04)
+    bx('Barrel', 'charcoal', (0.0, -0.085, 0.47), (0.18, 0.085, 0.76), r=0.01)   # the cylinders the fins are cast on
+    for k in range(7):
+        z = 0.5 + 0.035 * k; bx('Fin', 'steel', (0.02 - 0.012 * k, -0.11, z), (0.22 - 0.012 * k, 0.11, z + 0.016), r=0.004)
+    bx('Head', 'charcoal', (-0.07, -0.1, 0.745), (0.12, 0.1, 0.8), r=0.02)
+    tube('Exhaust', 'chrome', [(0.22, -0.08, 0.6), (0.34, -0.12, 0.45), (0.3, -0.16, 0.24), (0.05, -0.17, 0.2), (-0.35, -0.17, 0.3)], 0.024, 12)
+    lat('Silencer', 'chrome', [(1e-4, 0.0), (0.04, 0.0), (0.05, 0.03), (0.05, 0.36), (0.035, 0.4), (1e-4, 0.4)], T(-0.32, -0.17, 0.3) @ RY(-80), 18)
+
+
+def _arc(bm, pts, w, t):
+    """a thin curved strip along pts (x, 0, z), w either side of y = 0, t thick: a closed solid"""
+    rows = []
+    for (x, y, z) in pts:
+        n = Vector((x, 0, z)); rows.append([bm.verts.new((x, -w, z)), bm.verts.new((x, w, z))])
+    inner = []
+    for i, (x, y, z) in enumerate(pts):
+        c = Vector((pts[0][0] if False else x, 0, z)); inner.append(None)
+    ring = []
+    for (x, y, z) in pts:
+        ring.append([bm.verts.new((x, -w, z)), bm.verts.new((x, w, z))])
+    # offset the second ring t inward toward the wheel centre (the strip's thickness)
+    cx = sum(p[0] for p in pts) / len(pts); cz = min(p[2] for p in pts) - 0.3
+    for (a, b) in ring:
+        for v in (a, b):
+            d = Vector((v.co.x - cx, 0, v.co.z - cz)).normalized(); v.co -= d * t
+    for i in range(len(pts) - 1):
+        a0, a1 = rows[i], rows[i + 1]; b0, b1 = ring[i], ring[i + 1]
+        bm.faces.new((a0[0], a1[0], a1[1], a0[1])); bm.faces.new((b0[1], b1[1], b1[0], b0[0]))
+        bm.faces.new((a0[0], b0[0], b1[0], a1[0])); bm.faces.new((a1[1], b1[1], b0[1], a0[1]))
+    for (a, b) in ((rows[0], ring[0]), (rows[-1], ring[-1])):
+        bm.faces.new((a[0], a[1], b[1], b[0]))
+
+
+BUILD = {'bin_brass': bin_brass, 'bench_velvet': bench_velvet, 'poster_totem': poster_totem, 'planter_tall': planter_tall, 'popcorn_cart': popcorn_cart, 'plinth_marble': plinth_marble, 'motorcycle': motorcycle}
 
 
 def reset():
