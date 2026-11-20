@@ -62,6 +62,13 @@ let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 21474836
 { const ev = live((t) => -40 + Math.min(25, Math.max(0, t - 5) * 1.25), 30); ok(!ev.some((e) => e.type === 'scare' || e.type === 'gasp'), `slow crescendo fired ${ev.map((e) => e.type).join(',')}`); console.log(`  slow crescendo -40 -> -15 dB over 20 s: ${ev.map((e) => `${e.type}@${e.t.toFixed(1)}`).join(', ') || 'no events'}`); }
 { const ev = live((t) => (t < 8 ? -40 : t < 22 ? -13 + (rnd() - 0.5) * 2 : -42), 30); const cl = ev.filter((e) => e.type === 'climax'); ok(cl.length === 0, `long loud stretch then release: ${cl.length} climax events (v13: an unknown video is never cheered)`); console.log(`  loud 14 s -> release: ${ev.map((e) => `${e.type}@${e.t.toFixed(1)}`).join(', ')}`); }
 
+section('titles');   // v14 the user's "BrahmÄ stra": names whose UTF-8 was read as Latin-1 or cp1252 come back whole
+{ const { cleanTitle } = await imp('js/films.js');
+  for (const [i, o] of [['BrahmÄ\u0081stra.Part.One.Shiva.2022.1080p.WEB-DL.x264.mkv', 'Brahmāstra Part One Shiva (2022)'], ['Cafâ€™s Night.mp4', 'Caf’s Night'],
+    ['Ã©tÃ© 2019.mp4', 'été (2019)'], ['नमस्ते.mp4', 'नमस्ते'], ['Plain Name.mp4', 'Plain Name'], ['Señor.mp4', 'Señor']])
+    ok(cleanTitle(i) === o, `title ${JSON.stringify(i)} -> ${JSON.stringify(cleanTitle(i))}, want ${JSON.stringify(o)}`);
+  console.log('  6 names cleaned'); }
+
 section('i18n');
 for (const [name, T] of [['es', ES], ['hi', HI], ['ur', UR]]) {
   const ph = (s) => (JSON.stringify(s).match(/\{\w+\}/g) || []).sort().join(); let bad = 0;

@@ -57,9 +57,18 @@ export function makePreshow(aspect = 1.85) {
 }
 // clean title from a video file name: "BrahmÄ_stra.Part.One.Shiva.2022.1080p.WEB-DL.x264" -> "Brahmāstra Part One Shiva (2022)"
 // (Android hands some names over as UTF-8 bytes read as Latin-1; the round trip below repairs them when it can)
+// v14 (the user's screenshot: "BrahmÄ stra"): the repair works run by run, so one odd character elsewhere in the name no longer stops it,
+// and it knows Windows-1252's mapping of the bytes 0x80-0x9f (a name read as cp1252 has '€', '™'... where UTF-8 had continuation bytes)
+const CP1252 = '€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008dŽ\u008f\u0090‘’“”•–—˜™š›œ\u009džŸ';
+const byteOf = (c) => { const k = c.charCodeAt(0); if (k < 0x80) return k; if (k <= 0xff) return k; const i = CP1252.indexOf(c); return i >= 0 ? 0x80 + i : -1; };
+export function fixMojibake(str) {
+  const s = String(str || ''), TD = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { fatal: true }) : null; if (!TD) return s;
+  return s.replace(/[\u00c2-\u00f4][\u0080-\u00bf€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]{1,3}/g, (run) => {
+    const b = [...run].map(byteOf); if (b.some((x) => x < 0)) return run;
+    try { const r = TD.decode(new Uint8Array(b)); return /[\ufffd]/.test(r) ? run : r; } catch (e) { return run; } });
+}
 export function cleanTitle(name) {
-  let s = String(name || '').replace(/\.[a-z0-9]{2,4}$/i, '');
-  try { const fixed = decodeURIComponent(escape(s)); if (fixed && fixed !== s && !/�/.test(fixed)) s = fixed; } catch (e) {}
+  let s = fixMojibake(String(name || '').replace(/\.[a-z0-9]{2,4}$/i, ''));
   s = s.replace(/[\u0080-\u009f]/g, '').replace(/[._]+/g, ' ');
   const year = (s.match(/\b(19[2-9]\d|20[0-4]\d)\b/) || [])[1];
   s = s.replace(/\b(19[2-9]\d|20[0-4]\d)\b.*$/, '').replace(/\b(480p|720p|1080p|2160p|4k|uhd|hdr|web[- ]?dl|webrip|bluray|brrip|hdrip|x26[45]|h ?26[45]|hevc|aac|ddp?5 ?1|10bit|yts|rarbg)\b.*$/i, '');

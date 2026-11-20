@@ -50,7 +50,7 @@ class Agent {
       path: null, pi: 0, speed: o.speed || rnd(1.15, 1.4), ride: false, sit: 0, sitT: 0, seat: null, hall: null, state: o.state || 'idle', look: { yaw: 0, pitch: 0, amt: 0 }, alive: true,
       gest: null, gestUntil: 0, talkUntil: 0, talkable: !!o.talkable, wait: 0, onArrive: null, items: {}, item: null, r: 0.26 });
     // how this person takes to a stranger: fixed per person (from the id), so the same guest is the same every time you try
-    { let h = 2166136261; for (const c of String(o.id || '')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } const u = ((h >>> 0) % 1000) / 1000; this.temper = u < 0.45 ? 'curt' : u < 0.8 ? 'plain' : 'warm'; }
+    { let h = 2166136261; for (const c of String(o.id || '')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } const u = ((h >>> 0) % 1000) / 1000; this.temper = u < 0.1 ? 'curt' : u < 0.45 ? 'plain' : 'warm'; }   // v14 (the user, 11-20: "almost all of them are rude"): most are warm
     this.light = { amb: new THREE.Color(0.3, 0.3, 0.3), key: new THREE.Color(0.3, 0.3, 0.3), dir: new THREE.Vector3(0, 1, 0), screen: new THREE.Color(0, 0, 0) }; this.lightT = 0; this.ch = null; this.room = null;
   }
   get group() { return this.ch ? this.ch.group : HIDDEN; }
@@ -78,7 +78,7 @@ export class Crowd {
     // behind the counters (the posts in building.js are the customers' side), facing the lobby
     mk('host', 'greeter', 'Clara', 'host', 'host', 'greeter');
     mk('box1', 'receptionist', 'Éloïse', 'box', 'box', null, { x: -18.1, y: 0, z: 9.0, yaw: -Math.PI / 2 }); mk('box2', 'vendor', 'Priya', 'box', 'box', null, { x: -18.1, y: 0, z: 6.2, yaw: -Math.PI / 2 });
-    mk('bar1', 'vendor', 'Mia', 'bar', 'barF', null, { x: -19.0, y: 0, z: -6.0, yaw: -Math.PI / 2 }); mk('bar2', 'vendor2', 'Gaston', 'bar', 'barM', null, { x: -19.0, y: 0, z: -2.4, yaw: -Math.PI / 2 });
+    mk('bar1', 'vendor', 'Mia', 'bar', 'barF', null, { x: -17.95, y: 0, z: -6.0, yaw: -Math.PI / 2 }); mk('bar2', 'vendor2', 'Gaston', 'bar', 'barM', null, { x: -17.95, y: 0, z: -2.4, yaw: -Math.PI / 2 });   // v14 at the counter, 0.45 m behind its back edge (they stood 1.5 m back: too far to order)
     mk('cafe', 'vendor', 'Leo', 'cafe', 'barM', null, { x: -20.45, y: 0, z: -11.3, yaw: -Math.PI / 2 });   // v10: the barista behind the cafe counter
     mk('usher', 'usher', 'Marcel', 'usher', 'usher', 'usher'); mk('server', 'server', 'Rahul', 'server', 'server', 'server');
     this.staff.server.cart = true; this.cart = makeCart(this.mats, this.scene);
@@ -214,7 +214,7 @@ export class Crowd {
     return [];
   }
   onShowPhase(hallId, phase) {
-    const list = this.viewers[hallId] || [];
+    const list = this.viewers[hallId] || []; (this.phase || (this.phase = {}))[hallId] = phase;   // v14 'dimming' hushes the pre-show chatter, 'ended' lets it start again
     if (phase === 'ended') list.forEach((v, i) => { if (v.state === 'seated' || v.state === 'walking') { v.leaveAt = this.now + 2500 + i * rnd(350, 700); } });
     if (phase === 'dimming') for (const v of list) if (v.state === 'due') v.at = Math.min(v.at, this.now);   // late arrivals hurry in
   }
@@ -236,7 +236,7 @@ export class Crowd {
     const pts = [...nav.map((n) => ({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2], ride: false })), ...['bridgeC', ...side].map((n) => ({ x: NODES[n][0], y: NODES[n][1], z: NODES[n][2] }))];
     for (let i = 0; i < pts.length - 1; i++) { const a = nav[i], b = nav[i + 1]; if (a && b && ESC_EDGES.has(a + '>' + b)) pts[i + 1].ride = true; }
     const route = this.hallRoute(h, seat, true); route.pop();   // stop at the row end: the lane in front of your seat is yours to walk
-    usher.go([...pts, ...route], () => { usher.state = 'atSeat'; usher.say(pick('ush.seat')); usher.gesture('point', 2.2); this.hooks.guideDone && this.hooks.guideDone(); setTimeout(() => this.sendHome(usher), 6000); }, { speed: 1.75, state: 'guiding' });
+    usher.go([...pts, ...route], () => { usher.state = 'atSeat'; usher.say(pick('ush.seat')); usher.gesture('point', 2.2); this.hooks.guideDone && this.hooks.guideDone(); setTimeout(() => this.sendHome(usher), 6000); }, { speed: 1.95, state: 'guiding' });
     usher.follow = player; return true;
   }
   sendHome(a) { if (!a.home) return; const back = [], r = this.world.roomAt(a.x, a.y, a.z);
@@ -294,6 +294,15 @@ export class Crowd {
           else this.dropViewer(v); }
       }
     }
+    // v14 (the user, 11-20: "they don't clap or cry or talk"): before the film and after it, neighbours turn to each other and talk in turns;
+    // from the lights going down to the end of the film they are quiet
+    if (!this._chatT || now > this._chatT) { this._chatT = now + rnd(700, 1600);
+      for (const h of this.world.halls) { if (!vis.has(h.key) || (this.phase && this.phase[h.id] === 'dimming')) continue;
+        const sat = (this.viewers[h.id] || []).filter((v) => v.state === 'seated' && v.agent && v.agent.sit > 0.9 && !(now < v.agent.chatUntil)); if (sat.length < 2) continue;
+        const v = sat[Math.floor(Math.random() * sat.length)], o = sat.find((q) => q !== v && q.seat.row === v.seat.row && Math.abs(q.seat.col - v.seat.col) === 1); if (!o) continue;
+        const A = v.agent, B = o.agent, T = now + rnd(5000, 9000); A.chatWith = B; B.chatWith = A; A.chatUntil = B.chatUntil = T;
+        A.talkFrom = now + 300; A.talkUntil = now + rnd(1800, 2800); B.talkFrom = A.talkUntil + 350; B.talkUntil = B.talkFrom + rnd(1500, 2600);
+        if (Math.random() < 0.35) setTimeout(() => { if (now < T && A.alive) A.gesture('laugh', 1.6, 'laugh'); }, rnd(800, 2400)); } }
     // people: move, sit, look, animate, draw
     for (const a of [...this.agents]) {
       if (!a.alive) continue; this.step(a, dt, player);
@@ -318,8 +327,16 @@ export class Crowd {
     if (a.state === 'sitting') { a.sitT += dt; a.sit = Math.min(1, a.sitT / 1.2); const s = a.viewer.seat; a.x += (s.x - a.x) * Math.min(1, dt * 4); a.z += (s.z - a.z) * Math.min(1, dt * 4); a.y += (s.y - a.y) * Math.min(1, dt * 6);
       if (a.sit >= 1) { a.viewer.state = 'seated'; a.state = 'seated'; } return; }
     if (a.path) {
-      // the guide waits for you when you fall more than 5 m behind and walks on when you're within 3 m
-      if (a.follow && a.state === 'guiding') { const d = Math.hypot(a.follow.x - a.x, a.follow.z - a.z), dy = Math.abs((a.follow.y || 0) - a.y); if (d > 5.5 || dy > 2.5) { a.waitFor = true; } else if (d < 3.2) a.waitFor = false; if (a.waitFor) { a.walkT = 0; a.yaw += adiff(Math.atan2(a.follow.x - a.x, a.follow.z - a.z), a.yaw) * Math.min(1, dt * 3); return; } }
+      // the guide (v14, the user 11-20: "so slow I can't go with him ... keeps standing there until I go back ... doesn't go back to his place
+      // if I sit on my chair myself"): he walks at your pace and faster when you are ahead of him, waits only when you fall behind, and
+      // when you have sat down, or left him far behind for 20 s, he gives up the walk and goes back to his post
+      if (a.follow && a.state === 'guiding') { const f = a.follow, dx = f.x - a.x, dz = f.z - a.z, d = Math.hypot(dx, dz), dy = Math.abs((f.y || 0) - a.y), t0 = a.path[a.pi];
+        if (f.seated || (a.lostAt && this.now - a.lostAt > 20000)) { a.follow = null; a.waitFor = false; a.lostAt = 0; if (f.seated) a.say(pick('ush.enjoy')); this.sendHome(a); return; }
+        const ahead = !!t0 && (dx * (t0.x - a.x) + dz * (t0.z - a.z)) > 0 && d > 1.2;
+        a.speed = ahead ? (d > 4 ? 3.0 : 2.4) : 1.95;
+        if (!ahead && (d > 6 || dy > 2.5)) a.waitFor = true; else if (ahead || d < 3.5) a.waitFor = false;
+        a.lostAt = d > 22 || dy > 2.5 ? a.lostAt || this.now : 0;
+        if (a.waitFor) { a.walkT = 0; a.yaw += adiff(Math.atan2(dx, dz), a.yaw) * Math.min(1, dt * 3); return; } }
       const t = a.path[a.pi], dx = t.x - a.x, dz = t.z - a.z, d = Math.hypot(dx, dz);
       // keep your distance: wait while someone walks right in front of you
       // v11: "in your way" is inside your 0.9 m wide walking corridor and less than 0.8 m ahead (people passing on the other side of an edge
@@ -341,12 +358,13 @@ export class Crowd {
     if (a.role === 'guest' && a.state === 'mill' && !a.talking && now > a.next) this.mill(a, now);   // lobby life: another spot now and then
   }
   draw(a, dt, d, player) {
-    const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < 9 ? 0 : d < 20 ? 1 : 2); ch.talking = a.talking || this.now < a.talkUntil;
+    const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < 9 ? 0 : d < 20 ? 1 : 2); ch.talking = a.talking || (this.now >= (a.talkFrom || 0) && this.now < a.talkUntil);
     if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; } else ch.s.sit = 0;
     ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;
     // where they look: the screen when seated in a hall; you, briefly, when you come close and they face you; ahead otherwise
     let ly = 0, lp = 0, amt = 0;
-    if (a.viewer && a.sit > 0.5) { const H = a.viewer.hall.cfg, c = H.toWorld(0, 0), yawTo = Math.atan2(c.x - a.x, c.z - a.z); ly = adiff(yawTo, a.yaw); lp = -Math.atan2(H.y0 + H.centreY - (a.y + 1.1), Math.hypot(c.x - a.x, c.z - a.z)); amt = 0.85; }
+    if (a.viewer && a.sit > 0.5 && this.now < a.chatUntil && a.chatWith && a.chatWith.alive) { const o = a.chatWith; ly = clamp(adiff(Math.atan2(o.x - a.x, o.z - a.z), a.yaw), -1.2, 1.2); lp = 0.05; amt = 0.95; }
+    else if (a.viewer && a.sit > 0.5) { const H = a.viewer.hall.cfg, c = H.toWorld(0, 0), yawTo = Math.atan2(c.x - a.x, c.z - a.z); ly = adiff(yawTo, a.yaw); lp = -Math.atan2(H.y0 + H.centreY - (a.y + 1.1), Math.hypot(c.x - a.x, c.z - a.z)); amt = 0.85; }
     else if (player && d < 3.0 && (a.talkable || a.role === 'guest')) { const yawTo = Math.atan2(player.x - a.x, player.z - a.z), rel = adiff(yawTo, a.yaw); if (Math.abs(rel) < 1.6) { ly = rel; lp = -Math.atan2((player.y || 0) + 1.6 - (a.y + 1.6), d) * 0.6; amt = a.talking ? 1 : 0.7; } }
     const L = a.look; L.yaw += (ly - L.yaw) * Math.min(1, dt * 3.5); L.pitch += (lp - L.pitch) * Math.min(1, dt * 3.5); L.amt += (amt - L.amt) * Math.min(1, dt * 2.5); ch.s.lookYaw = L.yaw; ch.s.lookPitch = L.pitch; ch.s.lookAmt = L.amt;
     a.lightT -= dt; if (a.lightT <= 0) { a.lightT = 0.3; const want = this.lightAt(a.x, a.y + 1.2, a.z, { amb: new THREE.Color(), key: new THREE.Color(), dir: new THREE.Vector3(), screen: new THREE.Color() }); a.lightWant = want; }

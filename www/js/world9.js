@@ -787,7 +787,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
       const geo = bk.geo; let m;
       // exposure per room: the bakes keep the lights' authored power; each room is scaled to its target average (house lights up)
       const gain = clamp((LEVEL[key] || 0.5) / Math.max(0.005, bk.avg), 0.5, 30); room.gain = gain; scaleLights(lights, gain);
-      if (mats.lightMaps) { const mat = mats.litRoom(U, false, bk); mat.uniforms.uLmK.value.x *= gain; mat.uniforms.uLmK.value.y *= Math.min(gain, 10); m = new THREE.Mesh(geo, mat); room.bake = bk; U.uEnvK.value = 1 / Math.max(0.05, bk.avg * gain); }
+      if (mats.lightMaps) { const mat = mats.litRoom(U, false, bk); mat.uniforms.uLmK.value.x *= gain; mat.uniforms.uLmK.value.y *= Math.min(gain, 10); m = new THREE.Mesh(geo, mat); room.bake = bk; U.uEnvK.value = (key.startsWith('hall') ? 0.4 : 1) / Math.max(0.05, bk.avg * gain); }   // v14 halls: dark, matte rooms; their reflections stay faint
       else { const g = geo.clone(); lights.bake(g); m = new THREE.Mesh(g, mats.litFor(U, g)); room.bake = { ...bk, maps: null }; }
       m.matrixAutoUpdate = false; m.name = key + '-shell'; group.add(m); room.solid = m;
       if (!bk._walls) { world.walls.fromGeometry(geo, def.kind === 'street' ? 3 : L1 + 2.2); bk._walls = true;

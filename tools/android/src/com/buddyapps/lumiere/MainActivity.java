@@ -99,7 +99,16 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new Chrome());
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
         root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
-            @Override public WindowInsets onApplyWindowInsets(View v, WindowInsets in) { sendInsets(in); return in; }
+            @Override public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
+                sendInsets(in);
+                // v14 (the user's screenshots: the clock and the navigation keys over the game): bars a swipe or the keyboard brought back
+                // hide again after 2.5 s, also when the window's focus never changed
+                if (Build.VERSION.SDK_INT >= 30 && in.isVisible(WindowInsets.Type.systemBars())) { v.removeCallbacks(rehide); v.postDelayed(rehide, 2500); }
+                return in;
+            }
+        });
+        if (Build.VERSION.SDK_INT < 30) getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+            @Override public void onSystemUiVisibilityChange(int vis) { if ((vis & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) { View d = getWindow().getDecorView(); d.removeCallbacks(rehide); d.postDelayed(rehide, 2500); } }
         });
         setContentView(root);
         immersive();
@@ -137,6 +146,8 @@ public class MainActivity extends Activity {
         if (web != null && web.canGoBack()) { web.goBack(); return; }
         super.onBackPressed();
     }
+
+    final Runnable rehide = new Runnable() { @Override public void run() { immersive(); } };
 
     @SuppressWarnings("deprecation")
     void immersive() {

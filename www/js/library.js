@@ -27,7 +27,7 @@ export const LIB = {
   11: { tex: 'granite', mode: 'rel', mpt: 0.8, rough: 0.28, metal: 0, nstr: 0.3, spec: 1.1, macro: 0.12 },
   12: { tex: 'marble', mode: 'abs', mpt: 1.6, rough: 0.12, metal: 0, nstr: 0.2, spec: 1.3, macro: 0.08, detile: 1 },
   13: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.9, metal: 0, nstr: 0.3, macro: 0.05 },
-  14: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.08, metal: 1, nstr: 0, macro: 0 },
+  14: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.2, metal: 1, nstr: 0, macro: 0 },   // v14 satin, not a mirror (the bins read as mirror balls)
   15: { tex: 'flat', mode: 'rel', mpt: 1.0, rough: 0.16, metal: 0, nstr: 0, spec: 1.2, macro: 0.04 },
   16: { tex: 'carpet_hall', mode: 'rel', mpt: 0.5, rough: 1, metal: 0, nstr: 0.6, macro: 0.22, detile: 1 },
   17: { tex: 'slats', mode: 'rel', mpt: 0.4, rough: 0.45, metal: 0, nstr: 1, relief: 0.6, macro: 0.08 },
@@ -37,7 +37,7 @@ export const LIB = {
   21: { tex: 'travertine', mode: 'abs', mpt: 1.2, rough: 0.35, metal: 0, nstr: 0.5, spec: 0.9, macro: 0.1, detile: 1 },
   22: { tex: 'carpet_deco', mode: 'abs', mpt: 2.4, rough: 1, metal: 0, nstr: 0.6, macro: 0.15 },
   23: { tex: 'fluted', mode: 'rel', mpt: 0.4, rough: 0.5, metal: 0, nstr: 1, relief: 0.8, macro: 0.08 },
-  24: { tex: 'brushed', mode: 'rel', mpt: 0.5, rough: 0.28, metal: 1, nstr: 0.3, macro: 0.05, detile: 1 },
+  24: { tex: 'brushed', mode: 'rel', mpt: 0.5, rough: 0.4, metal: 1, nstr: 0.3, macro: 0.05, detile: 1 },   // v14 satin brass
   25: { tex: 'powder', mode: 'rel', mpt: 0.8, rough: 0.5, metal: 0.6, nstr: 0.3, macro: 0.08, detile: 1 },
   26: { tex: 'asphalt', mode: 'rel', mpt: 2.35, rough: 0.9, metal: 0, nstr: 0.6, macro: 0.25, detile: 1 },
   27: { tex: 'paving', mode: 'rel', mpt: 1.8, rough: 0.8, metal: 0, nstr: 0.8, macro: 0.2 },

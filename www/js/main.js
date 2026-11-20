@@ -316,12 +316,12 @@ async function boot() {
   }
   function menuCam(now) { const k = now / 1000 * 0.04, cam = engine.camera; cam.position.set(Math.sin(k) * 7, 2.6 + Math.sin(k * 2.1) * 0.3, 6 + Math.cos(k) * 5); cam.lookAt(Math.sin(k + 1.4) * 3, 2.2, 0); player.x = cam.position.x; player.z = cam.position.z; player.y = 0; }
   // v9.1b (the user: "the screens are so small"): a landscape phone shows ~105 deg across, a middle seat sees the picture at ~57 deg, so the
-  // picture filled half the phone. While you watch, the view narrows until the picture spans ~92 % of the screen's width (the 270 hall
-  // keeps a wider view: its side screens are the point). Seats near the front need no zoom at all.
+  // picture filled half the phone. While you watch, the view narrows towards the picture (the 270 hall keeps a wider view: its side
+  // screens are the point). v14 (the user, 11-20: "the camera zooms a lot to the screen"): at most 14 % narrower, the halls are bigger now
   function fitZoom(hk) { const H = world.hallByKey(hk), c = engine.camera; if (!H) return 0.8; const h = H.cfg, loc = h.toLocal(c.position.x, c.position.z), d = Math.max(2, loc.d - h.sagD);
     const want = 2 * Math.atan((h.W / 2) / d) / (h.format === 'x270' ? 0.6 : 0.92), vw = 2 * Math.atan(Math.tan(want / 2) / c.aspect) * 180 / Math.PI;
     const y0 = h.y0 + h.hB, y1 = h.y0 + h.hB + h.H, ey = c.position.y, vh = (Math.atan2(y1 - ey, loc.d) - Math.atan2(y0 - ey, loc.d)) * 180 / Math.PI * 0.88;   // a tall picture may overflow 12 %
-    return Math.max(0.42, Math.min(1, Math.max(vw, vh) / engine.baseFov)); }
+    return Math.max(0.86, Math.min(1, Math.max(vw, vh) / engine.baseFov)); }
   function step(dt, now) {
     if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
     else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); traffic.bodiesNear(player.x, player.z, 2.5, player.dyn); intro.bodiesNear(player.x, player.z, 2.5, player.dyn); player.update(dt); }
@@ -389,7 +389,7 @@ async function boot() {
     // v11: nothing is offered through a wall (world9.js Walls.sees): people at eye height (over counters and their glass), seats and
     // fittings at chest height
     const sees = (x, z, lo, hi) => world.walls.sees(player.x, player.z, x, z, player.y + lo, player.y + hi);
-    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t('hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
+    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t(npc.role === 'bar' || npc.role === 'cafe' ? 'hud.order' : npc.role === 'box' ? 'hud.buy' : 'hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
     if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
     if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
     // v11 the ticket machines between the box office and the concessions: the box office sheet without the queue

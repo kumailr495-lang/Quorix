@@ -26,8 +26,8 @@ export const TREES = {
     arrive: ['srv.arrive', [['opt9.order', 'menu'], ['opt9.tablet', 'act:tablet'], ['opt9.takeTrash', 'act:trash'], ['opt9.nothing', 'act:serverBye']]],
     menu: ['srv.menu', [['opt9.salted', 'act:buy:salted'], ['opt9.caramel', 'act:buy:caramel'], ['opt9.drink', 'act:buy:cola'], ['opt9.coffee', 'act:buy:coffee'], ['opt9.nachos', 'act:buy:nachos'], ['opt.back', 'arrive']]],
     back: ['srv.back', [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]] } },
-  // v11 (the user: "not every one of them too friendly"): a stranger answers as their temper has it (npc9.js Agent.temper): most are
-  // short with you, some neutral, a few chatty; a curt one ends the talk themselves (main.js startTalk)
+  // a stranger answers as their temper has it (npc9.js Agent.temper). v14 (the user, 11-20: "almost all of them are rude, they were better
+  // before"): most are warm, a third plain, one in ten busy; a busy one ends the talk themselves (main.js startTalk)
   guest: { start: 'hi', nodes: { hi: ['guest.talk.plain', [['opt.bye', 'end']]], warm: ['guest.talk.warm', [['opt.bye', 'end']]], curt: ['guest.talk.curt', [['opt.bye', 'end']]] } },
 };
 export function treeFor(agent, ctx = {}) {

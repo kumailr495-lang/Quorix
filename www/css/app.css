@@ -104,8 +104,8 @@ h3{margin:0;font:600 20px/1.1 var(--display)}
 #goalDist{flex:none;font:600 12px/1 var(--font);font-style:normal;color:var(--aisle);direction:ltr}
 #tools{position:absolute;inset-inline-end:calc(12px + var(--sar));top:calc(8px + var(--sat));display:flex;gap:8px}
 #bShow{position:fixed;z-index:12;inset-inline-end:calc(12px + var(--sar));top:calc(8px + var(--sat))}
-#fps{position:absolute;right:calc(64px + var(--sar));top:calc(19px + var(--sat));white-space:nowrap;font:600 10px/1 var(--font);color:var(--mute);background:var(--plate);padding:5px 8px;border-radius:4px;pointer-events:none;direction:ltr}
-[dir=rtl] #fps{right:auto;left:calc(64px + var(--sal))}
+#fps{position:absolute;right:calc(12px + var(--sar));top:calc(62px + var(--sat));white-space:nowrap;font:600 10px/1 var(--font);color:var(--mute);background:var(--plate);padding:5px 8px;border-radius:4px;pointer-events:none;direction:ltr}
+[dir=rtl] #fps{right:auto;left:calc(12px + var(--sal))}
 #stick{position:absolute;inset-inline-start:calc(26px + var(--sal));bottom:calc(20px + var(--sab));width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(10,8,11,0) 46%,rgba(10,8,11,.5) 100%);border:1.5px solid rgba(246,236,216,.28);opacity:.75;transition:opacity .2s}
 #stick.on{opacity:1}
 #knob{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:var(--stub);box-shadow:0 4px 12px rgba(0,0,0,.5),inset 0 -3px 0 rgba(0,0,0,.14);pointer-events:none}

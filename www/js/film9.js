@@ -48,29 +48,6 @@ function slides(aspect) {
 }
 // ------------------------------------------------------------------ GPU helpers: the spill copy and the 270 walls
 const QUAD_VERT = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
-// v12b laser projection (the user, 11-18: "make sure about ... laser projection"): a faint beam from the booth's port to the picture, a
-// pyramid of additive light coloured by what the screen shows (the spill copy, blurred), brightest at the port, gone before the screen,
-// with haze drifting through it. bt: 0 at the port, 1 at the picture; buv: where on the picture the vertex's ray lands
-const BEAM_VERT = `attribute float bt; attribute vec2 buv; varying float vT; varying vec2 vUv; varying vec3 vW;
-void main() { vT = bt; vUv = buv; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
-const BEAM_FRAG = `uniform sampler2D uSpill; uniform float uLevel; uniform float uTime; varying float vT; varying vec2 vUv; varying vec3 vW;
-void main() { vec3 c = texture2D(uSpill, clamp(vUv, 0.02, 0.98), 3.0).rgb + vec3(0.02);
-  float haze = 0.62 + 0.38 * sin(dot(vW, vec3(2.3, 1.1, 1.7)) + uTime * 0.6) * sin(dot(vW, vec3(0.7, 2.9, 1.3)) - uTime * 0.45);
-  float a = uLevel * (0.2 + 0.8 * pow(1.0 - vT, 1.6)) * haze * smoothstep(1.0, 0.8, vT);
-  gl_FragColor = vec4(c * a, 1.0);
-  #include <colorspace_fragment>
-}`;
-function makeBeam(h, spill) {
-  const H = h.cfg, port = H.toWorld(0, H.depthIn - 0.05), py = H.y0 + Math.min(H.total + 3.4, H.ceil - 0.6) - 0.2, N = 10, P = [], T = [], UV = [];
-  const base = (i, top) => { const u = -H.W / 2 + H.W * i / N, w = H.toWorld(u, H.screenD(u) - 0.02); return [w.x, H.y0 + H.hB + (top ? H.H : 0), w.z]; };
-  const tri = (a, b, c, ub, uc) => { P.push(...a, ...b, ...c); T.push(0, 1, 1); UV.push(0.5, 0.5, ...ub, ...uc); };
-  const A = [port.x, py, port.z];
-  for (let i = 0; i < N; i++) { tri(A, base(i, 1), base(i + 1, 1), [i / N, 1], [(i + 1) / N, 1]); tri(A, base(i + 1, 0), base(i, 0), [(i + 1) / N, 0], [i / N, 0]); }
-  tri(A, base(0, 0), base(0, 1), [0, 0], [0, 1]); tri(A, base(N, 1), base(N, 0), [1, 1], [1, 0]);
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('bt', new THREE.Float32BufferAttribute(T, 1)); g.setAttribute('buv', new THREE.Float32BufferAttribute(UV, 2));
-  const mat = new THREE.ShaderMaterial({ vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, uniforms: { uSpill: { value: spill }, uLevel: { value: 0 }, uTime: G.uTime }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-  const m = new THREE.Mesh(g, mat); m.name = h.key + '-beam'; m.frustumCulled = false; m.renderOrder = 7; m.visible = false; h.room.group.add(m); return { mesh: m, mat, level: 0 };
-}
 const SPILL_FRAG = `uniform sampler2D map; uniform vec4 uBox; uniform float uClampEdge; varying vec2 vUv;
 void main() { vec2 q = (vUv - uBox.xy) / uBox.zw; float inside = max(uClampEdge, step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0)); vec3 c = texture2D(map, clamp(q, 0.0, 1.0)).rgb * inside; gl_FragColor = vec4(c, 1.0); }`;
 const AVG_FRAG = `uniform sampler2D map; varying vec2 vUv; void main() { gl_FragColor = vec4(textureLod(map, vec2(0.25 + vUv.x * 0.5, 0.5), 8.0).rgb, 1.0); }`;
@@ -104,7 +81,7 @@ export class Shows {
     Object.assign(v.style, { position: 'fixed', left: '0', top: '0', width: '2px', height: '2px', opacity: '0.01', zIndex: '-1', pointerEvents: 'none' }); document.body.appendChild(v);
     v.volume = 0;   // the film's own sound is opened by the sound system (sound.startFilm sets its level), never at full volume by itself
     // v13 (the user: no clapping at things that make no sense): applause only after a film, a house film or a video of feature length (20 min)
-    v.addEventListener('ended', () => { const s = this.cur(); if (s && (s.state === 'playing')) this._finish(s.id, !s.credits && (s.src.kind === 'film' || (v.duration || 0) >= 1200)); });
+    v.addEventListener('ended', () => { const s = this.cur(); if (s && (s.state === 'playing')) this._finish(s.id, !s.credits && (s.src.kind === 'film' || (v.duration || 0) >= 180)); });
     v.addEventListener('error', () => { const s = this.cur(); if (s && s.state !== 'idle' && s.state !== 'ended') { this.hooks.onError && this.hooks.onError(s.src && s.src.kind); this._stopPicture(s); s.state = 'ended'; s.phaseAt = this.now; s.slides.text([t('toast.videoError') || 'This video could not be played.']); } });
     v.addEventListener('waiting', () => { this.buffering = true; }); v.addEventListener('playing', () => { this.buffering = false; });
     // v11 frame watchdog: when the last new frame arrived and how far apart frames come (update() wakes a decoder that has gone idle)
@@ -122,7 +99,6 @@ export class Shows {
     this.spillScene = new THREE.Scene(); this.spillScene.add(new THREE.Mesh(quad, this.spillMat)); this.avgScene = new THREE.Scene(); this.avgScene.add(new THREE.Mesh(quad, this.avgMat));
     for (const h of world.halls) { h.room.U.uSpill.value = this.spillRT.texture; h.room.U.uScreen.value.setRGB(0.25, 0.25, 0.25); if (h.picMat && h.picMat.uniforms.uExt) { h.picMat.uniforms.uExt.value = this.spillRT.texture; h.picMat.uniforms.uExtW.value = h.cfg.W; } }
     this.avg = new THREE.Color(0.2, 0.2, 0.2);
-    this.beams = {}; for (const h of world.halls) this.beams[h.id] = makeBeam(h, this.spillRT.texture);
     // 270: the side screens (hallmath.js sideScreen; tools/blender/arch/halls.py builds the surfaces): a strip of columns over each one,
     // the bottom edge rising with the rake, 5 mm in front of the surface
     const X = world.hallById('X270'); if (X && X.cfg.sideScreen) { const H = X.cfg, SS = H.sideScreen, N = 8; this.walls = [-1, 1].map((sg) => { const u = sg * (H.width / 2 - 0.05), P = [], UV = [], I = [];
@@ -216,8 +192,6 @@ export class Shows {
       // screen light gain: the picture's own colour comes from the spill copy
       const g = s.state === 'playing' && s.pic ? 3.6 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
-      const bm = this.beams && this.beams[h.id]; if (bm) { const want = s.state === 'playing' && s.pic && !this._yt ? 1 : s.state === 'countdown' ? 0.35 : 0; bm.level += (want - bm.level) * k * 0.5;
-        bm.mat.uniforms.uLevel.value = 0.11 * bm.level; bm.mesh.visible = bm.level > 0.01; }   // the beam: in with the picture (none over YouTube's own layer)
       if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic && !this._yt && (s.split || s.wrap) ? 1 : 0;   // as bright as the front at the corner (the edge extension dims itself with distance)
       for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
     }

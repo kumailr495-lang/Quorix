@@ -98,6 +98,43 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Money: from jobs, and option A (earning by watching house films) "could be a good option"; no loyalty tiers; things to buy later: customisable theatres, avatars, houses, cars; "it's not a simulator, I want it grand" | Plan listed for approval 11-20 (jobs in the cinema + watch-to-earn; never for YouTube); not built yet |
 | Everything in the master prompts (economy, rooms, voice, NPC lives, settings that apply at once, licences, security) | Audited in docs/V13-PLAN.md with what exists and what is missing; worked in its stages |
 
+## The 11-20 phone test of 13.0 (11 screenshots; "add every single feature I have said ... cook it this time")
+
+The user installed 13.0 and played it. Every point, in their words where short. Worked in docs/V14-PLAN.md's order.
+
+| Ask | Status |
+|---|---|
+| No difference between the player and the NPCs; picking a red outfit turns both red | Open (N7) |
+| Multiplayer UI confusing; emoji instead of icons; options unclear; chat in the middle instead of the side | Open (N7) |
+| The phone UI is bad | Open (N7) |
+| Popcorn staff stand too far back; no option to buy | Open (N1) |
+| 15-20 fps on high (21-26 fps in the hall and upstairs, 42-47 in the lobby) | Open (N2) |
+| The projector light beam: "I told you not to do that" | Open (N1) |
+| ScreenX nowhere near the photo; its side walls bad | Open (N4) |
+| NPCs walk through walls | Open (N1/N2) |
+| The wall at the hall entrance; research real entrances and exits | Open (N3) |
+| The theatres are too small | Open (N3) |
+| Long loading: GTA 5/6 style loading screens | Open (N7) |
+| The taxi driver's hands and wheel don't move; no door-open and get-out animation; the car's interior looks bad | Open (N8) |
+| The sky looks boxy | Open (N6) |
+| Models look bad and are not animated (all of them) | Open (N9) |
+| NPCs are rude (they were better before); they don't clap, cry or talk | Open (N1) |
+| The camera zooms too much into the screen | Open (N1) |
+| No way to know where my seat is | Open (N3) |
+| Reflections bad and heavy (a bin like a mirror) | Open (N1) |
+| The finger icon on the crosshair instead of a button to tap | Open (N6) |
+| Z-fighting in the lift | Open (N6) |
+| Carpets placed badly; glass and borders done badly | Open (N6) |
+| Can't sit on most sofas outside the halls | Open (N6) |
+| The exit teleports you outside | Open (N3) |
+| No transition or animation on the play button | Open (N7) |
+| The guide is too slow, waits until you step back, and stays put if you seat yourself | Open (N1) |
+| Sounds glitch and distort at some points | Open (N6) |
+| "Do everything yourself, don't ask me every single thing" | Standing rule from 11-20: no more approval questions; decide, build, show |
+| Corridors smaller and full of decoration | Open (N5) |
+| Every feature asked in the whole chat | Open (N10): money from jobs + watching, outfits, own hall, multiplayer extras, open world, NPC life |
+| Seen in the screenshots: fps readout over the phone button; status and navigation bars showing; a film title shown as "BrahmÄ stra"; the LED wall's text cut off | Open (N1) |
+
 ## Theatres
 
 | Ask | Status |
