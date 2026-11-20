@@ -30,6 +30,7 @@ import { Phone } from './phone.js';
 import { LobbyLife } from './anim12.js';
 import { Credits } from './credits.js';
 import { Career, Jobs } from './career.js';
+import { Theatres } from './theatres.js';
 import { CATALOG } from './films.js';
 import { media } from './bridge.js';
 import { Input } from './input.js';
@@ -152,7 +153,8 @@ async function boot() {
   tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
   const way = new Wayfinder(world, crowd); let wayT = 0; const guide = new Guide(engine.scene, world);   // v12b the way on the floor and a light at the goal
   // v13 the phone (phone.js): your ticket, the map, your tab, a camera, your photos and stubs, friends, settings; it never stops the game
-  const phone = new Phone({ ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
+  const theatres = new Theatres(world); theatres.applyAll();   // v14 My Theatre: each hall's saved look
+  const phone = new Phone({ ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, theatres: () => theatres, halls: () => world.halls.map((h) => ({ id: h.id, name: h.name.replace('LUMIERE ', '') })), stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
     guide: () => { settings.goal = true; saveSettings(settings); }, showTicket: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'),
     together: () => together.open(), settings: () => ui.openSettings(), sound, toast: (m, ms, k) => ui.toast(m, ms, k), native: !!window.LumiereMedia });   // inside the Android app a photo cannot be saved as a file (no picture bridge yet)
   $('#bPhone').addEventListener('click', (e) => { e.stopPropagation(); if (mode === 'play') phone.toggle(); });

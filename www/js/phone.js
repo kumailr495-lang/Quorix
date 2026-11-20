@@ -13,12 +13,13 @@
 import { t } from './i18n.js';
 import { SHOP } from './career.js';
 import { DAILY_CAP } from './credits.js';
+import { THEMES, SWATCH } from './theatres.js';
 import { ROOMS, BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E } from './building.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const icon = (id) => `<svg class="ic"><use href="#${id}"/></svg>`;
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('lumiere.' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('lumiere.' + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
 // v14 Wallet (Lumiere Credits, credits.js), Jobs, Tasks and Shop (career.js) join the apps; the old Tab is the wallet's history now
-const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
+const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
 const two = (n) => String(n).padStart(2, '0');
 const LINE = { ticket: 'phone.line.ticket', tablet: 'phone.line.tablet', salted: 'opt9.salted', caramel: 'opt9.caramel', cheese: 'opt9.cheese', nachos: 'opt9.nachos', cola: 'opt9.drink', coffee: 'opt9.coffee', water: 'item.water', combo: 'opt9.combo' };
 export class Phone {
@@ -113,6 +114,34 @@ export class Phone {
     else C.appendChild(el('p', 'note', t('job.allMissions')));
     C.appendChild(el('h4', 'ph-sub', t('job.daily')));
     for (const k of K.tasks()) { const c = el('div', 'ph-task' + (k.done ? ' done' : '')); c.append(el('span', null, k.text), bar(k.got, k.n), el('em', null, k.done ? t('job.doneMark') : `+${k.r} LC`)); C.appendChild(c); }
+  }
+  // v14 My Theatre: pick a hall, put a theme or your own colours on it (it changes as you tap), save looks as presets, share them as codes
+  app_theatre(C) {
+    const T = this.h.theatres(), W = this.h.credits, halls = this.h.halls(); if (!this.thHall || !halls.some((h) => h.id === this.thHall)) this.thHall = halls[0].id;
+    const hid = this.thHall, cur = T.get(hid), chips = el('div', 'ph-chips');
+    for (const h of halls) { const b = el('button', 'ph-chip' + (h.id === hid ? ' on' : ''), h.name); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.thHall = h.id; this.show('theatre'); }); chips.appendChild(b); }
+    C.appendChild(chips); C.appendChild(el('h4', 'ph-sub', t('th.themes')));
+    const grid = el('div', 'ph-themes'), card = (key, th) => { const locked = th && th.shop && !W.owns(th.shop), b = el('button', 'ph-theme' + (locked ? ' locked' : '')), strip = el('span', 'ph-strip');
+      for (const p of ['seat', 'wall', 'carpet', 'curtain']) { const i = el('i'); i.style.background = th ? th[p] : 'linear-gradient(135deg,#3b2216,#1e2846)'; strip.appendChild(i); }
+      b.append(strip, el('b', null, t('th.theme.' + key)), el('small', null, locked ? t('th.locked') : ''));
+      b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); if (locked) { this.h.toast(t('th.lockedHint'), 2400); this.show('shop'); return; } T.apply(hid, th || {}); this.h.toast(t('th.applied', { name: t('th.theme.' + key) }), 1800); this.show('theatre'); });
+      grid.appendChild(b); };
+    card('original', null); for (const [k, th] of Object.entries(THEMES)) card(k, th); C.appendChild(grid);
+    C.appendChild(el('h4', 'ph-sub', t('th.custom')));
+    for (const part of ['seat', 'wall', 'carpet', 'curtain']) { const row = el('div', 'ph-swrow'); row.appendChild(el('small', null, t('th.part.' + part)));
+      const o = el('button', 'ph-sw orig' + (!cur[part] ? ' on' : '')); o.setAttribute('aria-label', t('th.theme.original')); o.addEventListener('click', (e) => { e.stopPropagation(); T.setPart(hid, part, null); this.show('theatre'); }); row.appendChild(o);
+      for (const hex of SWATCH[part]) { const b = el('button', 'ph-sw' + (cur[part] === hex ? ' on' : '')); b.style.background = hex; b.setAttribute('aria-label', hex); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); T.setPart(hid, part, hex); this.show('theatre'); }); row.appendChild(b); }
+      C.appendChild(row); }
+    C.appendChild(el('h4', 'ph-sub', t('th.presets')));
+    const r0 = el('div', 'ph-row'); this.btn(r0, t('th.save'), 'primary', () => { T.savePreset(t('th.presetName', { n: T.presets().length + 1 }), cur); this.h.toast(t('th.saved'), 1800); this.show('theatre'); }); C.appendChild(r0);
+    for (const p of T.presets()) { const li = el('div', 'ph-preset'), sw = el('span', 'ph-strip'); for (const k of ['seat', 'wall', 'carpet', 'curtain']) { const i = el('i'); i.style.background = p.th[k] || '#444'; sw.appendChild(i); }
+      li.append(sw, el('b', null, p.name)); const r = el('div', 'ph-row');
+      this.btn(r, t('th.apply'), 'secondary', () => { T.apply(hid, p.th); this.h.toast(t('th.applied', { name: p.name }), 1800); this.show('theatre'); });
+      this.btn(r, t('th.share'), 'ghost', () => { const code = T.code(p.th); (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(code) : Promise.reject()).then(() => this.h.toast(t('th.copied'), 2000), () => { const i = el('input', 'ph-code'); i.value = code; i.readOnly = true; li.appendChild(i); i.select(); }); });
+      this.btn(r, t('th.delete'), 'ghost', () => { T.deletePreset(p.id); this.show('theatre'); }); li.appendChild(r); C.appendChild(li); }
+    const imp = el('div', 'ph-row'), inp = el('input', 'ph-code'); inp.placeholder = t('th.importHint'); inp.addEventListener('keydown', (e) => e.stopPropagation()); imp.appendChild(inp);
+    this.btn(imp, t('th.import'), 'secondary', () => { const th = T.fromCode(inp.value); if (!th) { this.h.toast(t('th.badCode'), 2200, 'error'); return; } T.savePreset(t('th.imported'), th); this.h.toast(t('th.saved'), 1800); this.show('theatre'); }); C.appendChild(imp);
+    C.appendChild(el('p', 'note', t('th.note')));
   }
   // the shop: emotes, outfit colours, theatre themes, passes
   app_shop(C) {

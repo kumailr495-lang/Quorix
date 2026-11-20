@@ -791,6 +791,22 @@ function buildHall(world, h, room) {
 // gold and ivory. It stays bright and coloured, so the screen's size still reads under the house lights (v9.1b: a near-black slate made
 // the screens look small)
 const SLATE_FILM = { max: 'sintel', curve: 'cosmos', classic: 'bunny', x270: 'hero' };
+// v14 My Theatre (phone.js app_theatre, the shop's themes): a hall recoloured live. Each part is the vertices of one library material in the
+// hall's own meshes: the seats' upholstery (leather 8, velvet 1), the walls' acoustic fabric (9), the hall carpet (16), the drapes and
+// curtains (velvet 1 in the shell, the curtain meshes). A colour of null puts the hall's own back (kept the first time a part changes).
+// The light maps were baked with the hall's own colours, so a theme changes the colour of the cloth, not the light's bounce off it.
+export function themeHall(world, hallId, th = {}) {
+  const h = world.hallById(hallId); if (!h) return false;
+  const paint = (mesh, ids, hex) => { const a = mesh.geometry.attributes, c = a.color, m = a.matid; if (!c || !m) return; if (!mesh.userData.c0) mesh.userData.c0 = c.array.slice(); if (hex === undefined) return;
+    const c0 = mesh.userData.c0, col = hex ? new THREE.Color(hex) : null;
+    for (let i = 0; i < c.count; i++) { if (!ids.includes(Math.round(m.getX(i)))) continue; if (col) c.setXYZ(i, col.r, col.g, col.b); else c.setXYZ(i, c0[3 * i], c0[3 * i + 1], c0[3 * i + 2]); }
+    c.needsUpdate = true; };
+  h.room.group.traverse((o) => { if (!o.isMesh) return;
+    if (/^seats-/.test(o.name)) paint(o, [8, 1], th.seat ?? null);
+    else if (/-shell$/.test(o.name)) { paint(o, [9], th.wall ?? null); paint(o, [16], th.carpet ?? null); paint(o, [1], th.curtain ?? null); }
+    else if (o.name === 'curtain') paint(o, [1], th.curtain ?? null); });
+  return true;
+}
 export function slateTexture(h) {
   const w = 1024, ht = Math.round(w / h.aspect), c = makeCanvas(w, ht), g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   const F = filmById(SLATE_FILM[h.format] || 'sintel'), ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v + 'px'; };
