@@ -94,6 +94,8 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Corridor like the dark corridor photo (lit portal frames, hall numbers, seat plan) | Built 11-20: lit frames on every portal's face, a blade roundel with the hall's number, a seat-plan board (the hall's real seats) under a picture light; corridor re-baked 11-20. Engine renders only |
 | An in-game phone (the two phone photos) | Built 11-20 (phone.js): time, next show, tab; Ticket, Map, Tab, Camera, Photos, Stubs, Friends, Settings. The camera's screen is see-through and the HUD buttons behind it hide while you frame; a clash with the old `.ticket` style that stretched the Ticket app is fixed. Engine screenshots only |
 | Seat-layout editor (the green-seat photo) | Planned (V13 stage 4, theatre editor) |
+| "Tell me how to download the app" | APK 13.0 built and sent 11-20 (docs/V13-RELEASE-NOTES.md): installs over the old app, same key. Not run on the phone by me |
+| Money: from jobs, and option A (earning by watching house films) "could be a good option"; no loyalty tiers; things to buy later: customisable theatres, avatars, houses, cars; "it's not a simulator, I want it grand" | Plan listed for approval 11-20 (jobs in the cinema + watch-to-earn; never for YouTube); not built yet |
 | Everything in the master prompts (economy, rooms, voice, NPC lives, settings that apply at once, licences, security) | Audited in docs/V13-PLAN.md with what exists and what is missing; worked in its stages |
 
 ## Theatres
