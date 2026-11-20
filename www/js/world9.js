@@ -445,7 +445,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   add('lobby', 'bench_velvet', 14.6, 0, LIFT.z0 - 0.4, Math.PI); add('lobby', 'planter_tall', 12.95, 0, LIFT.z0 - 0.45);
   // the first-floor landing between the gallery and the corridor: two benches and palms along the back wall
   for (const x of [16.6, 19.2]) add('lobby', 'bench_velvet', x, L1, -13.28); for (const x of [15.1, 20.7]) add('lobby', 'planter_tall', x, L1, -13.2);   // velvet benches under the pictures either side of the exit
-  add('lobby', 'letters_lumiere_lit', -21.58, 5.25, 4.0, Math.PI / 2, { collide: false, ground: false });
+  add('lobby', 'letters_lumiere_lit', -21.58, 6.05, 9.3, Math.PI / 2, { collide: false, ground: false });   // v13 (the user: "the lumiere name getting stuck and cropped"): its foot at 5.97, 24 cm over the showtimes board (it ran behind it), centred over the desk
   // v12 the brand on the Streamline band's flat middle (rooms.py front12: its face at FACADE_Z + 4.5), its back 2 cm into the band
   add('street', 'letters_lumiere_lit', 0, 11.9, FACADE_Z + 4.48, 0, { collide: false, ground: false, scale: 1.6 });
   // v10 (the user: "improve the overall look from outside"): a premiere carpet from the kerb to the doors, two light columns flanking them
