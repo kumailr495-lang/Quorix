@@ -24,16 +24,18 @@ const HALLS = Object.values(HALL), HALL_BY_KEY = Object.fromEntries(HALLS.map((h
 export const STEP_UP = 0.4, HEAD = 1.75;
 // target average light level per room with its house lights up (docs/V9-DESIGN.md section 5: bright spine, dim Dolby corridor)
 // ambient fill on top of the light map (dims with the house lights): the dim corridor's dark walls stay readable, the night street too
-const FILL = { corridor: 0.42, street: 0.03 };
+// v14 (the user, 11-20: "increase a bit of light bounce and the lights to be more dim"): the halls' lamps dimmer (LEVEL) with a soft fill
+// lifting the shadows and a softer curve (SOFT), so the light reads as bounced round the room rather than pooled under each lamp
+const FILL = { corridor: 0.42, street: 0.03, hallMax: 0.035, hallCurve: 0.035, hallClassic: 0.04, hall270: 0.035 };
 // v10 softer light per room (materials.js uSoft): how much of the soft curve each room takes; halls less (their dark is the point)
-const SOFT = { lobby: 0.85, corridor: 0.8, spine: 0.75, wc: 0.75, street: 0.6 };
+const SOFT = { lobby: 0.85, corridor: 0.8, spine: 0.75, wc: 0.75, street: 0.6, hallMax: 0.8, hallCurve: 0.8, hallClassic: 0.8, hall270: 0.8 };
 // v12c where the lobby's living props stand (anim12.js puts its particles in the same frames): [x, y, z, yaw]
 export const LIFE = {
   kettles: [[-21.30, 0.96, -7.55, Math.PI / 2], [-21.30, 0.96, -6.65, Math.PI / 2]],   // tools/blender/zones12.py popcorn_kettle, on the parlour's back counter
   espresso: [-21.12, 0.96, -12.3, Math.PI / 2],   // zones12.py espresso_lever, its back 3.4 cm under the bottle shelves' ends, 4.4 cm under their lips
   fountain: [0, 0, 10.0, 0],   // statue12.py fountain_muse
 };
-export const LEVEL = { hallMax: 0.5, hallCurve: 0.5, hallClassic: 0.55, hall270: 0.5, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
+export const LEVEL = { hallMax: 0.4, hallCurve: 0.4, hallClassic: 0.44, hall270: 0.4, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
 function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 14) { A[i + 3] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 4] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 5] *= A[i + 7] ? Math.min(k, 10) : k; }
   for (const ch of ['h', 'f']) for (const s of ['up', 'down']) L.amb[ch][s] = L.amb[ch][s].map((v) => v * (ch === 'h' ? k : Math.min(k, 10))); }   // a face lower than STEP_UP above your feet is a step you walk over; above HEAD it is overhead
 

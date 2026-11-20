@@ -59,7 +59,7 @@ export class Booking9 {
     const h = this.hall(), c = h.cfg, m = $('#seatmap'); m.innerHTML = ''; $('#hallName').textContent = c.name.replace('LUMIERE ', '');
     const free = h.seats.some((s) => !s.taken && !s.npc); $('#seatEmpty').hidden = free; m.hidden = !free; if (!free) return;
     const body = $('#book .sh-body'), W = Math.max(240, (body.clientWidth || 600) - 24), Hh = Math.max(150, (body.clientHeight || 260) - 60);
-    const us = h.seats.map((s) => s.u), ds = h.seats.map((s) => s.d), u0 = Math.min(...us) - 0.6, u1 = Math.max(...us) + 0.6, d0 = Math.min(...ds) - 0.8, d1 = Math.max(...ds) + 0.5, k = Math.min(W / (u1 - u0), 1.9 * Hh / (d1 - d0));
+    const us = h.seats.map((s) => s.u), ds = h.seats.map((s) => s.d), u0 = Math.min(...us) - 0.6, u1 = Math.max(...us) + 0.6, d0 = Math.min(...ds) - 0.8, d1 = Math.max(...ds) + 0.5, k = Math.min(W / (u1 - u0), 1.35 * Hh / (d1 - d0));   // v14 bigger halls: most of the hall fits a 360 px screen; the rest scrolls (edge shades say so)
     // the legend first (each class in its colour and price), then the map: it may scroll a little on small screens, the seats stay tappable
     const lg = el('div', 'legend'); lg.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;justify-content:center;font-size:11px;opacity:.9;margin:2px 0 6px';
     for (const cls of [...new Set(h.seats.map((s) => s.cls))]) { const i = el('span'); i.innerHTML = `<i style="display:inline-block;width:10px;height:10px;background:${CLASS_COL[cls]};border-radius:3px;margin-right:5px;vertical-align:-1px"></i>`; i.appendChild(document.createTextNode(CLASSES[cls].label + (this.quick ? '' : ' ' + this.bill.fmt(CLASSES[cls].price)))); lg.appendChild(i); }
@@ -68,7 +68,10 @@ export class Booking9 {
     for (const s of h.seats) { const taken = (s.taken || s.npc) && !s.player, sel = s.id === this.sel.seat, w = Math.max(9, (s.kind === 'rocker' ? 0.54 : 0.8) * k), b = el('button', 'seat9');
       b.setAttribute('aria-label', `${s.id} ${CLASSES[s.cls].label}`);
       b.style.cssText = `position:absolute;padding:0;border:0;left:${((s.u - u0) * k - w / 2).toFixed(1)}px;top:${(24 + (s.d - d0) * k - w * 0.4).toFixed(1)}px;width:${w.toFixed(1)}px;height:${(w * 0.8).toFixed(1)}px;border-radius:${s.pair >= 0 ? (s.pairSide ? '2px 5px 5px 2px' : '5px 2px 2px 5px') : '3px 3px 5px 5px'};background:${taken ? 'rgba(255,255,255,.1)' : sel ? '#fff6e0' : CLASS_COL[s.cls]};opacity:${taken ? 1 : sel ? 1 : 0.86};box-shadow:${sel ? '0 0 0 2px #ffb84d,0 0 10px rgba(255,184,77,.8)' : 'none'};cursor:${taken ? 'default' : 'pointer'}`;
-      if (!taken) b.addEventListener('click', () => { this.sel.seat = s.id; this.sound.click(); this.build(); }); map.appendChild(b); }
+      if (!taken) b.addEventListener('click', () => { this.sel.seat = s.id; this.sound.click(); this.build(); }); map.appendChild(b); if (sel) this._selEl = b; }
+    // v14 keep the chosen seat in view; shade the edge that has more rows behind it
+    const edge = () => { m.classList.toggle('more-down', m.scrollTop + m.clientHeight < m.scrollHeight - 4); m.classList.toggle('more-up', m.scrollTop > 4); };
+    m.onscroll = edge; requestAnimationFrame(() => { if (this._selEl && this._selEl.isConnected) this._selEl.scrollIntoView({ block: 'center', inline: 'nearest' }); this._selEl = null; edge(); });
   }
   stepPay() {
     const h = this.hall(), c = h.cfg, s = this.seat(), S = $('#bkSummary'); S.innerHTML = '';
