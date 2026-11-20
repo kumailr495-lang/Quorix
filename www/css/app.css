@@ -495,3 +495,17 @@ body.ph-cam::after{content:'';position:fixed;inset:calc(8px + var(--sat)) calc(8
 .job-ticket small{font-size:10px;color:#6b5f52}.job-ticket b{font:600 16px/1.2 var(--display,var(--font))}.job-ticket span{font-size:12.5px}.job-ticket em{font-style:normal;font-size:12px;color:#5a4a3a}
 .job-ticket.torn{clip-path:polygon(0 0,100% 0,100% 72%,94% 78%,88% 70%,80% 80%,72% 71%,64% 79%,56% 70%,48% 80%,40% 71%,32% 79%,24% 70%,16% 80%,8% 71%,0 78%)}
 .job-item b,.job-chip{display:block}.job-item b::first-letter,.job-chip::first-letter,.job-who span::first-letter{text-transform:uppercase}.job-who span{display:block}
+/* v14 streaming (tablet.js stream): rows that scroll sideways, cards with the archive's thumbnail */
+.st-rows{display:flex;flex-direction:column;gap:12px;padding-bottom:10px}
+.st-row h4{margin:0 2px 6px;font-size:12px;letter-spacing:.04em;color:var(--cream)}
+.st-strip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.st-card{flex:0 0 132px;scroll-snap-align:start;display:flex;flex-direction:column;gap:3px;text-align:left;padding:0;background:none;border:0;color:var(--cream)}
+.st-card img{width:132px;height:88px;object-fit:cover;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.st-card b{font-size:11px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.st-card small{font-size:9.5px;color:var(--mute)}
+.st-card:active img{transform:scale(.96)}
+.st-detail{display:grid;grid-template-columns:minmax(120px,38%) 1fr;gap:14px;margin-top:8px}
+.st-detail img{width:100%;border-radius:12px;object-fit:cover;background:rgba(255,255,255,.06)}
+.st-detail h3{margin:0 0 4px;font:600 16px/1.25 var(--display,var(--font))}
+.st-desc{font-size:11.5px;line-height:1.45;color:var(--dim);max-height:9.5em;overflow:auto}
+.st-lic{font-size:9.5px;margin-top:8px}

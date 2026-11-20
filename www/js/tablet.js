@@ -20,7 +20,7 @@ export class Tablet {
     this.shows = shows; this.sound = sound; this.wallet = wallet; this.settings = settings; this.hooks = hooks; this.tab = 'remote'; this.server = false; this.onLocal = null;
     this.q = ''; this.sort = 'recent'; this.album = null; this.view = 'all'; this.fav = new Set(store.get('fav', [])); this.cols = store.get('cols', {}); this.items = null; this._raf = 0;
     const root = $('#tablet'); root.innerHTML = `<div class="tab-dev"><div class="tab-scr">
-      <header class="tb-head"><div class="tb-title"><small>LUMIÈRE</small><b id="tbTitle"></b></div><nav class="tb-tabs" id="tbTabs"><button data-t="remote">${t('tab.remote')}</button><button data-t="films">${t('tab.films')}</button><button data-t="mine">${t('tab.mine')}</button><button data-t="order">${t('tab9.order')}</button></nav><button class="btn secondary sm" id="tbClose"></button></header>
+      <header class="tb-head"><div class="tb-title"><small>LUMIÈRE</small><b id="tbTitle"></b></div><nav class="tb-tabs" id="tbTabs"><button data-t="remote">${t('tab.remote')}</button><button data-t="films">${t('tab.films')}</button><button data-t="stream">${t('str.tab')}</button><button data-t="mine">${t('tab.mine')}</button><button data-t="order">${t('tab9.order')}</button></nav><button class="btn secondary sm" id="tbClose"></button></header>
       <div class="tb-body" id="tbBody"></div></div></div>`;
     root.addEventListener('click', (e) => { if (e.target === root) this.close(); });
     $('#tbClose').addEventListener('click', (e) => { e.stopPropagation(); this.close(); });
@@ -34,7 +34,7 @@ export class Tablet {
   refresh() { if (this.isOpen()) this.show(this.tab); }
   show(tab) {
     this.tab = tab; for (const b of document.querySelectorAll('#tbTabs button')) b.classList.toggle('on', b.dataset.t === tab); cancelAnimationFrame(this._raf);
-    const B = $('#tbBody'); B.innerHTML = ''; B.className = 'tb-body ' + tab; if (tab === 'remote') this.remote(B); else if (tab === 'films') this.films(B); else if (tab === 'order') this.order(B); else this.mine(B);
+    const B = $('#tbBody'); B.innerHTML = ''; B.className = 'tb-body ' + tab; if (tab === 'remote') this.remote(B); else if (tab === 'films') this.films(B); else if (tab === 'stream') this.stream(B); else if (tab === 'order') this.order(B); else this.mine(B);
   }
   // ---------------- remote ----------------
   remote(B) {
@@ -83,6 +83,54 @@ export class Tablet {
       c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.order && this.hooks.order(k)) { this.hooks.toast(t('tab9.ordered', { item: t(lab) }), 2600); } }); grid.appendChild(c); }
     B.appendChild(grid);
     if (this.hooks.canBin && this.hooks.canBin()) { const b = el('button', 'btn secondary', t('tab9.bin')); b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.hooks.bin && this.hooks.bin(); this.show('order'); }); B.appendChild(b); }
+  }
+  // ---------------- v14 streaming (the user, 11-20: "actual in-app streaming"): the Internet Archive's public-domain films in rows, with
+  // search and a detail sheet, beside the house films. Nothing is downloaded: the film streams from archive.org into your hall like a
+  // link (film9.js loadURL). Only legal sources: public-domain collections (each item's own page says its rights) and the Blender films.
+  stream(B) {
+    $('#tbTitle').textContent = t('str.title'); const bar = el('div', 'tb-bar'), box = el('div', 'inp'); box.innerHTML = '<svg class="ic"><use href="#i-search"/></svg>';
+    const q = el('input'); q.placeholder = t('str.search'); q.value = this.sq || ''; q.enterKeyHint = 'search'; box.appendChild(q); bar.appendChild(box); B.appendChild(bar);
+    const rows = el('div', 'st-rows'); B.appendChild(rows);
+    const go = () => { this.sq = q.value.trim(); rows.innerHTML = ''; if (this.sq) this.stRow(rows, t('str.results', { q: this.sq }), this.sq, true); else this.stHome(rows); };
+    q.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { q.blur(); go(); } }); go();
+  }
+  stHome(rows) {
+    const own = el('section', 'st-row'); own.appendChild(el('h4', null, t('str.originals'))); const strip = el('div', 'st-strip');
+    for (const f of CATALOG) { const c = el('button', 'st-card'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); c.append(img, el('b', null, f.short || f.title), el('small', null, `${f.year} · ${f.mins} min`));
+      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.playFilm({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } }); strip.appendChild(c); }
+    own.appendChild(strip); rows.appendChild(own);
+    for (const [k, col] of [['classics', 'feature_films'], ['animation', 'animationandcartoons'], ['scifi', 'SciFi_Horror'], ['noir', 'subject:"film noir"'], ['silent', 'silent_films'], ['comedy', 'Comedy_Films']]) this.stRow(rows, t('str.row.' + k), col.includes(':') ? col : `collection:${col}`, false);
+  }
+  async stRow(rows, title, q, search) {
+    const sec = el('section', 'st-row'); sec.appendChild(el('h4', null, title)); const strip = el('div', 'st-strip'); strip.appendChild(el('small', 'note', t('str.loading'))); sec.appendChild(strip); rows.appendChild(sec);
+    const query = search ? `(title:(${q.replace(/[^\p{L}\p{N} '-]/gu, ' ').slice(0, 60)}) AND mediatype:movies AND (collection:feature_films OR collection:animationandcartoons OR collection:SciFi_Horror OR collection:film_noir OR collection:silent_films OR collection:Comedy_Films))` : `${q} AND mediatype:movies`;
+    // only items marked public domain by the archive (licenseurl), that carry a playable h.264 / MPEG-4 file, and nothing adult (a cinema for everyone; the archive's exploitation reels rank high)
+    const full = `(${query}) AND format:("h.264" OR "MPEG4") AND licenseurl:(*publicdomain*) AND NOT title:(sex OR nude OR nudist OR erotic OR stripper OR burlesque) AND NOT subject:(sex OR erotic OR nudity OR adult OR exploitation OR sexploitation)`;
+    this._st = this._st || new Map(); let items = this._st.get(full);
+    try {
+      if (!items) { const u = 'https://archive.org/advancedsearch.php?' + new URLSearchParams({ q: full, 'fl[]': 'identifier', rows: '24', output: 'json', 'sort[]': 'downloads desc' }) + '&fl[]=title&fl[]=year&fl[]=runtime';
+        const r = await fetch(u, { credentials: 'omit' }); const j = await r.json(); items = (j.response && j.response.docs || []).filter((d) => typeof d.identifier === 'string' && /^[\w.-]{1,100}$/.test(d.identifier)).slice(0, 24); this._st.set(full, items); }
+    } catch (e) { strip.innerHTML = ''; strip.appendChild(el('small', 'note', t('str.offline'))); return; }
+    strip.innerHTML = ''; if (!items.length) { strip.appendChild(el('small', 'note', t('str.none'))); return; }
+    for (const d of items) { const c = el('button', 'st-card'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.src = `https://archive.org/services/img/${d.identifier}`;
+      const name = String(Array.isArray(d.title) ? d.title[0] : d.title || d.identifier).slice(0, 80); c.append(img, el('b', null, name), el('small', null, [d.year, d.runtime].filter(Boolean).join(' · ').slice(0, 40)));
+      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.stDetail(d.identifier, name); }); strip.appendChild(c); }
+  }
+  async stDetail(id, name) {
+    const B = $('#tbBody'); B.innerHTML = ''; B.className = 'tb-body stream detail'; const back = el('button', 'btn ghost sm', t('str.back')); back.addEventListener('click', (e) => { e.stopPropagation(); this.show('stream'); }); B.appendChild(back);
+    const wrap = el('div', 'st-detail'), img = new Image(); img.alt = ''; img.referrerPolicy = 'no-referrer'; img.src = `https://archive.org/services/img/${id}`; const side = el('div'); side.appendChild(el('h3', null, name));
+    const meta = el('p', 'note', t('str.loading')), desc = el('p', 'st-desc'), play = el('button', 'btn primary', t('str.play')); play.disabled = true; side.append(meta, desc, play, el('p', 'note st-lic', t('str.lic'))); wrap.append(img, side); B.appendChild(wrap);
+    let file = null;
+    try {
+      const j = await (await fetch(`https://archive.org/metadata/${encodeURIComponent(id)}`, { credentials: 'omit' })).json(), md = j.metadata || {}, files = Array.isArray(j.files) ? j.files : [];
+      const tx = (v) => String(Array.isArray(v) ? v[0] : v || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      meta.textContent = [tx(md.year || md.date).slice(0, 10), tx(md.runtime).slice(0, 20), /publicdomain/i.test(tx(md.licenseurl)) || !tx(md.licenseurl) ? t('str.pd') : t('str.licensed')].filter(Boolean).join(' · '); desc.textContent = tx(md.description).slice(0, 420);
+      const rank = (f) => (/h\.264 hd/i.test(f.format) ? 4 : /h\.264/i.test(f.format) ? 3 : /mpeg4/i.test(f.format) ? 2 : /\.mp4$/i.test(f.name) ? 1 : 0);
+      file = files.filter((f) => f && typeof f.name === 'string' && rank(f) > 0 && !/\//.test(f.name)).sort((a, b) => rank(b) - rank(a) || (+b.size || 0) - (+a.size || 0))[0] || null;
+    } catch (e) { meta.textContent = t('str.offline'); return; }
+    if (!file) { meta.textContent = t('str.noVideo'); return; }
+    play.disabled = false; play.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); const url = `https://archive.org/download/${encodeURIComponent(id)}/${encodeURIComponent(file.name)}`;
+      this.shows.loadURL(url, name); if (this.hooks.playFilm({ own: true })) { this.hooks.toast(t('tab.starting', { title: name }), 2600); this.show('remote'); } });
   }
   // ---------------- my videos ----------------
   mine(B) {
