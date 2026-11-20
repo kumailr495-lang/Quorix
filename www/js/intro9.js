@@ -24,7 +24,12 @@ const SEAT_EYE = [0.07, 1.235, -0.6];   // leaning a little to the middle: you s
 // wheel's centre at y 0.97, z 0.56, its rim 0.185 m, leaning 23 degrees). The avatars stand 1.9 m with their hair: he is scaled to 1.67 m,
 // his hip 0.33 m behind the wheel, his back along the seat's 18 degrees, his head 5 cm under the lining; hands at ten to two on the rim
 const DRV = { x: -0.36, y: 0.30, z: 0.28, seat: 0.155, scale: 0.88, recline: 0.3, yaw: 0 };   // measured: hip at z 0.23, head top 1.36, upper back on the seat's back
-setGesture('drive', (t) => { const w = 0.004 * Math.sin(t * 0.9); return { L: [0.16, 0.77 + w, 0.559 - DRV.z], R: [-0.16, 0.77 - w, 0.559 - DRV.z], from: 'root' }; });
+// v14 (the user, 11-20: "the taxi guy's hands and steering don't even move"): the wheel turns with the taxi's turning (STEER.a, radians; set
+// by update from the heading's rate) and his hands go round with the rim: each hand's point (ten to two) turned about the column's axis
+// (cabin.py: the axis leans 23 degrees, engine frame (0, 0.39, -0.92); the hands' points sit 0.10 m over the hub, 0.16 m either side)
+const STEER = { a: 0, v: 0 }, W_AX = new THREE.Vector3(0, 0.39, -0.92).normalize(), _hv = new THREE.Vector3();
+const handAt = (sx, a, w) => { _hv.set(sx * 0.16, 0.10, 0.039).applyAxisAngle(W_AX, a); return [_hv.x, 0.67 + _hv.y + w, 0.559 - DRV.z - 0.039 + _hv.z]; };
+setGesture('drive', (t) => { const w = 0.004 * Math.sin(t * 0.9), a = Math.max(-1.1, Math.min(1.1, STEER.a)); return { L: handAt(1, a, w), R: handAt(-1, a, -w), from: 'root' }; });
 const NIGHT = [0.17, 0.15, 0.13];   // the cabin's own glow at night (the dash, the meter); the street light comes in through the glass
 const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 function cabin() {
@@ -129,7 +134,11 @@ export class Intro {
     this.mesh = m; this.room = room; this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._up = new THREE.Vector3(0, 1, 0); this._H = [0, 0, 0]; this._F = [0, 0, 0];
     // the cabin (drawn only while you ride): its lit parts as one instance, its screens as a glow mesh, two wiper blades
     // v11: the modelled cabin (tools/blender/cabin.py, a real driver beside it); the box-built cabin only if that model failed to load
-    const ca = assetGeometry('taxi_cabin', 0, null, toGeometry, Acc); this.modelled = !!ca;
+    const WHEEL = /^(Rim|Spoke|Hub)/, ca = assetGeometry('taxi_cabin', 0, null, toGeometry, Acc, null, (n) => !WHEEL.test(n)); this.modelled = !!ca;
+    // v14 the steering wheel apart from the cabin, its pivot (the hub, cabin.py C) at its origin, so it can turn on its column
+    const wg = ca && assetGeometry('taxi_cabin', 0, new THREE.Matrix4().makeTranslation(0.36, -0.97, -0.56), toGeometry, Acc, null, (n) => WHEEL.test(n));
+    if (wg) { this.wheel = new THREE.InstancedMesh(inst(wg), mats.litFor(room.U, wg, true), 1); this.wheel.frustumCulled = false; this.wheel.visible = false; this.wheel.name = 'taxi-wheel'; room.group.add(this.wheel); }
+    this._wm = new THREE.Matrix4(); this._wq = new THREE.Quaternion(); this._hPrev = null;
     const cg = inst(ca || cabin()); this.cab = new THREE.InstancedMesh(cg, mats.litFor(room.U, cg, true), 1); this.cab.frustumCulled = false; this.cab.visible = false; this.cab.name = 'taxi-cabin'; room.group.add(this.cab);
     this.rig = new THREE.Group(); this.rig.matrixAutoUpdate = false; this.rig.visible = false; room.group.add(this.rig);
     const gl = new THREE.Mesh(cabinGlow(), mats.glowMat(room.U)); gl.frustumCulled = false; this.rig.add(gl);
@@ -176,6 +185,10 @@ export class Intro {
     this._q.setFromAxisAngle(this._up, yaw); this._m.compose(new THREE.Vector3(x, ROAD_Y, z), this._q, new THREE.Vector3(1, 1, 1)); this.mesh.setMatrixAt(0, this._m); this.mesh.instanceMatrix.needsUpdate = true;
     const L = this.room.lights, G = this.mesh.geometry.attributes; L.at(x, 0.9, z, 0, 1, 0, this._H, this._F); carFloor(this._H); G.iLh.array.set(this._H); G.iLf.array.set(this._F); G.iLh.needsUpdate = G.iLf.needsUpdate = true;
     if (this.inCar) { this.cab.setMatrixAt(0, this._m); this.cab.instanceMatrix.needsUpdate = true; this.rig.matrix.copy(this._m); this.rig.matrixWorldNeedsUpdate = true;
+      { const dt = this._dt || 0.016, dh = this._hPrev == null ? 0 : Math.atan2(Math.sin(yaw - this._hPrev), Math.cos(yaw - this._hPrev)); this._hPrev = yaw;   // the wheel: about 2.4 turns of the heading's rate, eased
+        const want = Math.max(-2.4, Math.min(2.4, (dh / Math.max(dt, 1e-3)) * 2.4)); STEER.v += (want - STEER.a) * Math.min(1, dt * 4) - STEER.v * Math.min(1, dt * 6); STEER.a += STEER.v * Math.min(1, dt * 10);
+        if (this.wheel) { this._wq.setFromAxisAngle(W_AX, STEER.a); this._wm.compose(new THREE.Vector3(-0.36, 0.97, 0.56), this._wq, new THREE.Vector3(1, 1, 1)).premultiply(this._m); this.wheel.setMatrixAt(0, this._wm); this.wheel.instanceMatrix.needsUpdate = true;
+          const WA = this.wheel.geometry.attributes, CA = this.cab.geometry.attributes; WA.iLh.array.set(CA.iLh.array); WA.iLf.array.set(CA.iLf.array); WA.iLs.array.set(CA.iLs.array); WA.iLh.needsUpdate = WA.iLf.needsUpdate = WA.iLs.needsUpdate = true; } }
       // v11 night: the street's light through the glass (dimmer, it comes in sideways), the cabin's own low glow, and the light of the
       // nearest street lamp or sign sliding through the cabin as you pass it (iLs with the street's screen-light uniforms)
       const C = this.cab.geometry.attributes, S = this._sweep(x, z, this._dt || 0.016), U = this.room.U;
@@ -185,7 +198,7 @@ export class Intro {
   }
   // in the cabin or out of it: the cabin and the taxi's outside are never drawn together
   _ride(on) {
-    this.inCar = on; this.cab.visible = on; this.rig.visible = on; this.mesh.visible = !on;
+    this.inCar = on; this.cab.visible = on; this.rig.visible = on; this.mesh.visible = !on; if (this.wheel) this.wheel.visible = on; this._hPrev = null;
     if (!on) { const U = this.room.U, o = this._u0; U.uScreen.value.copy(o.s); U.uScreenD.value.copy(o.d); U.uScreenX.value.copy(o.x); U.uScreenN.value.copy(o.n); }
   }
   start(o = {}) {

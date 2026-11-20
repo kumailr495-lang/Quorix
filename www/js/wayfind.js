@@ -11,9 +11,12 @@ export class Wayfinder {
   // the nav node to start from: the nearest one on your level that you can see
   near(p) { let best = null, bd = 1e9; for (const k in N) { const n = N[k]; if (Math.abs(n[1] - p.y) > 1.3) continue; const d = Math.hypot(n[0] - p.x, n[2] - p.z); if (d < bd && (d < 1.2 || this.world.walls.sees(p.x, p.z, n[0], n[2], p.y + 0.5, p.y + 1.7))) { bd = d; best = k; } } return best; }
   route(p, to, extra = []) { const from = this.near(p); if (!from) return null; const path = from === to ? [to] : navPath(from, to); if (!path) return null; return [...path.map(P), ...extra]; }
+  // v14 the way to a hall's entrance (a cleaning shift): up the escalator first from the ground floor
+  toHall(p, h) { const H = h.cfg, side = SIDE(H), door = DOORS.find((d) => d.id === H.id + 'In'), end = door ? [{ x: door.x, y: L1, z: door.z }] : []; return p.y < 2 ? this.route(p, 'escBot') : this.route(p, side[side.length - 1], end); }
   // what the player should do now: { key, vars, pts } or null
   plan(st) {
     const { game, ticket: tk, room: r, player: p } = st; if (!r || p.seated) return null; const has = tk && tk.title !== undefined && tk.seat, up = p.y > 2;
+    if (st.job) { const g = st.job(this, p); if (g && g.pts && g.pts.length) return g; }   // v14 a shift you accepted (career.js Jobs.goal)
     if (game === 'flow' && !has) return r === 'street' ? { key: 'goal.enter', pts: this.route(p, 'doorIn') } : r === 'lobby' && !up ? { key: 'goal.ticket', pts: this.route(p, 'boxQ') } : null;
     if (!has) return null;
     const h = this.world.hallById(tk.hall); if (!h) return null; const H = h.cfg;

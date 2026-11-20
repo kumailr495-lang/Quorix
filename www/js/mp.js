@@ -37,9 +37,18 @@ export class Multi {
       if (this.host && this.lastShow && (!this.hooks.live || this.hooks.live(this.lastShow))) this.sShow(this.lastShow, id);   // a show still on: the newcomer joins it
       this.hooks.onCount && this.hooks.onCount(this.count);
     });
-    const sState = act('st', (s, id) => { const p = this.peers.get(id); if (!p || !s || typeof s !== 'object') return;
-      p.st = { x: num(s.x), y: num(s.y), z: num(s.z), yaw: num(s.yaw), sit: clip(num(s.sit), 0, 1), seat: s.seat ? String(s.seat).slice(0, 24) : null, room: String(s.room || '').slice(0, 16), v: clip(num(s.v), 0, 6) }; p.at = performance.now();
-      this.hooks.onState && this.hooks.onState(p); });
+    // v14 (the user, 11-20: "make the multiplayer work better performance-wise"): a player's state is five integers (cm, milliradians, sit +
+    // speed), sent only when it changed (at most 12.5 a second) with a heartbeat each second when still; the seat and room ('mt') go only
+    // when they change (and every 30th packet). Each arrival is kept with its time, so mpui.js draws the others 110 ms in the past,
+    // between two real positions, instead of chasing the last one (no jitter when packets bunch up). The old object form is still read.
+    const sState = act('st', (s, id) => { const p = this.peers.get(id); if (!p || !s || typeof s !== 'object') return; let st;
+      if (Array.isArray(s)) { if (s.length < 5) return; const f = Math.round(num(s[4])); st = { x: clip(num(s[0]) / 100, -900, 900), y: clip(num(s[1]) / 100, -60, 60), z: clip(num(s[2]) / 100, -900, 900), yaw: clip(num(s[3]) / 1000, -100, 100), sit: f & 1, v: clip((f >> 1) / 10, 0, 6) }; }
+      else st = { x: clip(num(s.x), -900, 900), y: clip(num(s.y), -60, 60), z: clip(num(s.z), -900, 900), yaw: num(s.yaw), sit: clip(num(s.sit), 0, 1), v: clip(num(s.v), 0, 6), seat: s.seat ? String(s.seat).slice(0, 24) : null, room: String(s.room || '').slice(0, 16) };
+      if (p.meta && Array.isArray(s)) { st.seat = p.meta.seat; st.room = p.meta.room; }
+      const now = performance.now(), S = p.snaps || (p.snaps = []); S.push({ t: now, x: st.x, y: st.y, z: st.z, yaw: st.yaw }); if (S.length > 8) S.shift();
+      p.st = st; p.at = now; this.hooks.onState && this.hooks.onState(p); });
+    const sMeta = act('mt', (m, id) => { const p = this.peers.get(id); if (!p || !m || typeof m !== 'object') return;
+      p.meta = { seat: m.seat ? String(m.seat).slice(0, 24) : null, room: String(m.room || '').slice(0, 16) }; if (p.st) { p.st.seat = p.meta.seat; p.st.room = p.meta.room; } });
     const sShow = act('show', (s, id) => { if (!s || typeof s !== 'object') return; const p = this.peers.get(id); if (!p) { this.early = { s, id }; return; } this.takeShow(s, p); });
     const sChat = act('chat', (m, id) => { const p = this.peers.get(id); if (p && this.hooks.onChat) this.hooks.onChat(p, String(m || '').slice(0, 140)); });
     // the host hands the role to another player: the new term, and the current show's start as time from now (each phone's own clock)
@@ -52,8 +61,8 @@ export class Multi {
     // an order: the cinema has one server, who serves every seat that called him in turn
     const sOrder = act('order', (o, id) => { const p = this.peers.get(id); if (p && o && typeof o === 'object' && this.hooks.onOrder) this.hooks.onOrder(p, String(o.seat || '').slice(0, 40)); });
     const sEmote = act('emote', (e, id) => { const p = this.peers.get(id); if (p && this.hooks.onEmote) this.hooks.onEmote(p, String(e || '').slice(0, 12)); });
-    Object.assign(this, { sHello, sState, sShow, sChat, sEmote, sHost, sCtl, sOrder });
-    room.onPeerJoin = (id) => { sHello(this.hello(), id); this.hooks.onCount && this.hooks.onCount(this.count); };
+    Object.assign(this, { sHello, sState, sMeta, sShow, sChat, sEmote, sHost, sCtl, sOrder });
+    room.onPeerJoin = (id) => { sHello(this.hello(), id); if (this._metaObj) sMeta(this._metaObj, id); this._q = null; this.hooks.onCount && this.hooks.onCount(this.count); };
     room.onPeerLeave = (id) => { const p = this.peers.get(id); this.peers.delete(id); if (p && this.hooks.onLeave) this.hooks.onLeave(p); this.elect(); this.hooks.onCount && this.hooks.onCount(this.count); };
     this.hooks.onCount && this.hooks.onCount(this.count);
   }
@@ -67,8 +76,18 @@ export class Multi {
   }
   // per frame: my player, at most ten times a second (each phone sends only its own: the load is shared by everyone in the room)
   tick(dt, s) {
-    if (!this.room) return; this.t += dt; if (this.t < 0.1) return; this.t = 0;
-    this.sState({ x: +s.x.toFixed(2), y: +s.y.toFixed(2), z: +s.z.toFixed(2), yaw: +s.yaw.toFixed(2), sit: +(s.sit || 0).toFixed(2), seat: s.seat || null, room: s.room || '', v: +(s.v || 0).toFixed(2) });
+    if (!this.room) return; this.t += dt; this.hb = (this.hb || 0) + dt;
+    const q = [Math.round(s.x * 100), Math.round(s.y * 100), Math.round(s.z * 100), Math.round(s.yaw * 1000), ((s.sit || 0) > 0.5 ? 1 : 0) + 2 * Math.round(clip(s.v || 0, 0, 6) * 10)], L = this._q;
+    const moved = !L || Math.abs(q[0] - L[0]) > 2 || Math.abs(q[1] - L[1]) > 2 || Math.abs(q[2] - L[2]) > 2 || Math.abs(q[3] - L[3]) > 15 || q[4] !== L[4];
+    if (this.t < 0.08 || (!moved && this.hb < 1)) return;
+    this.t = 0; this.hb = 0; this._q = q; this.sState(q); this.sent = (this.sent || 0) + 1;
+    const mk = (s.seat || '') + '|' + (s.room || ''); if (mk !== this._meta || this.sent % 30 === 0) { this._meta = mk; this._metaObj = { seat: s.seat || null, room: s.room || '' }; this.sMeta(this._metaObj); }
+  }
+  // v14 a peer's position as of 110 ms ago, between the two packets either side of that moment (the newest one if packets stopped)
+  sample(p, now = performance.now()) {
+    const S = p.snaps; if (!S || !S.length) return p.st; const tt = now - 110; let b = S.length - 1; if (S[b].t <= tt || S.length < 2) return S[b];
+    while (b > 0 && S[b - 1].t > tt) b--; if (b === 0) return S[0]; const a = S[b - 1], B = S[b], k = (tt - a.t) / Math.max(1, B.t - a.t), dy = Math.atan2(Math.sin(B.yaw - a.yaw), Math.cos(B.yaw - a.yaw));
+    const o = this._smp || (this._smp = {}); o.x = a.x + (B.x - a.x) * k; o.y = a.y + (B.y - a.y) * k; o.z = a.z + (B.z - a.z) * k; o.yaw = a.yaw + dy * k; return o;
   }
   // the host's show: { hall, film (house film id) | link (a YouTube link), title, startAt (host clock ms) }; guests start it in step
   show(s) { if (!this.room || !this.host) return; this.lastShow = s; this.sShow(s); }

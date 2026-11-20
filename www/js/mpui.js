@@ -4,7 +4,7 @@
 // host's shows started on every phone at the same moment. mp.js carries the messages.
 import * as THREE from 'three';
 import { Multi, newCode, cleanCode } from './mp.js';
-import { RB, Person, LOOK, cleanLook, applyLook } from './people.js';
+import { RB, Person, LOOK, LOOK_SHOP, cleanLook, applyLook } from './people.js';
 import { filmById } from './films.js';
 import { t } from './i18n.js';
 
@@ -25,7 +25,7 @@ export class Together {
   constructor(ctx) {
     this.c = ctx; this.remotes = new Map(); this.tags = new Map(); this._v = new THREE.Vector3(); this.last = { x: 0, z: 0 }; this.speed = 0;
     this.mp = new Multi({ onJoin: (p) => this.join_(p), onLeave: (p) => this.leave_(p), onState: () => {}, onShow: (s, p) => this.applyShow(s, p), onChat: (p, m) => this.chat_(p, m),
-      onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.note(t('mp.newHost')); this.badge(); },
+      onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); if (a && e === 'dance') a.danceUntil = performance.now() + 6000; }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.note(t('mp.newHost')); this.badge(); },
       onCtl: (c, p) => this.applyCtl(c, p), onOrder: (p, key) => { const f = this.seatByKey(key); if (f && this.c.order) this.c.order(f.s, p.name); } });
     this.log = []; this.unread = 0;
     // the menu button, after Quick play
@@ -46,7 +46,8 @@ export class Together {
       b.addEventListener('click', () => { S.mpAvatar = n; for (const x of grid.children) x.classList.toggle('on', x === b); this.previewSet(); this.c.save(); }); grid.appendChild(b); }
     // the look: outfit and hair colour swatches (the first keeps the photo's own colours) and a height slider, shown live on the preview
     const swatches = (id, list, key) => { const row = el('div', { cls: 'mpSw', id });
-      list.forEach((hex, i) => { const b = el('button', { cls: (i === look[key] ? 'on ' : '') + (hex ? '' : 'orig'), 'aria-label': hex ? hex : t('mp.asPhoto') }); if (hex) b.style.background = hex;
+      list.forEach((hex, i) => { if (key === 'o' && LOOK_SHOP[i] && !(this.c.owns && this.c.owns(LOOK_SHOP[i]))) return;   // v14 shop outfits show once bought
+        const b = el('button', { cls: (i === look[key] ? 'on ' : '') + (hex ? '' : 'orig'), 'aria-label': hex ? hex : t('mp.asPhoto') }); if (hex) b.style.background = hex;
         b.addEventListener('click', () => { look[key] = i; for (const x of row.children) x.classList.toggle('on', x === b); this.previewSet(); this.c.save(); }); row.appendChild(b); });
       return row; };
     const size = el('input', { id: 'mpSize', type: 'range', min: '0', max: String(LOOK.height.length - 1), step: '1', value: String(look.s) });
@@ -105,6 +106,7 @@ export class Together {
   go(code, profile, asHost, status) {
     status.textContent = t('mp.connecting');
     try { this.mp.start(code, profile, asHost); } catch (e) { console.warn('[mp]', e); status.textContent = t('mp.failed'); return; }
+    this.c.ev && this.c.ev('mpJoin');
     status.textContent = asHost ? t('mp.waiting', { code }) : t('mp.badge', { code, n: this.mp.count });
     this.badge(); this.list();
     if (!asHost) setTimeout(() => { if (this.active && this.mp.peers.size === 0 && this.panel) status.textContent = t('mp.failed'); }, 20000);
@@ -122,7 +124,8 @@ export class Together {
       const chatB = this.chatB = btn('chat', t('mp.chatB')); chatB.appendChild(el('i', { cls: 'dot' })); chatB.addEventListener('click', () => this.chatBox());
       const namesB = this.namesB = btn('tag', t('mp.names')); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
       this.bar = el('div', { id: 'mpBar' }, [chatB, namesB]);
-      for (const [e, ic] of [['wave', 'wave'], ['clap', 'clap'], ['cheer', 'party']]) { const b = btn(ic, t('mp.emote.' + e)); b.addEventListener('click', () => { this.mp.emote(e); this.c.sound && this.c.sound.click(); b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300); }); this.bar.appendChild(b); }
+      // v14 the dance is bought in the shop (career.js SHOP emote_dance): it plays the avatars' own Dance_Loop clip on every phone
+      for (const [e, ic] of [['wave', 'wave'], ['clap', 'clap'], ['cheer', 'party'], ['dance', 'party']]) { if (e === 'dance' && !(this.c.owns && this.c.owns('emote_dance'))) continue; const b = btn(ic, t('mp.emote.' + e)); b.addEventListener('click', () => { this.mp.emote(e); this.c.ev && this.c.ev('emote'); this.c.sound && this.c.sound.click(); b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300); }); this.bar.appendChild(b); }
       const hud = document.querySelector('#hudTL') || document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
     }
     this.bdg.classList.toggle('host', this.mp.host); this.bdg.querySelector('span').textContent = t('mp.badge', { code: this.mp.code, n: this.mp.count }); this.list();
@@ -132,7 +135,7 @@ export class Together {
     if (this.chatEl) { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); return; }
     const inp = el('input', { maxlength: '140', placeholder: t('mp.chatPh'), autocomplete: 'off' }), send = el('button', { cls: 'btn primary', 'aria-label': t('mp.send') }), logEl = el('div', { cls: 'mpLog' });
     const close = () => { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); };
-    const go = () => { const m = inp.value.trim(); if (m) { this.mp.chat(m); this.addLog(this.mp.me.name, m, true); } inp.value = ''; this.renderLog(); };
+    const go = () => { const m = inp.value.trim(); if (m) { this.mp.chat(m); this.addLog(this.mp.me.name, m, true); this.c.ev && this.c.ev('chat'); } inp.value = ''; this.renderLog(); };
     send.addEventListener('click', go); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); });
     send.innerHTML = '<svg class="ic"><use href="#i-send"/></svg>'; const head = el('div', { cls: 'mpChatHead' }, [el('b', { text: t('mp.chatB') }), el('button', { cls: 'icon x', 'aria-label': t('mp.close') })]); head.lastChild.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>'; head.lastChild.addEventListener('click', () => close());
     this.chatEl = el('div', { id: 'mpChat' }, [head, logEl, el('div', { cls: 'mpIn' }, [inp, send])]); document.body.appendChild(this.chatEl); this.c.onModal(true);
@@ -166,7 +169,9 @@ export class Together {
         if (a.viewer) { const s = a.viewer.seat; a.x = s.x; a.y = s.y; a.z = s.z; a.yaw = s.yaw + Math.PI; a.sit = Math.min(1, (a.sit || 0) + dt * 1.5); a.remoteWalk = 0; } }
       else { if (a.viewer) { this.freeSeat(a); a.sit = 0; }
         // their camera yaw faces -z at 0; a person faces +z at 0
-        a.x += (st.x - a.x) * k; a.y += (st.y - a.y) * k; a.z += (st.z - a.z) * k; const want = st.yaw + Math.PI; a.yaw += Math.atan2(Math.sin(want - a.yaw), Math.cos(want - a.yaw)) * k; a.remoteWalk = st.v > 0.25 ? st.v : 0; }
+        const sp = this.mp.sample(p), jump = Math.hypot(sp.x - a.x, sp.z - a.z) > 6;   // v14 interpolated (mp.js sample); a long jump (a lift, a fast exit) snaps
+        if (jump) { a.x = sp.x; a.y = sp.y; a.z = sp.z; } else { a.x += (sp.x - a.x) * Math.min(1, dt * 18); a.y += (sp.y - a.y) * Math.min(1, dt * 18); a.z += (sp.z - a.z) * Math.min(1, dt * 18); }
+        const want = sp.yaw + Math.PI; a.yaw += Math.atan2(Math.sin(want - a.yaw), Math.cos(want - a.yaw)) * Math.min(1, dt * 14); a.remoteWalk = st.v > 0.25 ? st.v : 0; }
       // v14 (the user, 11-20: "there's no difference between the player and the NPCs"): a player stands in a soft gold ring; NPCs never do
       if (a.ch && !a.ring) { const rg = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.46, 40), new THREE.MeshBasicMaterial({ color: p && p.host ? 0x7fd2ff : 0xe3b25f, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
         rg.rotation.x = -Math.PI / 2; rg.renderOrder = 3; a.ring = rg; this.c.engine.scene.add(rg); }
@@ -174,7 +179,8 @@ export class Together {
       if (!tag) continue; const vis = a.ch && a.ch.group.visible && this.c.settings.mpNames !== false; if (!vis) { tag.style.display = 'none'; continue; }
       this._v.set(a.x, a.y + (a.viewer ? 1.45 : 2.0), a.z).project(cam); const near = Math.hypot(a.x - cam.position.x, a.z - cam.position.z) < 22;
       if (this._v.z > 1 || !near) { tag.style.display = 'none'; continue; }
-      tag.style.display = ''; tag.style.left = ((this._v.x + 1) / 2 * W).toFixed(0) + 'px'; tag.style.top = ((1 - this._v.y) / 2 * H).toFixed(0) + 'px'; tag.classList.toggle('host', !!p.host);
+      if (tag.style.display) tag.style.display = ''; tag.style.transform = `translate3d(${((this._v.x + 1) / 2 * W).toFixed(0)}px,${((1 - this._v.y) / 2 * H).toFixed(0)}px,0) translate(-50%,-100%)`;   // v14 compositor only (left/top re-laid out the page every frame)
+      if (tag._host !== !!p.host) { tag._host = !!p.host; tag.classList.toggle('host', tag._host); }
     }
   }
   // ---------------------------------------------------------------- the film's controls belong to the host (the user: "only the host has

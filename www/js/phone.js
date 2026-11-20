@@ -11,11 +11,14 @@
 //   Settings the settings
 // Nothing here pretends: an app shows what exists or says plainly that it is empty.
 import { t } from './i18n.js';
+import { SHOP } from './career.js';
+import { DAILY_CAP } from './credits.js';
 import { ROOMS, BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E } from './building.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const icon = (id) => `<svg class="ic"><use href="#${id}"/></svg>`;
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('lumiere.' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('lumiere.' + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
-const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['tab', 'i-cash'], ['camera', 'i-camera'], ['photos', 'i-image'], ['stubs', 'i-film'], ['friends', 'i-people'], ['settings', 'i-gear']];
+// v14 Wallet (Lumiere Credits, credits.js), Jobs, Tasks and Shop (career.js) join the apps; the old Tab is the wallet's history now
+const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
 const two = (n) => String(n).padStart(2, '0');
 const LINE = { ticket: 'phone.line.ticket', tablet: 'phone.line.tablet', salted: 'opt9.salted', caramel: 'opt9.caramel', cheese: 'opt9.cheese', nachos: 'opt9.nachos', cola: 'opt9.drink', coffee: 'opt9.coffee', water: 'item.water', combo: 'opt9.combo' };
 export class Phone {
@@ -45,7 +48,7 @@ export class Phone {
     const top = el('div', 'ph-time'); top.appendChild(el('b', null, '')).id = 'phBig';
     top.appendChild(el('small', null, d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }))); B.appendChild(top);
     const w = el('div', 'ph-widgets'), next = el('button', 'ph-wg next'); next.id = 'phNext'; next.addEventListener('click', (e) => { e.stopPropagation(); this.show('ticket'); }); w.appendChild(next);
-    const tab = el('button', 'ph-wg tab'); tab.innerHTML = `${icon('i-cash')}<b>${this.h.bill.fmt(this.h.bill.total || 0)}</b><small>${t('phone.tonight')}</small>`; tab.addEventListener('click', (e) => { e.stopPropagation(); this.show('tab'); }); w.appendChild(tab);
+    const C = this.h.credits, tab = el('button', 'ph-wg tab'); tab.innerHTML = `${icon('i-cash')}<b>${C.fmt(C.bal)}</b><small>${t('wallet.today', { n: C.earnedToday })}</small>`; tab.addEventListener('click', (e) => { e.stopPropagation(); this.show('wallet'); }); w.appendChild(tab);
     B.appendChild(w); this.nextShow(next);
     // v14 (the user, 11-20: "the phone UI is so bad"; their reference: a frosted phone with colourful icons and a dock): four apps on the
     // page, four in the dock, each icon its own colour
@@ -88,10 +91,36 @@ export class Phone {
     const leg = el('div', 'ph-legend'); leg.innerHTML = `<span><i class="you"></i>${t('phone.you')}</span>` + (tk ? `<span><i class="hall"></i>${tk.hallName.replace('LUMIERE ', '')}</span>` : ''); C.appendChild(leg);
     if (tk) { const r = el('div', 'ph-row'); this.btn(r, t('phone.guideMe'), 'primary', () => { this.h.guide(); this.h.toast(t('phone.guiding'), 2200); this.close(); }); C.appendChild(r); }
   }
-  app_tab(C) {
-    const b = this.h.bill; if (b.unlimited || !b.lines.length) { this.empty(C, t('phone.tabEmpty'), b.unlimited ? t('phone.tabQuick') : null); return; }
-    const list = el('div', 'ph-list'); for (const l of b.lines.slice().reverse()) { const r = el('div', 'ph-li'); r.append(el('span', null, LINE[l.what] ? t(LINE[l.what]) : String(l.what)), el('b', null, b.fmt(l.n))); list.appendChild(r); }
-    C.appendChild(list); const tot = el('div', 'ph-li total'); tot.append(el('span', null, t('phone.total')), el('b', null, b.fmt(b.total))); C.appendChild(tot);
+  // v14 the wallet: your Lumiere Credits, what you earned today against the day's cap, every payment in and out
+  app_wallet(C) {
+    const W = this.h.credits, top = el('div', 'ph-bal'); top.append(el('small', null, t('wallet.balance')), el('b', null, W.fmt(W.bal)));
+    const cap = el('div', 'ph-cap'), bar = el('i'); bar.style.transform = `scaleX(${Math.min(1, W.earnedToday / DAILY_CAP).toFixed(3)})`; cap.append(el('small', null, t('wallet.cap', { n: W.earnedToday, cap: DAILY_CAP })), bar); top.appendChild(cap); C.appendChild(top);
+    if (W.restored) C.appendChild(el('p', 'note', t('wallet.restored')));
+    const list = el('div', 'ph-list'); for (const h of W.history().slice(0, 40)) { const r = el('div', 'ph-li ' + (h.n >= 0 ? 'in' : 'out')); const a = el('div'); a.append(el('span', null, this.why(h.why)), el('small', null, new Date(h.t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))); r.append(a, el('b', null, (h.n >= 0 ? '+' : '−') + W.fmt(Math.abs(h.n)))); list.appendChild(r); }
+    C.appendChild(list);
+  }
+  why(w) { const [k, a] = String(w).split(':'); if (LINE[k]) return t(LINE[k]); if (k === 'film' || k === 'filmEnd') return t('wallet.why.' + k); if (k === 'job') return t('wallet.why.job', { job: t('job.title.' + a) }); if (k === 'shop') return t('shop.' + a); if (['mission', 'task', 'welcome', 'tablet', 'ticket'].includes(k)) return t('wallet.why.' + k); return String(w); }
+  // jobs: three shifts; taking one shows the way there (career.js Jobs)
+  app_jobs(C) {
+    const J = this.h.jobs(); if (J.active) { const k = J.job.kind, card = el('div', 'ph-job on'); card.append(el('b', null, t('job.title.' + k)), el('small', null, t('job.active'))); C.appendChild(card); const r = el('div', 'ph-row'); this.btn(r, t('job.cancel'), 'ghost', () => { J.cancel(); this.show('jobs'); }); C.appendChild(r); return; }
+    for (const k of ['counter', 'gate', 'clean']) { const card = el('div', 'ph-job'); card.append(el('b', null, t('job.title.' + k)), el('small', null, t('job.desc.' + k)), el('em', null, t('job.pay.' + k)));
+      const b = el('button', 'btn primary sm', t('job.take')); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); if (J.accept(k)) this.close(); }); card.appendChild(b); C.appendChild(card); }
+  }
+  // tasks: the mission you are on and the day's three tasks
+  app_tasks(C) {
+    const K = this.h.career(), m = K.mission(), bar = (got, need) => { const i = el('i', 'ph-bar'), f = el('b'); f.style.transform = `scaleX(${Math.min(1, got / need).toFixed(3)})`; i.appendChild(f); return i; };
+    if (m) { const c = el('div', 'ph-mission'); c.append(el('small', null, t('job.missionN', { n: m.step + 1, of: m.of })), el('b', null, m.name), el('span', null, m.text), bar(m.got, m.need), el('em', null, `+${m.rew} LC`)); C.appendChild(c); }
+    else C.appendChild(el('p', 'note', t('job.allMissions')));
+    C.appendChild(el('h4', 'ph-sub', t('job.daily')));
+    for (const k of K.tasks()) { const c = el('div', 'ph-task' + (k.done ? ' done' : '')); c.append(el('span', null, k.text), bar(k.got, k.n), el('em', null, k.done ? t('job.doneMark') : `+${k.r} LC`)); C.appendChild(c); }
+  }
+  // the shop: emotes, outfit colours, theatre themes, passes
+  app_shop(C) {
+    const W = this.h.credits; C.appendChild(el('p', 'ph-shopbal', W.fmt(W.bal)));
+    for (const it of SHOP) { const own = !it.consumable && W.owns(it.id), c = el('div', 'ph-shop' + (own ? ' own' : '')); c.append(el('b', null, t('shop.' + it.id)), el('small', null, t('shop.d.' + it.id)));
+      const b = el('button', 'btn sm ' + (own ? 'ghost' : 'primary'), own ? t('shop.owned') : it.consumable && W.count(it.id) ? t('shop.buyMore', { n: W.count(it.id), price: it.price }) : t('shop.buy', { price: it.price })); b.disabled = own;
+      b.addEventListener('click', (e) => { e.stopPropagation(); if (own) return; if (!W.buy(it.id, it.price, !!it.consumable)) { this.h.toast(t('lc.short', { price: W.fmt(it.price) }), 2600, 'error'); return; } this.h.sound.pay ? this.h.sound.pay() : this.h.sound.click(); this.h.toast(t('shop.bought', { item: t('shop.' + it.id) }), 2400); this.show('shop'); });
+      c.appendChild(b); C.appendChild(c); }
   }
   app_camera(C) {
     const frame = el('div', 'ph-viewfinder'); frame.appendChild(el('small', null, t('phone.camHint'))); C.appendChild(frame);   // the screen is see-through here: the view behind it is the picture

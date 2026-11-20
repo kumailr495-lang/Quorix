@@ -247,9 +247,9 @@ export class Crowd {
   // ---------------------------------------------------------- the seat bell: the server comes with his cart and the tablet
   // v10 (the user: "only one server, and if anyone else calls it he is the next in queue"): one server for every seat; a call while he
   // is out joins the queue and he takes the next one as soon as he is back at his post. Returns true (coming), 'queued' or false
-  callServer(seat, onArrive) {
+  callServer(seat, onArrive, first = false) {   // v14 first: a waiter priority pass (credits.js shop) puts this seat at the head of the queue
     const s = this.staff.server; if (!s) return false; this.srvQ = this.srvQ || []; const arrive = () => { s.state = 'serving'; s.job = seat; onArrive && onArrive(s); };
-    if (s.job && s.job !== seat && s.state !== 'post') { if (!this.srvQ.some((j) => j.seat === seat)) this.srvQ.push({ seat, onArrive }); return 'queued'; }
+    if (s.job && s.job !== seat && s.state !== 'post') { if (!this.srvQ.some((j) => j.seat === seat)) this.srvQ[first ? 'unshift' : 'push']({ seat, onArrive }); return 'queued'; }
     // rung while he walks away: he turns back along the way he came (v8: he ignored the bell once he had left)
     if (s.state === 'leaving' && s.cameBy) { s.say(pick('srv.recall')); const i = nearestOn(s.cameBy, s); s.go(s.cameBy.slice(i), arrive, { state: 'coming' }); return true; }
     if (s.state !== 'post') return s.state === 'serving' || s.state === 'coming';
@@ -310,7 +310,7 @@ export class Crowd {
       if (vis_ && d < (a.role === 'street' ? 60 : 38)) near.push([a, d]); else if (a.ch) a.ch.group.visible = false;
     }
     // the nearest few seated viewers are full people; everyone else seated is the GPU crowd
-    near.sort((p, q) => p[1] - q[1]); let skinned = 0; const cap = P.people + 6;
+    near.sort((p, q) => (p[0].role === 'remote' ? p[1] - 1e3 : p[1]) - (q[0].role === 'remote' ? q[1] - 1e3 : q[1])); let skinned = 0; const cap = P.people + 6;   // v14 real players first
     for (const [a, d] of near) { const seatedFar = a.viewer && a.viewer.state === 'seated' && (d > 7 || skinned >= P.people);
       if (seatedFar || skinned >= cap) { if (a.ch) a.ch.group.visible = false; if (a.viewer && a.viewer.state === 'seated' && a.ch && d > 9) { this.remove(a); a.viewer.agent = null; } continue; }
       const ch = a.ensure(); if (!ch) continue; skinned++; ch.group.visible = true; this.draw(a, dt, d, player); }
@@ -361,6 +361,7 @@ export class Crowd {
     const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < 9 ? 0 : d < 20 ? 1 : 2); ch.talking = a.talking || (this.now >= (a.talkFrom || 0) && this.now < a.talkUntil);
     if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; } else ch.s.sit = 0;
     ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;
+    if (a.danceUntil && performance.now() < a.danceUntil && !a.viewer) { ch.walkT = 0; ch.danceT = 1; } else ch.danceT = 0;   // v14 the dance emote (mpui.js)
     // where they look: the screen when seated in a hall; you, briefly, when you come close and they face you; ahead otherwise
     let ly = 0, lp = 0, amt = 0;
     if (a.viewer && a.sit > 0.5 && this.now < a.chatUntil && a.chatWith && a.chatWith.alive) { const o = a.chatWith; ly = clamp(adiff(Math.atan2(o.x - a.x, o.z - a.z), a.yaw), -1.2, 1.2); lp = 0.05; amt = 0.95; }

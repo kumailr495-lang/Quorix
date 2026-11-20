@@ -301,8 +301,10 @@ function poseLayers(rig, frame, g, gt, w, face) {
 // a player's own look (Play together): outfit colour, hair colour and height, each an index into these lists (0 = as photographed).
 // The dye keeps the photographed shading: non-skin texels of the body take the colour at their own brightness; hair cards and the dark
 // painted hair on the head take the hair colour (the eyes and mouth corner of the head texture are left alone)
-export const LOOK = { outfit: [null, '#151518', '#e9e5dd', '#9c1c26', '#1d2c50', '#1f4d31', '#b38b3a', '#4d2b6e', '#c4562a'], bottom: [null, '#151518', '#2b2f3a', '#1d2c50', '#3a2a1e', '#e9e5dd', '#55555b', '#5b1a22', '#6b5a3a'],
+// v14 the last three outfits are bought in the shop (career.js SHOP look_gold, look_crimson, look_ivory: LOOK_SHOP)
+export const LOOK = { outfit: [null, '#151518', '#e9e5dd', '#9c1c26', '#1d2c50', '#1f4d31', '#b38b3a', '#4d2b6e', '#c4562a', '#d4af37', '#6e0d1b', '#f1ece0'], bottom: [null, '#151518', '#2b2f3a', '#1d2c50', '#3a2a1e', '#e9e5dd', '#55555b', '#5b1a22', '#6b5a3a'],
   hair: [null, '#161210', '#4a2c1a', '#8c3c1f', '#c9a25c', '#a3a3a8', '#2c4fa3', '#b33a6e'], height: [0.93, 0.965, 1.0, 1.035, 1.07] };
+export const LOOK_SHOP = { 9: 'look_gold', 10: 'look_crimson', 11: 'look_ivory' };
 export const cleanLook = (l) => { const i = (v, n, d) => (Number.isInteger(v) && v >= 0 && v < n ? v : d); l = l && typeof l === 'object' ? l : {};
   return { o: i(l.o, LOOK.outfit.length, 0), b: i(l.b, LOOK.bottom.length, 0), h: i(l.h, LOOK.hair.length, 0), s: i(l.s, LOOK.height.length, 2) }; };
 export function applyLook(p, look) {
@@ -351,6 +353,7 @@ export class Person {
     if (s.sit > 0.01 && s.sit < 0.99) { if (this._lastSit != null) this._sitDir = s.sit > this._lastSit ? 1 : s.sit < this._lastSit ? -1 : this._sitDir; if (this._sitDir >= 0 || !this.K.clips.Sitting_Exit) this.play('Sitting_Enter', 0.25, s.sit); else this.play('Sitting_Exit', 0.25, 1 - s.sit); }
     else if (s.sit >= 0.99) this.play(this.talking ? 'Sitting_Talking_Loop' : 'Sitting_Idle_Loop', 0.35);
     else if (this.walkT > 0.05) { const name = this.items.item ? 'Walk_Carry_Loop' : this.staff ? 'Walk_Formal_Loop' : this.walkT > 2.2 ? 'Jog_Fwd_Loop' : 'Walk_Loop'; this.play(name, 0.25); const a = this.actions[name]; if (a) a.timeScale = clamp(this.walkT / (this.av ? this.walkRef : name === 'Jog_Fwd_Loop' ? 3.0 : 1.35), 0.55, 1.6); }
+    else if (this.danceT && this.K.clips.Dance_Loop) this.play('Dance_Loop', 0.3);   // v14 the dance emote
     else this.play(this.talking ? 'Idle_Talking_Loop' : this.gestT === 'phone' ? 'Idle_TalkingPhone_Loop' : this.gestT === 'fold' ? 'Idle_FoldArms_Loop' : this.idleKind, 0.35);
     this._lastSit = s.sit;
     this.mixer.update(dt); this.model.position.y = s.sit * (s.drop || 0); this.model.rotation.x = -s.sit * Math.max(0, (s.recline || 0.1) - 0.1) * 0.6;

@@ -85,6 +85,7 @@ export class Booking9 {
   }
   confirm() {
     const h = this.hall(), s = this.seatOk() && this.seat(); if (!s) { this.hooks.toast(t('toast.seatTaken'), 2600, 'error'); this.go(3); return; }
+    if (!this.quick && !this.bill.can(this.total())) { this.hooks.toast(t('lc.short', { price: this.bill.fmt(this.total()) }), 3200, 'error'); return; }   // v14 paid in Lumiere Credits
     if (!this.quick) { this.bill.pay(this.price(), 'ticket'); if (this.sel.tablet) this.bill.pay(TABLET, 'tablet'); }
     const c = h.cfg, src = this.sel.own ? this.shows.own : { kind: 'film', filmId: this.sel.film };
     const tk = { hall: c.id, hallKey: c.key, hallName: c.name, kind: c.format, src, title: this.title(), seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, cls: s.cls, delay: this.sel.mins * 60, price: this.price(), tablet: this.quick || this.sel.tablet, shown: false, checked: this.quick };

@@ -331,7 +331,7 @@ body.editing #stick,body.editing .round,body.editing .action{outline:2px dashed 
 #mpChat .mpLog{max-height:30vh;overflow:auto;font:500 13px/1.45 var(--font);color:var(--cream);padding:2px 4px 4px;touch-action:pan-y;user-select:text;-webkit-user-select:text}#mpChat .mpLog b{color:var(--brass);font-weight:600}
 #mpChat .mpLog .me b{color:var(--exit)}#mpChat .mpLog .sys{color:var(--dim);font-size:12px}#mpChat .mpIn{display:flex;gap:6px}
 #mpTags{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
-#mpTags b{position:absolute;transform:translate(-50%,-100%);padding:3px 8px;border-radius:4px;background:var(--plate-2);color:var(--cream);font:600 11px/1.2 var(--font);white-space:nowrap}
+#mpTags b{position:absolute;left:0;top:0;will-change:transform;transform:translate(-50%,-100%);padding:3px 8px;border-radius:4px;background:var(--plate-2);color:var(--cream);font:600 11px/1.2 var(--font);white-space:nowrap}
 #mpTags b.host::before{content:'★ ';color:var(--aisle)}
 /* ---- scripts without spaces between letters; right to left ---- */
 html[lang=hi] *,html[lang=ur] *{letter-spacing:0!important}
@@ -449,3 +449,49 @@ body.ph-cam::after{content:'';position:fixed;inset:calc(8px + var(--sat)) calc(8
 #prompt:not([hidden]){animation:promptIn .28s cubic-bezier(.2,.9,.3,1.2) both}
 @keyframes promptIn{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.scrim:not([hidden])>*,#prompt:not([hidden]){animation:none}}
+/* v14 Lumiere Credits, jobs, missions, tasks, shop (phone.js, career.js) */
+.ph-bal{display:flex;flex-direction:column;gap:2px;padding:10px 12px;margin:2px 0 8px;border-radius:14px;background:linear-gradient(135deg,rgba(227,178,95,.22),rgba(227,178,95,.06));border:1px solid rgba(227,178,95,.35)}
+.ph-bal>small{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.ph-bal>b{font:600 20px/1.15 var(--display,var(--font));color:var(--brass)}
+.ph-cap{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.ph-cap small{font-size:9px;color:var(--mute)}
+.ph-cap i,.ph-bar{display:block;height:4px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;transform-origin:left}
+.ph-cap i{background:var(--brass)}
+.ph-bar b{display:block;height:100%;background:var(--brass);transform-origin:left;transition:transform .5s var(--ease,ease)}
+.ph-li.in b{color:#7fd69a}.ph-li.out b{color:var(--cream)}
+.ph-li>div{display:flex;flex-direction:column;min-width:0}
+.ph-li>div small{font-size:8.5px;color:var(--mute)}
+.ph-job,.ph-mission,.ph-task,.ph-shop{display:flex;flex-direction:column;gap:3px;padding:9px 10px;margin-bottom:7px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.ph-job b,.ph-shop b,.ph-mission b{font-size:11.5px}
+.ph-job small,.ph-shop small,.ph-task span,.ph-mission span{font-size:9.5px;color:var(--dim);line-height:1.35}
+.ph-job em,.ph-mission em,.ph-task em{font-style:normal;font-size:9.5px;color:var(--brass)}
+.ph-job .btn,.ph-shop .btn{align-self:flex-start;margin-top:4px}
+.ph-job.on{border-color:rgba(227,178,95,.5)}
+.ph-mission{background:linear-gradient(135deg,rgba(94,28,42,.55),rgba(20,22,46,.5));border-color:rgba(227,178,95,.3)}
+.ph-mission small{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.ph-sub{margin:8px 2px 6px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.ph-task.done{opacity:.6}.ph-task.done em{color:#7fd69a}
+.ph-shopbal{margin:0 0 8px;text-align:right;font-weight:600;color:var(--brass)}
+.ph-shop.own{opacity:.75}
+/* the shifts: one sheet over the game, big targets, a clock bar */
+.job-panel{z-index:52}
+.job-box{width:min(560px,94vw);max-height:92vh;overflow:auto;padding:14px 16px calc(14px + var(--sab,0px));border-radius:var(--r-lg,18px);background:linear-gradient(180deg,rgba(26,22,30,.97),rgba(14,12,18,.97));border:1px solid rgba(227,178,95,.28);box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.job-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.job-head b{font:600 15px/1.2 var(--display,var(--font));color:var(--cream);flex:1}
+.job-prog{font-size:11px;color:var(--mute)}
+.job-who{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05)}
+.job-who b{font-size:12px;color:var(--brass)}.job-who span{font-size:14px;color:var(--cream)}
+.job-clock{display:block;height:4px;margin:8px 0;border-radius:3px;background:var(--brass);transform-origin:left;transition:transform .1s linear}
+.job-tray{display:flex;flex-wrap:wrap;gap:6px;min-height:34px;padding:6px;border-radius:10px;border:1px dashed rgba(255,255,255,.18);align-items:center}
+.job-tray small{font-size:11px;color:var(--mute)}
+.job-chip{padding:6px 10px;border-radius:999px;background:rgba(227,178,95,.18);color:var(--cream);font-size:12px;border:1px solid rgba(227,178,95,.4)}
+.job-menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;margin:10px 0}
+.job-item{min-height:46px;padding:8px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--cream);font-size:12.5px;transition:transform .14s cubic-bezier(.3,1.6,.5,1),background .2s}
+.job-item:active{transform:scale(.94);background:rgba(227,178,95,.2)}
+.job-row{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+.job-now{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:12px;background:rgba(94,28,42,.45);margin-bottom:10px}
+.job-now small{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}.job-now b{font-size:13px;color:var(--cream)}
+.job-ticket{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-radius:12px;background:#f2ebdd;color:#1b1814;position:relative;margin-bottom:10px}
+.job-ticket small{font-size:10px;color:#6b5f52}.job-ticket b{font:600 16px/1.2 var(--display,var(--font))}.job-ticket span{font-size:12.5px}.job-ticket em{font-style:normal;font-size:12px;color:#5a4a3a}
+.job-ticket.torn{clip-path:polygon(0 0,100% 0,100% 72%,94% 78%,88% 70%,80% 80%,72% 71%,64% 79%,56% 70%,48% 80%,40% 71%,32% 79%,24% 70%,16% 80%,8% 71%,0 78%)}
+.job-item b,.job-chip{display:block}.job-item b::first-letter,.job-chip::first-letter,.job-who span::first-letter{text-transform:uppercase}.job-who span{display:block}
