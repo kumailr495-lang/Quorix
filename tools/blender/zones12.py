@@ -17,6 +17,10 @@ them better 3d detailed and animations, also make reception and bar and popcorn 
                    curtain of lit glass rods with a crystal drop at the end: a waterfall of light
   popcorn_case     a heated display for the front counter: a red lacquer frame, glass sides, a lamp in its roof, two glass shelves
                    with filled tubs and striped bags
+  ticket_kiosk     v13 (the user's photo of three cinema ticket kiosks): a self-service machine against the kiosk wall: a black lacquer head
+                   with rounded corners on a bronze pedestal and a recessed plinth with a warm toe light; a portrait touch screen in a brass
+                   frame (its picture is the engine's 'kiosk' panel, 5 mm in front of the screen's glass); under it a card terminal tilted
+                   back (lit display, keypad), a lit ticket slot in a brass bezel, a red scanner window; a brass shelf; a brass band on top
 
     blender --background --factory-startup --python tools/blender/zones12.py -- --out www/models [--only NAME]
     then: blender --background --factory-startup --python tools/blender/glb_check.py -- www/models/<name>.glb
@@ -34,7 +38,8 @@ ap = argparse.ArgumentParser(); ap.add_argument('--out', default='www/models'); 
 A = ap.parse_args(argv)
 for k, v in {'lacquer_red': ((0.30, 0.012, 0.016), 0.16, 0.0), 'lacquer_cream': ((0.75, 0.68, 0.55), 0.2, 0.0), 'popcorn': ((0.85, 0.70, 0.36), 0.8, 0.0),
              'paper_red': ((0.55, 0.02, 0.025), 0.6, 0.0), 'paper_white': ((0.86, 0.83, 0.76), 0.6, 0.0), 'steel': ((0.55, 0.56, 0.58), 0.35, 1.0),
-             'marble_calacatta': ((0.80, 0.78, 0.74), 0.1, 0.0), 'fluted_walnut': ((0.15, 0.06, 0.03), 0.5, 0.0), 'paint_black': ((0.006, 0.006, 0.007), 0.7, 0.0)}.items():
+             'marble_calacatta': ((0.80, 0.78, 0.74), 0.1, 0.0), 'fluted_walnut': ((0.15, 0.06, 0.03), 0.5, 0.0), 'paint_black': ((0.006, 0.006, 0.007), 0.7, 0.0),
+             'bronze': ((0.25, 0.14, 0.07), 0.35, 1.0), 'screen_black': ((0.004, 0.004, 0.005), 0.05, 0.0)}.items():
     lbl.MAT_DEF.setdefault(k, v)
 for k, v in {'glow_red': ((1.0, 0.10, 0.06), 3.0), 'glow_green': ((0.35, 1.0, 0.25), 2.6), 'glow_orange': ((1.0, 0.45, 0.06), 2.8),
              'glow_screen': ((0.45, 0.66, 1.0), 1.5)}.items():
@@ -357,8 +362,37 @@ def popcorn_case():
                     bx('BagCorn', 'popcorn', (x - 0.03, y - 0.05, z + 0.155), (x + 0.03, y + 0.05, z + 0.185), r=0.012)
 
 
+# ------------------------------------------------------------------------------------------------ ticket_kiosk (v13)
+KIOSK_SCREEN = (0.281, 1.43, 0.44, 0.66)   # the engine panel: its plane (X, 5 mm in front of the screen's glass), centre height, width, height
+
+
+def ticket_kiosk():
+    """its back at X = 0 (placed 1 cm into the wall it stands against), the front at X 0.27, 0.56 m wide, 1.86 m tall"""
+    bx('Plinth', 'paint_black', (0.0, -0.22, 0.0), (0.20, 0.22, 0.07))
+    bx('ToeLight', 'glow_warm', (0.20, -0.20, 0.02), (0.205, 0.20, 0.045))                        # on the plinth's face, under the pedestal's overhang
+    part('Pedestal', 0, 'bronze', rb((0.23, 0.44, 0.76), 0.02), T(0.115, 0, 0.065 + 0.38))     # z 0.065 .. 0.825: 5 mm into the plinth
+    part('Head', 0, 'lacquer_black', rb((0.27, 0.56, 1.06), 0.035), T(0.135, 0, 0.80 + 0.53))   # z 0.80 .. 1.86: 2.5 cm round the pedestal's top
+    sx, sz0, sw, sh = KIOSK_SCREEN; y0, y1, z0, z1 = -sw / 2 - 0.012, sw / 2 + 0.012, sz0 - sh / 2 - 0.012, sz0 + sh / 2 + 0.012
+    bx('ScreenGlass', 'screen_black', (0.265, y0, z0), (0.276, y1, z1))                         # 6 mm proud of the head's face (0.27)
+    for (a, b) in (((0.265, y0 - 0.012, z0 - 0.012), (0.282, y1 + 0.012, z0)), ((0.265, y0 - 0.012, z1), (0.282, y1 + 0.012, z1 + 0.012)),
+                   ((0.265, y0 - 0.012, z0), (0.282, y0, z1)), ((0.265, y1, z0), (0.282, y1 + 0.012, z1))):
+        bx('ScreenFrame', 'brass', a, b)                                                       # 6 mm proud of the glass, round it (bars meet end to side)
+    # the transaction zone under the screen: the card terminal (left, -Y), the ticket slot (right, +Y), the scanner window between
+    M = T(0.284, -0.14, 0.975) @ RY(-12)                                                        # tilted back 12 degrees, its whole back 2.5 mm or more into the head
+    part('Terminal', 0, 'plastic_black', rb((0.07, 0.12, 0.14), 0.012), M)                     # 3 cm and more from the screen's frame and the shelf
+    part('TerminalLit', 0, 'glow_screen', lambda bm: (bmesh.ops.create_cube(bm, size=1.0), bm.transform(Matrix.Diagonal((0.006, 0.085, 0.04, 1.0)))), M @ T(0.035 + 0.002, 0, 0.032), smooth=False)
+    for r_ in range(3):
+        for c_ in range(3):
+            part('Key', 0, 'steel', lambda bm: (bmesh.ops.create_cube(bm, size=1.0), bm.transform(Matrix.Diagonal((0.008, 0.022, 0.012, 1.0)))), M @ T(0.035 + 0.002, -0.03 + 0.03 * c_, -0.012 - 0.019 * r_), smooth=False)
+    bx('SlotBezel', 'brass', (0.262, 0.06, 0.975), (0.284, 0.22, 1.015))
+    bx('Slot', 'paint_black', (0.28, 0.075, 0.986), (0.292, 0.205, 1.004))                      # 4 mm into the bezel, 8 mm proud (4 mm read as one plane from the street): the slot's mouth
+    bx('SlotLight', 'glow_warm', (0.290, 0.085, 0.992), (0.297, 0.195, 0.998))                   # a light line in it
+    bx('Scanner', 'glow_red', (0.268, -0.035, 0.90), (0.276, 0.035, 0.94))
+    bx('Shelf', 'brass', (0.25, -0.25, 0.84), (0.40, 0.25, 0.865), r=0.006)                      # 2 cm into the head, 4 cm over its underside
+
+
 BUILD = {'popcorn_kettle': popcorn_kettle, 'drinks_tower': drinks_tower, 'espresso_lever': espresso_lever, 'till_pos': till_pos,
-         'tub_stack': tub_stack, 'bar_walnut': bar_walnut, 'chandelier_deco': chandelier_deco, 'popcorn_case': popcorn_case}
+         'tub_stack': tub_stack, 'bar_walnut': bar_walnut, 'chandelier_deco': chandelier_deco, 'popcorn_case': popcorn_case, 'ticket_kiosk': ticket_kiosk}
 
 
 def reset():

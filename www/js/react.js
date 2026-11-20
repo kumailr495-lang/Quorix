@@ -1,7 +1,9 @@
 // LUMIERE v5 - the film-event director: decides WHEN an audience reacts, so reactions follow the film instead of random timers.
 //  * the open films: their offline cue tracks (films.js, tools/films/analyse.py), timed on the video's own clock (buffering and seeking safe)
 //  * your own video: live analysis of its sound (and picture brightness): a sudden loud hit after a quiet stretch = jump scare,
-//    a long loud passage that releases = climax, a sharp onset = gasp. Cool-downs keep it from firing every second.
+//    a sharp onset out of quiet = gasp. Cool-downs keep it from firing every second. v13 (the user: "no clapping at a thing which doesn't make
+//    sense"): an unknown video gets no cheers (a loud stretch is not a moment), gasps need a quiet stretch first and come at most every 30 s,
+//    scares every 45 s; only the open films' checked cue tracks cheer
 export class Director {
   constructor(onEvent) { this.onEvent = onEvent; this.tracks = {}; this.live = null; }
   startTrack(hallId, cues, clock) { const tr = { cues: cues.filter((c) => c.type !== 'end'), i: 0, clock }; this.tracks[hallId] = tr; this.seek(hallId); }
@@ -19,12 +21,12 @@ export class Director {
     if (L.short < -34) L.quietFor += dt; else L.quietFor = Math.max(0, L.quietFor - dt * 0.5);
     const flash = lum - L.lum > 0.28 && now - L.lumT < 700; if (now - L.lumT > 400) { L.lum = lum; L.lumT = now; }
     // jump scare: loud onset straight out of quiet (or a loud hit with a white flash)
-    if (jump > 13 && L.short > -24 && (L.quietFor > 1.2 || flash) && now - L.lastScare > 18000) { L.lastScare = now; L.lastGasp = now; L.gasp = null; this.onEvent(L.hall, { type: 'scare', k: Math.min(1, 0.55 + (jump - 13) / 14 + (flash ? 0.2 : 0)), t }); }
-    else if (jump > 8 && L.short > -28 && now - L.lastGasp > 9000 && L.short - L.mid > 5) { L.lastGasp = now; L.gasp = { at: now, k: Math.min(1, 0.4 + (jump - 8) / 12), t }; }
+    if (jump > 13 && L.short > -24 && (L.quietFor > 1.2 || flash) && now - L.lastScare > 45000) { L.lastScare = now; L.lastGasp = now; L.gasp = null; this.onEvent(L.hall, { type: 'scare', k: Math.min(1, 0.55 + (jump - 13) / 14 + (flash ? 0.2 : 0)), t }); }
+    else if (jump > 9 && L.short > -28 && L.quietFor > 0.6 && now - L.lastGasp > 30000 && L.short - L.mid > 5) { L.lastGasp = now; L.gasp = { at: now, k: Math.min(1, 0.4 + (jump - 8) / 12), t }; }
     if (L.gasp && now - L.gasp.at > 250) { this.onEvent(L.hall, { type: 'gasp', k: L.gasp.k, t: L.gasp.t }); L.gasp = null; }   // held 1/4 s: if the onset grows into a scare, only the scare plays
     // climax: a long loud stretch that then drops away
     const was = L.loudFor;
-    if (L.short > Math.max(-20, L.long - 1)) { if (was === 0) L.loudFrom = L.long; L.loudFor += dt; } else { if (L.loudFor > 7 && L.short < L.long - 5 && now - L.lastClimax > 40000) { L.lastClimax = now; this.onEvent(L.hall, { type: 'climax', k: Math.min(1, 0.5 + L.loudFor / 30), t }); } L.loudFor = Math.max(0, L.loudFor - dt * 2); }
+    if (L.short > Math.max(-20, L.long - 1)) { if (was === 0) L.loudFrom = L.long; L.loudFor += dt; } else { if (L.loudFor > 7 && L.short < L.long - 5 && now - L.lastClimax > 40000) { L.lastClimax = now; /* v13 noted, not cheered */ } L.loudFor = Math.max(0, L.loudFor - dt * 2); }
     // tension: the film has been building for 5 s from clearly quieter than this (steady loud music is not suspense)
     if (was <= 5 && L.loudFor > 5 && L.short - L.loudFrom > 8) this.onEvent(L.hall, { type: 'tension', k: 0.6, t });
   }

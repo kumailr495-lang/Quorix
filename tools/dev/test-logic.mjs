@@ -60,7 +60,7 @@ let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 21474836
 { const ev = live((t) => ((t > 10 && t < 10.8) || (t > 16 && t < 16.8) ? -10 : -50), 25); ok(ev.filter((e) => e.type === 'scare').length === 1, 'two hits 6 s apart gave two scares (cool-down ignored)'); }
 { const ev = live((t) => (t < 10 ? -36 : -23.5), 16); ok(ev.length === 1 && ev[0].type === 'gasp', `moderate onset: ${ev.map((e) => e.type).join(',') || 'nothing'} (want one gasp)`); console.log(`  moderate onset: ${ev.map((e) => `${e.type}@${e.t.toFixed(2)}`).join(', ')}`); }
 { const ev = live((t) => -40 + Math.min(25, Math.max(0, t - 5) * 1.25), 30); ok(!ev.some((e) => e.type === 'scare' || e.type === 'gasp'), `slow crescendo fired ${ev.map((e) => e.type).join(',')}`); console.log(`  slow crescendo -40 -> -15 dB over 20 s: ${ev.map((e) => `${e.type}@${e.t.toFixed(1)}`).join(', ') || 'no events'}`); }
-{ const ev = live((t) => (t < 8 ? -40 : t < 22 ? -13 + (rnd() - 0.5) * 2 : -42), 30); const cl = ev.filter((e) => e.type === 'climax'); ok(cl.length === 1, `long loud stretch then release: ${cl.length} climax events`); console.log(`  loud 14 s -> release: ${ev.map((e) => `${e.type}@${e.t.toFixed(1)}`).join(', ')}`); }
+{ const ev = live((t) => (t < 8 ? -40 : t < 22 ? -13 + (rnd() - 0.5) * 2 : -42), 30); const cl = ev.filter((e) => e.type === 'climax'); ok(cl.length === 0, `long loud stretch then release: ${cl.length} climax events (v13: an unknown video is never cheered)`); console.log(`  loud 14 s -> release: ${ev.map((e) => `${e.type}@${e.t.toFixed(1)}`).join(', ')}`); }
 
 section('i18n');
 for (const [name, T] of [['es', ES], ['hi', HI], ['ur', UR]]) {

@@ -9,7 +9,7 @@ import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
-import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE } from './building.js';
+import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS } from './building.js';
 import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL, atmosSpots } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named } from './library.js';
@@ -232,7 +232,7 @@ class Travelator {
 }
 // the lift (lift9.js): a through car with its controls in the world
 // ---------------------------------------------------------------- panels: LED wall, boards, signs (canvas textures, back-lit)
-const DENSE = { kettlehead: 1280, cafemenu: 320, cafesign: 256, picto: 256, art: 640, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512, attraction: 150 };   // canvas pixels per metre for boards with text or fine figures
+const DENSE = { zone: 300, roundel: 900, seatplan: 900, kettlehead: 1280, cafemenu: 320, cafesign: 256, picto: 256, art: 640, wayfind: 192, kiosk: 640, plaque: 1280, photowall: 640, vintage: 512, attraction: 150 };   // canvas pixels per metre for boards with text or fine figures
 const rng = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 function panelTexture(id, w, h, hooks) {
   const ppm = DENSE[id.split('_')[0]] || 128, px = Math.min(2048, Math.max(256, Math.round(w * ppm))), py = Math.round(px * h / w), c = makeCanvas(px, py), g = c.getContext('2d'), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; c.__tex = tx;
@@ -297,6 +297,37 @@ export const PANEL_DRAW = {
     g.fillStyle = '#f4f4f2'; g.fillRect(h * 0.12, h * 0.12, h * 0.76, h * 0.76); g.fillStyle = '#050506'; g.font = `800 ${h * 0.6}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(H_ ? String(H_.no) : '', h * 0.5, h * 0.54);
     g.fillStyle = '#f4f4f2'; g.textAlign = 'left'; g.font = `700 ${h * 0.4}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.04}px`;
     g.fillText((H_ ? H_.name.replace('LUMIERE ', '') : id) + '  ·  NOW SHOWING', h * 1.1, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
+  // v13 the zones' names (the user: "make the reception and the areas separated and much more defined"): lit letters on black in each
+  // zone's own voice: the ticket bay plain and bright, the popcorn bay a bulb marquee, the bar brass serif
+  zone: (g, w, h, id) => { const k = id.split('_')[1], ls = (v) => { if ('letterSpacing' in g) g.letterSpacing = v; }; g.fillStyle = '#060607'; g.fillRect(0, 0, w, h); g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (k === 'popcorn') { const r = h * 0.032, step = h * 0.11; g.fillStyle = '#ffd98a';
+      for (let x = step / 2; x < w; x += step) { for (const y of [h * 0.07, h * 0.93]) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); } }
+      for (let y = h * 0.07 + step; y < h * 0.93 - step / 2; y += step) for (const x of [h * 0.07, w - h * 0.07]) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = '#f6ecd8'; g.font = `800 ${h * 0.46}px ${SANS}`; ls(`${h * 0.06}px`); g.fillText('POPCORN', w / 2, h * 0.44); ls('0px');
+      g.fillStyle = '#e0b25a'; g.font = `600 ${h * 0.12}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText('SNACKS  ·  DRINKS  ·  SWEETS', w / 2, h * 0.75); ls('0px'); return; }
+    if (k === 'bar') { g.fillStyle = '#e0b25a'; g.font = `500 ${h * 0.56}px ${SERIF}`; ls(`${h * 0.08}px`); g.fillText('BAR · CAFÉ', w / 2, h * 0.47); ls('0px');
+      g.fillStyle = '#9a8f7c'; g.font = `500 ${h * 0.13}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('COFFEE  ·  COCKTAILS  ·  DESSERTS', w / 2, h * 0.86); ls('0px'); return; }
+    const big = k === 'tickets' ? 'TICKETS' : 'SELF CHECK-IN', sub = k === 'tickets' ? 'BOX OFFICE  ·  TONIGHT\'S SHOWS' : 'CARD  ·  UPI  ·  WALLET';
+    g.fillStyle = '#f6f1e6'; g.font = `700 ${h * (k === 'tickets' ? 0.5 : 0.36)}px ${SANS}`; ls(`${h * 0.1}px`); g.fillText(big, w / 2, h * 0.42); ls('0px');
+    g.fillStyle = '#e0b25a'; g.fillRect(w * 0.5 - h * 1.2, h * 0.71, h * 2.4, Math.max(1, h * 0.012)); g.font = `600 ${h * 0.13}px ${SANS}`; ls(`${h * 0.04}px`); g.fillText(sub, w / 2, h * 0.85); ls('0px'); },
+  // v13 (the user's corridor photo) a blade roundel's face: the hall's number in gold inside a thin gold ring, on the disc's black
+  roundel: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#0b0b0c'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#c9a35e'; g.lineWidth = w * 0.025; g.beginPath(); g.arc(w / 2, h / 2, w * 0.44, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#e3b25f'; g.font = `500 ${h * 0.62}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(H_ ? String(H_.no) : '', w / 2, h * 0.54); },
+  // v13 the hall's seat plan beside its door (hallmath.js hallSeats: the real seats, rows lettered, premium rows in gold, the screen on top)
+  seatplan: (g, w, h, id) => { const H_ = HALL[id.split('_')[1]]; g.fillStyle = '#0d0d10'; g.fillRect(0, 0, w, h); if (!H_) return;
+    const S_ = hallSeats(H_), m = w * 0.1, top = h * 0.24, bot = h * 0.86; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#e3b25f'; g.font = `500 ${h * 0.05}px ${SERIF}`; g.fillText(`${H_.no}  ·  ${H_.name.replace('LUMIERE ', '')}`, w / 2, h * 0.07);
+    g.fillStyle = '#9a917f'; g.font = `600 ${h * 0.022}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.006}px`; g.fillText('SEATING PLAN', w / 2, h * 0.115); if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.strokeStyle = '#f2ebdd'; g.lineWidth = h * 0.008; g.beginPath(); g.moveTo(m * 1.4, h * 0.165); g.quadraticCurveTo(w / 2, h * 0.145, w - m * 1.4, h * 0.165); g.stroke();
+    g.fillStyle = '#f2ebdd'; g.font = `600 ${h * 0.018}px ${SANS}`; g.fillText('SCREEN', w / 2, h * 0.19);
+    let u0 = Infinity, u1 = -Infinity, d0 = Infinity, d1 = -Infinity, p0 = Infinity; for (const s of S_) { u0 = Math.min(u0, s.u); u1 = Math.max(u1, s.u); d0 = Math.min(d0, s.d); d1 = Math.max(d1, s.d); p0 = Math.min(p0, s.price); }
+    const k = Math.min((w - 2 * m) / Math.max(u1 - u0, 1), (bot - top) / Math.max(d1 - d0, 1)), cx = w / 2 - (u0 + u1) / 2 * k, cy = top + (bot - top) / 2 - (d0 + d1) / 2 * k, r = Math.max(2, k * 0.26);
+    const rowY = {}; for (const s of S_) { const x = cx + s.u * k, y = cy + s.d * k; rowY[s.row] = [y, s.id.replace(/\d+$/, '')];
+      g.fillStyle = s.price > p0 ? '#d4a656' : '#6f6a62'; g.beginPath(); g.roundRect ? g.roundRect(x - r, y - r, 2 * r, 2 * r, r * 0.35) : g.rect(x - r, y - r, 2 * r, 2 * r); g.fill(); }
+    g.fillStyle = '#9a917f'; g.font = `600 ${Math.min(h * 0.02, k * 0.5)}px ${SANS}`; for (const [y, L_] of Object.values(rowY)) { g.fillText(L_, m * 0.45, y); g.fillText(L_, w - m * 0.45, y); }
+    g.font = `500 ${h * 0.02}px ${SANS}`; g.textAlign = 'left'; g.fillStyle = '#d4a656'; g.fillRect(m, h * 0.925, h * 0.02, h * 0.02); g.fillStyle = '#cfc8ba'; g.fillText('PREMIUM', m + h * 0.03, h * 0.936);
+    g.fillStyle = '#6f6a62'; g.fillRect(w / 2, h * 0.925, h * 0.02, h * 0.02); g.fillStyle = '#cfc8ba'; g.fillText('STANDARD', w / 2 + h * 0.03, h * 0.936); },
   // an illuminated exit sign (ISO 7010 E002 look: a white running figure through a door on safety green, then EXIT)
   exitsign: (g, w, h) => { g.fillStyle = '#0a7a3d'; g.fillRect(0, 0, w, h); g.fillStyle = '#f4fff8'; g.strokeStyle = '#f4fff8'; g.lineCap = 'round'; g.lineJoin = 'round';
     const s = h * 0.8, x0 = h * 0.12, y0 = h * 0.1, P = (px, py) => [x0 + px * s, y0 + py * s];
@@ -367,6 +398,8 @@ export const PANEL_DRAW = {
 // ---------------------------------------------------------------- props: the furniture of each room (Kiln / Blender assets), lit per vertex
 // v12 where no guest stands: inside the heritage exhibit's rope, on the photo set (npc9.js millNet reads world.keepOut)
 const KEEP_OUT = [[CORE.x0 - 2.3, -4.2, CORE.x0, -1.8], [-8.9, -5.9, -5.1, -4.1]];
+// v13 the lobby's ceiling (tools/blender/arch/lobby12.py FIELD_DROP and STEP): the dropped field 0.75 m under the roof, the halo's dome two 0.32 m steps above it
+const LOBBY_FIELD = LOBBY.ceil - 0.75, LOBBY_DOME = LOBBY.ceil - 0.75 + 2 * 0.32;
 const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   const L = [], add = (room, name, x, y, z, yaw = 0, o = {}) => L.push({ room, name, x, y, z, yaw, o });
   // the lounge: four curved sofas round the table, each one's concave seat side facing it (sofa_curve sits facing local +z, its arc's centre
@@ -408,7 +441,9 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
   for (const [cx, cz, sw] of [[-11.6, 15.2, EMERALD]]) { add('lobby', 'armchair_deco', cx - 0.85, 0, cz, Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'armchair_deco', cx + 0.85, 0, cz, -Math.PI / 2, sw ? { swap: sw } : {}); add('lobby', 'side_table', cx, 0, cz); add('lobby', 'torchere_deco', cx, 0, cz + 1.3, 0, { collide: 0.2 }); }
-  add('lobby', 'chandelier_deco', 0, LOBBY.ceil, (GATE.z + 14.2) / 2, 0, { collide: false, ground: false });   // v12c ("the new ceiling looks shit"): a waterfall of lit glass rods on three brass rings, its rose 2 cm up into the dome (zones12.py); at the centre of the rings (rooms.py RCX, RCZ)
+  { const kx = COUNTERS.boxOffice.x1 - 0.12, kz = (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2;   // v13 three ticket kiosks (zones12.py, the user's kiosk photo) on the walnut panel between the counters (rooms.py: their screens)
+    for (const dz of [-0.66, 0, 0.66]) add('lobby', 'ticket_kiosk', kx - 0.01, 0, kz + dz, Math.PI / 2); }
+  add('lobby', 'chandelier_deco', 0, LOBBY_DOME, (GATE.z + 14.2) / 2, 0, { collide: false, ground: false });   // v12c a waterfall of lit glass rods on three brass rings (zones12.py); v13 its rose 2 cm up into the halo's dome, at its centre (rooms.py RCX, RCZ)
   // v10 (the user: "the lobby is too big and empty: fill it with lighting, paintings, pillars, sofas, a fountain"; docs/V10-RESEARCH.md):
   // a fountain on the brand ring on the entrance axis (walkers part round it: building.js foyerW/E; v11: the four columns round the court
   // are the building's own, full height, tools/blender/arch/rooms.py grand_column), a
@@ -417,12 +452,12 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v12 (the user: "a statue"): the fountain holds Thalia, the muse of comedy, gilded on a red marble plinth (tools/blender/statue12.py,
   // public domain: docs/LICENSES.md); her caption is a brass plaque on the plinth's front flat (PIC 'plaque_muse')
   add('lobby', 'fountain_muse', ...LIFE.fountain, { round: 1.68, grp: 2 });   // grp 2: its lit jets shimmer (materials.js GLOW_VERT)
-  add('lobby', 'pendant_cloud', LX, LOBBY.ceil - 0.45 + 0.002, LZ, 0, { collide: false, ground: false, detail: 1 });   // over the lounge, hung from the coffer beams' soffits (v12 rooms.py lobby12: 0.45 m deep, its plate 2 mm up into them)
+  add('lobby', 'pendant_cloud', LX, LOBBY_FIELD + 0.002, LZ, 0, { collide: false, ground: false, detail: 1 });   // over the lounge, its plate 2 mm up into the dropped field (v13 lobby12.py)
   // v12 (the user: "the carpet ... extends so badly and looks so bad"): no patterned rugs; a plain crimson pile with a charcoal edge where
   // people sit, and a crimson runner from the doors to the brand ring (floor only: no ropes on the door axis)
   const CRIMSON = { carpet_deco: [MAT.velvet, [0.20, 0.011, 0.019]], velvet_navy: [MAT.velvet, [0.022, 0.022, 0.026]] };
   for (const [cx, cz] of [[-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false, swap: CRIMSON });
-  add('lobby', 'rug_runner', 0, 0, (13.3 + FACADE_Z - 0.45) / 2, 0, { collide: false, swap: CRIMSON, scale: [0.8, 1, (FACADE_Z - 0.45 - 13.3) / 4.0] });   // 0.22 m short of the ring's brass
+  // v13 the entrance runner is floor now (rooms.py lobby12.runner_to_ring: its end cut to the brand ring's arc; this prop stopped 0.22 m short)
   add('lobby', 'popcorn_cart', -12.6, 0, 2.6, Math.PI / 2 + 0.35);
   for (const [x, yaw] of [[-6.6, 0.885], [6.6, -0.885]]) add('lobby', 'standee_base', x, 0, 12.6, yaw, { collide: 0.02 });
   add('lobby', 'rug_round', 19.4, 0, -10.8, 0, { collide: false, swap: CRIMSON }); add('lobby', 'side_table', 19.4, 0, -10.8);
@@ -501,7 +536,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
     const h = HALL[d.hall], side = -h.dir, xf = d.x + side * 0.5; let xfront = xf + side * 0.8, zc = d.z, zn = zc + 2.15;
     if (d.hall === 'X270') { xfront = FLANK_E.x0 + 0.3; zc = (LINK_E.z0 + LINK_E.z1) / 2; zn = zc + 2.9; }
     add('corridor', WORD[d.hall], xfront + side * 0.03, L1 + 3.2, zc, side * Math.PI / 2, { collide: false, ground: false, scale: 0.36 });   // just proud of the diamond panels (2.5 cm deep)
-    add('corridor', 'num_' + h.no, xfront + side * 0.03, L1 + 1.2, zn, side * Math.PI / 2, { collide: false, ground: false, scale: 0.9 });
+    // v13 the number is on a blade roundel over the pier now (rooms.py corridor_signs, panels 'roundel_*'): the flat numeral is gone
     // v11 (the user: "that red line thing barrier"): the ropes along the portals' faces hung between nothing; gone
     add('corridor', 'bin_brass', xf + side * 0.35, L1, zc - 3.4);
   }

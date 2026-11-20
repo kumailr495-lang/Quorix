@@ -22,7 +22,7 @@ export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club',
   'bench_street', 'bin_street', 'hydrant', 'parking_meter', 'bike_stand', 'roof_tank', 'roof_ac',
   // v12c the lobby's three counters in detail and the dome's chandelier (tools/blender/zones12.py; they replace the v10 popcorn machine, drinks
   // fountain, espresso machine, cafe counter and till and the v7 ribbon chandelier)
-  'popcorn_kettle', 'drinks_tower', 'espresso_lever', 'till_pos', 'tub_stack', 'bar_walnut', 'chandelier_deco', 'popcorn_case'];
+  'popcorn_kettle', 'drinks_tower', 'espresso_lever', 'till_pos', 'tub_stack', 'bar_walnut', 'chandelier_deco', 'popcorn_case', 'ticket_kiosk'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;

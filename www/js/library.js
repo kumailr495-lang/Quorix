@@ -125,6 +125,10 @@ export function libArrays(renderer, size = 512, normals = true) {
       T.image.data.set(px, i * size * size * 4); } catch (e) { console.warn(e.message); } }))).then(() => { arrays.a.needsUpdate = true; if (arrays.n) arrays.n.needsUpdate = true; });
   return arrays;
 }
+// v13 the graphics preset applies at once (the user: "the setting should apply at the same time you select it"): new arrays at another size
+// load in the background; the caller swaps them in when they are ready and the old ones are freed
+export function libResize(renderer, size) { if (arrays && arrays.size === size) return arrays; const old = arrays; arrays = null; const A = libArrays(renderer, size, true);
+  A.ready.then(() => { if (old && old !== A) { old.a.dispose(); if (old.n) old.n.dispose(); } }); return A; }
 // wait until every texture used so far has decoded (so the first frame is not half-loaded)
 export function texturesReady() { const ps = []; for (const e of cache.values()) for (const t of [e.a, e.n]) if (!t.image) ps.push(new Promise((ok) => { const f = () => (t.image ? ok() : setTimeout(f, 30)); f(); })); if (arrays && arrays.ready) ps.push(arrays.ready); return Promise.all(ps); }
 // review tool (tools/dev/view-glb.mjs LIB=1): put library maps on a plain glTF scene as MeshStandardMaterial

@@ -80,6 +80,22 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Models and textures "lazy": more 3D detail | Partly 11-19: eight new detailed props for the three counters and the dome; the statue now reads as gold; the parlour's machines no longer stand half inside the wall. Street props and the older Kiln props are next |
 | Animations: popcorn popping, fountain water, bar and cafe life, marquee and menus (picked) | Done 11-19 in the engine (anim12.js): kernels pop in batches, the fountain's drops, splashes and rings, steam when the barista makes a hot drink, chasing bulbs, a sheen over the menus. NPC bar routines (a barista working the machine) still open |
 
+## The 11-20 list (photos, two master prompts; plan and audit: docs/V13-PLAN.md)
+
+| Ask | Status |
+|---|---|
+| NPCs walk with their feet inside the ground | Fixed 11-20: the clips' hip height came from a pelvis the loader never found (soles 7-9 cm under the floor, now within 4 mm). Engine test, not seen on the phone |
+| The LUMIÈRE name stuck and cropped (behind the ticket canopy's showtimes board) | Fixed 11-20: the lit letters stand 24 cm over the board, centred on the desk |
+| The pillars and the ceiling still bad, "cubic lights" on the ceiling; make variants, choose the best | Variants rendered (docs/v13/variants-columns-ceilings.jpg). I picked P3 + C3 first; the user picked **P2 + C1b**. Built 11-20 (lobby12.py): square Nero Marquina columns with lit brass corners; a dropped field with a lit shadow gap and a round halo over the court that steps up twice behind brass bands with hidden coves, pinpoints and stars; no grid of lit cans (black-baffle apertures light the floor). Baked 11-20; zcheck 0 visible coplanar / 0 close, walks 30/30, crowd test clean. Engine renders only |
+| Carpets cut in the middle, not continuing | The entrance runner stopped 0.22 m short of the brand ring: it is floor now, its end cut to the ring's arc (in the same bake) |
+| Kiosks like the Cineplex photo | Modelled 11-20 (zones12.py ticket_kiosk: portrait touch screen in a brass frame, tilted card terminal, lit ticket slot, scanner, shelf, bronze pedestal, toe light); three stand between the counters (props: no re-bake); their screens are engine panels. Engine renders only |
+| Reception and the areas separated and much more defined | Done 11-20 in the engine: marble fins with lit brass noses between the ticket bay, the popcorn bay and the bar; a 0.8 m TICKETS fascia, a SELF CHECK-IN sign over the kiosks, a framed POPCORN marquee sign, a BAR · CAFÉ header. Engine renders only |
+| "The ceiling is glitched" | The first C1b bake had overlapping triangles round the halo (zcheck: 90 places); rebuilt as a radial mesh (area checked exactly), re-baked; the dome's blotchy paint replaced by a flat finish |
+| Corridor like the dark corridor photo (lit portal frames, hall numbers, seat plan) | Built 11-20: lit frames on every portal's face, a blade roundel with the hall's number, a seat-plan board (the hall's real seats) under a picture light; corridor re-baked 11-20. Engine renders only |
+| An in-game phone (the two phone photos) | Built 11-20 (phone.js): time, next show, tab; Ticket, Map, Tab, Camera, Photos, Stubs, Friends, Settings. The camera's screen is see-through and the HUD buttons behind it hide while you frame; a clash with the old `.ticket` style that stretched the Ticket app is fixed. Engine screenshots only |
+| Seat-layout editor (the green-seat photo) | Planned (V13 stage 4, theatre editor) |
+| Everything in the master prompts (economy, rooms, voice, NPC lives, settings that apply at once, licences, security) | Audited in docs/V13-PLAN.md with what exists and what is missing; worked in its stages |
+
 ## Theatres
 
 | Ask | Status |

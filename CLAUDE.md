@@ -117,12 +117,48 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v13 (2026-11-20: the user's photos and two master prompts; docs/V13-PLAN.md is the audit and the stages)
+- **Design choices go to the user as a board first.** tools/blender/variants13.py renders column and ceiling variants as Cycles vignettes
+  (docs/v13/variants-columns-ceilings.jpg). I built my own pick (P3 + C3) before asking and had to rebuild: the user picked **P2 + C1b**.
+- **Lobby ceiling (C1b, lobby12.py `field`, `halo`)**: a dropped field 0.75 m under the roof (`FIELD_DROP`), 0.3 m clear of the walls (a
+  lit shadow gap; the walls' washers sit in it), cut round the escalator hall (the field runs 2 cm into its walls; the hall keeps the roof
+  as its ceiling). Over the court a round opening (R 6.6) steps up twice (`STEP` 0.32 m): a brass band 19 cm tall round each opening hides a
+  cove LED (`lit.line` rings facing up and in) that washes the step above; pinpoints on each level, stars in the step and the dome, the
+  statue's cans under the dome. The roof slab has no underside except in the gaps and over the escalator hall. The field is built as cells
+  on cut lines through every corner and four strips stitched by angle to the circle: no T-junctions. Elsewhere the floor light comes from
+  black-baffle apertures with no glow (`apertures`). world9.js `LOBBY_FIELD`, `LOBBY_DOME`: the chandelier hangs from the dome, the pendant
+  cloud from the field.
+- **Lobby columns (P2, `marble_column`)**: square Nero Marquina shafts on black bases, a brass post on each corner (6 cm proud) with its
+  outer edge cut at 45 degrees and an LED strip in the cut, a brass band 0.3 m under the ceiling; the mezzanine's five are the same, smaller.
+- **Entrance runner**: floor now (`runner_to_ring`): crimson carpet in a brass frame, its end cut to the brand ring's arc (the prop stopped
+  0.22 m short). **Ticket kiosks**: zones12.py `ticket_kiosk` (the user's kiosk photo) on the walnut panel between the counters; their
+  screens are rooms.py's `kiosk_*` panels at `KIOSK_SCREEN`.
+- **Zones** (the user, 11-20: "make the reception and the areas separated and much more defined"): Nero Marquina fins with lit brass noses
+  (lobby12.py `zone_fin`) between the ticket bay (desk + kiosks), the popcorn bay and the bar (that one under the mezzanine, up into its
+  slab); the ticket canopy has a 0.8 m fascia for its name; a framed marquee sign over the popcorn (`sign_board`); a walnut header with the
+  bar's name. The names are engine panels `zone_<tickets|kiosk|popcorn|bar>` (world9.js PANEL_DRAW `zone`).
+- **Ceiling paint**: the field, the halo's step, dome and pocket walls use library 13 (`lobby12.PAINT`: flat, no tone blotches); the wall
+  paint's macro blotches read as stains on the evenly lit dome.
+- **Corridor** (the user's dark-corridor photo): each portal's face framed in light (strips on the jambs' brass edges and under the head),
+  a blade roundel with the hall's number over the pier (rooms.py `corridor_signs`, panels `roundel_<hall>_a/b`; the flat numerals are
+  gone), a seat-plan board under a brass picture light (panel `seatplan_<hall>`: hallmath.js `hallSeats`, the real seats, premium in gold).
+- **The phone** (www/js/phone.js; the user's two phone photos): HUD button `#bPhone` or F; it slides up at the end side and never stops the
+  game (only the device takes taps). Home: the time, your next show, your tab; apps Ticket, Map (building.js ROOMS, the corridor as its legs),
+  Tab, Camera (the screen is see-through as a viewfinder; main.js `snapCb` grabs the frame after the next render, 960 px JPEG), Photos
+  (localStorage `lumiere.photos`, the last 12; "Save file" only outside the Android app), Stubs, Friends (mpui), Settings. Its views carry
+  `ph-k-<app>` classes (a bare `.ticket` or `.tab` picked up the old global styles and stretched the Ticket app); the camera hides the HUD
+  buttons behind the see-through screen (body `ph-cam`).
+- **Props are not in the v9 bake** (geo.py writes `'props': None`): adding or moving a prop needs no re-bake; only the builder's geometry does.
+- Rules learned: a light above a dropped ceiling lights nothing below it (rooms.py check: no lobby light over the field outside the halo, the
+  escalator hall and the gaps); measure the floor before and after a lighting change (fixed views, mean of the floor's pixels) instead of
+  judging by eye; a triangulation that fans from one corner of a square round a circle overlaps itself (zcheck found 90 places): stitch by
+  angle with a point per ray on each side, and check a mesh's area against the expected area.
+
 ## v12c (2026-11-19: the user, "the textures and models ... lazy, make them better 3d detailed and animations", dedicated zones, the ceiling, the pillars)
-- **Lobby look** (tools/blender/arch/lobby12.py, the user picked each): noir coffered ceiling (black lacquer beams on the court's grid, brass
-  inlays, a downlight per coffer, z beams 30 mm under the x beams, the wall band 60 mm under: crossing soffits must never share a plane),
-  backlit honey-onyx columns (library 35 = the ambientCG Onyx007 scan now, emissive), the three counters restyled in place (ticket desk,
-  popcorn parlour with a bulb marquee, bar with a bottle wall). The statue reads gold: its material is `gilt` (library id 25, part metal; pure
-  metals only reflect the room's dark cube) under three spots in brass cans on the inner ring.
+- **Lobby look** (tools/blender/arch/lobby12.py, the user picked each; the ceiling and columns were replaced in v13): noir coffered ceiling,
+  backlit honey-onyx columns (library 35 = the ambientCG Onyx007 scan now, emissive; still the ticket desk's front and backdrop), the three
+  counters restyled in place (ticket desk, popcorn parlour with a bulb marquee, bar with a bottle wall). The statue reads gold: its material
+  is `gilt` (library id 25, part metal; pure metals only reflect the room's dark cube) under three spots in brass cans.
 - **Zone props** (tools/blender/zones12.py, original): popcorn_kettle, drinks_tower, espresso_lever, till_pos, tub_stack, bar_walnut,
   chandelier_deco, popcorn_case; world9.js `LIFE` holds where the living ones stand. The parlour's back counter is 0.75 m deep in front of the
   wall's face (x -21.6); the v10 machines stood half inside the wall. The lobby's prop glass is drawn see-through (world9.js `propGlass`;

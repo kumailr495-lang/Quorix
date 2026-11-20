@@ -2,17 +2,17 @@
  "room": "corridor",
  "res": 2048,
  "hall": false,
- "hash": "v9.db46c137563f",
+ "hash": "v9.20cfca8ee229",
  "maps": [
   "corridor_h.png"
  ],
  "scale": [
-  1.5198237968883,
+  1.5281809692817565,
   0.0,
   0.0
  ],
- "avg": 0.0538528182929057,
+ "avg": 0.055017161922213745,
  "glb": "corridor.glb",
- "verts": 17136,
- "tris": 5712
+ "verts": 22800,
+ "tris": 7600
 }

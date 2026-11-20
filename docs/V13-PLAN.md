@@ -16,11 +16,23 @@ skydiving) is listed there as future work behind the cinema experience; it stays
 | Ask | State |
 |---|---|
 | NPCs walk with their feet inside the ground | Fixed 11-20 (09ea736): the clips' hip height was scaled from a pelvis the loader never found; soles were 7-9 cm under the floor, now within 4 mm |
-| The pillars look bad (the backlit onyx) | Variants rendered (tools/blender/variants13.py); the chosen one replaces them |
-| The ceiling still bad; "cubic lights" (the coffer grid of downlights) make no sense | Variants rendered; the chosen ceiling replaces the coffers |
-| The LUMIÈRE name stuck and cropped (the letters behind the ticket canopy) | Open |
-| Carpets cut in the middle, not continuing | Open: find each carpet that stops short or splits |
-| Variants of the best designs, choose the best, use it | variants13.py: columns P0-P3, ceilings C0-C2, compared on one board |
+| The pillars look bad (the backlit onyx) | The user picked **P2** from the board: square Nero Marquina shafts, brass corner posts with an LED in a 45 degree cut, a brass band under the ceiling (lobby12.marble_column) |
+| The ceiling still bad; "cubic lights" (the coffer grid of downlights) make no sense | The user picked **C1b**: a dropped field with a lit shadow gap; over the court a round opening that steps up twice, a brass band and a hidden cove at each step, pinpoints and stars (lobby12.field, halo); the floor light elsewhere from black-baffle apertures with no glow |
+| The LUMIÈRE name stuck and cropped (the letters behind the ticket canopy) | Fixed: 24 cm over the showtimes board |
+| Carpets cut in the middle, not continuing | The entrance runner is floor now, cut to the brand ring's arc (lobby12.runner_to_ring) |
+| Variants of the best designs, choose the best, use it | variants13.py: columns P0-P4, ceilings C0-C3 on one board (docs/v13/variants-columns-ceilings.jpg). Lesson: show the board and let the user pick before building (I built P3 + C3 first and had to redo it) |
+
+## The second batch of photos (11-20)
+
+| Photo | Used for |
+|---|---|
+| A phone held up in a night street (clock, health, torch, wallet, apps) and a translucent phone overlay in an open-world game | Stage 2, the in-game phone: raised from the pocket, the world still visible behind it |
+| A dark corridor: lit portal frames, a numbered roundel by each hall, a seat-plan board under a picture light, restroom pictograms at the end, exit signs | Stage 1, the corridor |
+| Three cinema ticket kiosks | zones12.py ticket_kiosk (modelled 11-20) |
+| A lobby with round cove ceilings and a star field, black columns, a black ticket counter with a lit sign | The C1b ceiling |
+| A ScreenX hall with red recliners | The X-270 hall (exists); its recliners' colour |
+| A seat-layout tool (rows of seats in front of a screen) | Stage 4, the theatre editor |
+| A social VR cinema lobby; a castle hall (chandelier, star inlay, rugs); action, driving and car-interior shots | The level of finish; the open world later |
 
 ## Audit: the master prompt against what exists
 
@@ -65,8 +77,10 @@ Legend: **done** (works in the engine, tested), **partial** (exists, gaps listed
 | Friends, private messages, pictures, block, mute, report, online status | missing | the smartphone (5) over the peer links, local friend list |
 
 ### 5. The in-game smartphone
-Missing. Friends, messages, pictures, wallet, bookings, profile, cosmetics, invitations, settings, notifications, theatre discovery,
+Asked for: friends, messages, pictures, wallet, bookings, profile, cosmetics, invitations, settings, notifications, theatre discovery,
 social controls: one phone UI (a real interface on screen, raised from the pocket), notifications on it while you are in the cinema.
+Built 11-20 (phone.js): home (time, next show, tab), Ticket, Map, Tab, Camera, Photos, Stubs, Friends (opens Rooms), Settings; the game
+keeps running under it. Not built yet: Messages, Profile, cosmetics, notifications on the phone, theatre discovery.
 
 ### 6. Video and streaming
 | Requirement | State | Where / gap |

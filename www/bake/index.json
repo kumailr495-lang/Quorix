@@ -1,16 +1,16 @@
 {
  "rooms": {
   "corridor": {
-   "avg": 0.0538528182929057,
+   "avg": 0.055017161922213745,
    "glb": "corridor.glb",
    "hall": false,
-   "hash": "v9.db46c137563f",
+   "hash": "v9.20cfca8ee229",
    "maps": [
     "corridor_h.jpg"
    ],
    "res": 2048,
    "scale": [
-    1.5198237968883,
+    1.5281809692817565,
     0.0,
     0.0
    ]
@@ -88,16 +88,16 @@
    ]
   },
   "lobby": {
-   "avg": 0.06851853473535702,
+   "avg": 0.06666911190826125,
    "glb": "lobby.glb",
    "hall": false,
-   "hash": "v9.824bbf6c0213",
+   "hash": "v9.6ec4c065bdc2",
    "maps": [
     "lobby_h.jpg"
    ],
    "res": 2048,
    "scale": [
-    1.3806692326676298,
+    2.095172026006992,
     0.0,
     0.0
    ]

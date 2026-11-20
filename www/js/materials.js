@@ -4,7 +4,7 @@
 // Never put a `//` comment inside a GLSL line that carries code: it swallows the rest of the line (v4 lesson).
 import * as THREE from 'three';
 import { makeCanvas } from './textures.js';
-import { LIB, libArrays, PARAMS } from './library.js';
+import { LIB, libArrays, libResize, PARAMS } from './library.js';
 export function noiseTexture(size = 128) {   // 4 independent tileable value-noise fields in RGBA
   const c = makeCanvas(size, size), g = c.getContext('2d'), img = g.createImageData(size, size); let s = 9173; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const fields = []; for (let k = 0; k < 4; k++) { const cells = [8, 16, 32, 64][k], lat = new Float32Array(cells * cells); for (let i = 0; i < lat.length; i++) lat[i] = rnd(); const f = new Float32Array(size * size);
@@ -391,7 +391,7 @@ export class Materials {
   // bake (lightmap.js): the room's solid mesh reads its light from Cycles light maps (house; halls add fixed and screen layers)
   litRoom(U, inst = false, bake = null) {
     let per = this._lit.get(U); if (!per) this._lit.set(U, per = {}); const key = bake ? 'l' : inst ? 'i' : 's'; if (per[key]) return per[key];
-    const A = libArrays(this.renderer, this.texSize, 'USE_NMAP' in this.defines), defines = { ...this.defines }, lm = {}; if (this.heroOnly && !U.hero) delete defines.USE_ENV;
+    const A = libArrays(this.renderer, this.texSize, true), defines = { ...this.defines }, lm = {}; if (this.heroOnly && !U.hero) delete defines.USE_ENV;   // v13 normals always loaded: the preset can turn them on live
     if (bake) { const [h, f, s] = bake.maps; defines.USE_LIGHTMAP = ''; if (bake.hall) defines.LM_HALL = ''; if (bake.hall && U.uSpill) defines.LM_SPILL = '';
       Object.assign(lm, { uLmH: { value: h }, uLmF: { value: f || h }, uLmS: { value: s || h }, uLmK: { value: new THREE.Vector3(...bake.scale) } }); }
     const m = mk(LIT_VERT, LIT_FRAG, { ...G, ...U, ...lm, uMaps: { value: A.a }, uNmaps: { value: A.n || A.a }, uP: { value: PARAMS } }, { defines });
@@ -413,6 +413,16 @@ export class Materials {
   crowdMat(U) { return this._t(mk(CROWD_VERT, CROWD_FRAG, { ...G, uHouse: U.uHouse, uScreen: U.uScreen })); }
   _t(m) { this.all.push(m); return m; }
   // Settings > Reflections Off drops the reflection lookup from every lit material (one recompile; Soft/Full only scale it, G.uReflK)
+  // v13 the graphics preset at once: normal maps, tone variation and de-tiling are shader defines (one recompile each); a new texture size loads
+  // in the background and every lit material swaps to it when it is ready
+  setQuality(o) {
+    const want = { USE_NMAP: !!o.normalMaps, USE_MACRO: !!o.macro, USE_DETILE: !!o.detile };
+    for (const [k, on] of Object.entries(want)) { if (on) this.defines[k] = ''; else delete this.defines[k]; }
+    for (const m of this.all) { if (!m.defines || !m.name || !m.name.startsWith('lit-')) continue; let ch = false;
+      for (const [k, on] of Object.entries(want)) { if ((k in m.defines) === on) continue; if (on) m.defines[k] = ''; else delete m.defines[k]; ch = true; } if (ch) m.needsUpdate = true; }
+    if (o.texSize && o.texSize !== this.texSize) { this.texSize = o.texSize; const A = libResize(this.renderer, o.texSize);
+      A.ready.then(() => { for (const m of this.all) if (m.uniforms && m.uniforms.uMaps && m.name && m.name.startsWith('lit-')) { m.uniforms.uMaps.value = A.a; m.uniforms.uNmaps.value = A.n || A.a; } }); }
+  }
   setReflections(on, heroOnly = this.heroOnly) { if (('USE_ENV' in this.defines) === !!on && heroOnly === this.heroOnly) return; this.heroOnly = heroOnly; if (on) this.defines.USE_ENV = ''; else delete this.defines.USE_ENV;
     for (const m of this.all) { if (!m.defines || !m.name || !m.name.startsWith('lit-')) continue; const want = on && (!heroOnly || m.userData.hero); if (('USE_ENV' in m.defines) === want) continue; if (want) m.defines.USE_ENV = ''; else delete m.defines.USE_ENV; m.needsUpdate = true; } }
 }

@@ -1,22 +1,29 @@
-"""LUMIERE v12 - the lobby brought up to the cinema front's level (the user, 2026-11-19: the lobby "looks shit and not premium and more like
-a cheap copy"; then, on the first try: "the new ceiling looks shit, also the pillars"; they picked noir coffers and backlit onyx).
+"""LUMIERE v12/v13 - the lobby brought up to the cinema front's level (the user, 2026-11-19: the lobby "looks shit and not premium and more
+like a cheap copy"). v12 built noir coffers and backlit onyx columns; on 11-20 the user rejected both ("the pillars look shit ... the ceiling
+still sucks ... those cubic lightnings on ceiling which makes no sense") and asked for variants and the best of them. tools/blender/
+variants13.py rendered five columns and five ceilings (docs/v13/variants-columns-ceilings.jpg); the user picked P2 and C1b:
 
-  ceiling   a matte black coffered ceiling: gloss black beams 0.45 m deep on a 2.7 x 2.55 m grid set out from the court's columns (they
-            carry the beams on their abaci), a brass line along each beam's soffit, a warm recessed downlight in every coffer. The oval
-            dome over the court (the star field, the chandelier) is framed by a deep crimson rim; the beams die into it. A narrow band runs
-            round the walls with the long walls' grazing washers in a slot under it. No textured plaster: smooth paint and lacquer only
-  columns   backlit onyx: banded honey onyx glowing from inside (library 35, emissive), eight brass fins dividing it into panels (they also
-            hide the texture's seams), a brass collar at 3 m, a brass crown, a black lacquer abacus the beams land on; the mezzanine's five
-            columns in the same onyx, smaller
+  ceiling   (C1b) a dropped field 0.75 m under the roof, warm taupe, floating 0.3 m clear of the walls (a lit shadow gap, washers in it). Over
+            the court a round opening steps up twice: a brass band round each opening hides a cove LED that washes the ceiling above from
+            the edge in; the step and the dome are lighter so the halo shows; pinpoints round each level, fibre-optic stars in the step and
+            the dome, the statue's spots in brass cans; the chandelier hangs from the dome. Away from the halo the floor light comes from
+            black-baffle apertures that show no glow (the coffers' grid of lit cans was the "cubic lights")
+  columns   (P2) square Nero Marquina shafts on black bases with a brass band, a brass post on each corner whose outer edge is cut at 45
+            degrees with an LED strip in the cut, a brass band 0.3 m under the ceiling; the mezzanine's five columns the same, smaller
   fascia    the mezzanine's edge: a deep crimson lacquer fascia with three brass speed lines and a warm light line under it
+  runner    the entrance runner is floor (crimson carpet in a brass frame), its end cut to the brand ring's arc (the prop stopped 0.22 m short
+            of the ring: "the carpets are cut from middle and not continuing")
 
 House rules (CLAUDE.md): parts embed 2 cm or more into each other or stand more than 3 cm apart; same-facing faces 5 mm or more apart;
 glow quads 5 mm off the face they sit on. Every part is checked against what it could meet and the builder refuses a clash."""
-import math
-from geo import MAT, lin
+import math, random
+from geo import MAT, lin, cross, sub
 
-BLACK, LACQ, BRASS, CRIMSON, WARM = lin('#0d0d0f'), lin('#161518'), lin('#c9a35e'), lin('#7a1420'), lin('#ffd9a8')
-ONYX = lin('#ffffff')   # the onyx scan carries its own colour (abs mode)
+LACQ, BRASS, CRIMSON, WARM = lin('#161518'), lin('#c9a35e'), lin('#7a1420'), lin('#ffd9a8')
+CEIL = lin('#5c4f44')   # v13 the field: warm taupe, about 0.08 linear (black, 0.004, would show no cove light at all; the vignette's was 0.09)
+PAINT = MAT['rubber']   # v13 the ceiling's paint: library 13 (flat, no tone blotches: the wall paint's macro read as stains on the lit dome)
+HALO = lin('#ffcf94')   # v13 the coves' and the corner LEDs' 2700 K
+ONYX = lin('#ffffff')   # the onyx scan carries its own colour (abs mode): the ticket desk's front and backdrop
 
 
 def facing(acc, a, b, c, d, want, mat, col):
@@ -36,138 +43,244 @@ def refuse(what, gap, need=0.1):
     if gap < need: raise SystemExit(f'lobby12: {what} is {gap:.3f} m from its neighbour (needs {need} m): move one of them')
 
 
-def disc_down(glow, x, y, z, r, col, k, n=12):
+def disc_down(glow, x, y, z, r, col, k, n=12, up=False):
     for i in range(n):
         a0, a1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
-        glow_facing(glow, (x, y, z), (x + r * math.cos(a0), y, z + r * math.sin(a0)), (x + r * math.cos(a1), y, z + r * math.sin(a1)), (x, y, z), (0, -1, 0), col, k)
+        glow_facing(glow, (x, y, z), (x + r * math.cos(a0), y, z + r * math.sin(a0)), (x + r * math.cos(a1), y, z + r * math.sin(a1)), (x, y, z), (0, 1 if up else -1, 0), col, k)
 
 
-# ------------------------------------------------------------------------------------------------ the coffered ceiling
-def coffers(acc, glow, lit, S, H, walls, dome, cols, skip_fixtures=()):
-    """walls: the room's inner faces (x0, z0, x1, z1); dome: (cx, cz, a, b) the crimson rim's centreline ellipse; cols: the court's
-    columns (grid intersections). Returns (yb, beams): the beams' soffit height and the list of beam boxes (for the checks)"""
-    x0, z0, x1, z1 = walls; CO = S['CORE']; D = 0.45; yb = H - D; hw = 0.12
-    cx_, cz_, ea, eb = dome
-    # the grid: x lines through the columns at 2.7 m, z lines through them at 2.55 m
-    X = sorted({round(cols[0][0] + 2.7 * k, 4) for k in range(-12, 13) if x0 + 0.3 < cols[0][0] + 2.7 * k < x1 - 0.3})
-    zc0 = min(c[1] for c in cols); Z = sorted({round(zc0 + 2.55 * k, 4) for k in range(-12, 13) if z0 + 0.3 < zc0 + 2.55 * k < z1 - 0.9})
-    for c in cols:
-        if min(abs(c[0] - x) for x in X) > 1e-3 or min(abs(c[1] - z) for z in Z) > 1e-3: raise SystemExit(f'lobby12: the column at {c} is off the beam grid')
-    ins = lambda x, z, m=0.0: ((x - cx_) / (ea + m)) ** 2 + ((z - cz_) / (eb + m)) ** 2 < 1.0   # inside the rim (grown by m)
-    core = lambda x, z: CO['x0'] - 0.02 < x < CO['x1'] + 0.02 and z < CO['z1'] + 0.02
-    def hit(xa, za, xb, zb):   # where a segment from outside the rim (a) first meets the rim's centreline (bisection)
-        lo, hi = 0.0, 1.0
-        for _ in range(40):
-            m = (lo + hi) / 2
-            if ins(xa + (xb - xa) * m, za + (zb - za) * m): hi = m
-            else: lo = m
-        return xa + (xb - xa) * lo, za + (zb - za) * lo
-    beams = []
-    def beam(xa, za, xb, zb, inlay):
-        """one beam segment along a grid line, black gloss lacquer, its brass inlay 8 or 14 mm proud (x and z beams differ: crossing
-        strips never share a face)"""
-        # the beams along z hang 30 mm lower than those along x: where they cross, the x beam's soffit and inlay end inside the z beam
-        # (12 mm left the inlay 4 mm over the z soffit: it showed through from the street)
-        if abs(za - zb) < 1e-6: bx0, bx1, bz0, bz1, y_ = min(xa, xb), max(xa, xb), za - hw, za + hw, yb
-        else: bx0, bx1, bz0, bz1, y_ = xa - hw, xa + hw, min(za, zb), max(za, zb), yb - 0.030
-        acc.box(bx0, y_, bz0, bx1, H + 0.02, bz1, MAT['lacquer'], LACQ); beams.append((bx0, bz0, bx1, bz1))
-        if abs(za - zb) < 1e-6: acc.box(bx0 + 0.01, y_ - inlay, za - 0.0125, bx1 - 0.01, y_ + 0.01, za + 0.0125, MAT['brass'], BRASS)
-        else: acc.box(xa - 0.0125, y_ - inlay, bz0 + 0.01, xa + 0.0125, y_ + 0.01, bz1 - 0.01, MAT['brass'], BRASS)
-    def run(pts, horiz):
-        """beams along one grid line through its intersections: segments inside the rim or the escalator hall are left out; a segment
-        that runs into the rim stops on its centreline (inside the rim's 0.7 m band); one meeting the rim at less than 35 degrees is
-        dropped (a sliver along the rim)"""
-        for (xa, za), (xb, zb) in zip(pts, pts[1:]):
-            ia, ib = ins(xa, za), ins(xb, zb)
-            if ia and ib: continue
-            mx, mz = (xa + xb) / 2, (za + zb) / 2
-            if core(mx, mz) and core(xa, za) and core(xb, zb): continue
-            if not ia and not ib:   # both ends outside: does it cut through the rim band anyway (a chord)?
-                if any(ins(xa + (xb - xa) * t / 20, za + (zb - za) * t / 20, 0.5) for t in range(21)): continue
-                beam(xa, za, xb, zb, 0.008 if horiz else 0.014); continue
-            (ox, oz), (ix, iz) = ((xa, za), (xb, zb)) if ib else ((xb, zb), (xa, za))
-            hx, hz = hit(ox, oz, ix, iz); nx, nz = (hx - cx_) / ea ** 2, (hz - cz_) / eb ** 2; L = math.hypot(nx, nz)
-            dx, dz = (ix - ox), (iz - oz); dl = math.hypot(dx, dz)
-            if abs(nx * dx + nz * dz) / (L * dl) < math.cos(math.radians(55)): continue
-            beam(ox, oz, hx, hz, 0.008 if horiz else 0.014)
-    for z in Z:
-        xs = [x0 + 0.38] + X + [x1 - 0.38]
-        run([(x, z) for x in xs], True)
-    for x in X:
-        zs = [z0 + 0.38] + Z + [z1 - 0.95]
-        run([(x, z) for z in zs], False)
-    # the band round the walls (the beams' ends run into it), black lacquer, 2 cm into the walls; the front one deeper (0.97 m)
-    for (bx0, bz0, bx1, bz1) in ((x0 - 0.02, z0 - 0.02, x0 + 0.4, z1 + 0.02), (x1 - 0.4, z0 - 0.02, x1 + 0.02, z1 + 0.02),
-                                 (x0 + 0.4, z0 - 0.02, x1 - 0.4, z0 + 0.4), (x0 + 0.4, z1 - 0.97, x1 - 0.4, z1 + 0.02)):
-        acc.box(bx0, yb - 0.06, bz0, bx1, H + 0.02, bz1, MAT['lacquer'], LACQ)   # 60 mm under the x beams, 16 mm under the z beams' inlays
-    # a downlight in the middle of every coffer clear of the rim and the escalator hall: a brass trim ring, the lamp, its light
-    xs, zs = [x0 + 0.4] + X + [x1 - 0.4], [z0 + 0.4] + Z + [z1 - 0.97]; n = 0
+def _tri(acc, a, b, c, mat, col, na, nb, nc):
+    """a triangle wound so that it faces the way its vertex normals point (the engine culls back faces)"""
+    g = cross(sub(b, a), sub(c, a))
+    if g[0] ** 2 + g[1] ** 2 + g[2] ** 2 < 1e-18: return
+    if g[0] * (na[0] + nb[0] + nc[0]) + g[1] * (na[1] + nb[1] + nc[1]) + g[2] * (na[2] + nb[2] + nc[2]) < 0: b, c, nb, nc = c, b, nc, nb
+    acc.tri(a, b, c, mat, col, na, nb, nc)
+
+
+def lathe(acc, cx, cz, prof, n=128):
+    """a solid of revolution about the vertical through (cx, cz). prof [(r, y, mat, col)] runs round the section (bottom centre, out, up,
+    back in); each segment takes its first point's material. Smooth round the axis, sharp at the section's corners; r 0 closes it"""
+    P = lambda r, y, t: (cx + r * math.cos(t), y, cz + r * math.sin(t))
+    for (r0, y0, m, c), (r1, y1, _, _) in zip(prof, prof[1:]):
+        dr, dy = r1 - r0, y1 - y0; L = math.hypot(dr, dy)
+        if L < 1e-9: continue
+        nr, ny = dy / L, -dr / L   # the section's outward normal for a profile run out along the bottom, up the edge, back along the top
+        for i in range(n):
+            t0, t1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
+            n0, n1 = (nr * math.cos(t0), ny, nr * math.sin(t0)), (nr * math.cos(t1), ny, nr * math.sin(t1))
+            a, b, cc, d = P(r0, y0, t0), P(r0, y0, t1), P(r1, y1, t1), P(r1, y1, t0)
+            if r0 > 1e-9: _tri(acc, a, b, cc, m, c, n0, n1, n1)
+            if r1 > 1e-9: _tri(acc, a, cc, d, m, c, n0, n1, n0)
+
+
+# ------------------------------------------------------------------------------------------------ v13 the ceiling (variant C1b, the user's pick)
+FIELD_DROP, STEP = 0.75, 0.32   # the field hangs 0.75 m under the roof; the halo's two steps rise 0.32 m each (the dome is 0.11 m under the roof)
+STEP1, DOME = lin('#7d6d5e'), lin('#a8977f')   # the step and the dome, lighter than the field (0.15 and 0.30 linear): the coves glow on them
+
+
+def _down(acc, pts, mat, col):
+    """a convex horizontal polygon facing down"""
+    nn = (0.0, -1.0, 0.0)
+    for i in range(1, len(pts) - 1): _tri(acc, pts[0], pts[i], pts[i + 1], mat, col, nn, nn, nn)
+
+
+def annulus(acc, cx, cz, r0, r1, y, mat, col, n=128):
+    """a flat ring facing down (r0 0: a disc)"""
+    P = lambda r, t: (cx + r * math.cos(t), y, cz + r * math.sin(t)); nn = (0.0, -1.0, 0.0)
+    for i in range(n):
+        t0, t1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
+        if r0 > 1e-9: _tri(acc, P(r0, t0), P(r0, t1), P(r1, t1), mat, col, nn, nn, nn)
+        _tri(acc, P(r0, t0), P(r1, t1), P(r1, t0), mat, col, nn, nn, nn)
+
+
+def wall_in(acc, cx, cz, r, y0, y1, mat, col, n=128):
+    """a round wall facing its axis"""
+    for i in range(n):
+        t0, t1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
+        n0, n1 = (-math.cos(t0), 0.0, -math.sin(t0)), (-math.cos(t1), 0.0, -math.sin(t1))
+        a, b = (cx + r * math.cos(t0), y0, cz + r * math.sin(t0)), (cx + r * math.cos(t1), y0, cz + r * math.sin(t1))
+        _tri(acc, a, b, (b[0], y1, b[2]), mat, col, n0, n1, n1); _tri(acc, a, (b[0], y1, b[2]), (a[0], y1, a[2]), mat, col, n0, n1, n0)
+
+
+def ring_solid(acc, cx, cz, r0, r1, y0, y1, mat, col, n=128):
+    lathe(acc, cx, cz, [(r0, y0, mat, col), (r1, y0, mat, col), (r1, y1, mat, col), (r0, y1, mat, col), (r0, y0, None, None)], n)
+
+
+def field(acc, glow, walls, yF, cx, cz, R1, Q, holes, edges=(), gap=0.3, n=128):
+    """the dropped field (C1b): one plane at yF facing down, `gap` clear of the walls (a lit shadow gap; rooms.py washes the walls from it),
+    with the halo's round opening (radius R1 about (cx, cz)) and rectangular holes [(x0, z0, x1, z1)] where a hall has its own ceiling
+    (the escalator hall: the field runs 2 cm into its walls). Cells on cut lines through every corner (no vertex lies on another cell's
+    edge: T-junctions crack); the square of half side Q round the opening is a radial mesh: each side carries a point where each of the
+    circle's rays meets it (and the cut points that land on it), the strips are stitched by angle, and the cells along the square take the
+    same points on their edges (each cell is a fan from its centre). Fascias 8 cm deep on the outer edges and on `edges`."""
+    x0, z0, x1, z1 = walls; X0, Z0, X1, Z1 = x0 + gap, z0 + gap, x1 - gap, z1 - gap
+    sq = (cx - Q, cz - Q, cx + Q, cz + Q)
+    xs = sorted({X0, X1, sq[0], sq[2]} | {v for h in holes for v in (h[0], h[2])})
+    zs = sorted({Z0, Z1, sq[1], sq[3]} | {v for h in holes for v in (h[1], h[3])})
+    nn = (0.0, -1.0, 0.0); q = n // 4; P = lambda p: (p[0], yF, p[1])
+    corners = [(sq[2], sq[1]), (sq[2], sq[3]), (sq[0], sq[3]), (sq[0], sq[1])]
+    sides, onsq = [], []
+    for k in range(4):   # east, front, west, back: anticlockwise by angle from -45 degrees
+        (ax, az), (bx, bz) = corners[k], corners[(k + 1) % 4]; t0 = -math.pi / 4 + k * math.pi / 2
+        aa = [t0 + (math.pi / 2) * i / q for i in range(q + 1)]
+        def hit(t):   # where the ray from the centre at angle t meets this side
+            c, s_ = math.cos(t), math.sin(t)
+            return (ax, cz + (ax - cx) * s_ / c) if abs(ax - bx) < 1e-9 else (cx + (az - cz) * c / s_, az)
+        pts = [corners[k]] + [hit(t) for t in aa[1:-1]] + [corners[(k + 1) % 4]]
+        if abs(ax - bx) < 1e-9: pts += [(ax, z) for z in zs if min(az, bz) + 1e-6 < z < max(az, bz) - 1e-6]
+        else: pts += [(x, az) for x in xs if min(ax, bx) + 1e-6 < x < max(ax, bx) - 1e-6]
+        unwrap = lambda a: a + 2 * math.pi * math.ceil((t0 - 1e-6 - a) / (2 * math.pi))
+        side = sorted(pts, key=lambda p: unwrap(math.atan2(p[1] - cz, p[0] - cx)))
+        sides.append((side, [unwrap(math.atan2(p[1] - cz, p[0] - cx)) for p in side], aa)); onsq += side
+    within = lambda r, a, b, c, d: r[0] - 1e-9 <= a and c <= r[2] + 1e-9 and r[1] - 1e-9 <= b and d <= r[3] + 1e-9
     for xa, xb in zip(xs, xs[1:]):
         for za, zb in zip(zs, zs[1:]):
-            cx, cz = (xa + xb) / 2, (za + zb) / 2
-            if ins(cx, cz, 0.9) or core(cx, cz) or (xb - xa) < 1.2 or (zb - za) < 1.2: continue
-            if any(math.hypot(cx - fx, cz - fz) < fr + 0.2 for fx, fz, fr in skip_fixtures): continue
-            acc.cyl(cx, cz, 0.13, H - 0.03, H + 0.01, MAT['brass'], BRASS, n=20)
-            disc_down(glow, cx, H - 0.035, cz, 0.09, WARM, 2.6)
-            lit.spot((cx, H - 0.08, cz), WARM, 1.5, 10.5, 'h', (0, -1, 0), 22, 48); n += 1
-    return yb, beams, n
+            if within(sq, xa, za, xb, zb) or any(within(h, xa, za, xb, zb) for h in holes): continue
+            ring = []   # the cell's outline anticlockwise, with every square point that lies on its edges
+            for (pa, pb) in (((xa, za), (xb, za)), ((xb, za), (xb, zb)), ((xb, zb), (xa, zb)), ((xa, zb), (xa, za))):
+                on = [p for p in onsq if abs((pb[0] - pa[0]) * (p[1] - pa[1]) - (pb[1] - pa[1]) * (p[0] - pa[0])) < 1e-9
+                      and min(pa[0], pb[0]) - 1e-9 <= p[0] <= max(pa[0], pb[0]) + 1e-9 and min(pa[1], pb[1]) - 1e-9 <= p[1] <= max(pa[1], pb[1]) + 1e-9
+                      and math.dist(p, pa) > 1e-6 and math.dist(p, pb) > 1e-6]
+                ring += [pa] + sorted(on, key=lambda p: math.dist(p, pa))
+            c_ = ((xa + xb) / 2, (za + zb) / 2)
+            for i in range(len(ring)): _tri(acc, P(c_), P(ring[i]), P(ring[(i + 1) % len(ring)]), PAINT, CEIL, nn, nn, nn)
+    for side, sa, aa in sides:
+        arcp = [(cx + R1 * math.cos(t), cz + R1 * math.sin(t)) for t in aa]
+        i = j = 0
+        while i < len(side) - 1 or j < q:
+            if j == q or (i < len(side) - 1 and sa[i + 1] <= aa[j + 1] + 1e-9): _tri(acc, P(side[i]), P(side[i + 1]), P(arcp[j]), PAINT, CEIL, nn, nn, nn); i += 1
+            else: _tri(acc, P(side[i]), P(arcp[j + 1]), P(arcp[j]), PAINT, CEIL, nn, nn, nn); j += 1
+    # fascias: the outer edges split on the cuts (they share the cells' corners), and the given inner edges
+    fas = [((xa, Z0), (xb, Z0), (0.0, -1.0)) for xa, xb in zip(xs, xs[1:])] + [((xa, Z1), (xb, Z1), (0.0, 1.0)) for xa, xb in zip(xs, xs[1:])]
+    fas += [((X0, za), (X0, zb), (-1.0, 0.0)) for za, zb in zip(zs, zs[1:])] + [((X1, za), (X1, zb), (1.0, 0.0)) for za, zb in zip(zs, zs[1:])]
+    for (ax, az), (bx, bz), (nx, nz) in list(fas) + list(edges):
+        facing(acc, (ax, yF, az), (bx, yF, bz), (bx, yF + 0.08, bz), (ax, yF + 0.08, az), (nx, 0.0, nz), PAINT, CEIL)
+    # the shadow gap's light: a warm strip 2 cm off each fascia, 12 mm over the field's face (the corners left out: two strips never overlap)
+    yg = yF + 0.012
+    for (a, b, c, d) in ((X0 - 0.08, Z0, X0 - 0.02, Z1), (X1 + 0.02, Z0, X1 + 0.08, Z1), (X0, Z0 - 0.08, X1, Z0 - 0.02), (X0, Z1 + 0.02, X1, Z1 + 0.08)):
+        glow_facing(glow, (a, yg, b), (c, yg, b), (c, yg, d), (a, yg, d), (0, -1, 0), HALO, 2.0)
+    return X0, Z0, X1, Z1
 
 
-def washer_slots(glow, walls, yb, x_off=0.05, w=0.06):
-    """a light slot in the band's underside over each long wall, where the grazing washers sit (rooms.py lit.line under it)"""
-    x0, z0, x1, z1 = walls
-    for xa, xb in ((x0 + x_off, x0 + x_off + w), (x1 - x_off - w, x1 - x_off)):
-        y = yb - 0.065   # 5 mm under the band's soffit (yb - 0.06; at yb - 0.005 it was inside the band)
-        glow_facing(glow, (xa, y, z0 + 0.3), (xb, y, z0 + 0.3), (xb, y, z1 - 0.3), (xa, y, z1 - 0.3), (0, -1, 0), WARM, 2.0)
+def _pin(acc, glow, lit, x, y, z, I):
+    """a pinpoint downlight in a ceiling at y: a brass trim 12 mm proud (2 cm up into the ceiling), its lamp, its light"""
+    acc.cyl(x, z, 0.05, y - 0.012, y + 0.02, MAT['brass'], BRASS, n=16)
+    disc_down(glow, x, y - 0.017, z, 0.032, WARM, 2.8, n=10)
+    lit.spot((x, y - 0.05, z), WARM, I, 11.0, 'h', (0, -1, 0), 25, 55)
 
 
-def dome_rim(acc, glow, lit, cx, cz, a, b, H, n=64):
-    """the crimson lacquer rim that frames the oval dome: 0.7 m wide, from 2 cm inside the roof down to 0.55 m under it (deeper than the
-    beams, which end inside it); a warm glow line round its inner soffit edge"""
-    pts = [(cx + a * math.cos(2 * math.pi * i / n), cz + b * math.sin(2 * math.pi * i / n)) for i in range(n + 1)]
-    acc.sweep(pts, [(-0.35, H + 0.02), (-0.35, H - 0.55), (0.35, H - 0.55), (0.35, H + 0.02)], MAT['lacquer'], CRIMSON, closed=True)
-    sc = lambda px, pz, k: (cx + (px - cx) * k, cz + (pz - cz) * k)
-    for i in range(n):
-        (ax, az), (bx, bz) = pts[i], pts[i + 1]; a1, b1, b2, a2 = sc(ax, az, 0.97), sc(bx, bz, 0.97), sc(bx, bz, 0.95), sc(ax, az, 0.95)
-        glow_facing(glow, (a1[0], H - 0.555, a1[1]), (b1[0], H - 0.555, b1[1]), (b2[0], H - 0.555, b2[1]), (a2[0], H - 0.555, a2[1]), (0, -1, 0), WARM, 1.6)
-    for i in range(0, n, 8):
-        q = sc(pts[i][0], pts[i][1], 0.96); lit.spot((q[0], H - 0.6, q[1]), WARM, 5.0, 14, 'h', (0, -1, 0), 35, 75)
-    return pts
+def halo(acc, glow, lit, cx, cz, R1, R2, yF, cans=(), target=(0.0, 3.0, 10.0)):
+    """C1b: the field's round opening (R1) steps up twice. Round each opening a brass band 12 cm wide and 19 cm tall (its upstand hides the
+    cove's LED, 24 cm out behind it, which washes the ceiling above inwards from the edge); a pocket 0.40 m deep behind the band; the step (a
+    ring, its own opening R2) and the dome above. Pinpoints round the opening on the field, on the step and in the dome; the statue's spots in
+    brass cans under the dome (cans [(x, z, I)], aimed at target); fibre-optic stars in the step and the dome. Returns the dome's height
+    (the chandelier hangs from it)"""
+    y1s, yD = yF + STEP, yF + 2 * STEP
+    for (Rk, ylo, yup, rin, col) in ((R1, yF, y1s, R2, STEP1), (R2, y1s, yD, 0.0, DOME)):
+        ring_solid(acc, cx, cz, Rk, Rk + 0.12, ylo - 0.06, ylo + 0.13, MAT['brass'], BRASS)   # the band: the ceiling's edge ends inside it
+        wall_in(acc, cx, cz, Rk + 0.40, ylo, yup + 0.02, PAINT, col)                   # the pocket's back wall (2 cm over the ceiling above)
+        annulus(acc, cx, cz, rin, Rk + 0.42, yup, PAINT, col)                          # the ceiling above, 2 cm past the pocket's wall
+        rl = Rk + 0.24
+        for i in range(32):
+            t0, t1 = 2 * math.pi * i / 32, 2 * math.pi * (i + 1) / 32; tm = (t0 + t1) / 2
+            lit.line((cx + rl * math.cos(t0), ylo + 0.04, cz + rl * math.sin(t0)), (cx + rl * math.cos(t1), ylo + 0.04, cz + rl * math.sin(t1)), HALO, 0.6, 6.0, 'h', (-0.6 * math.cos(tm), 1.0, -0.6 * math.sin(tm)))
+    spots = []
+    for (sx, sz, I) in cans:
+        acc.cyl(sx, sz, 0.07, yD - 0.10, yD + 0.02, MAT['brass'], BRASS, n=16)
+        disc_down(glow, sx, yD - 0.105, sz, 0.05, lin('#ffe6c2'), 2.4)
+        lit.spot((sx, yD - 0.12, sz), lin('#ffe2b8'), I, 12, 'h', (target[0] - sx, target[1] - (yD - 0.12), target[2] - sz), 9, 20); spots.append((sx, sz))
+    rings = ((R1 + 1.3, yF, 16, 3.0), ((R1 + R2) / 2 + 0.1, y1s, 20, 3.0), (2.3, yD, 8, 2.4))   # the court's floor as bright as under the v12 rings (measured)
+    pins = []
+    for (rr, y, k, I) in rings:
+        for i in range(k):
+            t = 2 * math.pi * (i + 0.5) / k; x, z = cx + rr * math.cos(t), cz + rr * math.sin(t)
+            refuse('a pinpoint beside a statue can', min([math.hypot(x - sx, z - sz) for sx, sz in spots] + [9.0]) - 0.12, 0.25)
+            _pin(acc, glow, lit, x, y, z, I); pins.append((x, z))
+    srnd = random.Random(11)
+    for (ra, rb, y, want) in ((R2 + 0.35, R1 - 0.15, y1s, 160), (0.6, R2 - 0.2, yD, 220)):
+        stars = []; tries = 0
+        while len(stars) < want and tries < 30000:
+            tries += 1; rr = math.sqrt(ra * ra + (rb * rb - ra * ra) * srnd.random()); t = 2 * math.pi * srnd.random(); x, z = cx + rr * math.cos(t), cz + rr * math.sin(t)
+            r_ = srnd.choice((0.008, 0.011, 0.014, 0.018))
+            if any(math.hypot(x - px, z - pz) < 0.12 for px, pz in pins) or any(math.hypot(x - sx, z - sz) < 0.16 for sx, sz in spots): continue
+            if any(abs(x - qx) < r_ + qr + 0.02 and abs(z - qz) < r_ + qr + 0.02 for qx, qz, qr in stars): continue   # two on one spot fight
+            stars.append((x, z, r_)); col = lin('#fff4dc') if srnd.random() < 0.7 else lin('#dfe8ff'); yy = y - 0.005
+            glow_facing(glow, (x - r_, yy, z - r_), (x + r_, yy, z - r_), (x + r_, yy, z + r_), (x - r_, yy, z + r_), (0, -1, 0), col, srnd.choice((2.0, 2.8, 3.6)))
+    return yD
 
 
-# ------------------------------------------------------------------------------------------------ backlit onyx columns
-def onyx_column(acc, glow, lit, cx, cz, H, r=0.45, abacus=0.5):
-    """a full-height column: black marble plinth, brass base ring, the onyx shaft (self-lit), eight brass fins (on the texture's seams:
-    its planar mapping turns at 45 degrees), a brass collar at 3 m, a brass crown, a black lacquer abacus (half width `abacus`) under the
-    roof, 2 cm into it, that the beams land on. Every ring differs in radius from the next, so no two faces share a plane"""
-    acc.cyl(cx, cz, r + 0.17, 0.0, 0.16, MAT['neroGold'], lin('#ffffff'), n=32)
-    acc.cyl(cx, cz, r + 0.08, 0.16, 0.24, MAT['brass'], BRASS, n=32)
-    y1 = H - 0.62
-    acc.cyl(cx, cz, r, 0.22, y1, MAT['onyx'], ONYX, n=32)
-    for k in range(8):
-        a = math.radians(45 * k); ca, sa = math.cos(a), math.sin(a); tx, tz = -sa, ca
-        q = [(cx + ca * (r - 0.012) - tx * 0.014, cz + sa * (r - 0.012) - tz * 0.014), (cx + ca * (r + 0.016) - tx * 0.014, cz + sa * (r + 0.016) - tz * 0.014),
-             (cx + ca * (r + 0.016) + tx * 0.014, cz + sa * (r + 0.016) + tz * 0.014), (cx + ca * (r - 0.012) + tx * 0.014, cz + sa * (r - 0.012) + tz * 0.014)]
-        acc.prism(q, 0.235, y1 + 0.01, MAT['brass'], BRASS)
-    acc.cyl(cx, cz, r + 0.04, 2.96, 3.04, MAT['brass'], BRASS, n=32)          # the collar, over the fins (they end in it and run on)
-    acc.cyl(cx, cz, r + 0.07, y1 - 0.02, y1 + 0.08, MAT['brass'], BRASS, n=32)  # the crown: the shaft and the fins end inside it
-    acc.cyl(cx, cz, r + 0.03, y1 + 0.08, H - 0.56, MAT['brass'], BRASS, n=32)   # its neck, up into the abacus
-    acc.box(cx - abacus, H - 0.58, cz - abacus, cx + abacus, H + 0.02, cz + abacus, MAT['lacquer'], LACQ)
-    acc.box(cx - abacus - 0.012, H - 0.6, cz - abacus - 0.012, cx + abacus + 0.012, H - 0.565, cz + abacus + 0.012, MAT['brass'], BRASS)   # its brass lip
-    for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):   # the glow the onyx throws round itself (the shaft's own light is its emission)
-        lit.line((cx + dx * (r + 0.12), 0.5, cz + dz * (r + 0.12)), (cx + dx * (r + 0.12), y1 - 0.3, cz + dz * (r + 0.12)), lin('#ffc27a'), 0.12, 4.0, 'h')
+def apertures(acc, lit, y, spots, I=2.1):
+    """the general floor light away from the halo: deep black-baffle downlights in the field, no glow (a lit dot per light was the coffers'
+    "cubic lights"): a black trim 12 mm proud, 2 cm up into the field, a warm beam"""
+    for (x, z) in spots:
+        acc.cyl(x, z, 0.075, y - 0.012, y + 0.02, MAT['tblack'], lin('#0b0b0c'), n=16)
+        lit.spot((x, y - 0.06, z), WARM, I, 11.0, 'h', (0, -1, 0), 18, 42)
 
 
-def onyx_post(acc, cx, cz, y0, y1, r=0.3):
-    """a mezzanine column in the same onyx: a brass shoe, the shaft, six brass fins, a brass cap under the slab"""
-    acc.cyl(cx, cz, r + 0.06, y0, y0 + 0.12, MAT['brass'], BRASS, n=24)
-    acc.cyl(cx, cz, r, y0 + 0.1, y1 - 0.1, MAT['onyx'], ONYX, n=24)
-    for k in range(8):
-        a = math.radians(45 * k); ca, sa = math.cos(a), math.sin(a); tx, tz = -sa, ca
-        q = [(cx + ca * (r - 0.01) - tx * 0.012, cz + sa * (r - 0.01) - tz * 0.012), (cx + ca * (r + 0.014) - tx * 0.012, cz + sa * (r + 0.014) - tz * 0.012),
-             (cx + ca * (r + 0.014) + tx * 0.012, cz + sa * (r + 0.014) + tz * 0.012), (cx + ca * (r - 0.01) + tx * 0.012, cz + sa * (r - 0.01) + tz * 0.012)]
-        acc.prism(q, y0 + 0.11, y1 - 0.09, MAT['brass'], BRASS)
-    acc.cyl(cx, cz, r + 0.05, y1 - 0.12, y1, MAT['brass'], BRASS, n=24)
+# ------------------------------------------------------------------------------------------------ v13 columns (variant P2, the user's pick)
+def _corner(acc, glow, lit, x, z, sx, sz, h, ch, y0, y1, g0, g1, light):
+    """a brass corner post centred on the shaft's corner (x, z), half side h; its outer edge (towards (sx, sz)) cut at 45 degrees by ch, an
+    LED strip on the cut from g0 to g1 (5 mm proud), and its light (Ipm `light`) washing out along the diagonal"""
+    P = [(x - sx * h, z - sz * h), (x + sx * h, z - sz * h), (x + sx * h, z + sz * (h - ch)), (x + sx * (h - ch), z + sz * h), (x - sx * h, z + sz * h)]
+    acc.prism(P, y0, y1, MAT['brass'], BRASS)
+    nx, nz = sx / math.sqrt(2), sz / math.sqrt(2); ux, uz = -sx / math.sqrt(2), sz / math.sqrt(2)
+    mx, mz = x + sx * (h - ch / 2) + nx * 0.005, z + sz * (h - ch / 2) + nz * 0.005; w = ch * math.sqrt(2) * 0.3
+    glow_facing(glow, (mx - ux * w, g0, mz - uz * w), (mx + ux * w, g0, mz + uz * w), (mx + ux * w, g1, mz + uz * w), (mx - ux * w, g1, mz - uz * w), (nx, 0, nz), HALO, 2.2)
+    if light: lit.line((mx + nx * 0.05, g0 + 0.2, mz + nz * 0.05), (mx + nx * 0.05, g1 - 0.2, mz + nz * 0.05), HALO, light, 2.5, 'h', (nx, 0.0, nz))
+
+
+def marble_column(acc, glow, lit, cx, cz, yb, yt, w=0.40, h=0.06, base=0.49, bh=0.30, cap=0.50, ch=0.03, light=0.10):
+    """P2: a square Nero Marquina shaft (half side w) on a black base (half side base, bh tall, a brass band 15 mm proud round it), up to yt
+    (2 cm into the ceiling it meets); a brass post on each corner, 6 cm proud of both faces, its outer edge cut at 45 degrees with an LED in
+    the cut; a brass band 0.3 m under the ceiling. Footprint: the base (corner radius base * 1.414)"""
+    acc.box(cx - base, yb, cz - base, cx + base, yb + bh, cz + base, MAT['tblack'], lin('#0c0c0d'))
+    acc.box(cx - base - 0.015, yb + bh - 0.08, cz - base - 0.015, cx + base + 0.015, yb + bh - 0.03, cz + base + 0.015, MAT['brass'], BRASS)
+    acc.box(cx - w, yb + bh - 0.02, cz - w, cx + w, yt, cz + w, MAT['nero'], lin('#e6e6e6'))
+    yc = yt - 0.02 - 0.30   # the band's top
+    acc.box(cx - cap, yc - 0.06, cz - cap, cx + cap, yc, cz + cap, MAT['brass'], BRASS)
+    for sx in (-1, 1):
+        for sz in (-1, 1): _corner(acc, glow, lit, cx + sx * w, cz + sz * w, sx, sz, h, ch, yb + bh - 0.02, yt, yb + bh + 0.15, yc - 0.21, light)
+
+
+# ------------------------------------------------------------------------------------------------ v13 the zones' fins and signs
+def zone_fin(acc, glow, lit, xw, xf, z0, z1, ytop, led_top):
+    """v13 (the user, 11-20: "make the reception and the areas separated and much more defined"): a Nero Marquina fin from the west wall
+    (2 cm into its face xw) out to xf between two zones, z0..z1, up to ytop (into the field or the mezzanine's slab), in the columns' language:
+    a black skirting 15 mm proud, a brass nose 3 cm proud of its end (12 mm past its faces) with an LED line down it to led_top"""
+    acc.box(xw - 0.02, 0.0, z0, xf, ytop, z1, MAT['nero'], lin('#e6e6e6'))
+    acc.box(xw - 0.02, 0.0, z0 - 0.015, xf + 0.015, 0.16, z1 + 0.015, MAT['tblack'], lin('#0c0c0d'))
+    acc.box(xf - 0.02, 0.14, z0 - 0.012, xf + 0.03, ytop, z1 + 0.012, MAT['brass'], BRASS)
+    zc = (z0 + z1) / 2
+    glow_facing(glow, (xf + 0.035, 0.4, zc - 0.012), (xf + 0.035, 0.4, zc + 0.012), (xf + 0.035, led_top, zc + 0.012), (xf + 0.035, led_top, zc - 0.012), (1, 0, 0), HALO, 2.4)
+    lit.line((xf + 0.09, 0.6, zc), (xf + 0.09, led_top - 0.3, zc), HALO, 0.12, 2.5, 'h', (1.0, 0.0, 0.0))
+
+
+def sign_board(acc, x, y0, y1, z0, z1, frame=0.025):
+    """a black board on the west wall (2 cm into it, 4 cm proud of its face x) in a brass frame 1.5 cm prouder; returns the picture's plane"""
+    acc.box(x - 0.02, y0, z0, x + 0.04, y1, z1, MAT['lacquer'], lin('#0b0b0c'))
+    for (ya, yb, za, zb) in ((y0 - frame, y0, z0 - frame, z1 + frame), (y1, y1 + frame, z0 - frame, z1 + frame), (y0, y1, z0 - frame, z0), (y0, y1, z1, z1 + frame)):
+        acc.box(x - 0.02, ya, za, x + 0.055, yb, zb, MAT['brass'], BRASS)   # rails over stiles: the stiles stop at the rails
+    return x + 0.046
+
+
+# ------------------------------------------------------------------------------------------------ v13 the entrance runner
+def runner_to_ring(acc, cx, cz, rr, hw, z_end, frame=0.06):
+    """a crimson carpet runner from z_end (by the doors) to the brand ring (centre (cx, cz), brass edge radius rr), its end cut to the
+    ring's arc so it meets the ring all the way across: the carpet 6 mm proud in a brass frame 13 mm proud (5 mm over the ring's brass,
+    0.008), its arc lapping the ring's edge (four pieces that share edges, never faces)"""
+    arc = lambda x, r: cz + math.sqrt(r * r - (x - cx) ** 2)   # the circle's front half (towards the doors)
+    xi = hw - frame; ra = rr + frame; N = 24
+    rr -= 0.012   # the frame's arc 12 mm over the ring's brass (the ring is a 48-gon: its chords sag 7 mm inside the circle), 5 mm above it
+    xs = [cx - xi + 2 * xi * k / N for k in range(N + 1)]
+    carpet = [(x, arc(x, ra)) for x in xs] + [(cx + xi, z_end - frame), (cx - xi, z_end - frame)]
+    acc.prism(carpet, 0.0, 0.006, MAT['carpet'], lin('#5a0a14'), bottom=False)
+    band = [(x, arc(x, rr)) for x in xs] + [(x, arc(x, ra)) for x in reversed(xs)]
+    acc.prism(band, 0.0, 0.013, MAT['brass'], BRASS, bottom=False)
+    for s in (-1, 1):   # the sides: from the ring's edge (its arc between the band's end and the runner's edge) to the frame's end
+        xa, xb = cx + s * xi, cx + s * hw; ex = [xa + (xb - xa) * k / 4 for k in range(5)]
+        side = [(x, arc(x, rr)) for x in ex] + [(xb, z_end), (xa, z_end)]
+        acc.prism(side, 0.0, 0.013, MAT['brass'], BRASS, bottom=False)
+    acc.prism([(cx - xi, z_end - frame), (cx + xi, z_end - frame), (cx + xi, z_end), (cx - xi, z_end)], 0.0, 0.013, MAT['brass'], BRASS, bottom=False)
 
 
 # ------------------------------------------------------------------------------------------------ the mezzanine's edge
@@ -240,9 +353,10 @@ def ticket_zone(acc, glow, lit, S, xw):
         acc.box(xw - 0.02, ya, z0_, xw + 0.042, yb_, z1_, MAT['brass'], BRASS)
     lit.line((xw + 0.35, 2.2, 5.5), (xw + 0.35, 2.2, 12.5), lin('#ffc27a'), 0.18, 3.0, 'h', (1, 0, 0))
     # the canopy: from the pier between the snacks and the ticket machines to the pier at the desk's north end (both rise into it)
-    _canopy(acc, glow, lit, xw, -15.9, 3.45, 3.75, co['z1'] + 0.13, bo['z1'] + 0.13, (2.6, 5.0, 7.0, 9.0, 11.0, 13.0), xf - 0.3)
+    _canopy(acc, glow, lit, xw, -15.9, 3.45, 4.25, co['z1'] + 0.13, bo['z1'] + 0.13, (2.6, 5.0, 7.0, 9.0, 11.0, 13.0), xf - 0.3)   # v13 a 0.8 m fascia for the zone's name
     _inlay(acc, -16.42, 4.55, -11.95, 13.45, MAT['carpet'], lin('#5a0a14'))
-    return {'id': 'wayfind_tickets', 'x': -15.9 + 0.006, 'y': 3.6, 'z': (za + zb) / 2, 'yaw': math.pi / 2, 'w': 3.0, 'h': 0.18, 'emit': 1}
+    return [{'id': 'zone_tickets', 'x': -15.9 + 0.006, 'y': 3.85, 'z': (za + zb) / 2, 'yaw': math.pi / 2, 'w': 6.2, 'h': 0.62, 'emit': 1},   # v13 between the fascia's brass bands
+            {'id': 'zone_kiosk', 'x': -15.9 + 0.006, 'y': 3.85, 'z': (co['z1'] + bo['z0']) / 2, 'yaw': math.pi / 2, 'w': 1.9, 'h': 0.46, 'emit': 1}]
 
 
 def popcorn_zone(acc, glow, lit, S, xw):

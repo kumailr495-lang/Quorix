@@ -26,6 +26,7 @@ import { Shows } from './film9.js';
 import { Together } from './mpui.js';
 import { Wayfinder } from './wayfind.js';
 import { Guide } from './guide.js';
+import { Phone } from './phone.js';
 import { LobbyLife } from './anim12.js';
 import { media } from './bridge.js';
 import { Input } from './input.js';
@@ -127,12 +128,19 @@ async function boot() {
   // have a ticket, and a stub for every film you watch to the end (Settings, More keeps your last nights)
   const rain = makeRain(world.rooms.street, { count: lowG ? 1500 : 3500 }); rain.mesh.material.uniforms.uBoxMin.value.z = 25.4; world.rooms.street.U.uWet.value = 1;
   const marq = attraction(world.panels.attraction_f, shows), marquee = (title) => marq.own(title);
+  let snapCb = null;   // v13 a photo for the phone's camera: the frame after the next render
   const stubs = { get() { try { return JSON.parse(localStorage.getItem('lumiere.stubs') || '[]'); } catch (e) { return []; } }, add(x) { try { const a = this.get(); a.unshift(x); localStorage.setItem('lumiere.stubs', JSON.stringify(a.slice(0, 20))); } catch (e) { /* private mode */ } } };
   const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
     order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });
   tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
   const way = new Wayfinder(world, crowd); let wayT = 0; const guide = new Guide(engine.scene, world);   // v12b the way on the floor and a light at the goal
+  // v13 the phone (phone.js): your ticket, the map, your tab, a camera, your photos and stubs, friends, settings; it never stops the game
+  const phone = new Phone({ ticket: () => ticket, bill, stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = cb; },
+    guide: () => { settings.goal = true; saveSettings(settings); }, showTicket: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'),
+    together: () => together.open(), settings: () => ui.openSettings(), sound, toast: (m, ms, k) => ui.toast(m, ms, k), native: !!window.LumiereMedia });   // inside the Android app a photo cannot be saved as a file (no picture bridge yet)
+  $('#bPhone').addEventListener('click', (e) => { e.stopPropagation(); if (mode === 'play') phone.toggle(); });
+  addEventListener('keydown', (e) => { const tag = (e.target && e.target.tagName) || ''; if (e.code === 'KeyF' && mode === 'play' && tag !== 'INPUT' && tag !== 'TEXTAREA') phone.toggle(); });
   const life = new LobbyLife(world, engine);   // v12c the lobby's life: popcorn popping, the fountain's water, steam at the bar, the marquee's bulbs, the boards' sheen
   const layoutEd = new LayoutEditor(settings, sound, { onModal, save: () => { saveSettings(settings); applyLayout(settings); } });
   const tut = new Tutorial(settings, sound, { save: () => saveSettings(settings), state: () => ({ ticket, held, seated: !!player.seated, room, game }) });
@@ -142,7 +150,8 @@ async function boot() {
   const traffic = new Traffic(world, mats, sound, world.rooms.street && world.rooms.street.x && world.rooms.street.x.traffic); intro.traffic = traffic;
   bill.onChange = () => ui.setWallet(game === 'flow' && bill.total ? t('hud9.bill', { total: bill.fmt(bill.total) }) : null);
   function applySettings(gfx) {
-    saveSettings(settings); engine.applySettings(settings); { const on = settings.reflections !== 'off' && settings.graphics !== 'low'; mats.setReflections(on, heroRefl(settings)); if (on && world.captureReflections) world.captureReflections(); } crowd.setDensity(DENS[settings.npcs] || 'medium');
+    saveSettings(settings); engine.applySettings(settings); { const lo = settings.graphics === 'low'; mats.setQuality({ normalMaps: !lo, macro: !lo, detile: settings.graphics === 'high', texSize: lo ? 256 : 512 }); }   // v13 the preset at once, as at boot
+    { const on = settings.reflections !== 'off' && settings.graphics !== 'low'; mats.setReflections(on, heroRefl(settings)); if (on && world.captureReflections) world.captureReflections(); } crowd.setDensity(DENS[settings.npcs] || 'medium');
     if (settings.npcs === 'off') for (const h of world.halls) crowd.clearAudience(h.id);   // off means an empty hall, now
     sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd }); sound.surround = !!settings.surround; if (input.vr !== !!settings.vr) input.setVR(!!settings.vr); talk.setOptions(settings); voice.setOptions(settings); applyLayout(settings);
   }
@@ -292,7 +301,7 @@ async function boot() {
     if (mode === 'play') return; ui.fade(1, 0.35);
     setTimeout(() => { if (m || !game) newGame(m || 'flow'); mode = 'play'; ui.showMenu(false); onModal(); bill.onChange(); ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } if (!intro.active) maybeAskTutorial(); }, 380);
   }
-  function toMenu() { if (intro.active) intro.finish(); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); }
+  function toMenu() { if (intro.active) intro.finish(); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); phone.close(); }
   function maybeAskTutorial() { if (mode === 'play' && game === 'flow' && !settings.tutorialAsked && !settings.tutorialDone && settings.lang) setTimeout(() => ui.askTutorial(), 1400); }
   function startTutorial(fromAsk) { settings.tutorialAsked = true; saveSettings(settings); if (mode !== 'play' || game !== 'flow') enterPlay('flow'); setTimeout(() => tut.start(), fromAsk ? 200 : 900); }
   addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (booking.isOpen()) booking.close(); else if (tablet.isOpen()) tablet.close(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } } });
@@ -303,6 +312,7 @@ async function boot() {
     try { step(dt, now); } catch (e) { if (now - errT > 5000) { errT = now; console.error('[lumiere] frame update failed (rendering anyway):', e); } }
     engine.stats.cpu = engine.stats.cpu * 0.92 + (performance.now() - c0) * 0.08; engine.governor(dt, now);
     shows.frame(engine.camera, engine.renderer); engine.render(); together.preview(engine.renderer, dt);
+    if (snapCb) { const cb = snapCb; snapCb = null; let url = null; try { const c = engine.renderer.domElement, k = Math.min(1, 960 / c.width), o = document.createElement('canvas'); o.width = Math.round(c.width * k); o.height = Math.round(c.height * k); o.getContext('2d').drawImage(c, 0, 0, o.width, o.height); url = o.toDataURL('image/jpeg', 0.85); } catch (e) { /* tainted or lost context */ } cb(url); }
   }
   function menuCam(now) { const k = now / 1000 * 0.04, cam = engine.camera; cam.position.set(Math.sin(k) * 7, 2.6 + Math.sin(k * 2.1) * 0.3, 6 + Math.cos(k) * 5); cam.lookAt(Math.sin(k + 1.4) * 3, 2.2, 0); player.x = cam.position.x; player.z = cam.position.z; player.y = 0; }
   // v9.1b (the user: "the screens are so small"): a landscape phone shows ~105 deg across, a middle seat sees the picture at ~57 deg, so the

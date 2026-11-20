@@ -103,7 +103,8 @@ export class Shows {
     // this one is laid out, 2 px in a corner behind the game's canvas, so the browser treats it as on screen
     Object.assign(v.style, { position: 'fixed', left: '0', top: '0', width: '2px', height: '2px', opacity: '0.01', zIndex: '-1', pointerEvents: 'none' }); document.body.appendChild(v);
     v.volume = 0;   // the film's own sound is opened by the sound system (sound.startFilm sets its level), never at full volume by itself
-    v.addEventListener('ended', () => { const s = this.cur(); if (s && (s.state === 'playing')) this._finish(s.id, !s.credits); });
+    // v13 (the user: no clapping at things that make no sense): applause only after a film, a house film or a video of feature length (20 min)
+    v.addEventListener('ended', () => { const s = this.cur(); if (s && (s.state === 'playing')) this._finish(s.id, !s.credits && (s.src.kind === 'film' || (v.duration || 0) >= 1200)); });
     v.addEventListener('error', () => { const s = this.cur(); if (s && s.state !== 'idle' && s.state !== 'ended') { this.hooks.onError && this.hooks.onError(s.src && s.src.kind); this._stopPicture(s); s.state = 'ended'; s.phaseAt = this.now; s.slides.text([t('toast.videoError') || 'This video could not be played.']); } });
     v.addEventListener('waiting', () => { this.buffering = true; }); v.addEventListener('playing', () => { this.buffering = false; });
     // v11 frame watchdog: when the last new frame arrived and how far apart frames come (update() wakes a decoder that has gone idle)
