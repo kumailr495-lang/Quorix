@@ -70,6 +70,16 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | LODs for every object (asked 6-12) | Open: levels for what is drawn separately (people, cars, trees, seats); merged room props stay one mesh |
 | Lobby much better or from scratch; outside better still | Open. Noted for it: the florist's window (white wall, blob flowers, box pots), the box hedges and balcony planters still look blocky |
 
+## The 11-19 list (in the order it is being worked)
+
+| Ask | Status |
+|---|---|
+| The gold ceiling "looks shit" | Replaced 11-19 by the picked noir coffers: black lacquer beams on the court's grid, brass inlays, a downlight per coffer, the crimson dome rim, a new chandelier (lit glass rods on three brass rings) in the starry dome |
+| The pillars | Replaced 11-19 by the picked backlit honey onyx (a real CC0 scan) with brass fins and bases |
+| Reception, bar and popcorn as dedicated areas with a much better design | Done 11-19, restyled in place (picked): onyx ticket desk with four tills; popcorn parlour with a bulb marquee, checker floor, a red counter, two cabinet poppers, soda towers, tub stacks, heated cases; the bar with a bottle wall, slatted ceiling, a fluted walnut bar, a lever espresso machine. Engine renders only, not seen on the phone |
+| Models and textures "lazy": more 3D detail | Partly 11-19: eight new detailed props for the three counters and the dome; the statue now reads as gold; the parlour's machines no longer stand half inside the wall. Street props and the older Kiln props are next |
+| Animations: popcorn popping, fountain water, bar and cafe life, marquee and menus (picked) | Done 11-19 in the engine (anim12.js): kernels pop in batches, the fountain's drops, splashes and rings, steam when the barista makes a hot drink, chasing bulbs, a sheen over the menus. NPC bar routines (a barista working the machine) still open |
+
 ## Theatres
 
 | Ask | Status |

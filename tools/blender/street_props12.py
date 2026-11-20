@@ -37,19 +37,8 @@ def box(x0, y0, z0, x1, y1, z1):
 
 
 def ctube(pts, radius, sides=8):
-    """a round tube along an open polyline, capped at both ends (a closed solid)"""
-    def build(bm):
-        n = len(pts); rings = []
-        for i, p in enumerate(pts):
-            a, b = pts[max(0, i - 1)], pts[min(n - 1, i + 1)]
-            t = (Vector(b) - Vector(a)).normalized(); up = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0))
-            x = t.cross(up).normalized(); y = t.cross(x).normalized()
-            rings.append([bm.verts.new(Vector(p) + (x * math.cos(2 * math.pi * k / sides) + y * math.sin(2 * math.pi * k / sides)) * radius) for k in range(sides)])
-        for i in range(n - 1):
-            a, b = rings[i], rings[i + 1]
-            for k in range(sides): k2 = (k + 1) % sides; bm.faces.new((a[k], a[k2], b[k2], b[k]))
-        bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
-    return build
+    """a round tube along an open polyline, capped at both ends (v12c: lbl.ptube, rotation-minimizing frames: no twist where it turns)"""
+    return lambda bm: lbl.ptube(bm, pts, radius, sides)
 
 
 def ring(r0, r1, z0, z1):
@@ -90,7 +79,7 @@ def bench_street():
 def bin_street():
     part('Body', 0, 'blackmetal', lambda bm: lathe(bm, [(1e-4, 0.0), (0.21, 0.0), (0.24, 0.04), (0.24, 0.86), (1e-4, 0.86)], 28))
     part('Band', 0, 'brass', lambda bm: lathe(bm, ring(0.235, 0.25, 0.68, 0.73), 28))                   # 5 mm into the body, 10 mm proud
-    part('Mouth', 0, 'paint_black', lambda bm: lathe(bm, ring(0.235, 0.244, 0.76, 0.83), 28))           # the dark opening under the lid
+    part('Mouth', 0, 'paint_black', lambda bm: lathe(bm, ring(0.235, 0.247, 0.76, 0.83), 28))           # the dark opening under the lid, 7 mm proud (4 mm read as one face far off)
     part('Lid', 0, 'blackmetal', lambda bm: lathe(bm, [(1e-4, 0.855), (0.255, 0.855), (0.255, 0.885), (0.19, 0.95), (0.05, 0.98), (1e-4, 0.985)], 28))
 
 
@@ -109,7 +98,7 @@ def parking_meter():
     part('Head', 0, 'blackmetal', rb((0.14, 0.17, 0.27), 0.03, (2, 2, 2), 2), T(0, 0, 1.25))                # 1.115 to 1.385: the post 5 mm in
     part('Dome', 0, 'galvanized', lambda bm: lathe(bm, [(1e-4, 1.37), (0.06, 1.37), (0.05, 1.42), (1e-4, 1.44)], 16))
     part('Screen', 0, 'glow_white', box(0.068, -0.05, 1.27, 0.076, 0.05, 1.33), smooth=False)              # 2 mm into the head's front
-    part('Slot', 0, 'brass', box(0.066, -0.03, 1.18, 0.074, 0.03, 1.21))
+    part('Slot', 0, 'brass', box(0.066, -0.03, 1.18, 0.077, 0.03, 1.21))                                # 7 mm proud of the head
 
 
 def bicycle(y, paint):

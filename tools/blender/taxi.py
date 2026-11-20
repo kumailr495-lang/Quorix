@@ -407,7 +407,7 @@ def wheel(lod, wx, s):
         ang = 245 if s > 0 else 115   # the caliper at the top of the disc, behind the axle (the lathe frame's +Y points down on the left, up on the right)
         obj('Caliper', lod, 'caliper', rbox((0.085, 0.045, 0.045), 0.01, M @ RZ(ang) @ T(0.152, 0, 0.052) @ RZ(90)))
     else:
-        obj('Spoke', lod, 'car_silver', lambda bm: (lathe(bm, [(1e-4, 0.080), (0.21, 0.080), (0.21, 0.094), (1e-4, 0.094)], seg), bm.transform(M)))
+        obj('Spoke', lod, 'car_silver', lambda bm: (lathe(bm, [(1e-4, 0.086), (0.21, 0.086), (0.21, 0.094), (1e-4, 0.094)], seg), bm.transform(M)))   # v12c its inner face 8 mm off the lip's (2 mm fought on the parked cars)
     obj('Cap', lod, 'paint_black', lambda bm: (lathe(bm, [(1e-4, 0.090), (0.062, 0.090), (0.058, 0.104), (1e-4, 0.108)], 16), bm.transform(M)))
     obj('Hub', lod, 'brake', lambda bm: (lathe(bm, [(1e-4, 0.030), (0.06, 0.030), (0.06, 0.095), (1e-4, 0.095)], 16 if lod == 0 else 8), bm.transform(M)))
     obj('Knuckle', lod, 'plastic_black', lambda bm: (lathe(bm, [(1e-4, -0.25), (0.05, -0.25), (0.05, 0.034), (1e-4, 0.034)], 16 if lod == 0 else 8), bm.transform(M)))

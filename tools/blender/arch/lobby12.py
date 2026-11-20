@@ -260,7 +260,7 @@ def popcorn_zone(acc, glow, lit, S, xw):
     acc.box(xw - 0.02, y0, z0, xfc, y1, z1, MAT['lacquer'], LACQ)
     acc.box(xfc - 0.02, y0 + 0.02, z0 + 0.02, xfc + 0.02, y1 - 0.02, z1 - 0.02, MAT['lacquer'], lin('#e8dcc4'))   # the cream face
     for ya, yb_ in ((y0 - 0.025, y0 + 0.025), (y1 - 0.03, y1 + 0.02)):   # 5 mm under the ticket canopy's bands where the two meet
-        acc.box(xfc - 0.02, ya, z0 - 0.02, xfc + 0.03, yb_, z1 + 0.02, MAT['brass'], BRASS)
+        acc.box(xfc - 0.026, ya, z0 - 0.02, xfc + 0.03, yb_, z1 + 0.02, MAT['brass'], BRASS)   # its back 6 mm behind the ticket canopy's band where they meet
     bulbs = []
     for yb_ in (y0 + 0.095, y1 - 0.095):
         z = z0 + 0.25
@@ -297,7 +297,7 @@ def bar_zone(acc, glow, lit, S, x0, z0, L1, cz0, cz1):
     rnd = random.Random(19); COLS_ = ['#6a3a10', '#1f4a2a', '#9aa8ae', '#5a1018', '#1a3a6a', '#7a5a20']
     for sy in (1.45, 1.95, 2.45):
         acc.box(xw - 0.02, sy, cz0 + 0.4, xw + 0.30, sy + 0.012, cz1 - 0.4, MAT['glass'], lin('#9fb3bf'))          # the shelf, 2 cm into the wall
-        acc.box(xw + 0.292, sy - 0.006, cz0 + 0.4, xw + 0.31, sy + 0.03, cz1 - 0.4, MAT['brass'], BRASS)           # its brass lip
+        acc.box(xw + 0.292, sy - 0.006, cz0 + 0.39, xw + 0.31, sy + 0.03, cz1 - 0.39, MAT['brass'], BRASS)         # its brass lip, 1 cm past the glass at each end
         z = cz0 + 0.55
         while z < cz1 - 0.55:
             r = rnd.choice((0.034, 0.038, 0.044)); h = rnd.choice((0.2, 0.24, 0.28)); c = lin(rnd.choice(COLS_)); xb = xw + 0.15

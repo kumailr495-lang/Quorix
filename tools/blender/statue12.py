@@ -101,7 +101,7 @@ def fountain_muse(statues):
         for k in range(nj):
             a = math.pi / 8 + 2 * math.pi * k / nj; ca, sa = math.cos(a), math.sin(a)
             pts = arc((ca * (R_IN + 0.005), sa * (R_IN + 0.005), 0.42), (ca * 1.26, sa * 1.26, 0.86), (ca * 1.16, sa * 1.16, WATER - 0.03))
-            part('Jet', lod, 'glow_ice', lambda bm, pts=pts: ctube(bm, pts, 0.007, sides), smooth=False)
+            part('Jet', lod, 'glow_ice', lambda bm, pts=pts: lbl.ptube(bm, pts, 0.007, sides), smooth=False)   # v12c no twist where the arc turns
         part('Glint', lod, 'glow_ice', lambda bm: lathe(bm, ring(1.145, 1.175, WATER - 0.004, WATER + 0.004), seg), smooth=False)   # 4 mm into the water
 
 

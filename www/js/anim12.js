@@ -151,6 +151,8 @@ export class LobbyLife {
   }
   // an order at the bar: the steam wand's and the spouts' cycles start now (main.js, when the barista makes a hot drink)
   steam(now) { if (!this.uSteamOff) return; const t = (now / 1000) % 3600; this.uSteamOff.value = 105 * Math.ceil(t / 105) - t + 0.4; }   // 105 s: both cycles (21 s, 15 s) at their start
+  // where the steam wand's cycle is (0..1; it steams while under 0.28): the barista works the machine then (main.js)
+  wandPhase(now) { const t = (now / 1000) % 3600 + (this.uSteamOff ? this.uSteamOff.value : 0); return ((t / 21) % 1 + 1) % 1; }
   // how hard the poppers are popping now (0..1, the busier of the two): the popcorn sound follows it (sound9.js)
   popRate(now) { const t = (now / 1000) % 3600; let r = 0; LIFE.kettles.forEach((k, i) => { const b = ((t / 33 + i * 0.43) % 1 + 1) % 1, s = (e0, e1, x) => { const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return u * u * (3 - 2 * u); };
     r = Math.max(r, s(0, 0.08, b) * (1 - s(0.62, 0.76, b))); }); return this.on ? r : 1; }

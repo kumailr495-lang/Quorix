@@ -131,6 +131,11 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   uploads): the marquee's chasing bulbs, fountain drops, splashes and rings, popcorn popping in batches (the popcorn sound follows
   `popRate`), steam at the bar (an order starts it: `steam()`), a sheen across the menu boards. Particles live in each prop's Blender
   frame (Blender X -> engine Z, Y -> X, Z -> Y, then the yaw), so change a prop's geometry and its numbers in anim12.js together.
+- **Rules learned in v12c**: tubes along bent polylines use `lbl.ptube` (rotation-minimizing frames); the old builders switched their
+  side vector where a tube turned near vertical and folded faces onto each other (the bike stand's hoops). zcheck's engine pass also flags
+  2-5 mm pairs that glb_check does not: labels, rims and knobs on lathed or faceted parts need 7 mm (5 mm along a tapered or faceted
+  surface measures under 5). index.html's CSP refuses injected inline scripts: test harnesses that inject one (seethru.mjs) create their
+  context with `bypassCSP: true`; the app keeps its CSP.
 
 ## v12 (2026-11-17; docs/V12-PLAN.md)
 - **Street** (tools/blender/arch/street12.py, www/js/street12.js): seven lots of buildings across the road, framed shopfronts (most shut at

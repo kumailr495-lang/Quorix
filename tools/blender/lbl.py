@@ -120,6 +120,24 @@ def tube(bm, pts, radius, sides=6, closed=True):
             k2 = (k + 1) % sides; bm.faces.new((a[k], a[k2], b[k2], b[k]))
 
 
+def ptube(bm, pts, radius, sides=8, cap=True):
+    """v12c a round tube along an open polyline with rotation-minimizing frames (each ring's frame is the last one turned onto the new
+    tangent), capped at both ends. The older builders picked their side vector from a fixed 'up' that switched where the tube turned
+    near vertical: the rings twisted there and folded faces onto each other (zcheck found them on the bike stand's hoops)."""
+    n = len(pts); P = [Vector(p) for p in pts]
+    T = [(P[min(n - 1, i + 1)] - P[max(0, i - 1)]).normalized() for i in range(n)]
+    ref = Vector((0, 0, 1)) if abs(T[0].z) < 0.9 else Vector((1, 0, 0))
+    x = T[0].cross(ref).normalized(); rings = []
+    for i in range(n):
+        if i: x = (x - T[i] * x.dot(T[i])).normalized()   # parallel transport: drop the component along the new tangent
+        y = T[i].cross(x).normalized()
+        rings.append([bm.verts.new(P[i] + (x * math.cos(2 * math.pi * k / sides) + y * math.sin(2 * math.pi * k / sides)) * radius) for k in range(sides)])
+    for i in range(n - 1):
+        a, b = rings[i], rings[i + 1]
+        for k in range(sides): k2 = (k + 1) % sides; bm.faces.new((a[k], a[k2], b[k2], b[k]))
+    if cap: bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
+
+
 def rrect_path(hx, hy, rc, z, steps=4):
     """Closed rounded rectangle in the XY plane at height z (counter-clockwise)."""
     pts = []

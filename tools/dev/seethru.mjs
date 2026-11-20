@@ -15,7 +15,7 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/jav
 const srv = http.createServer((q, r) => { const u = decodeURIComponent(q.url.split('?')[0]); const f = path.join(WWW, u === '/' ? 'index.html' : u); if (!f.startsWith(WWW) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; } r.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
 await new Promise((ok) => srv.listen(0, '127.0.0.1', ok)); const port = srv.address().port;
 const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const ctx = await b.newContext({ viewport: { width: 640, height: 360 } });
+const ctx = await b.newContext({ viewport: { width: 640, height: 360 }, bypassCSP: true });   // v12c: the page's CSP (index.html) refuses the injected seethru-page.js; this test harness alone bypasses it
 await ctx.addInitScript(() => { try { localStorage.setItem('lumiere.settings.v5', JSON.stringify({ lang: 'en', graphics: 'medium', tutorialAsked: true, npcs: 'off' })); } catch (e) {} });
 const p = await ctx.newPage(); const log = []; p.on('console', (m) => log.push(`[${m.type()}] ${m.text()}`)); p.on('pageerror', (e) => log.push(`[pageerror] ${e.message}`));
 await p.goto(`http://127.0.0.1:${port}/index.html${has('assets') ? '?assetcheck=1' : ''}`);

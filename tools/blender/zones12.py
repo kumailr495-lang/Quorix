@@ -82,19 +82,8 @@ def ball(name, mat, c, r, sub=2):
 
 
 def ctube_build(pts, radius, sides=8):
-    """a round tube along an open polyline, capped at both ends (a closed solid)"""
-    def build(bm):
-        n = len(pts); rings = []
-        for i, p in enumerate(pts):
-            a, b = pts[max(0, i - 1)], pts[min(n - 1, i + 1)]
-            t = (Vector(b) - Vector(a)).normalized(); up = Vector((0, 0, 1)) if abs(t.z) < 0.9 else Vector((1, 0, 0))
-            x = t.cross(up).normalized(); y = t.cross(x).normalized()
-            rings.append([bm.verts.new(Vector(p) + (x * math.cos(2 * math.pi * k / sides) + y * math.sin(2 * math.pi * k / sides)) * radius) for k in range(sides)])
-        for i in range(n - 1):
-            a, b = rings[i], rings[i + 1]
-            for k in range(sides): k2 = (k + 1) % sides; bm.faces.new((a[k], a[k2], b[k2], b[k]))
-        bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
-    return build
+    """a round tube along an open polyline, capped at both ends (lbl.ptube: rotation-minimizing frames, no twist where it bends)"""
+    return lambda bm: lbl.ptube(bm, pts, radius, sides)
 
 
 def tube(name, mat, pts, radius, sides=8):
@@ -222,7 +211,7 @@ def drinks_tower():
         cyl('Nozzle', 'chrome', 0.30, y, 0.395, 0.425, 0.009, 14)                              # 5 mm up into the valve
         bx('Lever', 'chrome', (0.327, y - 0.022, 0.38), (0.336, y + 0.022, 0.452), r=0.003)     # 3 mm into the valve's front
     bx('Tray', 'steel', (0.20, -0.29, 0.13), (0.40, 0.29, 0.16))                                # 7 cm into the body
-    for k in range(9):
+    for k in range(8):   # the last bar 16 mm short of the tray's front (3 mm read as one face far off)
         x = 0.282 + 0.0135 * k; bx('Grate', 'chrome', (x, -0.28, 0.157), (x + 0.007, 0.28, 0.166))   # 3 mm into the tray, 6 mm over it
     bx('Splash', 'chrome', (0.266, -0.28, 0.155), (0.275, 0.28, 0.36))                           # a splash plate behind the cups, 4 mm into the body
 
@@ -243,18 +232,19 @@ def espresso_lever():
     bx('Needle', 'plastic_black', (0.213, -0.002, 0.33), (0.223, 0.002, 0.358))
     for y in (-0.19, 0.19):
         cylx('Boss', 'chrome', y, 0.31, 0.18, 0.27, 0.05, 28)                                   # 2 cm into the body's front
-        cyl('Group', 'chrome', 0.235, y, 0.205, 0.30, 0.042, 28)
-        cyl('Basket', 'chrome', 0.235, y, 0.17, 0.21, 0.038, 28)
+        cyl('Group', 'chrome', 0.235, y, 0.205, 0.30, 0.042, 32)
+        cyl('Basket', 'chrome', 0.235, y, 0.17, 0.21, 0.049, 22)                               # 7 mm wider than the group; 22 sides against its 32: no facet of one parallel to the other's
         tube('PfHandle', 'walnut', [(0.27, y, 0.19), (0.34, y, 0.186), (0.40, y, 0.18)], 0.012, 10)
         for d in (-0.012, 0.012): cyl('Spout', 'chrome', 0.235, y + d, 0.148, 0.175, 0.005, 10)
         cyl('Tower', 'chrome', 0.235, y, 0.32, 0.55, 0.045, 28)                                     # its foot well down into the round boss
-        lat('TowerCap', 'brass', [(1e-4, 0.545), (0.05, 0.545), (0.05, 0.56), (0.035, 0.578), (1e-4, 0.586)], T(0.235, y, 0), 28)
-        cyly('LeverPivot', 'chrome', 0.27, 0.53, y - 0.03, y + 0.03, 0.018, 16)
-        tube('Lever', 'chrome', [(0.27, y, 0.53), (0.305, y, 0.74), (0.34, y, 0.94)], 0.011, 10)
-        ball('LeverKnob', 'plastic_black', (0.345, y, 0.965), 0.028, 2)
+        lat('TowerCap', 'brass', [(1e-4, 0.545), (0.056, 0.545), (0.056, 0.56), (0.04, 0.578), (1e-4, 0.586)], T(0.235, y, 0), 28)   # 11 mm proud of the tower
+        bx('Yoke', 'chrome', (0.222, y - 0.02, 0.575), (0.248, y + 0.02, 0.622))                  # on the cap, the lever's pivot through it
+        cyly('LeverPivot', 'chrome', 0.235, 0.61, y - 0.03, y + 0.03, 0.016, 16)
+        tube('Lever', 'chrome', [(0.235, y, 0.61), (0.29, y, 0.80), (0.33, y, 0.96)], 0.011, 10)
+        ball('LeverKnob', 'plastic_black', (0.334, y, 0.985), 0.028, 2)
     for s in (-1, 1):   # the steam valve (+Y) and the water valve (-Y): a chrome valve, a black knob
         cylx('Valve', 'chrome', s * 0.33, 0.30, 0.18, 0.235, 0.02, 20)
-        cylx('ValveKnob', 'plastic_black', s * 0.33, 0.30, 0.233, 0.255, 0.024, 20)
+        cylx('ValveKnob', 'plastic_black', s * 0.33, 0.30, 0.233, 0.255, 0.028, 20)              # 8 mm proud of the valve
     tube('Wand', 'chrome', [(0.215, 0.345, 0.29), (0.25, 0.39, 0.25), (0.29, 0.40, 0.12)], 0.0065, 8)
     ball('WandTip', 'chrome', (0.29, 0.40, 0.118), 0.009, 2)
     tube('Spout', 'chrome', [(0.215, -0.345, 0.29), (0.26, -0.37, 0.24), (0.28, -0.375, 0.20)], 0.0075, 8)
@@ -301,7 +291,7 @@ def tub_stack(n=6):
     for k in range(n):   # the white rolled rims, 5 mm proud of the wall they top
         z = 0.22 + 0.03 * k - 0.004; r = rad(z, 0.03 * k)
         lat('Rim', 'paper_white', [(r - 0.006, z - 0.008), (r + 0.005, z - 0.008), (r + 0.007, z - 0.002), (r + 0.004, z + 0.006), (r - 0.006, z + 0.006)], Matrix.Identity(4), 20)
-    lat('Label', 'paper_white', [(rad(0.06, 0) - 0.003, 0.06), (rad(0.06, 0) + 0.005, 0.06), (rad(0.15, 0) + 0.005, 0.15), (rad(0.15, 0) - 0.003, 0.15)], Matrix.Identity(4), 20)
+    lat('Label', 'paper_white', [(rad(0.06, 0) - 0.003, 0.06), (rad(0.06, 0) + 0.0075, 0.06), (rad(0.15, 0) + 0.0075, 0.15), (rad(0.15, 0) - 0.003, 0.15)], Matrix.Identity(4), 20)   # 7.4 mm off the tapered wall
 
 
 # ------------------------------------------------------------------------------------------------ bar_walnut

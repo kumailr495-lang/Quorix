@@ -342,6 +342,12 @@ async function boot() {
       itemMesh.position.set(0.27 - e * 0.1, -0.3 - (1 - itemIn) * 0.3 + e * 0.17, -0.55 + e * 0.2); itemMesh.rotation.set(0.22 + e * 0.75, -0.35, e * 0.15); itemMesh.scale.setScalar(1.25); }
     if (glowSeat) { glowT -= dt; seatGlow.material.opacity = 0.45 + 0.4 * Math.sin(now * 0.006); if (glowT <= 0 || player.seated) { glowSeat = null; seatGlow.visible = false; } }
     guide.tick(dt, now); life.update(now);
+    // v12c bar life (the user picked it): when the lever machine's wand steams (anim12.js: every 21 s, or now when you order a hot drink)
+    // the barista steps to it, works the milk and comes back to his counter; never while you are talking to him
+    { const b = crowd.staff && crowd.staff.cafe, ph = life.wandPhase(now);
+      if (b && b.alive !== false && !(talk.open && talk.npc === b)) {
+        if (b.state === 'post' && ph < 0.2) b.go([{ x: -20.42, y: 0, z: -12.3 }], () => { b.state = 'brewing'; b.yaw = -Math.PI / 2; b.gesture('pour', 4.5); }, { speed: 0.8, state: 'tobar' });
+        else if (b.state === 'brewing' && ph > 0.3) b.go([{ x: b.home.x, y: 0, z: b.home.z }], () => { b.state = 'post'; b.yaw = b.home.yaw; }, { speed: 0.8, state: 'returning' }); } }
     const nearLift = mode === 'play' && !modal && !talk.open && !intro.active && !player.seated && !player.busy && r === 'lobby' && Math.hypot(player.x - (LIFT.x0 + LIFT.x1) / 2, player.z - (LIFT.z0 + LIFT.z1) / 2) < 4.5;
     aimBtn = nearLift ? world.lift.pick(cam, player.y, innerWidth / 2, innerHeight / 2, innerWidth, innerHeight, 26) : null; world.lift.setHover(aimBtn && aimBtn.id); document.body.classList.toggle('aim', !!aimBtn);
     if (aimBtn) ui.setPrompt(null); else prompts(r, hk);
