@@ -16,9 +16,12 @@ export class Sound9 extends Sound {
   constructor() { super(); this.buf = {}; this.loops = {}; this.sphere = null; this.boost = 1; }
   _build() {
     this.latency = 'interactive'; super._build(); const c = this.ctx;
-    // limiter after the master: -1 dBFS ceiling, so the film's boost (up to 2.5x) never clips
-    const lim = c.createDynamicsCompressor(); lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.12;
-    this.master.disconnect(); const pre = c.createDynamicsCompressor(); pre.threshold.value = -14; pre.ratio.value = 3; pre.attack.value = 0.008; pre.release.value = 0.25; this.master.connect(pre); pre.connect(lim); lim.connect(c.destination);
+    // limiter after the master: -1 dBFS ceiling, so the film's boost (up to 2.5x) never clips. v14 (the user, 11-20: "the sounds are
+    // glitching and distorted at some points"): the hard knee and 0.12 s release pumped and crackled on bass when the film, the applause and
+    // the crowd stacked up; a 6 dB knee, slower release and 3 dB of headroom before it (trim) keep it clean
+    const lim = c.createDynamicsCompressor(); lim.threshold.value = -2; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.3;
+    this.master.disconnect(); const pre = c.createDynamicsCompressor(); pre.threshold.value = -18; pre.knee.value = 10; pre.ratio.value = 2.5; pre.attack.value = 0.01; pre.release.value = 0.3;
+    const trim = c.createGain(); trim.gain.value = 0.71; this.master.connect(trim); trim.connect(pre); pre.connect(lim); lim.connect(c.destination);
     // the synth murmur and lounge tones give way to the recordings
     for (const g of [this.murA, this.murB]) g.disconnect();
     this._loadAll();

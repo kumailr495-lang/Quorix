@@ -59,9 +59,13 @@ const WALL_FRAG = `uniform sampler2D uSpill; uniform sampler2D uVid; uniform flo
 // front's width, all in metres): a panoramic film's outer parts land there sharp; past the frame's edge (an ordinary film) the edges
 // carry on, softening and dimming with distance, as the front does beside a narrower frame (world9.js PIC_FRAG), so the corner has no seam.
 void main() { float dist = uWall.x + vUv.x * uWall.y, s = uSrc.z / max(1e-4, uBox.z * uWall.z), gap = (1.0 - uBox.z) * 0.5 * uWall.z;
-  float x = (uSide > 0.0 ? uSrc.x + uSrc.z : uSrc.x) + uSide * (dist + gap) * s, xc = clamp(x, 0.002, 0.998), over = abs(x - xc) / max(s, 1e-4);
+  // v14 (the user, 11-20: "the screenx work is so bad", with their ScreenX photo): past the frame's edge the picture no longer smears its
+  // last column along the wall; it folds back into itself (a mirror of its outer part, stretched 1.8 times) and softens with distance, so
+  // the walls carry the film's own shapes and colours, sharp at the corner and blurred further back, never a flat smear
+  float x = (uSide > 0.0 ? uSrc.x + uSrc.z : uSrc.x) + uSide * (dist + gap) * s, o = max(x - 1.0, -x), over = max(o, 0.0) / max(s, 1e-4);
+  float xm = x > 1.0 ? 1.0 - (x - 1.0) * 0.55 : x < 0.0 ? -x * 0.55 : x, xc = clamp(xm, 0.002, 0.998);
   float y = uSrc.y + uSrc.w * ((vY - uFront.x) / uFront.y - uBox.y) / uBox.w; vec2 q = vec2(xc, clamp(y, 0.0, 1.0));
-  vec3 c = mix(texture2D(uVid, q).rgb, textureLod(uSpill, q, 1.5 + over * 0.45).rgb, smoothstep(0.0, 0.25, over)) * (1.0 - 0.45 * smoothstep(0.0, 12.0, over));
+  vec3 c = mix(texture2D(uVid, q).rgb, textureLod(uSpill, q, 1.0 + min(over * 0.35, 4.0)).rgb, smoothstep(0.0, 1.5, over)) * (1.0 - 0.35 * smoothstep(0.0, 14.0, over));
   // v11 (the user, with a photo: "the side screens are not equal"): a film bright on one edge and dark on the other gave one burnt-out wall
   // and one dim one. Each wall is now pulled most of the way to the whole picture's mean brightness (its colours stay its own edge's),
   // and the picture replaces the lit surface instead of being added to it, a little under the front screen's level as in a real 270 hall

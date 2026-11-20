@@ -555,6 +555,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const h of Object.values(HALL)) for (const s of atmosSpots(h)) { const w = h.toWorld(s.u, s.d); add(h.key, 'speaker_array', w.x, h.y0 + h.ceil + 0.002, w.z, h.yawOf(s.u > 0 ? -Math.PI / 2 : Math.PI / 2), { collide: false, ground: false, scale: 0.7 }); }
   return L;
 })();
+const SIT_ON = { sofa_curve: { h: 0.44, w: 0.7 }, armchair_deco: { h: 0.44, n: 1 }, bench_velvet: { h: 0.45, w: 0.62 }, bench_street: { h: 0.45, w: 0.62 }, bar_stool: { h: 0.76, n: 1 }, directors_chair: { h: 0.6, n: 1 } };
 function dressRooms(world) {
   const byRoom = {}; for (const p of DRESS) (byRoom[p.room] || (byRoom[p.room] = [])).push(p);
   // v9.1: the restrooms' fittings at their interaction points (tools/blender/arch/rooms.py fixtures; they were points with no mesh):
@@ -581,6 +582,10 @@ function dressRooms(world) {
     for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y;
       const sz = A.box.getSize(new THREE.Vector3()), small = Math.max(sz.x, sz.z) * (typeof p.o.scale === 'number' ? p.o.scale : 1) < 1.6;
       const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
+      // v14 (the user, 11-20: "I can't sit on most of the sofas outside"): seating props give sit spots (local +z is their front)
+      const sd = SIT_ON[p.name]; if (sd) { const bx = A.box, wx = bx.max.x - bx.min.x, cx = (bx.max.x + bx.min.x) / 2, cz = (bx.max.z + bx.min.z) / 2 + (bx.max.z - bx.min.z) * 0.06, n = sd.n || Math.max(1, Math.round(wx / sd.w)), cs = Math.cos(p.yaw), sn = Math.sin(p.yaw);
+        for (let i = 0; i < n; i++) { const lx = cx + (i - (n - 1) / 2) * (wx / n), x = p.x + lx * cs + cz * sn, z = p.z - lx * sn + cz * cs;
+          world.sitSpots.push({ x, y: p.y + sd.h, z, face: p.yaw + Math.PI, stand: { x: x + sn * 0.62, z: z + cs * 0.62 }, room: key, taken: null }); } }
       const e = cen[p.name] || (cen[p.name] = { n: 0, tris: 0 }), ld = p.o.lod ?? 0; e.n++; for (const q of A.parts) if (q.lod === ld && (!p.o.only || q.name.startsWith(p.o.only))) e.tris += (q.geo.index ? q.geo.index.count : q.geo.attributes.position.count) / 3; }
     // v12c the lobby's props draw their glass see-through (the poppers' cabinets, the heated cases, the fountain's water); the street keeps
     // its cars' glass dark (they have no cabins)
@@ -643,8 +648,49 @@ function addPanel(world, room, p) {   // as buildWorld's bake panels: a canvas p
 const FAMILY = { rocker: ['seat_rocker', 'arm_rocker'], recliner: ['seat_club', 'arm_club'], sofa: ['seat_club', 'arm_club'], pod: ['seat_club', 'arm_club'] };
 const familyOf = (h, kind) => (h.id === 'CLASSIC' && kind === 'rocker' ? ['seat_classic', 'arm_classic'] : FAMILY[kind]);
 // per-hall upholstery (v9.2): MAX midnight-blue leather (the large-format hall's colour), X-270 deep red (the ScreenX house colour), Curve dark cognac
-const SEAT_SWAP = { MAX: { leather_black: '#1e2846' }, X270: { leather_black: '#3c0b11' }, CURVE: { leather_chocolate: '#1c100a' } };
+const SEAT_SWAP = { MAX: { leather_black: '#1e2846' }, X270: { leather_chocolate: '#7a0f18', walnut: '#1a1a1c' }, CURVE: { leather_chocolate: '#1c100a' } };   // v14 X-270: red leather recliners (the user's ScreenX photo)
 const seatOver = (h) => { const sw = SEAT_SWAP[h.id]; if (!sw) return null; const o = {}; for (const k in sw) { const nm = named(k); if (nm) o[k] = { id: nm.id, tint: new THREE.Color(sw[k]).toArray() }; } return o; };
+// v14 (the user, 11-20: "name every one of them correctly"): each seat carries its number on a brass plate at the top of its backrest,
+// facing the row behind (row and number: G12), and each row's letter glows on a small amber plate at both aisle ends (UNIC
+// 7.2: lit row letters). One instanced quad per kind and hall, the characters from one glyph atlas; the plates follow the house lights,
+// the aisle letters stay lit. Ids run A (the front row) to the back, 1 at the left as you face the screen (hallmath.js hallSeats)
+const GLYPHS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'; let glyphTex = null;
+function glyphAtlas() {
+  if (glyphTex) return glyphTex; const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'); g.__noFit = true;
+  g.fillStyle = '#000'; g.fillRect(0, 0, 512, 512); g.fillStyle = '#fff'; g.font = `700 50px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let i = 0; i < GLYPHS.length; i++) g.fillText(GLYPHS[i], (i % 8) * 64 + 32, Math.floor(i / 8) * 64 + 35);
+  glyphTex = new THREE.CanvasTexture(c); glyphTex.minFilter = THREE.LinearMipmapLinearFilter; glyphTex.anisotropy = 4; return glyphTex;
+}
+const LABEL_VERT = `attribute vec4 iGl; varying vec2 vUv; varying vec4 vGl;
+void main() { vUv = uv; vGl = iGl; gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0); }`;
+const LABEL_FRAG = `uniform sampler2D uAtlas; uniform vec3 uPlate; uniform vec3 uInk; uniform float uLit; uniform float uHouse; uniform float uSlots; varying vec2 vUv; varying vec4 vGl;
+void main() {
+  float n = vGl.w, x = vUv.x * uSlots - (uSlots - n) * 0.5, slot = floor(x), m = 0.0;
+  if (slot >= 0.0 && slot < n) { float gi = slot < 0.5 ? vGl.x : slot < 1.5 ? vGl.y : vGl.z; vec2 lu = vec2(fract(x), vUv.y * 1.12 - 0.06);
+    vec2 cell = vec2(mod(gi, 8.0), floor(gi / 8.0)); m = texture2D(uAtlas, (cell + vec2(0.08 + lu.x * 0.84, 1.0 - (0.06 + lu.y * 0.88))) / 8.0).r; }
+  float edge = step(0.05, vUv.x) * step(vUv.x, 0.95) * step(0.08, vUv.y) * step(vUv.y, 0.92);
+  vec3 c = mix(uPlate * (0.55 + 0.45 * edge), uInk, m) * mix(uLit, 1.0, uHouse);
+  gl_FragColor = vec4(c, 1.0);
+  #include <colorspace_fragment>
+}`;
+function seatLabels(h, room, seats) {
+  const atlas = glyphAtlas(), code = (t) => { const q = [...t].slice(0, 3).map((ch) => GLYPHS.indexOf(ch)); return [q[0] ?? 0, q[1] ?? 0, q[2] ?? 0, q.length]; };
+  const make = (list, w, ht, plate, ink, litDark, slots) => {
+    const g = new THREE.PlaneGeometry(w, ht), gl = new Float32Array(list.length * 4), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
+    const mat = new THREE.ShaderMaterial({ vertexShader: LABEL_VERT, fragmentShader: LABEL_FRAG, uniforms: { uAtlas: { value: atlas }, uPlate: { value: new THREE.Color(plate) }, uInk: { value: new THREE.Color(ink) }, uLit: { value: litDark }, uSlots: { value: slots }, uHouse: room.U.uHouse } });
+    const m = new THREE.InstancedMesh(g, mat, list.length); m.name = h.key + '-labels'; m.frustumCulled = false;
+    list.forEach((o, i) => { M.compose(new THREE.Vector3(o.x, o.y, o.z), Q.setFromAxisAngle(Y, o.yaw), new THREE.Vector3(1, 1, 1)); m.setMatrixAt(i, M); gl.set(code(o.text), i * 4); });
+    g.setAttribute('iGl', new THREE.InstancedBufferAttribute(gl, 4)); room.group.add(m); return m;
+  };
+  // the number plate: on the back of the backrest, 2 cm behind it, 7 cm under its top (local +z is the seat's back)
+  const plates = seats.map((s) => { const sd = SEAT[s.kind], b = sd.bk + 0.012, sn = Math.sin(s.yaw), cs = Math.cos(s.yaw); return { x: s.x + sn * b, y: s.y + sd.h - 0.07, z: s.z + cs * b, yaw: s.yaw, text: s.id }; });
+  room.seatPlates = make(plates, 0.15, 0.05, '#b8893c', '#1a120a', 0.22, 3);
+  // the row letter at both ends of every row, on the side of the end seat towards the aisle, 0.3 m up, facing along the row outwards
+  const ends = []; for (const row of h.rows) { const rs = seats.filter((s) => s.row === row.r); if (!rs.length) continue; rs.sort((a, b) => a.a - b.a);
+    for (const [s, sg] of [[rs[0], -1], [rs[rs.length - 1], 1]]) { const sd = SEAT[s.kind], off = sd.w / 2 + 0.035, cs = Math.cos(s.yaw), sn = Math.sin(s.yaw);
+      ends.push({ x: s.x + sg * off * cs, y: s.y + 0.32, z: s.z - sg * off * sn, yaw: s.yaw + sg * Math.PI / 2, text: row.letter }); } }
+  room.rowLetters = make(ends, 0.09, 0.11, '#1a1410', '#ffb347', 1.0, 1);
+}
 function buildHall(world, h, room) {
   const mats = world.mats, U = room.U, L = room.lights, seats = hallSeats(h); seats.forEach((s, i) => { s.i = i; s.hallKey = h.key; });
   const f = h.dir, flip = new THREE.Matrix4().makeRotationY(Math.PI), fams = {}, arms = [];
@@ -672,6 +718,7 @@ function buildHall(world, h, room) {
   }
   const armFam = {}; arms.forEach((a, i) => { (armFam[a.an] || (armFam[a.an] = [])).push(i); });
   for (const an in armFam) { const geo = [0, 1].map((l) => assetGeometry(an, l, flip, toGeometry, Acc, over)); if (!geo[0]) continue; const ids = armFam[an], list = ids.map((i) => arms[i]), sub = new Float32Array(ids.length * 7); ids.forEach((i, k) => sub.set(armLit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, list, sub, 1); }
+  seatLabels(h, room, seats);   // v14 every seat named: a brass number on its back, the row's letter lit at each aisle end
   // colliders: each seat's footprint (its own frame: across the seat, from the seat front to the back of the backrest)
   for (const s of seats) { const sd = SEAT[s.kind], cs = Math.cos(s.yaw), sn = Math.sin(s.yaw), hw = sd.w / 2 - 0.02, c = [[-hw, -sd.fr], [hw, -sd.fr], [hw, sd.bk], [-hw, sd.bk]].map(([u, v]) => [s.x + u * cs + v * sn, s.z - u * sn + v * cs]);
     for (let k = 0; k < 4; k++) world.walls.add(c[k][0], c[k][1], c[(k + 1) % 4][0], c[(k + 1) % 4][1], s.y + 0.05, s.y + sd.h); }

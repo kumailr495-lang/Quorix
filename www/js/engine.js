@@ -8,7 +8,7 @@ export const PRESETS = {
   // screen's own pixels on High and three quarters of them on Medium; `start` is where the governor begins, `floor` where it stops
   low: { scale: 1.0, start: 0.8, floor: 0.6, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 5, aa: false },
   medium: { scale: 1.5, start: 1.15, floor: 0.8, people: 10, crowd: 140, peopleFar: 12, detail: 1, seatLod: 7, aa: true },
-  high: { scale: 2.0, start: 1.5, floor: 1.0, people: 16, crowd: 220, peopleFar: 16, detail: 1, seatLod: 9, aa: true },
+  high: { scale: 2.0, start: 1.3, floor: 0.8, people: 10, crowd: 180, peopleFar: 14, detail: 1, seatLod: 9, aa: true },   // v14 the user's itel held 21 fps on High at its 1.0 floor: lower floor, fewer skinned people
 };
 const LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0];
 export class Engine {
@@ -47,7 +47,7 @@ export class Engine {
   governor(dt, now) {
     this.ema = this.ema * 0.94 + Math.min(dt, 0.2) * 1000 * 0.06; this.stats.ms = this.ema; this.stats.fps = 1000 / this.ema; if (this.fixed || this.auto === false) return;
     const lv = LEVELS.filter((l) => l >= this.minScale - 1e-6 && l <= this.maxScale + 1e-6), i = lv.reduce((b, l, k) => (Math.abs(l - this.scale) < Math.abs(lv[b] - this.scale) ? k : b), 0);
-    this._slow = this.ema > 36 ? (this._slow || now) : 0; this._fast = this.ema < 19 ? (this._fast || now) : 0;
+    this._slow = this.ema > 33 ? (this._slow || now) : 0;   /* v14 steps down under 30 fps (it waited for 28) */ this._fast = this.ema < 19 ? (this._fast || now) : 0;
     // v12: a step up is a trial. If the new level cannot hold about 50 frames a second for 2.5 s it goes back, and that level is not
     // tried again for five minutes (v5.10 hopped between levels for ever). In the first minute the search is quick (4 s of fast frames
     // per step, mostly behind the menu), afterwards slow (12 s), so the picture settles at the sharpest level the phone holds smoothly

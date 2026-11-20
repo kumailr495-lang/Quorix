@@ -257,15 +257,38 @@ function skyTexture() {
     if (bh > 100) { glowDot(g, x + bw / 2, y - 2, 6, 'rgba(255,60,40,0.95)'); } x += bw + R() * 4; }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; t.wrapS = THREE.RepeatWrapping; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; return t;
 }
-// drawn at the far plane (z = w) whatever the camera's far distance is: as an ordinary sphere of 120 m the far plane cut a round hole in it
-const SKY_VERT = `varying vec2 vUv; void main() { vUv = uv; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`;
-const SKY_FRAG = `uniform sampler2D map; uniform float uBright; varying vec2 vUv; void main() { gl_FragColor = vec4(texture2D(map, vUv).rgb * uBright, 1.0); }`;
+// drawn at the far plane (z = w) whatever the camera's far distance is: as an ordinary sphere of 120 m the far plane cut a round hole in it.
+// v14 (the user, 11-20: "the sky looks boxy"): the painted 2048 px band was magnified four times on a phone (square stars, block towers).
+// The sky is worked out per pixel now from the view direction: midnight blue to near black, the city's glow low down, crisp round stars,
+// the moon over the cinema with its halo, thin cloud lit from below, and a far skyline of soft-edged towers with a few lit windows
+const SKY_VERT = `varying vec3 vDir; void main() { vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`;
+const SKY_FRAG = `uniform float uBright; uniform float uTime; varying vec3 vDir;
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float n2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * n2(p); p *= 2.03; a *= 0.5; } return s; }
+void main() {
+  vec3 d = normalize(vDir); float h = d.y, az = atan(d.x, d.z);
+  vec3 zen = vec3(0.0035, 0.005, 0.016), mid = vec3(0.012, 0.016, 0.036), hor = vec3(0.055, 0.045, 0.065);
+  vec3 c = mix(hor, mix(mid, zen, smoothstep(0.25, 0.9, h)), smoothstep(-0.02, 0.35, h));
+  c += vec3(0.20, 0.11, 0.08) * exp(-max(h + 0.02, 0.0) * 14.0) * 0.55;
+  vec2 sp = vec2(az * 140.0, h * 140.0), cell = floor(sp), f = fract(sp); float r = h21(cell);
+  if (r > 0.972) { vec2 o = vec2(h21(cell + 3.7), h21(cell + 9.1)) * 0.6 + 0.2; float dd = length(f - o), b = (r - 0.972) / 0.028;
+    float tw = 0.75 + 0.25 * sin(uTime * (1.5 + 3.0 * h21(cell + 1.3)) + r * 40.0); c += vec3(0.85, 0.9, 1.0) * smoothstep(0.16, 0.0, dd) * b * b * tw * smoothstep(0.06, 0.35, h); }
+  vec3 md = normalize(vec3(0.12, 0.42, -0.9)); float m = dot(d, md);
+  c += vec3(0.92, 0.94, 1.0) * smoothstep(0.99962, 0.99975, m) * (0.85 + 0.15 * n2(d.xy * 900.0)) + vec3(0.16, 0.18, 0.25) * pow(max(m, 0.0), 900.0) + vec3(0.05, 0.06, 0.09) * pow(max(m, 0.0), 60.0);
+  float cl = smoothstep(0.52, 0.85, fbm(vec2(az * 2.2, h * 7.0) + vec2(uTime * 0.004, 0.0))) * smoothstep(0.03, 0.18, h) * smoothstep(0.75, 0.3, h);
+  c = mix(c, vec3(0.09, 0.07, 0.085) + vec3(0.05, 0.03, 0.02) * (1.0 - h), cl * 0.55);
+  float bx = az * 46.0, bi = floor(bx), top = 0.012 + 0.05 * pow(h21(vec2(bi, 7.0)), 2.6) + 0.006 * n2(vec2(bx * 0.5, 2.0)), edge = fwidth(h) * 1.5;
+  float tower = smoothstep(top + edge, top - edge, h) * smoothstep(-0.03, -0.005, h + 0.03);
+  vec2 win = vec2(fract(bx * 6.0), fract(h * 320.0)); float lit = step(0.82, h21(floor(vec2(bx * 6.0, h * 320.0)))) * step(0.3, win.x) * step(win.x, 0.7) * step(0.35, win.y) * step(win.y, 0.75);
+  c = mix(c, vec3(0.012, 0.012, 0.018) + vec3(0.9, 0.7, 0.45) * lit * 0.35 * step(0.004, top - h), tower);
+  gl_FragColor = vec4(c * uBright, 1.0);
+}`;
 function skyDome() {
-  // from straight up down to 8 degrees under the horizon; v = 0 at the zenith
-  const geo = new THREE.SphereGeometry(40, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.14);
-  const m = new THREE.Mesh(geo, new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: SKY_FRAG, uniforms: { map: { value: skyTexture() }, uBright: G.uBright }, side: THREE.BackSide, depthWrite: false, depthTest: false }));
-  // three's sphere runs v from 1 at the top to 0 at the bottom: the picture has its zenith at the top row
-  m.name = 'street-sky'; m.frustumCulled = false; m.renderOrder = -10; m.rotation.y = Math.PI / 2; return m;
+  // from straight up down to 8 degrees under the horizon
+  const geo = new THREE.SphereGeometry(40, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2 + 0.14);
+  const m = new THREE.Mesh(geo, new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: SKY_FRAG, uniforms: { uBright: G.uBright, uTime: G.uTime }, side: THREE.BackSide, depthWrite: false, depthTest: false, extensions: { derivatives: true } }));
+  m.name = 'street-sky'; m.frustumCulled = false; m.renderOrder = -10; return m;
 }
 
 // ------------------------------------------------------------------ put it all on the street

@@ -19,6 +19,7 @@ export class Wayfinder {
     const h = this.world.hallById(tk.hall); if (!h) return null; const H = h.cfg;
     if (r === h.key) { if (tk.watched) { const d = this.world.doors.find((q) => q.hall === H.id && q.id.includes('Out0')); return d ? { key: 'goal.exit', pts: [{ x: d.x, y: H.y0, z: d.z }] } : null; }
       const s = h.seats.find((q) => q.id === tk.seat); if (!s) return null; let pts = null; try { pts = this.crowd.hallRoute(h, s, false); } catch (e) { pts = null; } return { key: 'goal.seat', vars: { seat: tk.seat }, pts: pts && pts.length ? pts : [{ x: s.x, y: s.y, z: s.z }], inHall: true }; }
+    if (r === 'spine' || (r.startsWith('hall') && tk.watched)) return { key: 'goal.lobby', pts: this.route(p, 'lobbyBack') };   // v14 no jump to the lobby: the way back down the spine
     if (tk.watched || r.startsWith('hall')) return null;
     if (r === 'street') return { key: 'goal.enter', pts: this.route(p, 'doorIn') };
     if (game === 'flow' && !tk.checked) { if (r !== 'lobby' || up) return null; const u = this.crowd.staff && this.crowd.staff.usher, at = u && u.state !== 'guiding' && Math.abs(u.y) < 1 ? [{ x: u.x, y: 0, z: u.z }] : []; return { key: 'goal.gate', pts: this.route(p, 'gate', at) }; }
