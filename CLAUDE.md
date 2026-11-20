@@ -148,6 +148,9 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   (localStorage `lumiere.photos`, the last 12; "Save file" only outside the Android app), Stubs, Friends (mpui), Settings. Its views carry
   `ph-k-<app>` classes (a bare `.ticket` or `.tab` picked up the old global styles and stretched the Ticket app); the camera hides the HUD
   buttons behind the see-through screen (body `ph-cam`).
+- **APK 13.0** (versionCode 1300, docs/V13-RELEASE-NOTES.md): `sh tools/android/build.sh BT JAR OUT` (build-tools 35 and android.jar 35
+  are cached in the scratchpad's `sdk/bt/android-15` and `sdk/pf/android-35`), `python3 tools/stage-www.py OUT`, `python3 tools/make-apk.py
+  WRAPPER OUT APK 1300 13.0`; sent with SendUserFile. The user asked for the app on 11-20 (it overrides "no APK until all phases").
 - **Props are not in the v9 bake** (geo.py writes `'props': None`): adding or moving a prop needs no re-bake; only the builder's geometry does.
 - Rules learned: a light above a dropped ceiling lights nothing below it (rooms.py check: no lobby light over the field outside the halo, the
   escalator hall and the gaps); measure the floor before and after a lighting change (fixed views, mean of the floor's pixels) instead of
