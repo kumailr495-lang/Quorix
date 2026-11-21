@@ -32,6 +32,14 @@ SCANS = {
     'scan_wall_clock': ('wall_clock', 3700, 0, 'back'),
     'scan_plant_stand': ('side_table_tall_01', 3200, 0, 'floor'),
     'scan_plant': ('potted_plant_02', 14000, 0, 'floor'),
+    # v14 the flat (www/js/home.js)
+    'scan_sideboard': ('modern_wooden_cabinet', 5000, 0, 'floor'),
+    'scan_pendant': ('modern_ceiling_lamp_01', 3000, 0, 'floor'),
+    'scan_concrete_table': ('modern_coffee_table_01', 2600, 0, 'floor'),
+    'scan_dining_chair': ('dining_chair_02', 5200, 0, 'floor'),
+    'scan_side_table': ('side_table_01', 1800, 0, 'floor'),
+    'scan_ceramic_vase': ('ceramic_vase_02', 1600, 0, 'floor'),
+    'scan_books': ('book_encyclopedia_set_01', 7000, 0, 'floor'),
 }
 
 

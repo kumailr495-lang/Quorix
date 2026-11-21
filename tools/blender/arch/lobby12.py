@@ -248,7 +248,7 @@ def zone_fin(acc, glow, lit, xw, xf, z0, z1, ytop, led_top):
     (2 cm into its face xw) out to xf between two zones, z0..z1, up to ytop (into the field or the mezzanine's slab), in the columns' language:
     a black skirting 15 mm proud, a brass nose 3 cm proud of its end (12 mm past its faces) with an LED line down it to led_top"""
     acc.box(xw - 0.02, 0.0, z0, xf, ytop, z1, MAT['nero'], lin('#e6e6e6'))
-    acc.box(xw - 0.02, 0.0, z0 - 0.015, xf + 0.015, 0.16, z1 + 0.015, MAT['tblack'], lin('#0c0c0d'))
+    acc.box(xw - 0.02, 0.0, z0 - 0.02, xf + 0.015, 0.16, z1 + 0.02, MAT['tblack'], lin('#0c0c0d'))   # v14: 8 mm past the nose's sides (3 mm fought from the street)
     acc.box(xf - 0.02, 0.14, z0 - 0.012, xf + 0.03, ytop, z1 + 0.012, MAT['brass'], BRASS)
     zc = (z0 + z1) / 2
     glow_facing(glow, (xf + 0.035, 0.4, zc - 0.012), (xf + 0.035, 0.4, zc + 0.012), (xf + 0.035, led_top, zc + 0.012), (xf + 0.035, led_top, zc - 0.012), (1, 0, 0), HALO, 2.4)
@@ -357,8 +357,9 @@ def popcorn_zone(acc, glow, lit, S, xw):
     white chequered floor in a brass frame. Returns (sign, bulbs)"""
     co = S['COUNTERS']['concessions']; xf, za, zb = co['x1'], co['z0'], co['z1']
     _counter_base(acc, glow, lit, xf, za, zb, 0.95, MAT['lacquer'], lin('#7a0a14'), lin('#ff6a4a'))
-    for k in range(int((zb - za - 0.1) / 0.3) + 1):
-        z = za + 0.08 + 0.3 * k; acc.box(xf - 0.03, 0.13, z - 0.0125, xf + 0.012, 0.95, z + 0.0125, MAT['chrome'], lin('#d8dbe0'))   # ribs, 5 mm up into the top
+    n_r = int((zb - za - 0.2) / 0.3); m_r = (zb - za - 0.3 * n_r) / 2   # v14: centred, 10 cm or more from each end (the zone fins' skirting runs 4 cm in)
+    for k in range(n_r + 1):
+        z = za + m_r + 0.3 * k; acc.box(xf - 0.03, 0.13, z - 0.0125, xf + 0.012, 0.95, z + 0.0125, MAT['chrome'], lin('#d8dbe0'))   # ribs, 5 mm up into the top
     acc.box(xf - 0.9, 0.945, za - 0.04, xf + 0.08, 1.0, zb + 0.04, MAT['calacatta'], lin('#ece6dc'))
     acc.box(xf + 0.075, 0.94, za, xf + 0.092, 1.005, zb, MAT['chrome'], lin('#d8dbe0'))
     # the marquee canopy

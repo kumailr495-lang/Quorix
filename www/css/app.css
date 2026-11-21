@@ -552,3 +552,14 @@ body.ph-cam::after{content:'';position:fixed;inset:calc(8px + var(--sat)) calc(8
 #prompt{box-shadow:0 4px 0 #8c6524,0 8px 18px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.4)}
 #prompt:active{transform:translateY(3px);box-shadow:0 1px 0 #8c6524,0 3px 8px rgba(0,0,0,.4)}
 .scrim:not([hidden])>*{animation-duration:.24s}
+/* v14 the phone's Home app (home.js): furniture options, colour chips that are still to buy, the home cinema's film rows */
+.ph-app[data-k=home] i{background:linear-gradient(160deg,#ffb36b,#e0603a)}
+.ph-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:4px}
+.ph-opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--cream);text-align:left;min-height:40px;transition:transform .12s,background .2s,border-color .2s}
+.ph-opt b{font-size:10.5px;font-weight:600;line-height:1.2}.ph-opt small{font-size:9px;color:var(--dim)}
+.ph-opt.on{border-color:var(--brass);background:rgba(227,178,95,.14)}.ph-opt.on small{color:var(--brass)}
+.ph-opt.buy small{color:#f3d9a4}.ph-opt:active{transform:translateY(2px) scale(.98)}
+.ph-sw.buy{position:relative}.ph-sw.buy::after{content:'';position:absolute;right:-3px;bottom:-3px;width:9px;height:9px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 1.5px #0d0b0f}
+.ph-film{display:flex;align-items:center;gap:8px;padding:7px 9px;margin-bottom:6px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.ph-film b{flex:1;font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ph-film small{font-size:9.5px;color:var(--dim)}
+.ph-owned{color:var(--brass);font-weight:600}

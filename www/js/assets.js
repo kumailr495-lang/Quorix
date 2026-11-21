@@ -24,7 +24,10 @@ export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club',
   // fountain, espresso machine, cafe counter and till and the v7 ribbon chandelier)
   'popcorn_kettle', 'drinks_tower', 'espresso_lever', 'till_pos', 'tub_stack', 'bar_walnut', 'chandelier_deco', 'popcorn_case', 'ticket_kiosk',
   // v14 CC0 photoscanned props (Poly Haven; tools/blender/scans14.py, tools/textures/scans.py) and the bust's plinth (tools/blender/props14.py)
-  'scan_chesterfield', 'scan_armchair', 'scan_lounge_chair', 'scan_coffee_table', 'scan_bust', 'scan_plant_stand', 'scan_plant', 'scan_grandfather_clock', 'scan_projector8', 'scan_cine_camera', 'plinth_marble', 'motorcycle'];
+  'scan_chesterfield', 'scan_armchair', 'scan_lounge_chair', 'scan_coffee_table', 'scan_bust', 'scan_plant_stand', 'scan_plant', 'scan_cine_camera', 'plinth_marble', 'motorcycle',
+  // v14 your flat (home.js): tools/blender/home14.py and the scans (tools/blender/scans14.py)
+  'bed_modern', 'tv_slim', 'dining_table', 'shelf_unit', 'table_lamp', 'speaker_tower', 'rug_rect', 'fruit_bowl', 'scan_sideboard', 'scan_pendant', 'scan_concrete_table',
+  'scan_dining_chair', 'scan_side_table', 'scan_ceramic_vase', 'scan_wall_clock', 'scan_books', 'mirror_round', 'espresso_machine', 'pendant_dish'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;

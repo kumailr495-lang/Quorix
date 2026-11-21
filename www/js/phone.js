@@ -14,12 +14,13 @@ import { t } from './i18n.js';
 import { SHOP } from './career.js';
 import { DAILY_CAP } from './credits.js';
 import { THEMES, SWATCH } from './theatres.js';
+import { SLOTS, PAINT, CINEMA_PRICE } from './home.js';
 import { ROOMS, BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E } from './building.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const icon = (id) => `<svg class="ic"><use href="#${id}"/></svg>`;
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('lumiere.' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('lumiere.' + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
 // v14 Wallet (Lumiere Credits, credits.js), Jobs, Tasks and Shop (career.js) join the apps; the old Tab is the wallet's history now
-const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
+const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['home', 'i-home'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
 const two = (n) => String(n).padStart(2, '0');
 const LINE = { ticket: 'phone.line.ticket', tablet: 'phone.line.tablet', salted: 'opt9.salted', caramel: 'opt9.caramel', cheese: 'opt9.cheese', nachos: 'opt9.nachos', cola: 'opt9.drink', coffee: 'opt9.coffee', water: 'item.water', combo: 'opt9.combo' };
 export class Phone {
@@ -79,7 +80,7 @@ export class Phone {
   }
   app_map(C) {
     const cv = el('canvas', 'ph-map'), W = 340, H = 300; cv.width = W; cv.height = H; C.appendChild(cv); const g = cv.getContext('2d');
-    const rects = Object.entries(ROOMS).filter(([k, r]) => r.rect && r.level !== undefined && k !== 'street' && k !== 'corridor').map(([k, r]) => [k, r.rect, r.level]);   // the building, not the street
+    const rects = Object.entries(ROOMS).filter(([k, r]) => r.rect && r.level !== undefined && k !== 'street' && k !== 'corridor' && k !== 'home').map(([k, r]) => [k, r.rect, r.level]);   // the building, not the street (nor your flat)
     for (const c of [BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E]) rects.unshift(['corridor', [c.x0, c.z0, c.x1, c.z1], 1]);   // the corridor as its legs (its room rect is their bounding box)
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; for (const [, R] of rects) { x0 = Math.min(x0, R[0]); z0 = Math.min(z0, R[1]); x1 = Math.max(x1, R[2]); z1 = Math.max(z1, R[3]); }
     const k = Math.min((W - 16) / (x1 - x0), (H - 16) / (z1 - z0)), ox = (W - (x1 - x0) * k) / 2 - x0 * k, oz = (H - (z1 - z0) * k) / 2 - z0 * k, X = (x) => ox + x * k, Z = (z) => oz + z * k;
@@ -90,6 +91,7 @@ export class Phone {
     const p = this.h.player; g.fillStyle = '#ffb84d'; g.beginPath(); g.arc(X(p.x), Z(p.z), 5, 0, Math.PI * 2); g.fill();
     g.strokeStyle = '#ffb84d'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(p.x), Z(p.z)); g.lineTo(X(p.x) - Math.sin(p.yaw) * 12, Z(p.z) - Math.cos(p.yaw) * 12); g.stroke();
     const leg = el('div', 'ph-legend'); leg.innerHTML = `<span><i class="you"></i>${t('phone.you')}</span>` + (tk ? `<span><i class="hall"></i>${tk.hallName.replace('LUMIERE ', '')}</span>` : ''); C.appendChild(leg);
+    if (here === 'home' || here === 'street') { const r = el('div', 'ph-row'); this.btn(r, t('home.taxi'), 'primary', () => this.h.taxi()); C.appendChild(r); C.appendChild(el('p', 'note', t('home.taxiNote'))); }   // v14 a taxi to the cinema's doors
     if (tk) { const r = el('div', 'ph-row'); this.btn(r, t('phone.guideMe'), 'primary', () => { this.h.guide(); this.h.toast(t('phone.guiding'), 2200); this.close(); }); C.appendChild(r); }
   }
   // v14 the wallet: your Lumiere Credits, what you earned today against the day's cap, every payment in and out
@@ -142,6 +144,37 @@ export class Phone {
     const imp = el('div', 'ph-row'), inp = el('input', 'ph-code'); inp.placeholder = t('th.importHint'); inp.addEventListener('keydown', (e) => e.stopPropagation()); imp.appendChild(inp);
     this.btn(imp, t('th.import'), 'secondary', () => { const th = T.fromCode(inp.value); if (!th) { this.h.toast(t('th.badCode'), 2200, 'error'); return; } T.savePreset(t('th.imported'), th); this.h.toast(t('th.saved'), 1800); this.show('theatre'); }); C.appendChild(imp);
     C.appendChild(el('p', 'note', t('th.note')));
+  }
+  // v14 your flat (home.js): furniture by slot (yours from the start, or bought once and swapped freely), colours, the home cinema and its films
+  app_home(C) {
+    const H = this.h.home(), W = this.h.credits; if (!H || !H.room) { this.empty(C, t('home.none')); return; }
+    const tabs = ['furnish', 'colours', 'rooms']; if (!tabs.includes(this.homeTab)) this.homeTab = 'furnish';
+    const chips = el('div', 'ph-chips'); for (const k of tabs) { const b = el('button', 'ph-chip' + (k === this.homeTab ? ' on' : ''), t('home.tab.' + k)); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.homeTab = k; this.show('home'); }); chips.appendChild(b); }
+    C.appendChild(chips); C.appendChild(el('p', 'ph-shopbal', W.fmt(W.bal)));
+    const short = () => this.h.toast(t('home.short'), 2200, 'error');
+    if (this.homeTab === 'furnish') {
+      for (const sl of SLOTS) { C.appendChild(el('h4', 'ph-sub', t('home.slot.' + sl.id))); const row = el('div', 'ph-opts');
+        for (const o of sl.opts) { const cur = H.pick(sl.id) === o.id, own = H.owns(sl.id, o.id), b = el('button', 'ph-opt' + (cur ? ' on' : '') + (own ? '' : ' buy')), nm = t('home.opt.' + sl.id + '.' + o.id);
+          b.append(el('b', null, nm), el('small', null, cur ? t('home.inUse') : own ? t('home.owned') : W.fmt(o.price)));
+          b.addEventListener('click', (e) => { e.stopPropagation(); if (cur) return; if (!H.choose(sl.id, o.id)) { short(); return; } this.h.toast(t(own ? 'home.placed' : 'home.bought', { name: nm }), 1800); this.show('home'); }); row.appendChild(b); }
+        C.appendChild(row); }
+      C.appendChild(el('p', 'note', t('home.furnishNote')));
+    } else if (this.homeTab === 'colours') {
+      for (const part of Object.keys(PAINT)) { C.appendChild(el('h4', 'ph-sub', t('home.paint.' + part) + '  ·  ' + W.fmt(H.paintPrice(part)))); const row = el('div', 'ph-swrow');
+        for (const hex of PAINT[part]) { const cur = H.colour(part) === hex, b = el('button', 'ph-sw' + (cur ? ' on' : '') + (H.ownsColour(part, hex) ? '' : ' buy')); b.style.background = hex; b.setAttribute('aria-label', hex);
+          b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); if (cur) return; if (!H.paint(part, hex)) { short(); return; } this.show('home'); }); row.appendChild(b); }
+        C.appendChild(row); }
+      C.appendChild(el('p', 'note', t('home.paintNote')));
+    } else {
+      const own = H.cinemaOwned, c = el('div', 'ph-shop' + (own ? ' own' : '')); c.append(el('b', null, t('home.cinema')), el('small', null, t('home.cinemaD'))); const r = el('div', 'ph-row');
+      if (own) c.appendChild(el('small', 'ph-owned', t('home.owned'))); else this.btn(r, t('home.buyFor', { price: W.fmt(CINEMA_PRICE) }), 'primary', () => { if (!H.buyCinema()) { short(); return; } this.h.toast(t('home.cinemaBought'), 2800); this.show('home'); });
+      c.appendChild(r); C.appendChild(c);
+      if (own) { C.appendChild(el('h4', 'ph-sub', t('home.films'))); const seated = this.h.homeSeat();
+        if (H.film) { const rr = el('div', 'ph-row'); rr.appendChild(el('small', null, t('home.nowPlaying', { title: H.film.src.title }))); this.btn(rr, t('home.stopFilm'), 'secondary', () => { H.stopFilm(); this.show('home'); }); C.appendChild(rr); }
+        for (const f of H.films()) { const li = el('div', 'ph-film'); li.append(el('b', null, f.title), el('small', null, t('home.mins', { n: f.mins })));
+          this.btn(li, t('home.play'), seated ? 'primary' : 'ghost', () => { if (!this.h.homeSeat()) { this.h.toast(t('home.sitFirst'), 2400); return; } if (H.playFilm(f)) this.close(); }); C.appendChild(li); }
+        C.appendChild(el('p', 'note', t(seated ? 'home.filmsNote' : 'home.sitFirst'))); }
+    }
   }
   // the shop: emotes, outfit colours, theatre themes, passes
   app_shop(C) {

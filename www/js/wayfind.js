@@ -17,6 +17,7 @@ export class Wayfinder {
   plan(st) {
     const { game, ticket: tk, room: r, player: p } = st; if (!r || p.seated) return null; const has = tk && tk.title !== undefined && tk.seat, up = p.y > 2;
     if (st.job) { const g = st.job(this, p); if (g && g.pts && g.pts.length) return g; }   // v14 a shift you accepted (career.js Jobs.goal)
+    if (r === 'home') return st.home ? st.home() : null;   // v14 in the flat: the front door first (home.js goal)
     if (game === 'flow' && !has) return r === 'street' ? { key: 'goal.enter', pts: this.route(p, 'doorIn') } : r === 'lobby' && !up ? { key: 'goal.ticket', pts: this.route(p, 'boxQ') } : null;
     if (!has) return null;
     const h = this.world.hallById(tk.hall); if (!h) return null; const H = h.cfg;

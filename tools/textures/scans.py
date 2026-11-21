@@ -21,10 +21,14 @@ def load(p, mode):
 
 
 for name, m in meta.items():
+    same = {}   # v14: a scan's materials that share one texture set (the pendant's shade, rod and globe) share one library id
     for mt in m['materials']:
         mat, alpha = mt['mat'], mt.get('alpha', 'OPAQUE')
         if alpha == 'BLEND':                       # glass: the library's own glass (drawn see-through in the lobby)
             named[mat] = [10, '#2a3036']; rows.append((mat, 'glass')); continue
+        key = (mt.get('base'), mt.get('normal'), mt.get('arm'), alpha)
+        if key in same: named[mat] = [same[key], '#ffffff']; rows.append((mat, same[key])); continue
+        same[key] = nid
         base = load(mt['base'], 'RGBA') if mt.get('base') else Image.new('RGBA', (S, S), (200, 200, 200, 255))
         arm = load(mt['arm'], 'RGB') if mt.get('arm') else None
         a = np.asarray(base).astype(np.float32) / 255.0

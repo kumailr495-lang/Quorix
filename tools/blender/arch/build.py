@@ -18,7 +18,7 @@ def main():
     if '--spec' in args: spec = args[args.index('--spec') + 1]; args = [a for a in args if a != spec]
     args = [a for a in args if not a.startswith('--')]
     S = json.load(open(spec))
-    want = args or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street']
+    want = args or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'home']
     work = os.path.join(ROOT, 'tools', 'bake', '.work'); outx = os.path.join(ROOT, 'www', 'bake')
     if check:
         idx = json.load(open(os.path.join(outx, 'index.json')))['rooms']; bad = []; miss = []

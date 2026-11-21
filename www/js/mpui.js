@@ -37,7 +37,7 @@ export class Together {
   text() { if (this.menuBtn) this.menuBtn.textContent = t('menu.together'); }
   get active() { return this.mp.active; }
   // ---------------------------------------------------------------- the room panel
-  open() {
+  open(o = {}) {   // o.look (v14 the flat's wardrobe): the look editor open at once
     if (this.panel) this.panel.remove(); const S = this.c.settings, guests = RB.ready ? Object.keys(RB.avatars).filter((n) => !/^Business_/.test(n)) : [];
     if (!S.mpAvatar || !guests.includes(S.mpAvatar)) S.mpAvatar = guests[0] || '';
     const name = el('input', { id: 'mpName', maxlength: '18', autocomplete: 'off', value: S.mpName || '' }), code = el('input', { id: 'mpCode', maxlength: '6', autocomplete: 'off', placeholder: 'ABC123' }), grid = el('div', { id: 'mpAv' });
@@ -61,7 +61,7 @@ export class Together {
     const list = el('div', { id: 'mpList' });
     // v11: the panel is your name, Host, or a code and Join; how you look waits behind one line (your last look is kept)
     const lookB = el('button', { cls: 'adv-toggle', text: t('mp.look') }), lookBox = el('div', { cls: 'adv' }, [grid, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'), el('label', { text: t('mp.bottom') }), swatches('mpBottom', LOOK.bottom, 'b'), el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size]);
-    lookBox.hidden = true; lookB.addEventListener('click', () => { lookBox.hidden = !lookBox.hidden; lookB.classList.toggle('on', !lookBox.hidden); });
+    lookBox.hidden = !o.look; lookB.classList.toggle('on', !!o.look); lookB.addEventListener('click', () => { lookBox.hidden = !lookBox.hidden; lookB.classList.toggle('on', !lookBox.hidden); });
     const side = el('div', { cls: 'mpEdit' }, [name, el('div', { cls: 'row' }, [hostB, code, joinB]), status, list, lookB, lookBox, leaveB]);
     const d = el('div', { cls: 'dialog' }, [el('div', { cls: 'mpHead' }, [el('h2', { text: t('mp.title') }), close]), el('div', { cls: 'mpTop' }, [prev, side]), el('div', { cls: 'note', text: t('mp.privacy') })]);
     this.panel = el('div', { id: 'mpPanel', cls: 'scrim center' }, [d]); document.body.appendChild(this.panel); this.c.onModal(true); this.list();

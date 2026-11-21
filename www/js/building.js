@@ -102,12 +102,19 @@ for (const side of [-1, 1]) {
   }
 }
 // rooms: kind drives the Blender builder; level = the lowest floor in it; vis = rooms drawn when you are in it (portal culling)
+// v14 your home (the user, 11-20: "you should spawn in the house ... expand, buy plot, buy houses ... buy furniture, colors"): a flat in the
+// Astor across the road, built and baked like the other rooms but set apart from them (its windows look out on the city; you go in and out
+// by its front door, which opens onto the Astor's entrance on the far pavement). The east room behind a door is the home cinema you can buy.
+export const HOME = { x0: 300, x1: 322, z0: 0, z1: 11, ceil: 3.2, split: 316, door: { x: 309, z: 11, w: 1.0 }, cinemaDoor: { x: 316, z: 9.6, w: 1.0 },
+  inside: { x: 309, z: 10.2, yaw: 0 }, out: { x: -30, z: 39.25, yaw: 0 }, outDoor: { x: -30, z: 39.95 },
+  riser: { z0: 6.3, z1: 8.9, y: 0.25 } };   // the home cinema's second row stands on it (home14.py, world9.js floorY)
 export const ROOMS = {
   street: { kind: 'street', level: 0, rect: [STREET.x0, STREET.z0, STREET.x1, STREET.z1], outdoor: true, vis: ['lobby'] },
   lobby: { kind: 'lobby', level: 0, rect: [LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], ceil: LOBBY.ceil, vis: ['street', 'wc', 'corridor', 'spine'] },
   wc: { kind: 'wc', level: 0, rect: [WC.x0, WC.z0, WC.x1, WC.z1], ceil: WC.ceil, vis: ['lobby'] },
   corridor: { kind: 'corridor', level: L1, rect: [BRIDGE.x0, LINK_W.z0, BRIDGE.x1, BRIDGE.z1], ceil: L1 + 4.2, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
   spine: { kind: 'spine', level: 0, rect: [SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], ceil: SPINE.ceil, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
+  home: { kind: 'home', level: 0, rect: [HOME.x0, HOME.z0, HOME.x1, HOME.z1], ceil: HOME.ceil, vis: [] },
 };
 for (const h of Object.values(HALL)) {
   const a = h.toWorld(-h.width / 2, -1.25), b = h.toWorld(h.width / 2, h.depthIn);

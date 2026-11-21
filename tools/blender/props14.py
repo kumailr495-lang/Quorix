@@ -198,7 +198,6 @@ def poster_totem():
         for k in (-1, 1):
             bx('Bezel', 'brass', (PT_FACE - 0.006, k * (w / 2) - (b if k < 0 else 0), PT_Z - h / 2 - b), (PT_FACE + 0.013, k * (w / 2) + (b if k > 0 else 0), PT_Z + h / 2 + b), r=0.005, M=M)
             bx('Bezel', 'brass', (PT_FACE - 0.006, -w / 2 + 0.002, PT_Z + h / 2 if k > 0 else PT_Z - h / 2 - b), (PT_FACE + 0.0105, w / 2 - 0.002, PT_Z + h / 2 + b if k > 0 else PT_Z - h / 2), r=0.004, M=M)
-        bx('Marquee', 'glow_gold', (PT_FACE - 0.004, -0.4, 1.8), (PT_FACE + 0.005, 0.4, 1.812), M=M)        # a light line under the crown
         bx('Plate', 'brass', (PT_FACE - 0.004, -0.16, 0.42), (PT_FACE + 0.006, 0.16, 0.47), r=0.004, M=M)   # a brass name plate low on each face
 
 
@@ -271,7 +270,7 @@ def popcorn_cart():
         tube('Bead', 'brass', pts + [pts[0]], 0.0045, 6, closed=True)
     for x in (CX0 + 0.004, CX1 - 0.004):
         for y in (-CY + 0.004, CY - 0.004):
-            bx('Corner', 'brass', (x - 0.012, y - 0.012, CZ0 + 0.02), (x + 0.012, y + 0.012, CZ1 - 0.02), r=0.008)
+            lat('Corner', 'brass', [(1e-4, CZ0 + 0.02), (0.012, CZ0 + 0.02), (0.012, CZ1 - 0.02), (1e-4, CZ1 - 0.02)], T(x, y, 0), 12)   # round corner beads
     bx('Skirt', 'brass', (CX0 - 0.006, -CY - 0.006, CZ0 + 0.012), (CX1 + 0.006, CY + 0.006, CZ0 + 0.032), r=0.006)
     # the counter top, the glass case on it: brass posts and rails, glass panes set 4 mm into them
     bx('Top', 'walnut', (CX0 - 0.03, -CY - 0.03, CZ1 - 0.005), (CX1 + 0.03, CY + 0.03, GZ0 + 0.002), r=0.01)
@@ -375,7 +374,7 @@ def motorcycle():
         part('Fender', 0, 'lacquer_red' if x > 0 else 'blackmetal', lambda bm, pts=pts, w=w: lbl.grid_box(bm, [0, 1], [0, 1], [0, 1]) if False else _arc(bm, pts, w, 0.008))
     # the engine: a crankcase, two finned cylinders leaning forward, the exhaust sweeping back to a chrome silencer
     bx('Crankcase', 'charcoal', (-0.12, -0.13, 0.26), (0.26, 0.13, 0.5), r=0.04)
-    bx('Barrel', 'charcoal', (0.0, -0.085, 0.47), (0.18, 0.085, 0.76), r=0.01)   # the cylinders the fins are cast on
+    bx('Barrel', 'charcoal', (-0.08, -0.085, 0.47), (0.13, 0.085, 0.76), r=0.01)   # the cylinders the fins are cast on (every fin 1.8 cm proud of it front and back)
     for k in range(7):
         z = 0.5 + 0.035 * k; bx('Fin', 'steel', (0.02 - 0.012 * k, -0.11, z), (0.22 - 0.012 * k, 0.11, z + 0.016), r=0.004)
     bx('Head', 'charcoal', (-0.07, -0.1, 0.745), (0.12, 0.1, 0.8), r=0.02)

@@ -88,6 +88,8 @@ export const NAMED = {
   // v12 the lobby's exhibit and photo set (tools/blender/decor12.py): the projector's green enamel, the director's chairs' canvas
   // v12c the lobby's zones (tools/blender/zones12.py) and the statue's satin gilt (statue12.py: powder-coat id 25 is part metal, so lamps light it)
   paper_white: [0, '#efe8dc'], gilt: [25, '#d2a659'],
+  // v14 the flat's soft things (tools/blender/home14.py): bed linen and throws in the woven texture, the rugs, the fruit
+  linen_ivory: [9, '#e4ddd0'], linen_sand: [9, '#bfae95'], wool_charcoal: [9, '#3a3a3e'], rug_field: [5, '#b8a88f'], rug_border: [5, '#3a2e26'], citrus_orange: [15, '#e07a1a'], citrus_lemon: [15, '#e8c21e'],
   enamel_green: [15, '#2e4a3c'], canvas_black: [9, '#19191b'], bark: [18, '#4a3a2e'], leaves: [1, '#22381c'], soil: [18, '#2a2420'], bark_olive: [18, '#6e6252'], leaves_olive: [1, '#6a7a5c'], travertine_dark: [41, '#a89884'],
 };
 for (const [k, v] of Object.entries(SCAN_NAMED)) NAMED[k] = v;

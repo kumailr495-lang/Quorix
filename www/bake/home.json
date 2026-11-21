@@ -1,0 +1,18 @@
+{
+ "room": "home",
+ "res": 2048,
+ "hall": false,
+ "hash": "v9.883a03d6b038",
+ "maps": [
+  "home_h.png"
+ ],
+ "scale": [
+  2.01674009540817,
+  0.0,
+  0.0
+ ],
+ "avg": 0.1007008975505225,
+ "glb": "home.glb",
+ "verts": 16920,
+ "tris": 5640
+}
