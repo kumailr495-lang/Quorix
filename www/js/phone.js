@@ -15,12 +15,13 @@ import { SHOP } from './career.js';
 import { DAILY_CAP } from './credits.js';
 import { THEMES, SWATCH } from './theatres.js';
 import { SLOTS, PAINT, CINEMA_PRICE } from './home.js';
+import { GARAGE } from './vehicles.js';
 import { ROOMS, BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E } from './building.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const icon = (id) => `<svg class="ic"><use href="#${id}"/></svg>`;
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('lumiere.' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('lumiere.' + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
 // v14 Wallet (Lumiere Credits, credits.js), Jobs, Tasks and Shop (career.js) join the apps; the old Tab is the wallet's history now
-const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['home', 'i-home'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
+const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['home', 'i-home'], ['garage', 'i-car'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
 const two = (n) => String(n).padStart(2, '0');
 const LINE = { ticket: 'phone.line.ticket', tablet: 'phone.line.tablet', salted: 'opt9.salted', caramel: 'opt9.caramel', cheese: 'opt9.cheese', nachos: 'opt9.nachos', cola: 'opt9.drink', coffee: 'opt9.coffee', water: 'item.water', combo: 'opt9.combo' };
 export class Phone {
@@ -176,6 +177,25 @@ export class Phone {
         C.appendChild(el('p', 'note', t(seated ? 'home.filmsNote' : 'home.sitFirst'))); }
     }
   }
+  // v14 the garage and the dealer (vehicles.js): your motorbike, a saloon and a classic cab to buy, each in paints; the real model turns in a
+  // window (the game's renderer draws it there each frame while the app is open: frame())
+  app_garage(C) {
+    const V = this.h.garage(), W = this.h.credits; if (!V || !V.room) { this.empty(C, t('gar.none')); return; }
+    if (!GARAGE.some((g) => g.id === this.garId)) this.garId = (GARAGE.find((g) => !V.owns(g.id)) || GARAGE[0]).id; const G = GARAGE.find((g) => g.id === this.garId), own = V.owns(G.id);
+    const chips = el('div', 'ph-chips'); for (const g of GARAGE) { const b = el('button', 'ph-chip' + (g.id === G.id ? ' on' : ''), t('gar.' + g.id)); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.garId = g.id; this.show('garage'); }); chips.appendChild(b); }
+    C.appendChild(chips); const cv = el('canvas', 'ph-car'); cv.width = 320; cv.height = 168; C.appendChild(cv); this._garCv = cv;
+    const card = el('div', 'ph-shop' + (own ? ' own' : '')); card.append(el('b', null, t('gar.' + G.id)), el('small', null, t('gar.d.' + G.id)));
+    const stat = (k, v) => { const r = el('div', 'ph-stat'); r.append(el('small', null, t('gar.' + k)), el('i')); r.lastChild.style.setProperty('--v', Math.round(v * 100) + '%'); card.appendChild(r); };
+    stat('top', G.vmax / 26); stat('accel', G.acc / 5.5); stat('grip', G.grip / 9.5);
+    const r = el('div', 'ph-row'); if (own) card.appendChild(el('small', 'ph-owned', t('gar.owned'))); else this.btn(r, t('gar.buyFor', { price: W.fmt(G.price) }), 'primary', () => { if (!V.buy(G.id, W)) { this.h.toast(t('home.short'), 2200, 'error'); return; } this.h.toast(t('gar.bought', { name: t('gar.' + G.id) }), 2600); this.show('garage'); });
+    card.appendChild(r); C.appendChild(card);
+    if (own) { C.appendChild(el('h4', 'ph-sub', t('gar.paint') + '  ·  ' + W.fmt(V.paintPrice()))); const row = el('div', 'ph-swrow');
+      for (const hex of G.paints) { const cur = V.paintOf(G.id) === hex, b = el('button', 'ph-sw' + (cur ? ' on' : '') + (V.ownsPaint(G.id, hex) ? '' : ' buy')); b.style.background = hex; b.setAttribute('aria-label', hex);
+        b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); if (cur) return; if (!V.paint(G.id, hex, W)) { this.h.toast(t('home.short'), 2200, 'error'); return; } this.show('garage'); }); row.appendChild(b); }
+      C.appendChild(row); }
+    C.appendChild(el('p', 'note', t('gar.note')));
+  }
+  frame(dt) { if (this.app === 'garage' && this._garCv && this.isOpen() && this.h.garage && this._garCv.isConnected) this.h.garage().preview(this.h.renderer, this._garCv, this.garId, dt); }
   // the shop: emotes, outfit colours, theatre themes, passes
   app_shop(C) {
     const W = this.h.credits; C.appendChild(el('p', 'ph-shopbal', W.fmt(W.bal)));

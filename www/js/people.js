@@ -263,6 +263,9 @@ const GEST = {
   talk: (t) => ({ R: [-0.16 + 0.05 * Math.sin(t * 2.3), -0.22 + 0.05 * Math.sin(t * 3.1), 0.28], from: 'chest' }),
   pour: (t) => ({ R: [-0.1, -0.12 + 0.03 * Math.sin(t * 2), 0.42], L: [0.08, -0.2, 0.36], from: 'chest', head: 0.3 }),
   scoop: (t) => ({ R: [-0.12, -0.34 + 0.08 * Math.abs(Math.sin(t * 3)), 0.44], from: 'chest', head: 0.32 }),
+  // v14 temper (npc9.js bumped, startle): palms up, 'what was that?', and a fist shaken at you
+  angry: (t) => ({ L: [0.3, -0.08 + 0.05 * Math.sin(t * 6), 0.3], R: [-0.3, -0.08 + 0.05 * Math.sin(t * 6 + 0.6), 0.3], from: 'chest', lean: -0.05, head: -0.06, jaw: 0.08 }),
+  shake: (t) => ({ R: [-0.16, 0.3 + 0.05 * Math.sin(t * 15), 0.3], L: [0.12, -0.3, 0.12], from: 'chest', lean: 0.04, jaw: 0.1 }),
 };
 export const GESTURES = Object.keys(GEST);
 // v12: a gesture defined by its user (the taxi driver's hands on the wheel, in the car's own measures: intro9.js). from: 'root' = targets in the person's own frame, not from the chest

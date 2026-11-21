@@ -270,10 +270,29 @@ export class Crowd {
       const c = (dx * fx + dz * fz) / d; if (c < 0.55) continue; const sc = c / (0.5 + d); if (sc > bs) { bs = sc; best = a; } }
     return best;
   }
-  startTalk(a) { a.talking = true; a.stop && a.state !== 'guiding' && a.path && a.role === 'guest' && a.stop(); }
+  startTalk(a) { a.talking = true; a.stop && a.state !== 'guiding' && a.path && a.role === 'guest' && a.stop(); if (this.now - (a._warm || 0) > 120000) { a._warm = this.now; this.regard(a, 1); } }   // v14 a chat warms staff (once in two minutes)
   endTalk(a) { if (a) a.talking = false; }
   bodiesNear(x, z, r) { const out = this._tmp; out.length = 0; for (const a of this.agents) if (a.alive && a.ch && a.sit < 0.5) { const d = Math.hypot(a.x - x, a.z - z); if (d < r) out.push({ x: a.x, z: a.z, r: a.r, a }); } return out; }
-  bumped(a) { if (a.role === 'guest' && this.now - (a._bump || 0) > 6000) { a._bump = this.now; a.say(pick('guest.bump')); a.gesture('gasp', 0.8); } }
+  // v14 (the user, 11-20: "npc interactions ... relationships, npc angry"): people keep a temper. A bump is forgiven once; again within half a
+  // minute they turn on you (an annoyed line, palms up), a third time they shake a fist and walk off. Staff remember how you treat them
+  // (lumiere.npc.v1: talking warms them, bumping cools them) and greet a regular by name (dialogue9.js via mood()).
+  bumped(a) {
+    if (this.now - (a._bump || 0) < 1500) return; const fresh = this.now - (a._bump || 0) > 30000; a._bump = this.now; a.anger = fresh ? 1 : Math.min(3, (a.anger || 0) + 1);
+    if (a.role !== 'guest') { this.regard(a, -1); if (a.anger >= 2) { a.say(pick('staff.bumped')); a.gesture('angry', 1.6); } return; }
+    if (a.anger === 1) { a.say(pick('guest.bump')); a.gesture('gasp', 0.8); }
+    else if (a.anger === 2) { a.say(pick('guest.annoyed')); a.gesture('angry', 2.0); a.glare = this.now + 3000; }
+    else { a.say(pick('guest.angry')); a.gesture('shake', 2.2); a.glare = this.now + 2500; if (a.state === 'mill' && !a.talking) setTimeout(() => { if (a.alive && a.state === 'mill') { a.next = 0; this.mill(a, this.now); } }, 2300); this.hooks.event && this.hooks.event('angered'); }
+  }
+  // a horn (vehicles.js): everyone within r looks round; honk again soon and the nearest complains
+  startle(x, z, r = 10) {
+    let near = null, nd = r; const again = this.now - (this._horn || 0) < 8000; this._horn = this.now;
+    for (const a of this.agents) { if (!a.alive || !a.ch || a.sit > 0.5) continue; const d = Math.hypot(a.x - x, a.z - z); if (d > r) continue; a.glareAt = { x, z }; a.glare = this.now + 2200; if (d < nd) { nd = d; near = a; } }
+    if (near) { if (again) { near.say(pick('guest.horn')); near.gesture('angry', 1.8); } else near.gesture('gasp', 0.7); }
+  }
+  // staff regard, kept between sessions: -3 (cold) .. 6 (a friend)
+  regard(a, n) { if (!a || a.role === 'guest' || !a.role) return 0; const R = this._regard || (this._regard = (() => { try { return JSON.parse(localStorage.getItem('lumiere.npc.v1') || '{}') || {}; } catch (e) { return {}; } })());
+    const k = a.role + ':' + (a.name || ''); R[k] = Math.max(-3, Math.min(6, (R[k] || 0) + n)); try { localStorage.setItem('lumiere.npc.v1', JSON.stringify(R)); } catch (e) { /* storage off */ } return R[k]; }
+  mood(a) { return this.regard(a, 0); }
   // ---------------------------------------------------------- the frame
   update(dt, now, player, vis) {
     if (this.srvQ && this.srvQ.length) this._nextJob();   // the server's queue: the next call as soon as he is back at his post
@@ -366,6 +385,8 @@ export class Crowd {
     let ly = 0, lp = 0, amt = 0;
     if (a.viewer && a.sit > 0.5 && this.now < a.chatUntil && a.chatWith && a.chatWith.alive) { const o = a.chatWith; ly = clamp(adiff(Math.atan2(o.x - a.x, o.z - a.z), a.yaw), -1.2, 1.2); lp = 0.05; amt = 0.95; }
     else if (a.viewer && a.sit > 0.5) { const H = a.viewer.hall.cfg, c = H.toWorld(0, 0), yawTo = Math.atan2(c.x - a.x, c.z - a.z); ly = adiff(yawTo, a.yaw); lp = -Math.atan2(H.y0 + H.centreY - (a.y + 1.1), Math.hypot(c.x - a.x, c.z - a.z)); amt = 0.85; }
+    else if (a.glare && this.now < a.glare && !(a.viewer && a.sit > 0.5)) { const tx = a.glareAt ? a.glareAt.x : player.x, tz = a.glareAt ? a.glareAt.z : player.z, yawTo = Math.atan2(tx - a.x, tz - a.z); ly = clamp(adiff(yawTo, a.yaw), -1.5, 1.5); lp = 0; amt = 1;
+      if (!a.path || a.state === 'mill') a.yaw += adiff(yawTo, a.yaw) * Math.min(1, dt * 2.2); if (this.now >= a.glare - 50) a.glareAt = null; }   // v14 turned on you (a bump) or toward a horn
     else if (player && d < 3.0 && (a.talkable || a.role === 'guest')) { const yawTo = Math.atan2(player.x - a.x, player.z - a.z), rel = adiff(yawTo, a.yaw); if (Math.abs(rel) < 1.6) { ly = rel; lp = -Math.atan2((player.y || 0) + 1.6 - (a.y + 1.6), d) * 0.6; amt = a.talking ? 1 : 0.7; } }
     const L = a.look; L.yaw += (ly - L.yaw) * Math.min(1, dt * 3.5); L.pitch += (lp - L.pitch) * Math.min(1, dt * 3.5); L.amt += (amt - L.amt) * Math.min(1, dt * 2.5); ch.s.lookYaw = L.yaw; ch.s.lookPitch = L.pitch; ch.s.lookAmt = L.amt;
     a.lightT -= dt; if (a.lightT <= 0) { a.lightT = 0.3; const want = this.lightAt(a.x, a.y + 1.2, a.z, { amb: new THREE.Color(), key: new THREE.Color(), dir: new THREE.Vector3(), screen: new THREE.Color() }); a.lightWant = want; }

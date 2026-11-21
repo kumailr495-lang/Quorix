@@ -84,6 +84,21 @@ export class Sound9 extends Sound {
   // v12 a car out on the street, synthesised where it is (a panner): the hiss of its tyres on the wet road (filtered noise: at city speed
   // that is most of what a car sounds like at night) and its engine's low note. The handle takes the car's place, its speed in metres a
   // second and a level from 0 to 1 each frame, and fades the sound out when the car is gone
+  // v14 tyre squeal (vehicles.js): band-passed noise near 2.4 kHz with a fast flutter; set(amount 0..1, x, z)
+  screech() {
+    if (!this.ready) return null; const c = this.ctx; if (!this._noise) return null;
+    const src = c.createBufferSource(); src.buffer = this._noise; src.loop = true; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 9; const g = c.createGain(); g.gain.value = 0;
+    const lfo = c.createOscillator(); lfo.frequency.value = 23; const lg = c.createGain(); lg.gain.value = 0; lfo.connect(lg); lg.connect(g.gain);
+    const p = c.createPanner(); p.panningModel = 'equalpower'; p.distanceModel = 'inverse'; p.refDistance = 3; p.rolloffFactor = 1.1;
+    src.connect(bp); bp.connect(g); g.connect(p); p.connect(this.master); src.start(); lfo.start(); const to = (prm, v, tau = 0.06) => prm.setTargetAtTime(v, c.currentTime, tau);
+    return { set: (a, x, z) => { const m = this.muted ? 0 : a * 0.09; to(g.gain, m); to(lg.gain, m * 0.4); to(bp.frequency, 2100 + 700 * a); if (x != null) { if (p.positionX) { to(p.positionX, x, 0.05); to(p.positionZ, z, 0.05); } else p.setPosition(x, 0.4, z); } } };
+  }
+  // v14 a car's two-tone horn (a fifth apart, square waves through a low-pass), a motorbike's single higher beep
+  horn(kind = 'car') {
+    if (!this.ready || this.muted) return; const c = this.ctx, t0 = c.currentTime, out = c.createGain(); out.gain.value = 0; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; out.connect(lp); lp.connect(this.master);
+    for (const f of kind === 'moto' ? [520] : [392, 494]) { const o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(out); o.start(t0); o.stop(t0 + 0.62); }
+    out.gain.setValueAtTime(0, t0); out.gain.linearRampToValueAtTime(0.06, t0 + 0.02); out.gain.setValueAtTime(0.06, t0 + 0.5); out.gain.linearRampToValueAtTime(0, t0 + 0.6);
+  }
   vehicle() {
     if (!this.ready) return null; const c = this.ctx;
     if (!this._noise) { const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this._noise = b; }
@@ -93,8 +108,11 @@ export class Sound9 extends Sound {
     src.connect(bp); bp.connect(hiss); hiss.connect(p); osc.connect(lp); lp.connect(eng); eng.connect(p); p.connect(this.master); src.start(0, Math.random() * 2); osc.start();
     const to = (prm, v, tau = 0.15) => prm.setTargetAtTime(v, c.currentTime, tau); let dead = false;
     return {
-      set: (x, z, v, k = 1) => { if (dead) return; const u = clamp(v / 9, 0, 1.3), m = this.muted ? 0 : k; if (p.positionX) { to(p.positionX, x, 0.05); to(p.positionY, 0.5, 0.05); to(p.positionZ, z, 0.05); } else p.setPosition(x, 0.5, z);
-        to(hiss.gain, (0.055 * u + 0.003) * m, 0.2); to(bp.frequency, 800 + 1000 * u); to(eng.gain, (0.02 + 0.035 * u) * m); to(osc.frequency, 26 + 36 * u); },
+      // gear (v14 vehicles.js gear()): { g, rpm } - the engine's note follows the revs (a four-cylinder: two pulses a turn), the filter opens with them
+      set: (x, z, v, k = 1, gear = null) => { if (dead) return; const u = clamp(v / 9, 0, 1.3), m = this.muted ? 0 : k; if (p.positionX) { to(p.positionX, x, 0.05); to(p.positionY, 0.5, 0.05); to(p.positionZ, z, 0.05); } else p.setPosition(x, 0.5, z);
+        to(hiss.gain, (0.055 * u + 0.003) * m, 0.2); to(bp.frequency, 800 + 1000 * u);
+        if (gear) { const r = clamp((gear.rpm - 900) / 5200, 0, 1); to(osc.frequency, gear.rpm / 30, 0.08); to(lp.frequency, 140 + 420 * r, 0.1); to(eng.gain, (0.022 + 0.04 * r) * m, 0.1); }
+        else { to(eng.gain, (0.02 + 0.035 * u) * m); to(osc.frequency, 26 + 36 * u); } },
       stop: () => { if (dead) return; dead = true; to(hiss.gain, 0, 0.3); to(eng.gain, 0, 0.3); try { src.stop(c.currentTime + 1.6); osc.stop(c.currentTime + 1.6); } catch (e) { /* stopped already */ } },
     };
   }

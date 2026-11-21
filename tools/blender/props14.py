@@ -82,6 +82,17 @@ def tube(name, mat, pts, radius, sides=8, closed=False):
     return part(name, 0, mat, lambda bm: lbl.ptube(bm, pts, radius, sides))
 
 
+def bead_loop(name, mat, o, u, v, w, h, r=0.0045, rc=0.012, steps=3):
+    """v14 a panel's bead: a round bar round a w x h rectangle (corner o, along u and v), its corners rounded (rc) and its frames rotation-
+    minimizing (lbl.ptube): the v14 cart's beads were tubes on sharp corners whose rings turned there and crossed their own faces"""
+    P = lambda a, b: Vector((o[0] + u[0] * a + v[0] * b, o[1] + u[1] * a + v[1] * b, o[2] + u[2] * a + v[2] * b)); pts = [P(w / 2, 0.0)]   # the seam mid-edge:
+    for (ca, cb, a0) in ((w - rc, rc, -90), (w - rc, h - rc, 0), (rc, h - rc, 90), (rc, rc, 180)):                                         # same tangent both sides
+        for k in range(steps + 1):
+            t = math.radians(a0 + 90 * k / steps); pts.append(P(ca + rc * math.cos(t), cb + rc * math.sin(t)))
+    pts.append(P(w / 2, 0.0))
+    part(name, 0, mat, lambda bm: lbl.ptube(bm, pts, r, 6, cap=False))
+
+
 def corn(pieces, seed):
     """popped kernels: jittered icosahedra (20 faces each) at (x, y, z, r)"""
     def build(bm):
@@ -263,11 +274,9 @@ def popcorn_cart():
     for (x, s) in ((CX1, 1), (CX0, -1)):
         for (y0, y1) in ((-0.43, -0.15), (-0.13, 0.13), (0.15, 0.43)):
             if s < 0 and y0 > 0.1: continue                         # the back's third panel is behind the wheel
-            pts = [(x + s * 0.004, y0, 0.29), (x + s * 0.004, y1, 0.29), (x + s * 0.004, y1, 0.74), (x + s * 0.004, y0, 0.74)]
-            tube('Bead', 'brass', pts + [pts[0]], 0.0045, 6, closed=True)
+            bead_loop('Bead', 'brass', (x + s * 0.004, y0, 0.29), (0, 1, 0), (0, 0, 1), y1 - y0, 0.45)
     for y in (-CY, CY):
-        pts = [(CX0 + 0.06, y + (0.004 if y > 0 else -0.004), 0.29), (CX1 - 0.06, y + (0.004 if y > 0 else -0.004), 0.29), (CX1 - 0.06, y + (0.004 if y > 0 else -0.004), 0.74), (CX0 + 0.06, y + (0.004 if y > 0 else -0.004), 0.74)]
-        tube('Bead', 'brass', pts + [pts[0]], 0.0045, 6, closed=True)
+        bead_loop('Bead', 'brass', (CX0 + 0.06, y + (0.004 if y > 0 else -0.004), 0.29), (1, 0, 0), (0, 0, 1), CX1 - CX0 - 0.12, 0.45)
     for x in (CX0 + 0.004, CX1 - 0.004):
         for y in (-CY + 0.004, CY - 0.004):
             lat('Corner', 'brass', [(1e-4, CZ0 + 0.02), (0.012, CZ0 + 0.02), (0.012, CZ1 - 0.02), (1e-4, CZ1 - 0.02)], T(x, y, 0), 12)   # round corner beads

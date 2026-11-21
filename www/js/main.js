@@ -159,7 +159,7 @@ async function boot() {
   const phone = new Phone({ ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, theatres: () => theatres, halls: () => world.halls.map((h) => ({ id: h.id, name: h.name.replace('LUMIERE ', '') })), stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
     guide: () => { settings.goal = true; saveSettings(settings); }, showTicket: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'),
     together: () => together.open(), settings: () => ui.openSettings(), sound, toast: (m, ms, k) => ui.toast(m, ms, k), native: !!window.LumiereMedia,
-    home: () => home, homeSeat: () => { const sp = world.sitSpots.find((q) => q.taken === 'player'); return !!(sp && sp.cinema); }, taxi: () => callTaxi() });   // inside the Android app a photo cannot be saved as a file (no picture bridge yet)
+    home: () => home, homeSeat: () => { const sp = world.sitSpots.find((q) => q.taken === 'player'); return !!(sp && sp.cinema); }, taxi: () => callTaxi(), garage: () => vehicles, renderer: engine.renderer });   // inside the Android app a photo cannot be saved as a file (no picture bridge yet)
   $('#bPhone').addEventListener('click', (e) => { e.stopPropagation(); if (mode === 'play') phone.toggle(); });
   addEventListener('keydown', (e) => { const tag = (e.target && e.target.tagName) || ''; if (e.code === 'KeyF' && mode === 'play' && tag !== 'INPUT' && tag !== 'TEXTAREA') phone.toggle(); });
   const life = new LobbyLife(world, engine);   // v12c the lobby's life: popcorn popping, the fountain's water, steam at the bar, the marquee's bulbs, the boards' sheen
@@ -175,12 +175,16 @@ async function boot() {
   const driverAgent = { x: 1.6, y: 0, z: 27.9, name: t('role9.driver'), role: 'driver', voice: 'driver', alive: true, ch: { s: { sit: 1 }, scale: 1 }, group: { visible: true }, crowd };
   // v12 the street's traffic: the taxi leaves after dropping you (intro9.js), saloons pass now and then (traffic.js); both are solid to you
   const traffic = new Traffic(world, mats, sound, world.rooms.street && world.rooms.street.x && world.rooms.street.x.traffic); intro.traffic = traffic;
-  const vehicles = new Vehicles(world, mats, sound);   // v14 your car and motorbike on the street (vehicles.js)
+  const vehicles = new Vehicles(world, mats, sound, { event: (n) => career.event(n), horn: (x, z) => crowd.startle && crowd.startle(x, z, 10) });   // v14 your garage: cars and motorbikes on the street (vehicles.js)
+  { const hb = $('#bHand'), on = (v) => { vehicles.hand = v; hb.classList.toggle('on', v); };
+    hb.addEventListener('pointerdown', (e) => { e.stopPropagation(); on(true); }); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) hb.addEventListener(ev, () => on(false));
+    $('#bHorn').addEventListener('click', (e) => { e.stopPropagation(); vehicles.horn(); });
+    addEventListener('keydown', (e) => { if (e.code === 'KeyH' && vehicles.driving) vehicles.horn(); }); }
   const parked = () => vehicles.list.filter((v) => v !== vehicles.cur).map((v) => ({ x: v.x, z: v.z, r: v.kind === 'car' ? 1.9 : 0.8 }));
   // v14 your flat across the road (home.js): Story starts there; its front door is a fade to the Astor's entrance on the far pavement
   const travel = (x, z, yaw, cb) => { ui.fade(1, 0.35); setTimeout(() => { if (sitRelease) sitRelease(); player.place(x, z, yaw, 0, 0); if (cb) cb(); ui.fade(0, 0.6); }, 380); };
   const home = new Home(world, mats, credits, sound, { travel, toast: (m, ms) => ui.toast(m, ms), event: (n) => career.event(n),
-    openApp: (app, tab) => { phone.homeTab = tab; phone.open(app); }, wardrobe: () => together.open({ look: true }), coffee: () => { if (held) { ui.toast(t('toast9.handsFull'), 2200); return; } if (sound.espresso) sound.espresso(); takeItem('espresso'); },
+    openApp: (app, tab) => { phone.homeTab = tab; phone.open(app); }, wardrobe: () => together.open({ look: true }), coffee: () => { if (held) { ui.toast(t('toast9.handsFull'), 2200); return; } if (sound.espresso) sound.espresso(); takeItem('espresso'); career.event('coffee'); },
     tvInfo: () => ({ shows: world.halls.map((h) => `${h.name.replace('LUMIERE ', '')}  ·  ${shows.title(h.id) || t('show.none')}`), ticket: ticket && ticket.seat ? `${t('home.tvYour')}  ${ticket.title || ''}  ·  ${(ticket.hallName || '').replace('LUMIERE ', '')}  ·  ${ticket.seat}` : null }) });
   bill.onChange = () => ui.setWallet(game === 'flow' ? credits.fmt(credits.bal) : null); credits.onChange(() => bill.onChange());   // v14 the wallet chip: your Lumiere Credits
   function applySettings(gfx) {
@@ -356,7 +360,7 @@ async function boot() {
     requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now; G.uTime.value = now / 1000; const c0 = performance.now();
     try { step(dt, now); } catch (e) { if (now - errT > 5000) { errT = now; console.error('[lumiere] frame update failed (rendering anyway):', e); } }
     engine.stats.cpu = engine.stats.cpu * 0.92 + (performance.now() - c0) * 0.08; engine.governor(dt, now);
-    shows.frame(engine.camera, engine.renderer); engine.render(); together.preview(engine.renderer, dt);
+    shows.frame(engine.camera, engine.renderer); engine.render(); together.preview(engine.renderer, dt); phone.frame(dt);
     if (snapCb) { const cb = snapCb; snapCb = null; let url = null; try { const c = engine.renderer.domElement, k = Math.min(1, 960 / c.width), o = document.createElement('canvas'); o.width = Math.round(c.width * k); o.height = Math.round(c.height * k); o.getContext('2d').drawImage(c, 0, 0, o.width, o.height); url = o.toDataURL('image/jpeg', 0.85); } catch (e) { /* tainted or lost context */ } cb(url); }
   }
   function menuCam(now) { const k = now / 1000 * 0.04, cam = engine.camera; cam.position.set(Math.sin(k) * 7, 2.6 + Math.sin(k * 2.1) * 0.3, 6 + Math.cos(k) * 5); cam.lookAt(Math.sin(k + 1.4) * 3, 2.2, 0); player.x = cam.position.x; player.z = cam.position.z; player.y = 0; }
@@ -420,6 +424,7 @@ async function boot() {
     else { wayT -= dt; if (wayT <= 0) { wayT = 0.2; way.update({ game, ticket, room: r, player, job: jobs.active ? (w, p) => jobs.goal(w, p) : null, home: game === 'flow' || (ticket && ticket.seat) ? () => home.goal() : null }); if (way.cur && !player.seated && !vehicles.driving) guide.set(way.cur.pts, way.cur.ai, player); else guide.hide(); } const g = way.cur;
       if (!g) ui.setGoal(null); else { cam.getWorldDirection(fwd); const dx = g.aim.x - player.x, dz = g.aim.z - player.z, fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl;
         ui.setGoal(t(g.key, g.vars), Math.atan2(dx * -fz + dz * fx, dx * fx + dz * fz) * 180 / Math.PI, g.dist); } }
+    { const dv = mode === 'play' && vehicles.driving && !modal; ui.setButton('#bHand', dv); ui.setButton('#bHorn', dv); ui.setButton('#speedo', dv); if (dv) { const n = String(vehicles.kmh()), g = vehicles.cur ? String(vehicles.gear(vehicles.speed, vehicles.cur.S).g) : '1', a = $('#spdN'), b = $('#spdG'); if (a.textContent !== n) a.textContent = n; if (b.textContent !== g) b.textContent = g; } }
     ui.setButton('#bBell', mode === 'play' && !modal && !!player.seated && ((game === 'flow' && !!hk && !(ticket && ticket.tablet)) || (r === 'home' && phone.h.homeSeat())));
     recliner.update(dt, player); const seatCtl = mode === 'play' && !!player.seated && !player.busy && !!recliner.cur && !modal;
     ui.setButton('#bRecline', seatCtl); ui.setButton('#bCup', seatCtl && (held ? !!recliner.freeHolder() : recliner.hasItem()));

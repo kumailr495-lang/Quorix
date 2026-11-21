@@ -59,7 +59,7 @@ def build_home(S):
     nb = 8; bw = (WX1 - WX0) / nb
     for i in range(nb + 1):
         x = WX0 + i * bw; xa, xb = (x - 0.02, x + 0.05) if i == 0 else ((x - 0.05, x + 0.02) if i == nb else (x - 0.025, x + 0.025))
-        acc.box(xa, 0.05, Z0 + 0.04, xb, 2.9, Z0 + 0.16, MAT['powder'], FRAME)                          # mullions (the end ones 2 cm into the walls)
+        acc.box(xa, 0.05, Z0 + 0.045, xb, 2.9, Z0 + 0.155, MAT['powder'], FRAME)                        # mullions (the end ones 2 cm into the walls), 5 mm inside the rails' faces
     for i in range(nb):
         xa = WX0 + i * bw + (0.045 if i == 0 else 0.02); xb = WX0 + (i + 1) * bw - (0.045 if i == nb - 1 else 0.02)
         acc.box(xa, 0.055, Z0 + 0.094, xb, 2.895, Z0 + 0.106, MAT['glass'], lin('#9aa4ae'))            # glass, 5 mm into its frame
@@ -74,25 +74,25 @@ def build_home(S):
     lit.area(((WX0 + WX1) / 2, 1.6, Z0 + 0.3), ((WX1 - WX0) / 2 - 0.4, 0, 0), (0, 1.2, 0), (0, 0, 1), COOL, 2.2, 9, 'f', 4, 2)
     # ---- skirting (flat white, 9 cm, 15 mm proud, 2 mm into the wall) round the flat, stopped 1 cm into door linings
     sk = lambda x0, z0, x1, z1: acc.box(x0, -0.01, z0, x1, 0.09, z1, PAINT, lin('#f3f0ea'))
-    sk(X0 + 0.198, Z0 + 0.45, X0 + 0.215, Z1 - 0.2)                                                    # west (behind the kitchen it is hidden)
-    sk(X0 + 0.2, Z1 - 0.215, dX - 0.52, Z1 - 0.198); sk(dX + 0.52, Z1 - 0.215, XS - 0.1, Z1 - 0.198)   # back, either side of the front door
-    sk(XS - 0.115, Z0 + 0.45, XS - 0.098, cz - 0.58); sk(XS - 0.115, cz + 0.58, XS - 0.098, Z1 - 0.2)  # the cinema partition's flat side
+    sk(X0 + 0.198, Z0 + 0.45, X0 + 0.215, Z1 - 0.215)                                                  # west (behind the kitchen it is hidden)
+    sk(X0 + 0.215, Z1 - 0.215, dX - 0.52, Z1 - 0.198); sk(dX + 0.52, Z1 - 0.215, XS - 0.115, Z1 - 0.198)   # back, either side of the front door (corners meet, never overlap)
+    sk(XS - 0.115, Z0 + 0.45, XS - 0.098, cz - 0.58); sk(XS - 0.115, cz + 0.58, XS - 0.098, Z1 - 0.215)  # the cinema partition's flat side
     for z0_, z1_ in ((cz - 0.6, cz - 0.5 + 0.02), (cz + 0.5 - 0.02, cz + 0.6)):   # that door's architraves (the leaf is home.js's)
-        acc.box(XS - 0.1 - 0.022, -0.005, z0_, XS - 0.1 + 0.002, 2.24, z1_, PAINT, lin('#f3f0ea'))
+        acc.box(XS - 0.1 - 0.022, -0.005, z0_, XS - 0.1 + 0.002, 2.15 - 0.012, z1_, PAINT, lin('#f3f0ea'))   # up to the head (no overlap)
     acc.box(XS - 0.1 - 0.022, 2.15 - 0.012, cz - 0.6, XS - 0.1 + 0.002, 2.24, cz + 0.6, PAINT, lin('#f3f0ea'))
     # ---- front door: linings and stops in the opening, a walnut leaf (2 mm into the linings), architraves, a brass lever
     LW = 0.03
     acc.box(dX - 0.5 - 0.002, -0.01, Z1 - 0.2, dX - 0.5 + LW, 2.2 + 0.002, Z1, PAINT, lin('#efebe4'))
     acc.box(dX + 0.5 - LW, -0.01, Z1 - 0.2, dX + 0.5 + 0.002, 2.2 + 0.002, Z1, PAINT, lin('#efebe4'))
-    acc.box(dX - 0.5 + LW - 0.002, 2.2 - LW, Z1 - 0.2, dX + 0.5 - LW + 0.002, 2.2 + 0.002, Z1, PAINT, lin('#efebe4'))
+    acc.box(dX - 0.5 + LW, 2.2 - LW, Z1 - 0.2, dX + 0.5 - LW, 2.2 + 0.002, Z1, PAINT, lin('#efebe4'))   # the head between the side linings
     acc.box(dX - 0.5 + LW - 0.002, -0.005, Z1 - 0.12, dX + 0.5 - LW + 0.002, 2.2 - LW + 0.002, Z1 - 0.08, MAT['wood'], WALNUT)   # the leaf
     for s in (-1, 1):   # stiles' brass inlay lines on the room face (5 mm proud, 2 mm in)
         acc.box(dX + s * 0.3 - 0.004, 0.25, Z1 - 0.126, dX + s * 0.3 + 0.004, 1.95, Z1 - 0.118, MAT['brass'], BRASS)
     acc.box(dX + 0.33, 1.02, Z1 - 0.134, dX + 0.39, 1.08, Z1 - 0.118, MAT['brass'], BRASS)               # rose
-    acc.box(dX + 0.35, 1.04, Z1 - 0.165, dX + 0.37, 1.06, Z1 - 0.13, MAT['brass'], BRASS)                # stem
-    acc.box(dX + 0.2, 1.04, Z1 - 0.18, dX + 0.37, 1.06, Z1 - 0.16, MAT['brass'], BRASS)                  # lever, 40 mm off the leaf
+    acc.box(dX + 0.34, 1.042, Z1 - 0.165, dX + 0.37, 1.058, Z1 - 0.13, MAT['brass'], BRASS)              # stem
+    acc.box(dX + 0.2, 1.04, Z1 - 0.18, dX + 0.36, 1.06, Z1 - 0.16, MAT['brass'], BRASS)                  # lever, 40 mm off the leaf
     for x0, x1 in ((dX - 0.6, dX - 0.5 + 0.02), (dX + 0.5 - 0.02, dX + 0.6)):
-        acc.box(x0, -0.005, Z1 - 0.222, x1, 2.29, Z1 - 0.198, PAINT, lin('#f3f0ea'))                    # architraves (the skirting stops 2 cm into them)
+        acc.box(x0, -0.005, Z1 - 0.222, x1, 2.2 + 0.002 - 0.012, Z1 - 0.198, PAINT, lin('#f3f0ea'))     # architraves up to the head (the skirting stops 2 cm into them)
     acc.box(dX - 0.6, 2.2 + 0.002 - 0.012, Z1 - 0.222, dX + 0.6, 2.29, Z1 - 0.198, PAINT, lin('#f3f0ea'))
     # light switch plate by the door (home.js: tap it to dim the flat's lights), an indicator dot
     acc.box(dX + 0.72, 1.0, Z1 - 0.212, dX + 0.8, 1.08, Z1 - 0.198, MAT['brass'], BRASS)
@@ -176,16 +176,16 @@ def kitchen(acc, glow, lit, xw, zb, H):
     TOP = 0.94
     acc.box(xw - 0.002, 0.9, z0 - 0.02, xf + 0.05, TOP, zs0, MAT['calacatta'], STONE)
     acc.box(xw - 0.002, 0.9, zs1, xf + 0.05, TOP, zt + 0.002, MAT['calacatta'], STONE)
-    acc.box(xw - 0.002, 0.9, zs0 - 0.002, xs0, TOP, zs1 + 0.002, MAT['calacatta'], STONE)
-    acc.box(xs1, 0.9, zs0 - 0.002, xf + 0.05, TOP, zs1 + 0.002, MAT['calacatta'], STONE)
+    acc.box(xw - 0.002, 0.9, zs0, xs0, TOP, zs1, MAT['calacatta'], STONE)
+    acc.box(xs1, 0.9, zs0, xf + 0.05, TOP, zs1, MAT['calacatta'], STONE)
     # an integrated stone sink: a calacatta tub under the opening, its walls flush with the counter's cut faces, a chrome drain
     acc.box(xs0 - 0.002, 0.74, zs0 - 0.002, xs1 + 0.002, 0.76, zs1 + 0.002, MAT['calacatta'], STONE)
-    acc.box(xs0 - 0.02, 0.74, zs0 - 0.02, xs0, 0.9, zs1 + 0.02, MAT['calacatta'], STONE); acc.box(xs1, 0.74, zs0 - 0.02, xs1 + 0.02, 0.9, zs1 + 0.02, MAT['calacatta'], STONE)
+    acc.box(xs0 - 0.02, 0.74, zs0, xs0, 0.9, zs1, MAT['calacatta'], STONE); acc.box(xs1, 0.74, zs0, xs1 + 0.02, 0.9, zs1, MAT['calacatta'], STONE)
     acc.box(xs0 - 0.02, 0.74, zs0 - 0.02, xs1 + 0.02, 0.9, zs0, MAT['calacatta'], STONE); acc.box(xs0 - 0.02, 0.74, zs1, xs1 + 0.02, 0.9, zs1 + 0.02, MAT['calacatta'], STONE)
     acc.cyl((xs0 + xs1) / 2, (zs0 + zs1) / 2, 0.035, 0.755, 0.766, MAT['chrome'], lin('#d6d8dc'), n=16)
     acc.box(xw + 0.08, TOP - 0.003, z0 + 0.9, xw + 0.58, TOP + 0.006, z0 + 1.6, MAT['powder'], lin('#0a0a0c'))   # hob (6 mm proud)
     # backsplash, shelves, hood
-    acc.box(xw - 0.002, TOP - 0.002, z0 - 0.02, xw + 0.018, 1.5, zt + 0.002, MAT['calacatta'], STONE)
+    acc.box(xw - 0.002, TOP - 0.002, z0, xw + 0.018, 1.5, zt + 0.002, MAT['calacatta'], STONE)
     for y_ in (1.6, 2.0):
         acc.box(xw - 0.002, y_, z0 + 1.9, xw + 0.3, y_ + 0.04, zt - 0.08, MAT['wood'], WALNUT)
         gf(glow, (xw + 0.05, y_ - 0.006, z0 + 1.95), (xw + 0.05, y_ - 0.006, zt - 0.13), (xw + 0.12, y_ - 0.006, zt - 0.13), (xw + 0.12, y_ - 0.006, z0 + 1.95), (0, -1, 0), WARM, 1.1)
@@ -241,14 +241,16 @@ def cinema(acc, glow, lit, x0, x1, z0, z1, H, cz):
         gf(glow, (x0 + 0.05, ry - 0.03, zf + d * 0.0125), (x1 - 0.05, ry - 0.03, zf + d * 0.0125), (x1 - 0.05, ry - 0.015, zf + d * 0.0125), (x0 + 0.05, ry - 0.015, zf + d * 0.0125), (0, 0, d), lin('#ffb060'), 1.6)
         lit.line((x0 + 0.2, ry - 0.02, zf + d * 0.1), (x1 - 0.2, ry - 0.02, zf + d * 0.1), lin('#ffb060'), 0.05, 1.2, 'f', (0, -1, 0))
     # the star ceiling: fibre points 6 mm under the dark ceiling
-    rnd = random.Random(1414)
-    for _ in range(150):
+    rnd = random.Random(1414); stars = []
+    while len(stars) < 150:
         x = rnd.uniform(x0 + 0.3, x1 - 0.3); z = rnd.uniform(z0 + 0.3, z1 - 0.3); s = rnd.choice((0.008, 0.008, 0.012, 0.016)); k = rnd.uniform(1.2, 3.0)
+        if any(abs(x - a) < 0.05 and abs(z - b) < 0.05 for a, b in stars): continue   # no two points overlapping
+        stars.append((x, z))
         gf(glow, (x - s, H - 0.006, z + s), (x + s, H - 0.006, z + s), (x + s, H - 0.006, z - s), (x - s, H - 0.006, z - s), (0, -1, 0), lin('#fff4e0'), k)
     # the door's linings in the partition (the leaf is home.js's: it opens once the room is yours)
     for za, zb in ((cz - 0.5 - 0.002, cz - 0.5 + 0.03), (cz + 0.5 - 0.03, cz + 0.5 + 0.002)):
         acc.box(x0 - 0.2, -0.01, za, x0 + 0.002, 2.15 + 0.002, zb, PAINT, lin('#efebe4'))
-    acc.box(x0 - 0.2, 2.12, cz - 0.5 + 0.028, x0 + 0.002, 2.152, cz + 0.5 - 0.028, PAINT, lin('#efebe4'))
+    acc.box(x0 - 0.2, 2.12, cz - 0.5 + 0.03, x0 + 0.002, 2.152, cz + 0.5 - 0.03, PAINT, lin('#efebe4'))   # the head between the side linings
     lit.ambient(lin('#1a1a22'), lin('#0e0e12'), 0.02, 'f')
 
 

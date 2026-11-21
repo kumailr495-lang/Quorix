@@ -437,7 +437,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // table, and the table is half again as wide for a 4 m circle
   // v14 (the user, 11-20: "every single model extra high quality, GTA 5-6 level"): the lounge in CC0 photoscanned leather (Poly Haven, built by
   // tools/blender/scans14.py): two black chesterfields face each other across a marble-and-chrome table, a leather armchair at each end
-  add('lobby', 'scan_coffee_table', LX, 0, LZ, 0, { deep: true });   // v14 deep: its scanned base has a 4 mm layer that fights from the street
+  add('lobby', 'scan_concrete_table', LX, 0, LZ, Math.PI / 2, { deep: true });   // v14 concrete and oak, long side to the sofas (the round scan's base has a 4 mm layer that fought from the street)
   add('lobby', 'scan_chesterfield', LX, 0, LZ - 1.62, 0); add('lobby', 'scan_chesterfield', LX, 0, LZ + 1.62, Math.PI);
   add('lobby', 'scan_armchair', LX - 1.8, 0, LZ, Math.PI / 2); add('lobby', 'scan_armchair', LX + 1.8, 0, LZ, -Math.PI / 2);
   for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.85, -13.55], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
@@ -486,7 +486,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // each side of a marble table, mid-century lounge chairs at its ends, palms on plant stands, on a crimson rug; every walking line (NAV)
   // passes 1.3 m or more from it
   { const WX = -6.2, WZ = 6.6;
-    add('lobby', 'rug_round', WX, 0, WZ, 0, { collide: false, swap: CRIMSON }); add('lobby', 'scan_coffee_table', WX, 0, WZ, 0, { deep: true });
+    add('lobby', 'rug_round', WX, 0, WZ, 0, { collide: false, swap: CRIMSON }); add('lobby', 'scan_concrete_table', WX, 0, WZ, 0, { deep: true });   // its long side to the sofas (they face each other across x)
     add('lobby', 'scan_chesterfield', WX - 1.62, 0, WZ, Math.PI / 2); add('lobby', 'scan_chesterfield', WX + 1.62, 0, WZ, -Math.PI / 2);
     add('lobby', 'scan_lounge_chair', WX, 0, WZ + 1.75, Math.PI); add('lobby', 'scan_lounge_chair', WX, 0, WZ - 1.75, 0);
     for (const [dx, dz] of [[-1.75, -1.75], [1.75, 1.75]]) { add('lobby', 'scan_plant_stand', WX + dx, 0, WZ + dz); add('lobby', 'scan_plant', WX + dx, 0.762, WZ + dz, dx * 0.7, { collide: false }); } }

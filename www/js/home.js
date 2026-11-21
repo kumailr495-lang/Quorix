@@ -99,14 +99,14 @@ export class Home {
   // choose an option: bought first when it costs and is not yours (false when you are short); free to swap back to anything you own
   choose(slot, opt) {
     const sl = SLOTS.find((q) => q.id === slot), o = sl && sl.opts.find((q) => q.id === opt); if (!o) return false;
-    if (!this.owns(slot, opt)) { if (!this.credits.spend(o.price, 'home:' + slot + '.' + opt)) return false; this.s.own[slot + '.' + opt] = 1; }
+    if (!this.owns(slot, opt)) { if (!this.credits.spend(o.price, 'home:' + slot + '.' + opt)) return false; this.s.own[slot + '.' + opt] = 1; this.hooks.event && this.hooks.event('homeBuy'); }
     this.s.pick[slot] = opt; this._save(); this.rebuild(); if (this.sound.click) this.sound.click(); return true;
   }
   colour(part) { return this.s.col[part] || PAINT[part][0]; }
   ownsColour(part, hex) { return hex === PAINT[part][0] || !!this.s.own[part + '.' + hex]; }
   paint(part, hex) {
     if (!PAINT[part] || !PAINT[part].includes(hex)) return false;
-    if (!this.ownsColour(part, hex)) { if (!this.credits.spend(PAINT_PRICE[part], 'home:' + part)) return false; this.s.own[part + '.' + hex] = 1; }
+    if (!this.ownsColour(part, hex)) { if (!this.credits.spend(PAINT_PRICE[part], 'home:' + part)) return false; this.s.own[part + '.' + hex] = 1; this.hooks.event && this.hooks.event('homeBuy'); }
     this.s.col[part] = hex; this._save(); this.applyColours(); return true;
   }
   paintPrice(part) { return PAINT_PRICE[part]; }

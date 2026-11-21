@@ -13,10 +13,11 @@ import { t } from './i18n.js';
 
 export const MISSIONS = [
   { id: 'first', steps: [['ticket', 1, 100], ['item', 1, 60], ['seated', 1, 60], ['watchMin', 10, 150], ['photo', 1, 60], ['shift', 1, 200]] },
+  { id: 'home', steps: [['tv', 1, 30], ['homeBuy', 1, 80], ['coffee', 1, 30], ['homeCinema', 1, 300], ['homeFilm', 1, 150]] },   // v14 your flat (home.js)
   { id: 'regular', steps: [['filmEnd', 1, 250], ['served', 10, 150], ['cleaned', 20, 150], ['bell', 1, 60], ['lift', 1, 40], ['checked', 8, 120]] },
   { id: 'together', steps: [['mpJoin', 1, 150], ['chat', 3, 80], ['emote', 2, 60], ['mpWatch', 1, 250]] },
 ];
-const POOL = [['watchMin', 20, 120], ['served', 5, 100], ['cleaned', 8, 90], ['photo', 2, 60], ['lift', 1, 40], ['bell', 1, 50], ['flush', 1, 30], ['item', 2, 60], ['checked', 6, 90], ['chat', 1, 40], ['seated', 2, 40]];
+const POOL = [['drive', 1, 50], ['watchMin', 20, 120], ['served', 5, 100], ['cleaned', 8, 90], ['photo', 2, 60], ['lift', 1, 40], ['bell', 1, 50], ['flush', 1, 30], ['item', 2, 60], ['checked', 6, 90], ['chat', 1, 40], ['seated', 2, 40]];
 // the shop: permanent things (emotes, outfit colours, theatre themes) and passes used up one at a time
 export const SHOP = [
   { id: 'emote_dance', price: 300, kind: 'emote' },
@@ -32,7 +33,9 @@ const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) 
 export class Career {
   constructor(credits, hooks = {}) {
     this.c = credits; this.h = hooks; let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { s = null; }
-    this.s = s && typeof s === 'object' ? s : { m: 0, step: 0, prog: 0, daily: null, stats: {} }; this.s.stats = this.s.stats || {}; this._daily();
+    this.s = s && typeof s === 'object' ? s : { m: 0, step: 0, prog: 0, daily: null, stats: {}, v: 2 }; this.s.stats = this.s.stats || {};
+    if (!this.s.v) { if (this.s.m >= 1) this.s.m++; this.s.v = 2; }   // v14 the 'home' chain went in second: an older save past the first mission keeps its place
+    this._daily();
   }
   _save() { try { localStorage.setItem(KEY, JSON.stringify(this.s)); } catch (e) { /* storage off */ } }
   _daily() {
