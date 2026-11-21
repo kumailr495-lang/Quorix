@@ -1,0 +1,9 @@
+{
+  "mp.makeHost": {"en": "Make host", "es": "Hacer anfitrión", "hi": "होस्ट बनाएं", "ur": "میزبان بنائیں"},
+  "mp.gaveHost": {"en": "{name} is the host now.", "es": "{name} es ahora el anfitrión.", "hi": "अब {name} होस्ट हैं।", "ur": "اب {name} میزبان ہیں۔"},
+  "mp.names": {"en": "Names", "es": "Nombres", "hi": "नाम", "ur": "نام"},
+  "mp.msgs": {"en": "Messages", "es": "Mensajes", "hi": "संदेश", "ur": "پیغامات"},
+  "mp.hostOnly": {"en": "Only the host controls the film.", "es": "Solo el anfitrión controla la película.", "hi": "फ़िल्म सिर्फ़ होस्ट चला सकते हैं।", "ur": "فلم صرف میزبان چلا سکتے ہیں۔"},
+  "mp.hostStarts": {"en": "The host starts the film. Your seat is saved.", "es": "El anfitrión inicia la película. Tu asiento está guardado.", "hi": "फ़िल्म होस्ट शुरू करेंगे। आपकी सीट रखी है।", "ur": "فلم میزبان شروع کریں گے۔ آپ کی نشست محفوظ ہے۔"},
+  "srv.queued": {"en": "The server is with another guest. You are next.", "es": "El camarero atiende a otro cliente. Eres el siguiente.", "hi": "वेटर दूसरे मेहमान के पास हैं। अगली बारी आपकी है।", "ur": "ویٹر دوسرے مہمان کے پاس ہیں۔ اگلی باری آپ کی ہے۔"}
+}

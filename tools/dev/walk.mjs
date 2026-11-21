@@ -1,0 +1,112 @@
+// LUMIERE v9 - scripted walks through the real game (headless Chromium + SwiftShader): the player is steered with the game's own
+// controls (forward key + yaw) along waypoints, so walls, steps, doors, escalators and the lift all act as they do when you play.
+// A walk fails when the player stops moving for 6 s (stuck on something) or ends in the wrong room or at the wrong height.
+// usage: node tools/dev/walk.mjs [OUT_DIR]      (Quick play: the ticket gate is open)
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+const OUT = process.argv[2] || null; if (OUT) fs.mkdirSync(OUT, { recursive: true });
+const WWW = path.resolve('www');
+let pwPath = process.env.PW_PATH; if (!pwPath) for (const p of ['/opt/node-tools/node_modules/playwright/index.mjs', '/opt/npm-tools/node_modules/playwright/index.mjs']) if (fs.existsSync(p)) { pwPath = p; break; }
+const { chromium } = await import(pwPath || 'playwright');
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.webp': 'image/webp', '.opus': 'audio/ogg', '.css': 'text/css', '.woff2': 'font/woff2', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary', '.ogg': 'audio/ogg', '.webm': 'video/webm' };
+const srv = http.createServer((q, r) => { const u = decodeURIComponent(q.url.split('?')[0]); const f = path.join(WWW, u === '/' ? 'index.html' : u); if (!f.startsWith(WWW) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; } r.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+await new Promise((ok) => srv.listen(0, '127.0.0.1', ok)); const port = srv.address().port;
+const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const ctx = await b.newContext({ viewport: { width: 480, height: 270 } });
+await ctx.addInitScript(() => { try { localStorage.setItem('lumiere.settings.v5', JSON.stringify({ lang: 'en', graphics: 'low', tutorialAsked: true, npcs: 'off' })); } catch (e) {} });
+const p = await ctx.newPage(); const log = []; p.on('pageerror', (e) => log.push(`[pageerror] ${e.message}`)); p.on('console', (m) => { if (m.type() === 'error') log.push(`[error] ${m.text()}`); });
+await p.goto(`http://127.0.0.1:${port}/index.html?play=quick`);
+await p.waitForFunction(() => window.__lumiere && window.__lumiere.ready && window.__lumiere.mode === 'play', null, { timeout: 300000 });
+await p.waitForTimeout(1500);
+// the autopilot: steer towards each waypoint with the forward key; [x, z] walk, [x, z, 'wait', ms] stand still, [x, z, 'lift:1'] call the
+// lift, [x, z, 'until-lift:1'] stand until it has arrived with its doors open
+await p.evaluate(() => {
+  window.__auto = (pts, label) => new Promise((done) => {
+    const L = window.__lumiere, P = L.player, path_ = []; let i = 0, t0 = performance.now(), lastMove = performance.now(), lx = P.x, lz = P.z, maxDy = 0, prevY = P.y, px = P.x, pz = P.z, tele = 0;
+    const step = () => {
+      // v9.2 fast exit (removed in v14: the user wants to walk out): a jump of over 3 m is counted as a teleport and fails the exit walks
+      if (Math.hypot(P.x - px, P.z - pz) > 3) { tele++; path_.push(`teleport:${P.x.toFixed(1)},${P.y.toFixed(2)},${P.z.toFixed(1)} ${L.world.roomAt(P.x, P.y, P.z)}`); i = Math.max(i, pts.length - 1); prevY = P.y; lx = P.x; lz = P.z; lastMove = performance.now(); }
+      px = P.x; pz = P.z;
+      const dy = Math.abs(P.y - prevY); prevY = P.y; maxDy = Math.max(maxDy, dy);
+      if (i >= pts.length) { P.keys.KeyW = false; done({ ok: true, label, tele, path: path_, end: [+P.x.toFixed(2), +P.y.toFixed(2), +P.z.toFixed(2), L.world.roomAt(P.x, P.y, P.z)], maxDy: +maxDy.toFixed(2) }); return; }
+      const w = pts[i], [x, z, act] = w, dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz);
+      if (typeof act === 'string' && act.startsWith('until-lift:')) {   // stand still until the lift has arrived at that floor with its doors open (game time, not wall time)
+        P.keys.KeyW = false; const f = L.world.lift, k = +act.slice(11); if (!w.t) w.t = performance.now();
+        if ((f.level === k && f.state === 'idle' && f.doors[k] > 0.8) || performance.now() - w.t > 90000) { i++; lastMove = performance.now(); } requestAnimationFrame(step); return; }
+      if (act === 'wait') { P.keys.KeyW = false; if (!w.t) w.t = performance.now(); if (performance.now() - w.t > (w[3] || 3000)) { i++; lastMove = performance.now(); } requestAnimationFrame(step); return; }
+      if (typeof act === 'string' && act.startsWith('lift:')) { L.world.lift.call(+act.slice(5)); w[2] = null; }   // press the lift's call button for that floor
+      if (d < 0.35) { path_.push(`${i}:${P.x.toFixed(1)},${P.y.toFixed(2)},${P.z.toFixed(1)} ${L.world.roomAt(P.x, P.y, P.z)}`); i++; requestAnimationFrame(step); return; }
+      P.yaw = Math.atan2(-dx, -dz); P.keys.KeyW = true;
+      if (Math.hypot(P.x - lx, P.z - lz) > 0.05) { lx = P.x; lz = P.z; lastMove = performance.now(); }
+      if (performance.now() - lastMove > 6000) { P.keys.KeyW = false; done({ ok: false, label, stuckAt: i, pos: [+P.x.toFixed(2), +P.y.toFixed(2), +P.z.toFixed(2), L.world.roomAt(P.x, P.y, P.z)], target: [x, z], path: path_ }); return; }
+      if (performance.now() - t0 > 300000) { P.keys.KeyW = false; done({ ok: false, label, timeout: true, path: path_ }); return; }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+});
+// the walks, built in the page from the building's own numbers (building.js, hallmath.js)
+const walks = await p.evaluate(async () => {
+  const L = window.__lumiere, B = L.B, HM = await import('/js/hallmath.js'), W = L.world, out = [], pt = (o) => [+o.x.toFixed(3), +o.z.toFixed(3)];
+  out.push({ label: 'street to lobby (main doors)', start: [0.6, 0, 25.2], pts: [[0.6, 22], [0, 19], [0, 15.5]], room: 'lobby', y: 0 });
+  out.push({ label: 'lobby to restrooms and back', start: [18.6, 0, 3.0], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
+  out.push({ label: 'up escalator to the bridge', start: [9.7, 0, 6.8], pts: [[9.7, 5.2], [9.7, 2.6], [9.7, 0.6], [9.7, -1], [9.7, -6], [9.7, -10.6], [9.7, -12.3], [10.2, -15.5], [0, -18]], room: 'corridor', y: B.L1 });
+  // v11 the core: the lift's door is on the landing behind the gate; the car opens at its other end onto the first-floor gallery (v11: its
+  // doors open on a call, so the walk calls it first, as the player presses the button)
+  out.push({ label: 'lift up and out along the gallery', start: [14.5, 0, 2.8], pts: [[14.5, 1.9], [14.5, 1.6, 'lift:0'], [14.5, 1.6, 'until-lift:0'], [14.5, 0.0], [14.5, -0.4, 'lift:1'], [14.5, -0.4, 'until-lift:1'], [14.5, -2.8], [14.5, -8.4], [13.6, -11.6]], room: 'lobby', y: B.L1 });
+  // the ticket zone (the landing the escalators and the lift share): with the gate shut and no pass there is no way in from the lobby (the
+  // ticket leaf, round either end, the exit leaves, between the escalator and the lift, under the escalators, the lift's back, round the
+  // tower); from inside, out by the exit leaves
+  for (const [label, start, pts] of [['the ticket leaf', [9.7, 0, 6.8], [[9.7, 5.2], [9.7, 2.0]]], ['round the west end', [6.0, 0, 2.6], [[8.3, 2.6], [9.7, 2.0], [9.7, 0.0]]],
+    ['the exit leaves from the lobby', [11.7, 0, 6.4], [[11.7, 4.6], [11.7, 2.0]]], ['round the east end', [19.0, 0, 2.4], [[16.6, 2.4], [14.5, 2.4]]],
+    ['between the escalator and the lift', [12.9, 0, -5.0], [[12.9, -2.2], [12.9, 0.4], [12.9, 2.4]]], ['under the escalators', [5.0, 0, -8.5], [[8.0, -8.5], [10.7, -8.5], [10.7, -5.0], [10.7, -1.0], [10.7, 2.4]]],
+    ['the back of the lift', [14.5, 0, -5.0], [[14.5, -2.2], [14.5, -0.4], [14.5, 2.4]]], ['round the tower from the alcove', [17.5, 0, -3.0], [[16.6, -0.4], [16.6, 2.0], [14.5, 2.4]]]]) out.push({ label: 'zone shut: ' + label, start, pts, shut: true, stayOut: true });
+  out.push({ label: 'zone shut: down escalator and out by the exit leaves', start: [11.7, B.L1, -12.8], pts: [[11.7, -11.2], [11.7, -9], [11.7, -4], [11.7, 0.6], [11.7, 2.8], [11.7, 5.6]], room: 'lobby', y: 0, shut: true, exitZone: true });
+  out.push({ label: 'zone shut: lift down from the gallery and out by the exit leaves', start: [14.5, B.L1, -6.0], pts: [[14.5, -3.0, 'lift:1'], [14.5, -3.0, 'until-lift:1'], [14.5, -0.6], [14.5, -0.4, 'lift:0'], [14.5, -0.4, 'until-lift:0'], [14.5, 1.8], [11.7, 2.8], [11.7, 5.6]], room: 'lobby', y: 0, shut: true, exitZone: true });
+  for (const h of Object.values(B.HALL)) {
+    const wh = W.hallByKey(h.key), din = B.DOORS.find((d) => d.hall === h.id && d.id.endsWith('In')), side = -h.dir;
+    const rows = [...new Set(wh.seats.map((s) => s.row))].sort((a, b) => a - b);
+    for (const r of [rows[rows.length >> 1], rows[0]]) {   // a middle row, the front row: the seat nearest the middle
+      const seat = wh.seats.filter((s) => s.row === r).reduce((a, s) => (Math.abs(s.a) < Math.abs(a.a) ? s : a));
+      const route = HM.seatRoute(h, seat).map((q) => pt(h.toWorld(q.u, q.d))), sg = Math.sign(h.entryU) || 1;
+      // round the light-lock baffle 1.25 m inside the door (it hides the hall from the corridor): along the rear wall, then in
+      const lock = [pt(h.toWorld(h.entryU, h.depthIn - 0.62)), pt(h.toWorld(h.entryU - sg * 2.0, h.depthIn - 0.62)), pt(h.toWorld(h.entryU - sg * 2.0, h.depthIn - 1.9))];
+      out.push({ label: `${h.id}: corridor, entrance, aisle steps, row ${seat.id.replace(/\d+$/, '')} to seat ${seat.id}`, start: [din.x + side * 2.2, B.L1, din.z], pts: [[din.x + side * 0.9, din.z], ...lock, ...route], room: h.key, y: h.y0 + h.rows[r].y });
+    }
+    // out (v12b): from the front of the hall to the side exit, through its door onto the passage, down its flight, out of its mouth into the
+    // spine, along the spine to the lobby. Both exits of every hall
+    for (const ex of h.exits) {
+      const dc = (ex.d0 + ex.d1) / 2, a = h.toWorld(ex.sg * (h.width / 2 - 2.0), dc), uF = ex.sg * (h.width / 2 + 0.4 + 0.7);
+      const P = B.EXIT_PASSAGES.find((q) => q.flights.some((f) => f.door === ex.door)), f = P.flights.find((q) => q.door === ex.door), toS = P.side < 0 ? 1 : -1, xs = P.xSpine < 0 ? -1.6 : 1.6;
+      const pts = [pt(h.toWorld(ex.sg * (h.width / 2 - 0.5), dc)), pt(h.toWorld(uF, dc)), pt(h.toWorld(uF, ex.d0 - 0.2)), pt(h.toWorld(uF, ex.d0 - 0.4 - ex.n * 0.3 - 0.5)), [P.xSpine - toS * 0.3, (f.z0 + f.z1) / 2], [P.xSpine + toS * 0.8, (f.z0 + f.z1) / 2], [xs, (f.z0 + f.z1) / 2], [xs, -15.2], [0, -15.2], [0, -12.6], [0, -10]];
+      out.push({ label: `${h.id}: front, ${ex.sg < 0 ? 'left' : 'right'} side exit, ${ex.n ? 'passage stairs' : 'passage'}, spine, lobby (walked: no fast exit since v14)`, start: [a.x, h.y0, a.z], pts, room: 'lobby', y: 0, tele: 0 });
+    }
+  }
+  return out;
+});
+// v9.1 (advisor): walkers follow the NAV graph, not the collision grid, so furniture on a NAV edge gets walked through. Every level edge must
+// keep 0.25 m (a walker's radius) from every collision segment in the band a walker would hit (0.4 to 1.75 m over the edge's floor).
+const navHits = await p.evaluate(() => {
+  const L = window.__lumiere, W = L.world, B = L.B, S = W.walls.S, out = [], N = B.NAV.nodes;
+  const segDist = (ax, az, bx, bz, cx, cz, dx, dz) => { const cr = (px, pz, qx, qz, rx, rz) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+    const o1 = cr(ax, az, bx, bz, cx, cz), o2 = cr(ax, az, bx, bz, dx, dz), o3 = cr(cx, cz, dx, dz, ax, az), o4 = cr(cx, cz, dx, dz, bx, bz); if (o1 * o2 < 0 && o3 * o4 < 0) return 0;
+    const pd = (px, pz, x0, z0, x1, z1) => { const vx = x1 - x0, vz = z1 - z0, l = vx * vx + vz * vz, t = l > 0 ? Math.max(0, Math.min(1, ((px - x0) * vx + (pz - z0) * vz) / l)) : 0; return Math.hypot(px - x0 - vx * t, pz - z0 - vz * t); };
+    return Math.min(pd(ax, az, cx, cz, dx, dz), pd(bx, bz, cx, cz, dx, dz), pd(cx, cz, ax, az, bx, bz), pd(dx, dz, ax, az, bx, bz)); };
+  for (const [a, b] of B.NAV.edges) { const A = N[a], Bn = N[b]; if (!A || !Bn || Math.abs(A[1] - Bn[1]) > 0.05) continue;
+    const y = A[1]; let worst = 9, at = null;
+    for (let i = 0; i < S.length; i += 6) { if (S[i + 5] <= y + 0.4 || S[i + 4] >= y + 1.75) continue; const d = segDist(A[0], A[2], Bn[0], Bn[2], S[i], S[i + 1], S[i + 2], S[i + 3]); if (d < worst) { worst = d; at = [S[i], S[i + 1], S[i + 2], S[i + 3]].map((v) => +v.toFixed(2)); } }
+    if (worst < 0.25) out.push({ edge: a + '-' + b, clearance: +worst.toFixed(2), wall: at }); }
+  return out; });
+console.log(navHits.length ? `NAV edges blocked: ${navHits.length}\n` + navHits.map((h) => `  ${h.edge}  clearance ${h.clearance} m  wall ${JSON.stringify(h.wall)}`).join('\n') : 'NAV edges clear of walls and furniture');
+const ZONE = await p.evaluate(() => window.__lumiere.B.ZONE);
+let pass = 0; const results = [], only = process.argv.indexOf('--only') > 0 ? process.argv[process.argv.indexOf('--only') + 1] : null;
+for (const w of walks.filter((x) => !only || x.label.includes(only))) {
+  const r = await p.evaluate(async (w) => { const L = window.__lumiere, g = L.world.gate; if (w.shut) { g.always = false; g.passUntil = 0; } L.player.place(w.start[0], w.start[2], 0, 0, w.start[1]); await new Promise((q) => setTimeout(q, 300)); const res = await window.__auto(w.pts, w.label); g.always = true; return res; }, w);
+  const q = r.ok ? r.end : r.pos, inZone = !!q && q[0] > ZONE.x0 && q[0] < ZONE.x1 && q[2] > ZONE.z0 && q[2] < ZONE.z1 && q[1] < 1;
+  const okEnd = w.stayOut ? !inZone : r.ok && r.end[3] === w.room && Math.abs(r.end[1] - w.y) < 0.3 && r.tele === (w.tele || 0) && !(w.exitZone && inZone); if (okEnd) pass++;
+  if (!okEnd && process.argv.includes('--debug')) console.log(JSON.stringify(r.path), await p.evaluate(() => { const f = window.__lumiere.world.lift; return JSON.stringify({ y: f.y, level: f.level, state: f.state, doors: f.doors }); }));
+  results.push({ ...r, want: [w.room, w.y], okEnd });
+  console.log(`${okEnd ? 'PASS' : 'FAIL'}  ${w.label}${w.stayOut ? `  (kept out at ${JSON.stringify(q)})` : r.ok ? `  end ${r.end.join(' ')}` : `  stuck at waypoint ${r.stuckAt} ${JSON.stringify(r.pos)} -> ${JSON.stringify(r.target)}`}${r.ok && !okEnd ? `  (wanted ${w.room} at ${w.y.toFixed(2)}, ${w.tele || 0} fast exit(s); got ${r.tele})` : ''}`);
+}
+console.log(`walks: ${pass}/${results.length} passed`); if (log.length) console.log(log.slice(0, 10).join('\n'));
+if (OUT) fs.writeFileSync(path.join(OUT, 'walks.json'), JSON.stringify(results, null, 1));
+await b.close(); srv.close(); process.exit(pass === results.length && !navHits.length ? 0 : 1);

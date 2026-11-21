@@ -1,0 +1,21 @@
+{
+ "room": "hallMax",
+ "res": 2048,
+ "hall": true,
+ "hash": "v9.392a41203da0",
+ "maps": [
+  "hallMax_h.png",
+  "hallMax_f.png",
+  "hallMax_s.png"
+ ],
+ "scale": [
+  0.4141553625680314,
+  0.08560416428575372,
+  0.9718489050865173
+ ],
+ "avg": 0.009500450616802068,
+ "probes": "hallMax_probes.json",
+ "glb": "hallMax.glb",
+ "verts": 20487,
+ "tris": 6829
+}

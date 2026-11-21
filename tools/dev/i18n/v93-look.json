@@ -1,0 +1,7 @@
+{
+  "mp.look": {"en": "Your look", "es": "Tu aspecto", "hi": "आपका लुक", "ur": "آپ کا انداز"},
+  "mp.outfit": {"en": "Outfit colour", "es": "Color de la ropa", "hi": "कपड़ों का रंग", "ur": "کپڑوں کا رنگ"},
+  "mp.hair": {"en": "Hair colour", "es": "Color del pelo", "hi": "बालों का रंग", "ur": "بالوں کا رنگ"},
+  "mp.height": {"en": "Height", "es": "Altura", "hi": "कद", "ur": "قد"},
+  "mp.asPhoto": {"en": "As photographed", "es": "Como en la foto", "hi": "फ़ोटो जैसा", "ur": "تصویر جیسا"}
+}
