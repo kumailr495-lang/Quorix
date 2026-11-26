@@ -67,27 +67,35 @@ h3{margin:0;font:600 20px/1.1 var(--display)}
 .icon:active{transform:scale(.94)}.icon .ic{width:19px;height:19px}.icon.sm{width:32px;height:32px;font:600 16px/1 var(--font)}.icon.faint{opacity:.4}
 .icon.x{background:transparent;border-color:transparent}
 /* ---- loading: the house before the show ---- */
-#loader{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:#000;transition:opacity .9s var(--ease);overflow:hidden}
-.ld-art{position:absolute;inset:0}.ld-art i{position:absolute;inset:-4%;background:#000 center/cover no-repeat;opacity:0;transition:opacity 1.6s var(--ease);animation:kb 16s ease-in-out infinite alternate}
+/* v14c (the user, 11-26: "the loading screen is that screenshot ... with a weird transition, like GTA 6 artworks"): full-bleed painted key art
+   (tools/art: our own scenes, painted), drifting and crossfading; the name and the artwork's title in the lower-left corner, the step and the
+   progress along the bottom; on the way out the art fades to black first, then the black lifts off the menu (no art dissolving into the lobby) */
+#loader{position:fixed;inset:0;z-index:60;background:#000;overflow:hidden;transition:opacity .6s var(--ease) .5s}
+.ld-art{position:absolute;inset:0;transition:opacity .5s var(--ease)}
+.ld-art i{position:absolute;inset:-5%;background:#000 center/cover no-repeat;opacity:0;transition:opacity 1.8s var(--ease);animation:kb 18s ease-in-out infinite alternate;will-change:transform,opacity}
 .ld-art i.on{opacity:1}.ld-art i:nth-child(2n){animation-direction:alternate-reverse}
-@keyframes kb{from{transform:scale(1.02) translate3d(-1.5%,0,0)}to{transform:scale(1.1) translate3d(1.5%,-1%,0)}}
-.ld-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 55%,rgba(0,0,0,.85) 100%)}
-.ld-foot{position:absolute;left:calc(24px + var(--sal));right:calc(24px + var(--sar));bottom:calc(14px + var(--sab));display:flex;flex-direction:column;gap:7px}
-.ld-row{display:flex;justify-content:space-between;font:600 12px/1 var(--font);letter-spacing:.06em;color:rgba(246,236,216,.85);text-shadow:0 1px 3px #000}
-#ldTip{margin:0;font:500 12px/1.35 var(--font);color:rgba(246,236,216,.7);text-shadow:0 1px 3px #000;min-height:16px;transition:opacity .5s}
+@keyframes kb{from{transform:scale(1.02) translate3d(-1.2%,0,0)}to{transform:scale(1.1) translate3d(1.2%,-1%,0)}}
+.ld-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 52%,rgba(0,0,0,.78) 88%,rgba(0,0,0,.9) 100%),radial-gradient(120% 90% at 50% 45%,rgba(0,0,0,0) 55%,rgba(0,0,0,.45) 100%);transition:opacity .5s var(--ease)}
+.ld-brand{position:absolute;left:calc(26px + var(--sal));bottom:calc(40px + var(--sab));display:flex;flex-direction:column;gap:6px;text-shadow:0 2px 14px rgba(0,0,0,.8);transition:opacity .5s var(--ease)}
+[dir=rtl] .ld-brand{left:auto;right:calc(26px + var(--sar))}
+.ld-title{font:600 clamp(24px,7.4vh,44px)/1 var(--display);letter-spacing:.2em;color:var(--stub);opacity:0;animation:fadeIn 1.1s .3s var(--ease) forwards}
+.ld-cap{display:flex;align-items:center;gap:10px;font:italic 500 clamp(12px,3.6vh,16px)/1.2 var(--display);color:var(--brass);min-height:1.2em;transition:opacity .5s}
+.ld-cap::before{content:'';width:26px;height:1px;background:var(--brass);opacity:.8}
+.ld-cap.out{opacity:0}
+.ld-foot{position:absolute;left:calc(26px + var(--sal));right:calc(26px + var(--sar));bottom:calc(14px + var(--sab));display:flex;flex-direction:column;gap:8px;transition:opacity .5s var(--ease)}
+.ld-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;font:600 11.5px/1.3 var(--font);letter-spacing:.05em;color:rgba(246,236,216,.88);text-shadow:0 1px 3px #000}
+.ld-st{flex:none;white-space:nowrap}.ld-st #ldPct{color:var(--brass);margin-inline-start:8px}
+#ldTip{flex:1;min-width:0;margin:0;padding-inline-start:min(42vw,320px);font:500 11.5px/1.35 var(--font);color:rgba(246,236,216,.72);text-align:end;text-shadow:0 1px 3px #000;transition:opacity .5s;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 #ldTip.out{opacity:0}
-#loader.gone{opacity:0;pointer-events:none}
-.ld-in{position:relative;text-align:center;text-shadow:0 2px 18px rgba(0,0,0,.7)}
-.ld-title{font:600 clamp(30px,9vh,56px)/1 var(--display);letter-spacing:.22em;text-indent:.22em;color:var(--stub);opacity:0;animation:fadeIn 1.2s .6s var(--ease) forwards}
-.ld-pre{margin-top:2.4vh;font:italic 500 clamp(13px,4vh,19px)/1 var(--display);color:var(--mute);opacity:0;animation:fadeIn 1.2s 1s var(--ease) forwards}
 .ld-bar{position:relative;width:100%;height:3px;border-radius:2px;background:rgba(246,236,216,.16);overflow:hidden}
-.ld-bar i{display:block;height:100%;width:0;border-radius:2px;background:var(--brass);transition:width .4s var(--ease)}
-#ldTip{position:absolute;left:0;right:0;bottom:calc(10vh + 16px);margin:0;text-align:center;font-size:12px;color:var(--dim)}
+.ld-bar i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,#b8893f,var(--brass));box-shadow:0 0 8px rgba(224,178,90,.6);transition:width .4s var(--ease)}
+#loader.gone{opacity:0;pointer-events:none}
+#loader.gone .ld-art,#loader.gone .ld-brand,#loader.gone .ld-foot,#loader.gone .ld-shade{opacity:0}
 .ld-err{position:absolute;bottom:4vh;left:0;right:0;text-align:center;color:var(--alarm);font:500 12px/1.4 var(--font)}
 /* ---- main menu: the name and what you can do, over the lobby ---- */
 #menu{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:calc(16px + var(--sat)) calc(28px + var(--sar)) calc(16px + var(--sab)) calc(40px + var(--sal));
-  background:linear-gradient(90deg,rgba(0,0,0,.86) 0,rgba(0,0,0,.6) 30%,rgba(0,0,0,0) 62%);animation:fadeIn .5s var(--ease)}
-[dir=rtl] #menu{background:linear-gradient(270deg,rgba(0,0,0,.86) 0,rgba(0,0,0,.6) 30%,rgba(0,0,0,0) 62%)}
+  background:linear-gradient(90deg,rgba(0,0,0,.94) 0,rgba(0,0,0,.84) 30%,rgba(0,0,0,.5) 46%,rgba(0,0,0,0) 66%);animation:fadeIn .5s var(--ease)}
+[dir=rtl] #menu{background:linear-gradient(270deg,rgba(0,0,0,.94) 0,rgba(0,0,0,.84) 30%,rgba(0,0,0,.5) 46%,rgba(0,0,0,0) 66%)}
 #menu .wordmark{font-size:clamp(34px,12vh,54px);margin-bottom:clamp(10px,5vh,26px)}
 .mn-modes{display:flex;flex-direction:column;align-items:flex-start}
 .mi{position:relative;min-height:max(38px,12.2vh);padding:0 10px 0 0;font:500 clamp(19px,6.4vh,25px)/1 var(--display);color:var(--mute);text-align:start;transition:color .15s,padding .18s var(--ease)}
@@ -661,3 +669,35 @@ body.ph-open #where,body.ph-open #goal{opacity:0;pointer-events:none;transition:
 
 /* v14b the veg mark inline before the item's name */
 .mn-info b .mn-veg{position:relative;top:auto;inset-inline-start:auto;display:inline-block;vertical-align:-1px;margin-inline-end:6px;width:10px;height:10px}
+
+/* v14c (the user, 11-26, a photo of the phone with its last row cut off: "mobile ui is fucked up, make it fit"): the home page fits the
+   device at any phone height without scrolling: a smaller clock, slimmer widgets, the screen chips on one line, two rows of apps and the
+   dock pinned to the bottom. Sizes follow the viewport's height (360 px on the itel P65 in landscape) */
+#phone .ph-k-home{display:flex;flex-direction:column;gap:clamp(4px,1.4vh,8px);padding-top:2px;padding-bottom:4px}
+#phone .ph-k-home .ph-time{padding:0;flex:none}
+#phone .ph-k-home .ph-time b{font-size:clamp(26px,8.6vh,44px);line-height:1}
+#phone .ph-k-home .ph-time small{font-size:clamp(9px,2.7vh,11px)}
+#phone .ph-k-home .ph-widgets{margin:0;flex:none}
+#phone .ph-k-home .ph-wg{padding:clamp(4px,1.5vh,7px) 8px;gap:1px;border-radius:12px}
+#phone .ph-k-home .ph-jump{flex-wrap:nowrap;margin:0;gap:4px;flex:none;overflow:hidden}
+#phone .ph-k-home .ph-jump .ph-chip{flex:1 1 auto;min-width:0;padding:clamp(3px,1vh,5px) 6px;font-size:10px;white-space:nowrap;text-align:center}
+#phone .ph-k-home .ph-apps{gap:clamp(4px,1.6vh,10px) 4px;margin:0;padding:0;flex:none}
+#phone .ph-k-home .ph-app{gap:3px}
+#phone .ph-k-home .ph-app i{width:clamp(32px,10.4vh,42px);height:clamp(32px,10.4vh,42px);border-radius:11px}
+#phone .ph-k-home .ph-app .ic{width:clamp(16px,5vh,20px);height:clamp(16px,5vh,20px)}
+#phone .ph-k-home .ph-app span{font-size:clamp(8.5px,2.6vh,10px);line-height:1.1}
+#phone .ph-k-home .ph-dock{margin-top:auto;padding:clamp(4px,1.4vh,8px) 6px;border-radius:16px;flex:none}
+/* the device itself on short screens: 4 px from the edges, a slimmer status bar and home bar (the page gains ~25 px at 360 px) */
+@media (max-height:420px){
+  #phone .ph-dev{height:calc(100vh - 8px - var(--sab) - var(--sat));bottom:calc(4px + var(--sab))}
+  #phone .ph-bar{min-height:24px;padding:7px 18px 2px!important}
+  .ph-island{top:7px;height:14px}
+  .ph-home{margin:3px auto 4px}
+  #phone .ph-k-home .ph-time b{font-size:clamp(24px,7.4vh,44px)}
+  #phone .ph-k-home .ph-time small{font-size:9px}
+}
+@media (max-height:350px){
+  #phone .ph-k-home{gap:3px}
+  #phone .ph-k-home .ph-time b{font-size:22px}
+  #phone .ph-k-home .ph-wg small{display:none}
+}

@@ -76,11 +76,15 @@ async function boot() {
   // v14 the loader: five pieces of key art from the game drift and crossfade every 6 s, the step being built and the percentage over a
   // progress line, a tip every 6 s; it all stops when the loader fades
   const LD_STEP = { street: 'load.street', lobby: 'load.lobby', wc: 'load.restrooms', corridor: 'load.gallery', spine: 'load.gallery', doors: 'load.people', reflections: 'load.bake', ready: 'load.ready' };
-  const ldArt = $('#ldArt'), ldTips = [].concat(t('tips') || []), ldTimer = setInterval(() => {
-    if (!ldArt || !document.body.contains(ldArt)) return; const n = ldArt.children.length; let on = [...ldArt.children].findIndex((i) => i.classList.contains('on'));
-    if (n < 5) { const i = document.createElement('i'); i.style.backgroundImage = `url(load/${n + 1}.jpg)`; ldArt.appendChild(i); }
-    const next = (on + 1) % Math.max(ldArt.children.length, 1); [...ldArt.children].forEach((i, k) => i.classList.toggle('on', k === next));
-    const tp = $('#ldTip'); if (tp && ldTips.length) { tp.classList.add('out'); setTimeout(() => { tp.textContent = ldTips[Math.floor(Math.random() * ldTips.length)]; tp.classList.remove('out'); }, 500); } }, 6000);
+  // v14c painted key art (tools/art), each with its title; the next picture is loaded before it fades in (no crossfade into black)
+  const ldArt = $('#ldArt'), ldTips = [].concat(t('tips') || []), ldCaps = [].concat(t('load.art') || []), ldCap = $('#ldCap'), LD_N = 4; let ldOn = 0;
+  const ldShow = (k) => { if (!ldArt || !document.body.contains(ldArt)) return; let i = ldArt.children[k]; if (!i) { i = document.createElement('i'); i.style.backgroundImage = `url(load/${k + 1}.jpg)`; ldArt.appendChild(i); }
+    [...ldArt.children].forEach((e, j) => e.classList.toggle('on', j === k)); ldOn = k;
+    if (ldCap) { ldCap.classList.add('out'); setTimeout(() => { ldCap.textContent = ldCaps[k] || ''; ldCap.classList.remove('out'); }, 900); } };   // the title turns half way through the picture's crossfade
+  if (ldCap) ldCap.textContent = ldCaps[0] || '';
+  const ldTimer = setInterval(() => {
+    const k = (ldOn + 1) % LD_N, img = new Image(); img.onload = () => ldShow(k); img.src = `load/${k + 1}.jpg`;
+    const tp = $('#ldTip'); if (tp && ldTips.length) { tp.classList.add('out'); setTimeout(() => { tp.textContent = ldTips[Math.floor(Math.random() * ldTips.length)]; tp.classList.remove('out'); }, 500); } }, 7000);
   { const tp = $('#ldTip'); if (tp && ldTips.length) tp.textContent = ldTips[Math.floor(Math.random() * ldTips.length)]; }
   const prog = (p, key) => { $('#ldFill').style.width = (p * 100).toFixed(0) + '%'; const pc = $('#ldPct'); if (pc) pc.textContent = Math.round(p * 100) + '%';
     const st = $('#ldStep'), k = key && (LD_STEP[key] || (key.startsWith('hall') ? 'load.halls' : null)); if (st && k) st.textContent = t(k, { room: key }); if (p >= 1) clearInterval(ldTimer); };
@@ -382,7 +386,10 @@ async function boot() {
     shows.frame(engine.camera, engine.renderer); engine.render(); together.preview(engine.renderer, dt); phone.frame(dt);
     if (snapCb) { const cb = snapCb; snapCb = null; let url = null; try { const c = engine.renderer.domElement, k = Math.min(1, 960 / c.width), o = document.createElement('canvas'); o.width = Math.round(c.width * k); o.height = Math.round(c.height * k); o.getContext('2d').drawImage(c, 0, 0, o.width, o.height); url = o.toDataURL('image/jpeg', 0.85); } catch (e) { /* tainted or lost context */ } cb(url); }
   }
-  function menuCam(now) { const k = now / 1000 * 0.04, cam = engine.camera; cam.position.set(Math.sin(k) * 7, 2.6 + Math.sin(k * 2.1) * 0.3, 6 + Math.cos(k) * 5); cam.lookAt(Math.sin(k + 1.4) * 3, 2.2, 0); player.x = cam.position.x; player.z = cam.position.z; player.y = 0; }
+  // v14c (the user, 11-26: heads cut at the frame's edge, the camera through the statue): a slow arc 6.4 m round the muse, 3 m up (over
+  // everyone's head), between the doors and the fountain; it looks past her left so she stands to the right of the menu
+  function menuCam(now) { const t = now / 1000, th = 0.85 * Math.sin(t * 0.045), R = 6.4, cam = engine.camera; cam.position.set(R * Math.sin(th), 3.0 + 0.25 * Math.sin(t * 0.07), 10 + R * Math.cos(th));
+    cam.lookAt(-2.6 * Math.cos(th), 3.3, 10 + 2.6 * Math.sin(th)); player.x = cam.position.x; player.z = cam.position.z; player.y = 0; }
   // v9.1b (the user: "the screens are so small"): a landscape phone shows ~105 deg across, a middle seat sees the picture at ~57 deg, so the
   // picture filled half the phone. While you watch, the view narrows towards the picture (the 270 hall keeps a wider view: its side
   // screens are the point). v14 (the user, 11-20: "the camera zooms a lot to the screen"): at most 14 % narrower, the halls are bigger now
@@ -500,7 +507,7 @@ async function boot() {
     try { R.compile(engine.scene, engine.camera); engine.scene.traverse((o) => { for (const m of [].concat(o.material || [])) for (const u of Object.values(m.uniforms || {})) { const v = u && u.value; if (v && v.isTexture && !seen.has(v)) { seen.add(v); R.initTexture(v); } } }); } catch (e) { console.warn('warm-up skipped', e); }
     for (const [rm, v] of shown) rm.group.visible = v; }
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
-  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); clearInterval(ldTimer); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 900); }, 120 + hold); });
+  requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); clearInterval(ldTimer); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 1300); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
   window.__lumiere = { engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,

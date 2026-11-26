@@ -435,7 +435,7 @@ void main() {
 const VERT_CROWD_RB = `
 attribute vec4 skinIndex; attribute vec4 skinWeight; attribute vec4 iPose; attribute vec4 iClip; attribute vec4 iClipB; attribute vec4 iCol2; attribute vec4 iLit;
 uniform sampler2D uBones; uniform float uTime; uniform float uHouse; uniform vec3 uScreen; uniform vec3 uScreenN;
-varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight;
+varying vec2 vUv; varying vec3 vN; varying float vDist; varying vec3 vLight; varying float vH;
 mat4 bone(float row, float i) { int x = int(i) * 3, y = int(row); vec4 a = texelFetch(uBones, ivec2(x, y), 0), b = texelFetch(uBones, ivec2(x + 1, y), 0), c = texelFetch(uBones, ivec2(x + 2, y), 0); return mat4(a.x, b.x, c.x, 0.0, a.y, b.y, c.y, 0.0, a.z, b.z, c.z, 0.0, a.w, b.w, c.w, 1.0); }
 mat4 skinAt(vec4 clip) { float f = floor(mod(max(uTime - clip.z, 0.0) * clip.w * ${RB_FPS}.0, clip.y)), row = clip.x + f;
   return bone(row, skinIndex.x) * skinWeight.x + bone(row, skinIndex.y) * skinWeight.y + bone(row, skinIndex.z) * skinWeight.z + bone(row, skinIndex.w) * skinWeight.w; }
@@ -444,7 +444,7 @@ void main() {
   float c = cos(iPose.w), s = sin(iPose.w); float sc = iCol2.w;
   vec4 lp = S * vec4(position, 1.0); vec3 ln = mat3(S) * normal;
   vec3 p = vec3(c * lp.x + s * lp.z, lp.y, -s * lp.x + c * lp.z) * sc + iPose.xyz; vec3 n = vec3(c * ln.x + s * ln.z, ln.y, -s * ln.x + c * ln.z);
-  vUv = uv; vN = normalize(mat3(modelMatrix) * n);
+  vUv = uv; vH = position.y; vN = normalize(mat3(modelMatrix) * n);   // v14c vH: FRAG_RB's outfit split needs it (without it the far crowd's program did not link: seated audiences went undrawn)
   float hemi = vN.y * 0.4 + 0.6; vLight = (iLit.xyz * uHouse + vec3(0.02)) * hemi + iLit.w * uScreen * max(dot(vN, normalize(vec3(uScreenN.x, 0.0, uScreenN.z))) * 0.6 + 0.4, 0.15);
   vec4 mv = viewMatrix * modelMatrix * vec4(p, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * mv;
 }`;

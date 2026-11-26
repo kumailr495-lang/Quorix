@@ -23,7 +23,7 @@ await p.evaluate(() => {
   window.__auto = (pts, label) => new Promise((done) => {
     const L = window.__lumiere, P = L.player, path_ = []; let i = 0, t0 = performance.now(), lastMove = performance.now(), lx = P.x, lz = P.z, maxDy = 0, prevY = P.y, px = P.x, pz = P.z, tele = 0;
     const step = () => {
-      // v9.2 fast exit (removed in v14: the user wants to walk out): a jump of over 3 m is counted as a teleport and fails the exit walks
+      // a jump of over 3 m is counted: the exit walks expect exactly one (v14b, the user: "walk out, but make it fast, some illusion": you walk out of the hall and into its passage, and the light-lock's fade puts you in the lobby)
       if (Math.hypot(P.x - px, P.z - pz) > 3) { tele++; path_.push(`teleport:${P.x.toFixed(1)},${P.y.toFixed(2)},${P.z.toFixed(1)} ${L.world.roomAt(P.x, P.y, P.z)}`); i = Math.max(i, pts.length - 1); prevY = P.y; lx = P.x; lz = P.z; lastMove = performance.now(); }
       px = P.x; pz = P.z;
       const dy = Math.abs(P.y - prevY); prevY = P.y; maxDy = Math.max(maxDy, dy);
@@ -78,7 +78,7 @@ const walks = await p.evaluate(async () => {
       const dc = (ex.d0 + ex.d1) / 2, a = h.toWorld(ex.sg * (h.width / 2 - 2.0), dc), uF = ex.sg * (h.width / 2 + 0.4 + 0.7);
       const P = B.EXIT_PASSAGES.find((q) => q.flights.some((f) => f.door === ex.door)), f = P.flights.find((q) => q.door === ex.door), toS = P.side < 0 ? 1 : -1, xs = P.xSpine < 0 ? -1.6 : 1.6;
       const pts = [pt(h.toWorld(ex.sg * (h.width / 2 - 0.5), dc)), pt(h.toWorld(uF, dc)), pt(h.toWorld(uF, ex.d0 - 0.2)), pt(h.toWorld(uF, ex.d0 - 0.4 - ex.n * 0.3 - 0.5)), [P.xSpine - toS * 0.3, (f.z0 + f.z1) / 2], [P.xSpine + toS * 0.8, (f.z0 + f.z1) / 2], [xs, (f.z0 + f.z1) / 2], [xs, -15.2], [0, -15.2], [0, -12.6], [0, -10]];
-      out.push({ label: `${h.id}: front, ${ex.sg < 0 ? 'left' : 'right'} side exit, ${ex.n ? 'passage stairs' : 'passage'}, spine, lobby (walked: no fast exit since v14)`, start: [a.x, h.y0, a.z], pts, room: 'lobby', y: 0, tele: 0 });
+      out.push({ label: `${h.id}: front, ${ex.sg < 0 ? 'left' : 'right'} side exit, ${ex.n ? 'passage stairs' : 'passage'}, spine, lobby (v14b: walked out through the door and down the passage, then the light-lock's quick fade puts you in the lobby: one jump)`, start: [a.x, h.y0, a.z], pts, room: 'lobby', y: 0, tele: 1 });
     }
   }
   return out;
