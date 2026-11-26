@@ -1,5 +1,9 @@
 // LUMIERE v9 - conversation trees (lines: tools/dev/i18n/v9-dialogue.json, every line recorded per voice). A node is
 // [lineKey, [[optionKey, target], ...]]; target: a node, 'end', or 'act:<name>[:arg]' (main9.js). Options are short and say what happens.
+// v14 the menu (menu.js) by category: each option is the item's name and buys it; 'back' returns to the node that listed the categories
+const buy = (ids, back) => ids.map((id) => ['food.' + id, 'act:buy:' + id]).concat([['opt.back', back]]);
+const FOOD = (line, back) => ({ hot: [line, buy(['nachos', 'hotdog', 'burger', 'pizza', 'fries'], back)], sweet: [line, buy(['icecream', 'churros', 'choc', 'gummies'], back)],
+  cold: [line, buy(['cola', 'lemonade', 'icedtea', 'shake', 'slush', 'water'], back)], combo: [line, buy(['combo', 'date', 'sweettooth'], back)] });
 export const TREES = {
   host: { start: 'hello', nodes: {
     hello: ['host.hello', [['opt9.tickets', 'tickets'], ['opt9.food', 'food'], ['opt9.wc', 'wc'], ['opt9.gate', 'gate'], ['opt.bye', 'end']]],
@@ -13,18 +17,20 @@ export const TREES = {
     fMAX: ['box.fmt.MAX', [['opt9.buy', 'act:book'], ['opt.back', 'formats']]], fCURVE: ['box.fmt.CURVE', [['opt9.buy', 'act:book'], ['opt.back', 'formats']]],
     fCLASSIC: ['box.fmt.CLASSIC', [['opt9.buy', 'act:book'], ['opt.back', 'formats']]], fX270: ['box.fmt.X270', [['opt9.buy', 'act:book'], ['opt.back', 'formats']]] } },
   bar: { start: 'hello', nodes: {
-    hello: ['bar.hello', [['opt9.popcorn', 'what'], ['opt9.combo', 'act:buy:combo'], ['opt9.drink', 'act:buy:cola'], ['opt9.coffee', 'act:buy:coffee'], ['opt.bye', 'end']]],
-    what: ['bar.what', [['opt9.salted', 'act:buy:salted'], ['opt9.caramel', 'act:buy:caramel'], ['opt9.cheese', 'act:buy:cheese'], ['opt.back', 'hello']]] } },
+    hello: ['bar.hello', [['cat.popcorn', 'what'], ['cat.hot', 'hot'], ['cat.sweets', 'sweet'], ['cat.cold', 'cold'], ['cat.combos', 'combo'], ['opt.bye', 'end']]],
+    ...FOOD('bar.pick', 'hello'), what: ['bar.what', buy(['salted', 'caramel', 'cheese', 'truffle'], 'hello')] } },
   // v10 the cafe's barista (npc9.js 'cafe'): the coffees on the menu board, each one a cup in your hand
   cafe: { start: 'hello', nodes: {
-    hello: ['cafe.hello', [['opt9.latte', 'act:buy:latte'], ['opt9.cappuccino', 'act:buy:cappuccino'], ['opt9.espresso', 'act:buy:espresso'], ['opt9.hotchoc', 'act:buy:hotchoc'], ['opt.bye', 'end']]] } },
+    hello: ['cafe.hello', [['food.espresso', 'act:buy:espresso'], ['food.cappuccino', 'act:buy:cappuccino'], ['food.latte', 'act:buy:latte'], ['food.hotchoc', 'act:buy:hotchoc'], ['food.chai', 'act:buy:chai'], ['cat.sweets', 'sweet'], ['opt.bye', 'end']]],
+    sweet: ['bar.pick', buy(['churros', 'choc', 'icecream'], 'hello')] } },
   usher: { start: 'ask', nodes: {
     ask: ['ush.ask', [['opt9.showTicket', 'act:ticket'], ['opt.bye', 'end']]],
     noTicket: ['ush.noTicket', [['opt.thanks', 'end']]],
     locate: ['ush.locate', [['opt9.walkMe', 'act:escort'], ['opt9.ownWay', 'act:ownWay']]] } },
   server: { start: 'arrive', nodes: {
     arrive: ['srv.arrive', [['opt9.order', 'menu'], ['opt9.tablet', 'act:tablet'], ['opt9.takeTrash', 'act:trash'], ['opt9.nothing', 'act:serverBye']]],
-    menu: ['srv.menu', [['opt9.salted', 'act:buy:salted'], ['opt9.caramel', 'act:buy:caramel'], ['opt9.drink', 'act:buy:cola'], ['opt9.coffee', 'act:buy:coffee'], ['opt9.nachos', 'act:buy:nachos'], ['opt.back', 'arrive']]],
+    menu: ['srv.menu', [['cat.popcorn', 'what'], ['cat.hot', 'hot'], ['cat.sweets', 'sweet'], ['cat.cold', 'cold'], ['cat.hotdrinks', 'warm'], ['opt.back', 'arrive']]],
+    ...FOOD('bar.pick', 'menu'), what: ['bar.pick', buy(['salted', 'caramel', 'cheese', 'truffle'], 'menu')], warm: ['bar.pick', buy(['espresso', 'cappuccino', 'latte', 'hotchoc', 'chai'], 'menu')],
     back: ['srv.back', [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]] } },
   // a stranger answers as their temper has it (npc9.js Agent.temper). v14 (the user, 11-20: "almost all of them are rude, they were better
   // before"): most are warm, a third plain, one in ten busy; a busy one ends the talk themselves (main.js startTalk)

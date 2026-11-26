@@ -19,9 +19,13 @@ export class Player {
     const stickEnd = (e) => { if (e.pointerId === stickId) { stickId = null; this.stick.x = this.stick.y = 0; setKnob(0, 0); stickEl.classList.remove('on'); } };
     stickEl.addEventListener('pointerup', stickEnd); stickEl.addEventListener('pointercancel', stickEnd);
     // v11: a touch that stays put (under 10 px) and lets go within 280 ms is a tap, not a look (main.js presses the lift button tapped)
-    canvas.addEventListener('pointerdown', (e) => { if (lookId === null) { lookId = e.pointerId; lx = e.clientX; ly = e.clientY; tap = { t: performance.now(), m: 0 }; try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* a pointer the browser no longer tracks */ } } });
-    canvas.addEventListener('pointermove', (e) => { if (e.pointerId !== lookId || this.locked) return; const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY; if (tap) tap.m += Math.abs(dx) + Math.abs(dy); const s = (this.settings.sensitivity ?? 1) * 0.0042; this.turn(dx * s, dy * s * (this.settings.invertY ? -1 : 1)); });
+    canvas.addEventListener('pointerdown', (e) => { if (lookId === null) { lookId = e.pointerId; lx = e.clientX; ly = e.clientY; tap = { t: performance.now(), m: 0 }; try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* a pointer the browser no longer tracks */ } }
+      // v14b phone VR (the user, 11-26: "vr cardboard mode just fucks up the controls"): the viewer's button is a touch: a short one presses what
+      // the reticle is on, a held one walks you the way you look (your head turns you, never a drag)
+      if (this.vr && e.pointerId === lookId) { clearTimeout(this._vrHold); this._vrHold = setTimeout(() => { if (lookId !== null && this.vr) this.stick.y = 1; }, 320); } });
+    canvas.addEventListener('pointermove', (e) => { if (e.pointerId !== lookId || this.locked || this.vr) return; const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY; if (tap) tap.m += Math.abs(dx) + Math.abs(dy); const s = (this.settings.sensitivity ?? 1) * 0.0042; this.turn(dx * s, dy * s * (this.settings.invertY ? -1 : 1)); });
     const lookEnd = (e) => { if (e.pointerId !== lookId) return; lookId = null; const q = tap; tap = null;
+      if (this.vr) { clearTimeout(this._vrHold); const walked = this.stick.y === 1; this.stick.y = 0; if (e.type === 'pointerup' && !walked && q && performance.now() - q.t < 320 && this.onVRTap) this.onVRTap(); return; }
       if (e.type === 'pointerup' && q && q.m < 10 && performance.now() - q.t < 280 && this.onTap) this.onTap(e.clientX, e.clientY, document.pointerLockElement === canvas); };
     canvas.addEventListener('pointerup', lookEnd); canvas.addEventListener('pointercancel', lookEnd);
     const hold = (on) => { this.sprint = on; sprintEl.classList.toggle('on', on); };
@@ -79,8 +83,8 @@ export class Player {
           if (i === a.keys.length - 1 && t >= 1) { this.anim = null; if (a.kind === 'stand') { this.y = this.world.floorY(this.x, this.z, this.camY - EYE); this.camY = null; } a.done && a.done(); } break; }
         acc += k.d; from = k.to; }
       cam.position.set(this.x, this.camY, this.z);
-    } else if (this.seated) { const p = this.seated.pose, r = this.recline || 0; this.x = p.x; this.z = p.z;   // v12 recline: the eye settles 24 cm back and 12 cm down
-      cam.position.set(p.x + Math.sin(p.yaw) * 0.24 * r, p.y - 0.12 * r + Math.sin(performance.now() * 0.0011) * 0.004, p.z + Math.cos(p.yaw) * 0.24 * r); }
+    } else if (this.seated) { const p = this.seated.pose, r = this.recline || 0; this.x = p.x; this.z = p.z;   // v14 recline: the eye settles 15 cm back and 5 cm down (24 and 12 sank it behind the pods' parapet)
+      cam.position.set(p.x + Math.sin(p.yaw) * 0.15 * r, p.y - 0.05 * r + Math.sin(performance.now() * 0.0011) * 0.004, p.z + Math.cos(p.yaw) * 0.15 * r); }
     else {
       let sx = this.stick.x, sy = this.stick.y; const k = this.keys; if (k.KeyW || k.ArrowUp) sy += 1; if (k.KeyS || k.ArrowDown) sy -= 1; if (k.KeyD || k.ArrowRight) sx += 1; if (k.KeyA || k.ArrowLeft) sx -= 1;
       const m = Math.hypot(sx, sy); if (m > 1) { sx /= m; sy /= m; } const dead = m < 0.1 ? 0 : 1, sp = (this.sprint ? 3.6 : 1.9) * dead * (this.locked ? 0 : 1);
@@ -96,6 +100,6 @@ export class Player {
       this.bob += ((spd > 0.3 ? 1 : 0) - this.bob) * Math.min(1, dt * 6);
       cam.position.set(this.x, this.y + EYE + Math.sin(this.phase * Math.PI) * 0.022 * this.bob * Math.min(1, spd / 2), this.z); this.camY = null;
     }
-    cam.rotation.set(this.pitch + (this.seated ? 0.1 * (this.recline || 0) : 0), this.yaw, Math.sin(this.phase * Math.PI * 0.5) * 0.003 * this.bob);
+    cam.rotation.set(this.pitch + (this.seated ? 0.05 * (this.recline || 0) : 0), this.yaw, Math.sin(this.phase * Math.PI * 0.5) * 0.003 * this.bob);
   }
 }

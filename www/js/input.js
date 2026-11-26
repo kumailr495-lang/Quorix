@@ -29,7 +29,9 @@ export class Input {
   }
   setMode(m) { if (m === this.mode) return; this.mode = m; document.body.dataset.input = m; if (m !== 'kbm' && document.pointerLockElement) document.exitPointerLock?.(); }
   key(e) {
-    const tag = (e.target && e.target.tagName) || ''; if (tag === 'INPUT' || tag === 'TEXTAREA') return; this.setMode('kbm'); const c = this.c;
+    const tag = (e.target && e.target.tagName) || ''; if (tag === 'INPUT' || tag === 'TEXTAREA') return; const c = this.c;
+    // v14b (the user, 11-26: after a screenshot "it shows that E button"): volume, power and media keys are not a keyboard
+    if (!/^(Key[A-Z]|Digit\d|Arrow|Space|Enter|Escape|Tab|Shift|Control|Alt|Backspace)/.test(e.code || '')) return; this.setMode('kbm');
     if (e.code === 'KeyE' || e.code === 'Enter') { if (!c.modal()) { c.action(); e.preventDefault(); } }
     else if (e.code === 'KeyP' || (e.code === 'Escape' && !document.pointerLockElement)) c.pause();
     else if (e.code === 'KeyT') { c.chat(); e.preventDefault(); }
@@ -63,7 +65,7 @@ export class Input {
   // ---------------------------------------------------------------- phone VR
   setVR(on) {
     if (on && typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().catch(() => {});
-    this.vr = !!on; this.c.engine.stereo = this.vr; document.body.classList.toggle('vr', this.vr); this._yaw0 = null; if (this.vr && document.pointerLockElement) document.exitPointerLock?.();
+    this.vr = !!on; this.c.engine.stereo = this.vr; this.c.player.vr = this.vr; document.body.classList.toggle('vr', this.vr); this._yaw0 = null; if (this.vr && document.pointerLockElement) document.exitPointerLock?.();
     this.c.engine.resize && this.c.engine.resize();
   }
   head() {

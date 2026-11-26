@@ -105,7 +105,9 @@ def build_hall(h, L1):
         if r == n - 1 and k:
             # last row + rear aisle of a curved-row hall: from the row's arc to the straight rear wall in one polygon, so the rear corners
             # (outside the last arc) are floor too (the see-through gate found a 4.7 m pit there)
-            ea = a_wall(e0); arc = [P(-ea + 2 * ea * i / 48, e0) for i in range(49)]
+            # v14 its front edge runs exactly along the risers below it (the aisle risers are one chord, the middle one nC chords): an arc
+            # there left a sliver over the chords that showed the risers' backs (see-through test, top step of CURVE and X-270)
+            ea = a_wall(e0); arc = [P(-ea, e0)] + [P(-a0w + 2 * a0w * i / nC, e0) for i in range(nC + 1)] + [P(ea, e0)]
             pg = arc + [(W2 + 0.06, depth), (-W2 - 0.06, depth)]
             ar = sum(pg[i][0] * pg[(i + 1) % len(pg)][1] - pg[(i + 1) % len(pg)][0] * pg[i][1] for i in range(len(pg)))
             if ar > 0: pg = pg[::-1]
@@ -141,7 +143,7 @@ def build_hall(h, L1):
     # ---------------------------------------------------------------- pod tier parapet (MAX): solid walnut wall with warm underglow
     for r in range(1, n):
         if rows[r]['lift'] > 0:
-            e0 = rows[r]['pf']; yb = rows[r - 1]['y']; ytop = rows[r]['y'] + 0.82; segs = 24 if k else 1
+            e0 = rows[r]['pf']; yb = rows[r - 1]['y']; ytop = rows[r]['y'] + 0.6; segs = 24 if k else 1   # v14 0.6 (was 0.82): a reclined eye in the pods saw its top over the picture
             for i in range(segs):
                 aa, ab = -a0w + 2 * a0w * i / segs, -a0w + 2 * a0w * (i + 1) / segs
                 p0, p1, p2, p3 = P(aa, e0 - 0.02), P(ab, e0 - 0.02), P(ab, e0 + 0.16), P(aa, e0 + 0.16)
@@ -318,6 +320,9 @@ def build_hall(h, L1):
             glow.quad((u - s_, cy, d - s_), (u + s_, cy, d - s_), (u + s_, cy, d + s_), (u - s_, cy, d + s_), th['warm'], k_)
         for dd in [3 + 4.2 * i for i in range(int((depth - 4) / 4.2) + 1)]:
             acc.box(-W2 + 1.0, ceil - 0.9, dd, W2 - 1.0, ceil + 0.01, dd + 0.12, MAT['acoustic'], lin('#0a0c10'))   # v11: 1 cm into the ceiling (they hung 2 cm under it)
+            # v14 (the user: the ceilings looked bad): each baffle's underside is a line of light, blue to the room, a warm wash up its face
+            glow.quad((-W2 + 1.05, ceil - 0.906, dd + 0.03), (W2 - 1.05, ceil - 0.906, dd + 0.03), (W2 - 1.05, ceil - 0.906, dd + 0.09), (-W2 + 1.05, ceil - 0.906, dd + 0.09), th['accent'], 1.1)   # facing down, as the stars
+            lit.line((-W2 + 1.5, ceil - 1.0, dd + 0.06), (W2 - 1.5, ceil - 1.0, dd + 0.06), th['accent'], 0.06, 3.0, 'h', (0, -1, 0))
         lit.ambient(lin('#3a5aa0'), lin('#1a2440'), 0.004, 'f')
     elif h['format'] == 'curve':
         for e in (6.5, 10.5, 14.5, 18.5, 22.5):   # coves that follow the screen's curve (photo 9: lights not curved, placed wrong)
@@ -342,6 +347,9 @@ def build_hall(h, L1):
             for d in [1.5 + 1.5 * k for k in range(int((depth - 2.5) / 1.5) + 1)]:
                 s_ = 0.022
                 glow.quad((u - s_, cy, d - s_), (u + s_, cy, d - s_), (u + s_, cy, d + s_), (u - s_, cy, d + s_), th['warm'], 1.1)
+        # v14 flush light lines across the ceiling every 4.5 m (red to the room's accent), nothing hanging into the projectors' throw
+        for d in [2.25 + 4.5 * k for k in range(int((depth - 3.0) / 4.5) + 1)]:
+            glow.quad((-W2 + 0.8, cy, d - 0.025), (W2 - 0.8, cy, d - 0.025), (W2 - 0.8, cy, d + 0.025), (-W2 + 0.8, cy, d + 0.025), th['accent'], 1.0)   # facing down
         lit.ambient(lin('#3a2a2a'), lin('#120c0c'), 0.004, 'f')
     # downlights over the seats only (the walls have their washers): fewer and softer than v9's grid
     nu = max(1, int(round((2 * h['blockHalf']) / 4.4)))

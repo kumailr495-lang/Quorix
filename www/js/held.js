@@ -2,6 +2,8 @@
 // a soda cup with a dome lid and straw, a coffee cup with a sleeve. Drawn in the view-model pass (engine.vm), so it never clips into
 // walls; lit like the room you stand in (crowd.lightAt). Empty items stay in your hand until you drop them in a bin.
 import * as THREE from 'three';
+import { ASSETS } from './assets.js';
+import { menuItem } from './menu.js';
 const C = (hex) => new THREE.Color(hex), SRGB = THREE.SRGBColorSpace;   // colours below are sRGB, like the rest of the art
 function paint(geo, fn) { const p = geo.attributes.position, c = new Float32Array(p.count * 3), col = new THREE.Color(); for (let i = 0; i < p.count; i++) { fn(p.getX(i), p.getY(i), p.getZ(i), col); c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; } geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); return geo; }
 const solid = (geo, hex) => paint(geo, (x, y, z, c) => c.copy(C(hex)));
@@ -45,5 +47,19 @@ export function makeCup(kind) {
     const straw = new THREE.CylinderGeometry(0.0035, 0.0035, 0.12, 8); straw.rotateZ(0.12); straw.translate(0.006, h / 2 + 0.05, 0); paint(straw, (x, y, z, c) => (Math.floor(y * 90) % 2 ? c.setRGB(0.95, 0.95, 0.95, SRGB) : c.setRGB(0.85, 0.1, 0.12, SRGB))); parts.push(straw); }
   grp.add(new THREE.Mesh(merge(parts))); grp.userData.setLevel = () => {}; return grp;
 }
-export function makeHeld(kind) { return kind === 'popcorn' ? makePopcorn() : makeCup(kind); }
+// v14 a menu item (menu.js) as its own model (tools/blender/food14.py): the asset's parts with their colours (and the item's colour swaps),
+// centred on its middle as the old held things were; parts named Fill* (the popcorn's heap) sink as you eat
+export function makeFood(item) {
+  const A = item && ASSETS[item.model]; if (!A) return null; const grp = new THREE.Group(), fill = [], box = new THREE.Box3(), tmp = new THREE.Box3();
+  for (const p of A.parts) { if (p.lod !== 0 || p.glow || p.leaf) continue; const g = p.geo.clone(), n = g.attributes.position.count, c = new Float32Array(n * 3);
+    const sw = item.swap && item.swap[p.matName], tint = sw ? new THREE.Color(sw).toArray() : p.tint; for (let i = 0; i < n; i++) c.set(tint, i * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.computeBoundingBox(); box.union(tmp.copy(g.boundingBox)); const m = new THREE.Mesh(g); m.userData.fill = /^Fill/.test(p.name); if (m.userData.fill) fill.push(m); grp.add(m); }
+  const cy = (box.min.y + box.max.y) / 2, by = box.min.y; for (const m of grp.children) { m.geometry.translate(0, -cy, 0); if (m.userData.fill) m.userData.base = by - cy; }
+  grp.userData.setLevel = (k) => { for (const m of fill) { m.visible = k > 0.02; m.scale.y = 0.25 + 0.75 * k; m.position.y = (1 - m.scale.y) * (m.userData.base || 0); } };
+  return grp;
+}
+export function makeHeld(what) {
+  if (what && typeof what === 'object' && (what.model || what.id)) { const it = what.model ? what : menuItem(what.id || what.name); const f = makeFood(it); if (f) return f; return makeHeld(it.use === 'eat' ? 'popcorn' : it.use === 'hot' ? 'coffee' : 'drink'); }
+  return what === 'popcorn' ? makePopcorn() : makeCup(what);
+}
 export function setHeldMaterial(grp, mat) { grp.traverse((o) => { if (o.isMesh) { o.material = mat; o.frustumCulled = false; } }); }

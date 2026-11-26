@@ -11,6 +11,7 @@
 import { t } from './i18n.js';
 import { media } from './bridge.js';
 import { CATALOG, posterURL, filmById, cleanTitle } from './films.js';
+import { renderMenu } from './menuui.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -78,10 +79,9 @@ export class Tablet {
   }
   // ---------------- v9: order to your seat (the armrest tablet): it goes on your bill; the server brings it, or the counter sends it up
   order(B) {
-    $('#tbTitle').textContent = t('tab9.order'); const grid = el('div', 'tb-order'), items = [['salted', 'opt9.salted'], ['caramel', 'opt9.caramel'], ['cheese', 'opt9.cheese'], ['nachos', 'opt9.nachos'], ['cola', 'opt9.drink'], ['coffee', 'opt9.coffee'], ['water', 'item.water'], ['combo', 'opt9.combo']];
-    for (const [k, lab] of items) { const c = el('button', 'tb-item'); c.appendChild(el('b', null, t(lab))); c.appendChild(el('small', null, this.hooks.quick() && this.wallet.unlimited ? t('book9.tabletQuick') : this.wallet.fmt(this.wallet.itemPrice(k))));
-      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.order && this.hooks.order(k)) { this.hooks.toast(t('tab9.ordered', { item: t(lab) }), 2600); } }); grid.appendChild(c); }
-    B.appendChild(grid);
+    $('#tbTitle').textContent = t('tab9.order'); const box = el('div', 'tb-menu'); B.appendChild(box);   // v14 the menu (menuui.js): categories, pictures, prices
+    renderMenu(box, { sound: this.sound, free: this.hooks.quick() && this.wallet.unlimited, price: (id) => this.wallet.fmt(this.wallet.itemPrice(id)),
+      order: (id) => { const ok = !!(this.hooks.order && this.hooks.order(id)); if (ok) this.hooks.toast(t('tab9.ordered', { item: t('food.' + id) }), 2600); return ok; } });
     if (this.hooks.canBin && this.hooks.canBin()) { const b = el('button', 'btn secondary', t('tab9.bin')); b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.hooks.bin && this.hooks.bin(); this.show('order'); }); B.appendChild(b); }
   }
   // ---------------- v14 streaming (the user, 11-20: "actual in-app streaming"): the Internet Archive's public-domain films in rows, with

@@ -9,8 +9,8 @@ import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
-import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS, HOME } from './building.js';
-import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL, atmosSpots } from './hallmath.js';
+import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS } from './building.js';
+import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named, LEAF_IDS } from './library.js';
 import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
@@ -20,28 +20,28 @@ import { Lift } from './lift9.js';
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), IN = (r, x, z, m = 0) => x >= r.x0 - m && x <= r.x1 + m && z >= r.z0 - m && z <= r.z1 + m;
 const b64f = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new Float32Array(u.buffer); };
+export const BORNES = [-36.0, -15.5, 26.5], BORNE_Z = -20.4;   // v14 the corridor's round banquettes (x along the bridge, z)
 const HALLS = Object.values(HALL), HALL_BY_KEY = Object.fromEntries(HALLS.map((h) => [h.key, h])), CORR = [BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E];
 export const STEP_UP = 0.4, HEAD = 1.75;
 // target average light level per room with its house lights up (docs/V9-DESIGN.md section 5: bright spine, dim Dolby corridor)
 // ambient fill on top of the light map (dims with the house lights): the dim corridor's dark walls stay readable, the night street too
 // v14 (the user, 11-20: "increase a bit of light bounce and the lights to be more dim"): the halls' lamps dimmer (LEVEL) with a soft fill
 // lifting the shadows and a softer curve (SOFT), so the light reads as bounced round the room rather than pooled under each lamp
-const FILL = { corridor: 0.42, street: 0.03, hallMax: 0.035, hallCurve: 0.035, hallClassic: 0.04, hall270: 0.035, home: 0.04 };
+const FILL = { corridor: 0.42, street: 0.03, hallMax: 0.035, hallCurve: 0.035, hallClassic: 0.04, hall270: 0.035 };
 // v10 softer light per room (materials.js uSoft): how much of the soft curve each room takes; halls less (their dark is the point)
-const SOFT = { lobby: 0.85, corridor: 0.8, spine: 0.75, wc: 0.75, street: 0.6, hallMax: 0.8, hallCurve: 0.8, hallClassic: 0.8, hall270: 0.8, home: 0.85 };
+const SOFT = { lobby: 0.85, corridor: 0.8, spine: 0.75, wc: 0.75, street: 0.6, hallMax: 0.8, hallCurve: 0.8, hallClassic: 0.8, hall270: 0.8 };
 // v12c where the lobby's living props stand (anim12.js puts its particles in the same frames): [x, y, z, yaw]
 export const LIFE = {
   kettles: [[-21.30, 0.96, -7.55, Math.PI / 2], [-21.30, 0.96, -6.65, Math.PI / 2]],   // tools/blender/zones12.py popcorn_kettle, on the parlour's back counter
   espresso: [-21.12, 0.96, -12.3, Math.PI / 2],   // zones12.py espresso_lever, its back 3.4 cm under the bottle shelves' ends, 4.4 cm under their lips
   fountain: [0, 0, 10.0, 0],   // statue12.py fountain_muse
 };
-export const LEVEL = { hallMax: 0.4, hallCurve: 0.4, hallClassic: 0.44, hall270: 0.4, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15, home: 0.36 };   // v14 home: a warm evening flat   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
+export const LEVEL = { hallMax: 0.4, hallCurve: 0.4, hallClassic: 0.44, hall270: 0.4, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
 function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 14) { A[i + 3] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 4] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 5] *= A[i + 7] ? Math.min(k, 10) : k; }
   for (const ch of ['h', 'f']) for (const s of ['up', 'down']) L.amb[ch][s] = L.amb[ch][s].map((v) => v * (ch === 'h' ? k : Math.min(k, 10))); }   // a face lower than STEP_UP above your feet is a step you walk over; above HEAD it is overhead
 
 // ---------------------------------------------------------------- where am I: room, floor height (y = where your feet are now)
 export function roomAt(x, y, z) {
-  if (IN(HOME, x, z, 0.05)) return 'home';   // v14 your flat (home.js), set apart from the building
   // a hall owns its screen and rear walls' thickness too: the exit and entry doors stand in them (v9 route test: the floor dropped there)
   for (const h of HALLS) { const q = h.toLocal(x, z); if (Math.abs(q.u) <= h.width / 2 + 0.05 && q.d >= -SCREEN_GAP - WALL && q.d <= h.depthIn + WALL) return h.key; }
   if (y > L1 - 1.2) for (const r of CORR) if (IN(r, x, z)) return 'corridor';
@@ -142,7 +142,7 @@ class Door {
     this.from = d.from ?? (d.hall ? -HALL[d.hall].dir : d.oneWay === 'spine' ? -1 : 0); this.reach = d.kind === 'slide' ? 2.8 : 2.2;   // v12b the side exits say which side they open from
     this.group = new THREE.Group(); this.group.position.set(d.x, this.y, d.z); this.group.rotation.y = d.axis === 'x' ? 0 : Math.PI / 2; this.group.updateMatrixWorld(true);
     if (d.kind === 'open') return;
-    const room = world.rooms[d.oneWay && world.rooms[d.oneWay] ? d.oneWay : d.rooms[0]] || world.rooms[d.rooms[1]], half = d.w / 2, into = -(this.from || 1);
+    const room = world.rooms[d.oneWay && world.rooms[d.oneWay] ? d.oneWay : d.rooms[0]] || world.rooms[d.rooms[1]], half = d.w / 2, into = d.swing ?? -(this.from || 1); this.into = into;
     this.leaves = [-1, 1].map((s) => {
       const g = leafGeo(half - 0.01, d.h - 0.01, d.kind, s, s > 0 ? -into : 0), wx = new THREE.Matrix4().makeTranslation(s * half, 0, 0).premultiply(this.group.matrixWorld);
       g.applyMatrix4(wx); room.lights.bake(g); g.applyMatrix4(wx.clone().invert());
@@ -158,7 +158,7 @@ class Door {
     const t = want ? 1 : 0; if (t !== this.target) { this.target = t; this.onToggle && this.onToggle(t, this); }
     this.open += (this.target - this.open) * (1 - Math.exp(-dt * (this.target ? (this.kind === 'slide' ? 5 : 4) : 2.4)));
     if (this.kind === 'slide') { const off = this.open * (this.w / 2 - 0.08); this.leaves[0].m.position.x = -this.w / 2 - off; this.leaves[1].m.position.x = this.w / 2 + off; this.glass[0].position.x = -this.w / 4 - off; this.glass[1].position.x = this.w / 4 + off; }
-    else { const e = this.open * this.open * (3 - 2 * this.open), ang = e * 1.55, into = -(this.from || 1); for (const L of this.leaves) L.m.rotation.y = L.s * into * ang; }
+    else { const e = this.open * this.open * (3 - 2 * this.open), ang = e * 1.55, into = this.into ?? -(this.from || 1); for (const L of this.leaves) L.m.rotation.y = L.s * into * ang; }
   }
   get blocking() { return this.kind !== 'open' && this.open < 0.7; }
   segment() { const h = this.w / 2; return this.axis === 'x' ? [this.x - h, this.z, this.x + h, this.z] : [this.x, this.z - h, this.x, this.z + h]; }
@@ -268,17 +268,6 @@ function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.
   g.font = `600 ${lab}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('LIFT', x + h * 0.68, h * 0.5); ls('0px');
   g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.3, h * 0.48); }
 export const PANEL_DRAW = {
-  // v14 the flat's window (home14.py: 28 m out, 97 x 40 m): the street from the Astor's third floor, the cinema across the road. The picture
-  // is the engine's own render (tools/dev/homeview.mjs); till it loads, a night sky over dark roofs with lit windows
-  homeview: (g, w, h) => { const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#05070d'); sky.addColorStop(0.55, '#0c1220'); sky.addColorStop(1, '#151018'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
-    let r = 7; const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647); g.fillStyle = '#07080c';
-    for (let x = 0; x < w;) { const bw = 40 + rnd() * 120, bh = h * (0.18 + rnd() * 0.3); g.fillRect(x, h * 0.62 - bh, bw, bh + h); for (let k = 0; k < 14; k++) { if (rnd() < 0.45) continue; g.fillStyle = rnd() < 0.7 ? '#ffcf8a' : '#9fc1ff'; g.globalAlpha = 0.35 + rnd() * 0.5; g.fillRect(x + 4 + rnd() * (bw - 10), h * 0.62 - bh + 6 + rnd() * bh * 0.9, 4, 6); g.globalAlpha = 1; g.fillStyle = '#07080c'; } x += bw + 4; }
-    const im = new Image(); im.onload = () => { g.drawImage(im, 0, 0, w, h); if (g.canvas.__tex) g.canvas.__tex.needsUpdate = true; }; im.src = 'art/homeview.jpg'; },
-  // v14 the home cinema's screen while nothing plays (home.js puts a film's video on it)
-  homescreen: (g, w, h) => { const gr = g.createRadialGradient(w / 2, h * 0.45, 10, w / 2, h / 2, w * 0.7); gr.addColorStop(0, '#1d1828'); gr.addColorStop(1, '#060608'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#e8c27a'; g.font = `500 ${h * 0.14}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.03}px`; g.fillText('LUMIÈRE', w / 2, h * 0.42); if ('letterSpacing' in g) g.letterSpacing = '0px';
-    g.fillStyle = '#b9ab95'; g.font = `500 ${h * 0.055}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.012}px`; g.fillText('HOME CINEMA', w / 2, h * 0.58); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
-  // v12c the cabinet poppers' headers (zones12.py popcorn_kettle): POPCORN in red on cream, a red rule above and below
   kettlehead: (g, w, h) => { g.fillStyle = '#efe4c8'; g.fillRect(0, 0, w, h); g.fillStyle = '#a3141e'; g.fillRect(0, h * 0.06, w, h * 0.07); g.fillRect(0, h * 0.87, w, h * 0.07);
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 ${h * 0.62}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.12}px`; g.fillText('POPCORN', w / 2, h * 0.53); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   // v12 the heritage corner's two posters: original 1950s-style cinema bills (no real film, no real studio)
@@ -585,13 +574,16 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const k of [2, 4, 5, 7]) add('corridor', 'planter_tall', BRIDGE.x1 - 9 * k, L1, BRIDGE.z1 - 0.68);
   for (const x of [FLANK_W.x1 + 18, PANTRY.x1 + 18]) add('corridor', 'planter_tall', x, L1, BRIDGE.z0 + 0.68);
   for (const x of [6.0, 14.5]) add('corridor', 'standee_base', x, L1, BRIDGE.z0 + 0.8, 0, { collide: 0.02 });
+  // v14 (the user, 11-21: "the corridors like the upper area felt so empty and dead"): three round bornes in wine velvet on the bridge's
+  // south side, a snake plant on each; people sit round them, stroll and talk up here between the shows (npc9.js corridorFolk)
+  for (const x of BORNES) { add('corridor', 'borne_round', x, L1, BORNE_Z, 0, { collide: false, round: 0.82, swap: { velvet_teal: [MAT.velvet, [0.21, 0.012, 0.03]] } });
+    add('corridor', 'planter_tall', x, L1 + 0.842, BORNE_Z, 0.4, { collide: false }); }
   // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup)
   for (const h of Object.values(HALL)) { const w = h.toWorld(h.entryU - Math.sign(h.entryU) * 1.4, h.depthIn - 0.5); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z); }
   // v12b Dolby Atmos: the overhead speakers, hung from each hall's ceiling in two rows, each turned to face across the seats
-  for (const h of Object.values(HALL)) for (const s of atmosSpots(h)) { const w = h.toWorld(s.u, s.d); add(h.key, 'speaker_array', w.x, h.y0 + h.ceil + 0.002, w.z, h.yawOf(s.u > 0 ? -Math.PI / 2 : Math.PI / 2), { collide: false, ground: false, scale: 0.7 }); }
   return L;
 })();
-export const SIT_ON = { scan_chesterfield: { h: 0.46, w: 0.6 }, scan_armchair: { h: 0.45, n: 1 }, scan_lounge_chair: { h: 0.43, n: 1 }, sofa_curve: { h: 0.44, w: 0.7 }, armchair_deco: { h: 0.44, n: 1 }, bench_velvet: { h: 0.45, w: 0.62 }, bench_street: { h: 0.45, w: 0.62 }, bar_stool: { h: 0.76, n: 1 }, directors_chair: { h: 0.6, n: 1 } };
+export const SIT_ON = { borne_round: { h: 0.45, ring: 6, r: 0.6 }, scan_chesterfield: { h: 0.46, w: 0.6 }, scan_armchair: { h: 0.45, n: 1 }, scan_lounge_chair: { h: 0.43, n: 1 }, sofa_curve: { h: 0.44, w: 0.7 }, armchair_deco: { h: 0.44, n: 1 }, bench_velvet: { h: 0.45, w: 0.62 }, bench_street: { h: 0.45, w: 0.62 }, bar_stool: { h: 0.76, n: 1 }, directors_chair: { h: 0.6, n: 1 } };
 function dressRooms(world) {
   const byRoom = {}; for (const p of DRESS) (byRoom[p.room] || (byRoom[p.room] = [])).push(p);
   // v9.1: the restrooms' fittings at their interaction points (tools/blender/arch/rooms.py fixtures; they were points with no mesh):
@@ -619,9 +611,11 @@ function dressRooms(world) {
       const sz = A.box.getSize(new THREE.Vector3()), small = Math.max(sz.x, sz.z) * (typeof p.o.scale === 'number' ? p.o.scale : 1) < 1.6;
       const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
       // v14 (the user, 11-20: "I can't sit on most of the sofas outside"): seating props give sit spots (local +z is their front)
-      const sd = SIT_ON[p.name]; if (sd) { const bx = A.box, wx = bx.max.x - bx.min.x, cx = (bx.max.x + bx.min.x) / 2, cz = (bx.max.z + bx.min.z) / 2 + (bx.max.z - bx.min.z) * 0.06, n = sd.n || Math.max(1, Math.round(wx / sd.w)), cs = Math.cos(p.yaw), sn = Math.sin(p.yaw);
+      const sd = SIT_ON[p.name]; if (sd && sd.ring) for (let i = 0; i < sd.ring; i++) { const t = p.yaw + (i + 0.5) / sd.ring * Math.PI * 2, sx = Math.sin(t), sz = Math.cos(t), x = p.x + sx * sd.r, z = p.z + sz * sd.r;   // v14 round seats: facing out
+        world.sitSpots.push({ x, y: p.y + sd.h, fy: p.y, z, face: t + Math.PI, stand: { x: x + sx * 0.62, z: z + sz * 0.62 }, room: key, taken: null, ring: true }); }
+      else if (sd) { const bx = A.box, wx = bx.max.x - bx.min.x, cx = (bx.max.x + bx.min.x) / 2, cz = (bx.max.z + bx.min.z) / 2 + (bx.max.z - bx.min.z) * 0.06, n = sd.n || Math.max(1, Math.round(wx / sd.w)), cs = Math.cos(p.yaw), sn = Math.sin(p.yaw);
         for (let i = 0; i < n; i++) { const lx = cx + (i - (n - 1) / 2) * (wx / n), x = p.x + lx * cs + cz * sn, z = p.z - lx * sn + cz * cs;
-          world.sitSpots.push({ x, y: p.y + sd.h, z, face: p.yaw + Math.PI, stand: { x: x + sn * 0.62, z: z + cs * 0.62 }, room: key, taken: null }); } }
+          world.sitSpots.push({ x, y: p.y + sd.h, fy: p.y, z, face: p.yaw + Math.PI, stand: { x: x + sn * 0.62, z: z + cs * 0.62 }, room: key, taken: null }); } }
       const e = cen[p.name] || (cen[p.name] = { n: 0, tris: 0 }), ld = p.o.lod ?? 0; e.n++; for (const q of A.parts) if (q.lod === ld && (!p.o.only || q.name.startsWith(p.o.only))) e.tris += (q.geo.index ? q.geo.index.count : q.geo.attributes.position.count) / 3; }
     // v12c the lobby's props draw their glass see-through (the poppers' cabinets, the heated cases, the fountain's water); the street keeps
     // its cars' glass dark (they have no cabins)
@@ -962,7 +956,6 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
       if (IN(CAB, x, z)) return world.lift.y; return y > L1 - 1.2 && onMezz(x, z) ? L1 : 0; }
     if (r === 'spine') { const sy = stairY(x, z, y); if (sy !== null) return sy; return world.travelator.contains(x, z) ? 0.12 : 0; }
     if (r === 'street') return z > STREET.kerb && z < STREET.road[1] ? -0.15 : 0;
-    if (r === 'home') { const R = HOME.riser; return x > HOME.split + 0.1 && z > R.z0 && z < R.z1 ? R.y : 0; }   // the home cinema's riser
     return 0;
   };
   // what moves you: escalators and the travelator carry whoever stands on them

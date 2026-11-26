@@ -20,7 +20,7 @@ export class UI {
   fade(v, dur = 0.6) { const f = $('#fade'); f.style.transition = `opacity ${dur}s ease`; f.style.opacity = String(v); }
   // ---------------- HUD ----------------
   toast(msg, ms = 2600, kind = 'info') { const el = $('#toast'); $('#toastText').textContent = msg; el.classList.toggle('err', kind === 'error'); $('#toastIcon').setAttribute('href', kind === 'error' ? '#i-alert' : '#i-check'); el.classList.add('show'); clearTimeout(this._toastT); this._toastT = setTimeout(() => el.classList.remove('show'), ms); }
-  setPrompt(label, fn) { const p = $('#prompt'); if (!label) { if (!p.hidden) p.hidden = true; this.promptFn = null; return; } const l = $('#promptLbl'); if (l.textContent !== label) { l.textContent = label; $('#promptIcon').setAttribute('href', PROMPT_ICON(label)); } if (p.hidden) p.hidden = false; this.promptFn = fn; }
+  setPrompt(label, fn) { const p = $('#prompt'); if (document.body.classList.contains('vr')) { const vb = document.querySelectorAll('#vrUI b'), lt = label || ''; if (vb[0] && vb[0].textContent !== lt) { vb[0].textContent = lt; vb[1].textContent = lt; } } if (!label) { if (!p.hidden) p.hidden = true; this.promptFn = null; return; } const l = $('#promptLbl'); if (l.textContent !== label) { l.textContent = label; $('#promptIcon').setAttribute('href', PROMPT_ICON(label)); } if (p.hidden) p.hidden = false; this.promptFn = fn; }
   setWhere(a, b) { const A = $('#whereA'), B = $('#whereB'); if (A.textContent !== a) A.textContent = a; if (B.textContent !== (b || '')) B.textContent = b || ''; }
   setTicketChip(text) { const c = $('#ticketChip'); if (!text) { c.hidden = true; return; } c.hidden = false; const s = $('#tcText'); if (s.textContent !== text) s.textContent = text; }
   // the way-finding pill: what to do next, an arrow turned towards it (degrees clockwise from straight ahead), metres to go
@@ -28,7 +28,7 @@ export class UI {
     $('#goalArrow').style.transform = `rotate(${deg.toFixed(0)}deg)`; const d = dist > 1.5 ? Math.round(dist) + ' m' : '', D = $('#goalDist'); if (D.textContent !== d) D.textContent = d; }
   setWallet(text) { const w = $('#walletChip'); w.hidden = !text; if (text && $('#wcText').textContent !== text) $('#wcText').textContent = text; }
   // held item: label + how full it is (popcorn empties in 9 bites, a drink in 8 sips)
-  setItem(kind, left, max) { const b = $('#itemBtn'); if (!kind) { b.hidden = true; return; } b.hidden = false; $('#itemLbl').textContent = t(kind === 'drink' || kind === 'coffee' ? 'hud.sip' : 'hud.eat'); b.style.setProperty('--fill', String(Math.max(0, Math.min(1, left / max)))); }
+  setItem(kind, left, max) { const b = $('#itemBtn'); if (!kind) { b.hidden = true; return; } b.hidden = false; $('#itemLbl').textContent = t(kind === 'drink' || kind === 'coffee' || kind === 'hot' ? 'hud.sip' : 'hud.eat'); b.style.setProperty('--fill', String(Math.max(0, Math.min(1, left / max)))); }
   setButton(id, on) { const b = $(id); if (b && b.hidden === !!on) b.hidden = !on; }
   setFps(text) { const f = $('#fps'); f.hidden = !this.settings.showFps; if (!f.hidden) f.textContent = text; }
   setHidden(h) { this.hidden = h; $('#hud').hidden = h; $('#bShow').hidden = !h; document.body.classList.toggle('ui-hidden', !!h);   // v11: the crosshair dot goes with the controls

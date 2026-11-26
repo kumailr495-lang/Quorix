@@ -9,13 +9,14 @@
 //  * v10: the cafe (its room tone and, when you buy, the machine's pump and a cup), the fountain's water, the popcorn cart (BigSoundBank
 //    2561, 0913, 3049, 0410; CC0), each heard by how near you are
 import { Sound } from './sound.js';
-import { atmosSpots } from './hallmath.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), rnd = (a, b) => a + Math.random() * (b - a);
 const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_rain', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge', 'cafe', 'fountain', 'espresso', 'cup'];
 export class Sound9 extends Sound {
   constructor() { super(); this.buf = {}; this.loops = {}; this.sphere = null; this.boost = 1; }
   _build() {
-    this.latency = 'interactive'; super._build(); const c = this.ctx;
+    // v14 (the user, 11-21: "most of the sounds are distorted and glitched"): 'playback' buffers again. The low-latency buffers of v9 ran
+    // dry on a busy low-end phone (crackles); the film plays its own sound in step with its picture, so only taps wait a little longer
+    this.latency = 'playback'; super._build(); const c = this.ctx;
     // limiter after the master: -1 dBFS ceiling, so the film's boost (up to 2.5x) never clips. v14 (the user, 11-20: "the sounds are
     // glitching and distorted at some points"): the hard knee and 0.12 s release pumped and crackled on bass when the film, the applause and
     // the crowd stacked up; a 6 dB knee, slower release and 3 dB of headroom before it (trim) keep it clean
@@ -136,7 +137,7 @@ export class Sound9 extends Sound {
     const H = hall.cfg, y0 = H.y0, W = H.W, w = H.width, S = [], P = (u, d, y, f, g = 1) => { const p = H.toWorld(u, d); S.push([p.x, y0 + y, p.z, f, g]); };
     P(-W * 0.4, 0, H.hB + H.H * 0.5, 'L'); P(0, 0, H.hB + H.H * 0.5, 'C'); P(W * 0.4, 0, H.hB + H.H * 0.5, 'R');
     for (const s of [-1, 1]) { P(s * w / 2, H.depthIn * 0.35, H.total * 0.6 + 2.6, s < 0 ? 'SL' : 'SR', 0.8); P(s * w / 2, H.depthIn * 0.7, H.total * 0.8 + 2.6, s < 0 ? 'SL' : 'SR', 0.8); P(s * w * 0.42, H.depthIn, H.total + 2.4, s < 0 ? 'SL' : 'SR', 0.7); }
-    const top = atmosSpots(H);   // v12b the height layer through the hall's own overhead speakers (the ones you can see hung from its ceiling)
+    const top = [];   // v14b (the user, 11-26: "remove the dolby atmos"): stereo round the room, no height layer
     for (const t of top) P(t.u, t.d, H.ceil - 0.5, t.u < 0 ? 'TL' : 'TR', 1.8 / Math.max(4, top.length));
     return S;
   }

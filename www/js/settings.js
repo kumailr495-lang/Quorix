@@ -24,6 +24,7 @@ export function loadSettings() {
   const out = { ...DEFAULTS, ...s };
   if (!s.v8) { const d = deviceTier(); Object.assign(out, TIER_SET[d.tier]); out.v8 = true; out.deviceNote = `${d.gpu || 'GPU ?'} · ${d.mem} GB · ${d.cores} cores · ${d.tier}`; out.seen = s.seen || {}; }   // first v8 launch: defaults from the device
   // v12: medium now mirrors the wet street and the lobby floor (one lookup in two rooms); a phone that was given 'off' by its tier gets the new default once
+  if (!out.v14b) { out.showFps = false; out.v14b = true; }   // v14b (the user, 11-26: "why is fps thing turned on automatically")
   if (!out.v12) { if (s.v8 && out.graphics === 'medium' && out.reflections === 'off') out.reflections = 'soft'; out.v12 = true; }
   return out;
 }

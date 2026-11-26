@@ -7,7 +7,6 @@ from geo import Acc, Glow, Lights, MAT, lin, mix, cross, sub
 import street12
 import front12
 import lobby12
-from home14 import build_home   # v14 your flat in the Astor (home14.py)
 
 def build(key, S):
     fn = globals().get('build_' + key)

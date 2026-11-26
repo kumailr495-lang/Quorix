@@ -326,6 +326,126 @@ def popcorn_cart():
     tube('PushBar', 'brass', [(CX0 + 0.05, -CY + 0.01, 0.74), (CX0 + 0.05, -CY - 0.16, 0.8), (CX0 + 0.05, -CY - 0.2, 0.86), (CX1 - 0.05, -CY - 0.2, 0.86), (CX1 - 0.05, -CY - 0.16, 0.8), (CX1 - 0.05, -CY + 0.01, 0.74)], 0.012, 10)
 
 
+# ------------------------------------------------------------------------------------------------ service_cart
+# v14 the seat server's trolley (the user, 11-21: "the cart of the guy ... looked so bad"): a lacquered cabinet trolley like a hotel room-
+# service cart, 84 x 46 cm, its walnut top 83 cm up inside a brass gallery rail, brass corner posts with ball finials, brass-beaded black
+# panels on four sides with an oval plaque at the front, four swivel casters, a push bar with a leather grip at the back (-X, the server's
+# side); on top: two buckets of popcorn, a stack of empty buckets, four drinks in a carrier and a napkin box. npc9.js makeCart draws it.
+SC_X, SC_Y = 0.42, 0.23
+def caster(x, y):
+    M = T(x, y, 0.05) @ RX(90)                                                     # the wheel's axle along Y
+    lat('Tyre', 'rubber', [(0.03, -0.016), (0.044, -0.016), (0.05, -0.008), (0.05, 0.008), (0.044, 0.016), (0.03, 0.016)], M, 28)
+    lat('Hub', 'brass', [(1e-4, -0.019), (0.032, -0.019), (0.032, 0.019), (1e-4, 0.019)], M, 20)
+    lat('Axle', 'blackmetal', [(1e-4, -0.03), (0.006, -0.03), (0.006, 0.03), (1e-4, 0.03)], M, 10)
+    for s in (-1, 1):
+        bx('Fork', 'blackmetal', (x - 0.014, y + s * 0.022 - 0.002, 0.04), (x + 0.014, y + s * 0.022 + 0.002, 0.108), r=0.0015)
+    bx('ForkTop', 'blackmetal', (x - 0.03, y - 0.03, 0.104), (x + 0.03, y + 0.03, 0.112), r=0.002)
+    lat('Swivel', 'brass', [(1e-4, 0.11), (0.028, 0.11), (0.03, 0.115), (0.028, 0.124), (1e-4, 0.124)], T(x, y, 0), 20)
+
+
+def tub(x, y, z, full, seed, tilt=0.0):
+    """a popcorn bucket (16 cm, flared, a red band), heaped when full"""
+    M = T(x, y, z)
+    lat('Tub', 'paint_cream', [(1e-4, 0.0), (0.045, 0.0), (0.062, 0.16), (0.059, 0.1605), (0.043, 0.008), (1e-4, 0.008)], M, 28)   # its floor 6 mm over the walnut
+    rr = lambda zz: 0.045 + (0.062 - 0.045) * zz / 0.16
+    lat('TubBand', 'lacquer_red', [(rr(0.06) - 0.001, 0.06), (rr(0.06) + 0.0024, 0.06), (rr(0.11) + 0.0024, 0.11), (rr(0.11) - 0.001, 0.11)], M, 28)
+    if full:
+        rnd = random.Random(seed); pcs = []
+        for _ in range(46):
+            a = rnd.uniform(0, 6.283); r = 0.044 * math.sqrt(rnd.uniform(0, 1)); h = 0.05 * max(0.0, 1 - (r / 0.06) ** 2)   # inside the rim: no kernel through the wall
+            pcs.append((x + r * math.cos(a), y + r * math.sin(a), z + 0.148 + rnd.uniform(0, h), rnd.uniform(0.011, 0.015)))
+        part('Popcorn', 0, 'popcorn', corn(pcs, seed))
+        lat('TubFill', 'popcorn', [(1e-4, 0.14), (0.0585, 0.14), (0.0588, 0.152), (1e-4, 0.152)], M, 24)   # the heap's base inside the rim
+
+
+def service_cart():
+    for x in (-0.36, 0.36):
+        for y in (-0.19, 0.19): caster(x, y)
+    bx('Deck', 'walnut_dark', (-SC_X, -SC_Y, 0.12), (SC_X, SC_Y, 0.15), r=0.008)
+    # the cabinet: black lacquer panels between brass corner posts (4 mm into the posts and 5 mm into the deck and the top)
+    px, py = SC_X - 0.015, SC_Y - 0.015
+    for sy in (-1, 1):
+        bx('Panel', 'lacquer_black', (-px + 0.01, sy * py - 0.006, 0.145), (px - 0.01, sy * py + 0.006, 0.805), r=0.002)
+        bead_loop('Bead', 'brass', (-px + 0.05, sy * (py + 0.006), 0.19), (1, 0, 0), (0, 0, 1), 2 * px - 0.1, 0.57)
+    for sx in (-1, 1):
+        bx('Panel', 'lacquer_black', (sx * px - 0.006, -py + 0.01, 0.145), (sx * px + 0.006, py - 0.01, 0.805), r=0.002)
+        bead_loop('Bead', 'brass', (sx * (px + 0.006), -py + 0.05, 0.19), (0, 1, 0), (0, 0, 1), 2 * py - 0.1, 0.57)
+    lat('Plaque', 'brass', [(1e-4, -0.003), (0.05, -0.003), (0.052, 0.0), (0.05, 0.004), (1e-4, 0.004)], T(px + 0.007, 0, 0.6) @ RY(90) @ Matrix.Diagonal((1.0, 1.7, 1.0, 1.0)), 32)
+    for x in (-px, px):
+        for y in (-py, py):
+            top = 0.99 if x < 0 else 0.915   # the gallery rail (8.95-9.02 dm) runs through the posts, clear of their tops
+            lat('Post', 'brass', [(1e-4, 0.13), (0.014, 0.13), (0.014, top), (1e-4, top)], T(x, y, 0), 16)
+            lat('Finial', 'brass', [(1e-4, top - 0.01), (0.012, top - 0.008), (0.018, top + 0.006), (0.014, top + 0.02), (0.006, top + 0.027), (1e-4, top + 0.028)], T(x, y, 0), 16)
+            lat('PostFoot', 'brass', [(1e-4, 0.148), (0.019, 0.148), (0.019, 0.17), (0.0145, 0.178), (1e-4, 0.178)], T(x, y, 0), 16)
+    # the top: walnut inside a brass gallery rail on short balusters
+    bx('Top', 'walnut', (-SC_X - 0.01, -SC_Y - 0.01, 0.8), (SC_X + 0.01, SC_Y + 0.01, 0.83), r=0.01)
+    bead_loop('Gallery', 'brass', (-px, -py, 0.895), (1, 0, 0), (0, 1, 0), 2 * px, 2 * py, r=0.007, rc=0.02, steps=4)
+    for (x, y) in ((-0.135, -py), (0.135, -py), (-0.135, py), (0.135, py), (-px, 0.0), (px, 0.0)):
+        lat('Baluster', 'brass', [(1e-4, 0.826), (0.006, 0.826), (0.0045, 0.86), (0.006, 0.899), (1e-4, 0.899)], T(x, y, 0), 10)
+    # the push bar between the back posts, a leather grip with brass collars
+    bx('PushBar', 'brass', (-px - 0.012, -py, 0.958), (-px + 0.012, py, 0.982), r=0.011)
+    lat('Grip', 'leather_black', [(1e-4, -0.13), (0.019, -0.13), (0.021, -0.11), (0.021, 0.11), (0.019, 0.13), (1e-4, 0.13)], T(-px, 0, 0.97) @ RX(90), 18)
+    for s in (-1, 1):
+        lat('Collar', 'brass', [(1e-4, -0.009), (0.022, -0.009), (0.024, 0.0), (0.022, 0.009), (1e-4, 0.009)], T(-px, s * 0.133, 0.97) @ RX(90), 18)
+    # what the server brings: two full buckets, three empty ones stacked, four drinks in a carrier, a napkin box
+    tub(-0.02, 0.09, 0.828, True, 21); tub(-0.02, -0.09, 0.828, True, 22); rr = lambda zz: 0.045 + (0.062 - 0.045) * zz / 0.16
+    # three empty buckets nested 24 mm apart, as one solid: the bottom one's wall, then each rim above it (no walls a hair apart inside)
+    lat('Stack', 'paint_cream', [(1e-4, 0.0), (0.045, 0.0), (0.0622, 0.16), (0.064, 0.1615), (0.0615, 0.163), (0.0622, 0.184), (0.064, 0.1855), (0.0615, 0.187), (0.0622, 0.208),
+                                 (0.059, 0.2085), (0.0425, 0.051), (1e-4, 0.051)], T(-0.25, 0.1, 0.828), 28)
+    lat('StackBand', 'lacquer_red', [(rr(0.06) - 0.001, 0.06), (rr(0.06) + 0.0024, 0.06), (rr(0.11) + 0.0024, 0.11), (rr(0.11) - 0.001, 0.11)], T(-0.25, 0.1, 0.828), 28)
+    bx('Carrier', 'paint_cream', (0.15, -0.115, 0.828), (0.36, 0.115, 0.85), r=0.004)
+    for (x, y) in ((0.205, -0.055), (0.205, 0.055), (0.305, -0.055), (0.305, 0.055)):
+        lat('Cup', 'lacquer_red', [(1e-4, 0.845), (0.034, 0.845), (0.042, 0.985), (0.039, 0.9855), (1e-4, 0.986)], T(x, y, 0), 24)
+        lat('Lid', 'paint_cream', [(1e-4, 0.982), (0.038, 0.982), (0.0445, 0.983), (0.0445, 0.99), (0.03, 0.994), (1e-4, 0.995)], T(x, y, 0), 24)
+        tube('Straw', 'paint_cream', [(x, y, 0.96), (x, y, 1.02), (x - 0.012, y, 1.045)], 0.0035, 8)
+    bx('Napkins', 'blackmetal', (-0.33, -0.15, 0.828), (-0.2, -0.05, 0.9), r=0.004)
+    bx('Napkin', 'paint_cream', (-0.315, -0.135, 0.895), (-0.215, -0.065, 0.912), r=0.002)
+
+
+# ------------------------------------------------------------------------------------------------ borne_round
+# v14 (the user, 11-21: "the corridors like the upper area felt so empty and dead"): a borne, the round tufted banquette of grand lobbies
+# and old picture palaces: 1.6 m across, the seat 45 cm up with two rings of deep buttons, welt piping round its top and bottom edges, a
+# channel-tufted backrest drum in the middle under a brass lid (world9.js stands a snake plant on it), on a recessed black plinth in a brass
+# kick ring. Six people sit round it (world9.js SIT_ON ring). The velvet is velvet_teal; the corridor recolours it wine red.
+BR_OUT, BR_IN, BR_ZB, BR_ZE, BR_TOP = 0.8, 0.36, 0.12, 0.40, 0.842
+BR_BUT = [(0.5, 16, 0.0), (0.68, 16, math.pi / 16)]        # rings of buttons: radius, count, phase
+
+
+def borne_z(r, th):
+    db = 9.0
+    for (rr_, n, ph) in BR_BUT:
+        k = round((th - ph) * n / (2 * math.pi)); a = ph + 2 * math.pi * k / n; db = min(db, math.hypot(r * math.cos(th) - rr_ * math.cos(a), r * math.sin(th) - rr_ * math.sin(a)))
+    e = smooth01(0.0, 0.06, BR_OUT - r)
+    return BR_ZE + e * (0.045 + 0.008 * max(0.0, 1 - ((r - 0.6) / 0.25) ** 2) - 0.028 * math.exp(-(db / 0.03) ** 2))
+
+
+def borne_round():
+    na, ri = 96, BR_IN - 0.02
+    rs = [ri, 0.385, 0.42, 0.46, 0.5, 0.54, 0.58, 0.62, 0.65, 0.68, 0.71, 0.74, 0.765, 0.785, BR_OUT]; nr = len(rs) - 1   # a ring through each row of buttons
+    def seat(bm):
+        V = [[bm.verts.new((r * math.cos(2 * math.pi * i / na), r * math.sin(2 * math.pi * i / na), borne_z(r, 2 * math.pi * i / na))) for r in rs] for i in range(na)]
+        Bo = [bm.verts.new((BR_OUT * math.cos(2 * math.pi * i / na), BR_OUT * math.sin(2 * math.pi * i / na), BR_ZB)) for i in range(na)]
+        Bi = [bm.verts.new((ri * math.cos(2 * math.pi * i / na), ri * math.sin(2 * math.pi * i / na), BR_ZB)) for i in range(na)]
+        for i in range(na):
+            i2 = (i + 1) % na
+            for j in range(nr): bm.faces.new((V[i][j], V[i][j + 1], V[i2][j + 1], V[i2][j]))
+            bm.faces.new((V[i][nr], Bo[i], Bo[i2], V[i2][nr]))           # the boxed side
+            bm.faces.new((Bo[i], Bi[i], Bi[i2], Bo[i2]))                 # the bottom
+            bm.faces.new((Bi[i], V[i][0], V[i2][0], Bi[i2]))             # the inner wall, inside the drum
+    part('Seat', 0, 'velvet_teal', seat)
+    for (rr_, n, ph) in BR_BUT:
+        for k in range(n):
+            a = ph + 2 * math.pi * k / n; x, y = rr_ * math.cos(a), rr_ * math.sin(a); z = borne_z(rr_, a)
+            lat('Button', 'velvet_teal', [(1e-4, z - 0.006), (0.011, z - 0.006), (0.0105, z + 0.002), (0.006, z + 0.0055), (1e-4, z + 0.0065)], T(x, y, 0), 8)
+    for z in (BR_ZE + 0.002, BR_ZB + 0.016):
+        tube('Welt', 'velvet_teal', [(BR_OUT + 0.002) * Vector((math.cos(2 * math.pi * k / 64), math.sin(2 * math.pi * k / 64), 0)) + Vector((0, 0, z)) for k in range(64)], 0.0065, 6, closed=True)
+    # the backrest drum: 20 puffed vertical channels, faded flat 4 cm from each end (into the seat below, under the lid above)
+    part('Drum', 0, 'velvet_teal', fluted([0.40, 0.44, 0.48, 0.60, 0.72, 0.79, 0.83], lambda th, z: BR_IN + 0.014 * abs(math.sin(10 * th)) ** 0.5 * smooth01(0.44, 0.49, z) * (1 - smooth01(0.78, 0.82, z)), 120))
+    lat('Lid', 'brass', [(1e-4, 0.818), (BR_IN + 0.02, 0.818), (BR_IN + 0.023, 0.83), (BR_IN + 0.02, BR_TOP), (1e-4, BR_TOP)], T(0, 0, 0), 64)
+    lat('Plinth', 'lacquer_black', [(1e-4, 0.03), (0.70, 0.03), (0.70, BR_ZB + 0.008), (1e-4, BR_ZB + 0.008)], T(0, 0, 0), 64)
+    lat('Kick', 'brass', [(1e-4, 0.0), (0.715, 0.0), (0.72, 0.01), (0.72, 0.035), (0.715, 0.04), (1e-4, 0.04)], T(0, 0, 0), 64)
+
+
 # ------------------------------------------------------------------------------------------------ plinth_marble
 def plinth_marble():
     """a gallery plinth for a bust (v14, the entrance): a Nero Marquina shaft on a recessed black foot, a brass band near its foot, a brass
@@ -415,7 +535,7 @@ def _arc(bm, pts, w, t):
         bm.faces.new((a[0], a[1], b[1], b[0]))
 
 
-BUILD = {'bin_brass': bin_brass, 'bench_velvet': bench_velvet, 'poster_totem': poster_totem, 'planter_tall': planter_tall, 'popcorn_cart': popcorn_cart, 'plinth_marble': plinth_marble, 'motorcycle': motorcycle}
+BUILD = {'bin_brass': bin_brass, 'bench_velvet': bench_velvet, 'poster_totem': poster_totem, 'planter_tall': planter_tall, 'popcorn_cart': popcorn_cart, 'plinth_marble': plinth_marble, 'motorcycle': motorcycle, 'service_cart': service_cart, 'borne_round': borne_round}
 
 
 def reset():

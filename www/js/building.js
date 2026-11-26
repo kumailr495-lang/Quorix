@@ -72,7 +72,7 @@ const H_ = Object.values(HALL);
 for (const h of H_) {
   h.y0 = Math.round((L1 - h.total) * 1000) / 1000;
   const e = h.toWorld(h.entryU, h.depthIn);
-  DOORS.push({ id: h.id + 'In', rooms: ['corridor', h.key], kind: 'pair', axis: 'z', x: h.xRear - 0.2 * h.dir, z: e.z, w: 1.9, h: 2.5, y: L1, oneWay: 'corridor', hall: h.id });
+  DOORS.push({ id: h.id + 'In', rooms: ['corridor', h.key], kind: 'pair', axis: 'z', x: h.xRear - 0.2 * h.dir, z: e.z, w: 1.9, h: 2.5, y: L1, oneWay: 'corridor', hall: h.id, from: 0, swing: h.dir });   // v14b both ways
   const n = h.y0 > 0.02 ? Math.ceil(h.y0 / EXIT_RISE - 1e-6) : 0, edge = Math.max(0, h.screenD(h.W / 2));
   const d0 = Math.round(Math.max(edge + 0.6, n * EXIT_TREAD + 0.4 - (SCREEN_GAP + WALL) + 1.0) * 100) / 100;
   // one exit per side wall: sg -1 the wall at u = -width/2, +1 at +width/2; the door spans d0 .. d0 + 1.8 along the wall
@@ -102,19 +102,12 @@ for (const side of [-1, 1]) {
   }
 }
 // rooms: kind drives the Blender builder; level = the lowest floor in it; vis = rooms drawn when you are in it (portal culling)
-// v14 your home (the user, 11-20: "you should spawn in the house ... expand, buy plot, buy houses ... buy furniture, colors"): a flat in the
-// Astor across the road, built and baked like the other rooms but set apart from them (its windows look out on the city; you go in and out
-// by its front door, which opens onto the Astor's entrance on the far pavement). The east room behind a door is the home cinema you can buy.
-export const HOME = { x0: 300, x1: 322, z0: 0, z1: 11, ceil: 3.2, split: 316, door: { x: 309, z: 11, w: 1.0 }, cinemaDoor: { x: 316, z: 9.6, w: 1.0 },
-  inside: { x: 309, z: 10.2, yaw: 0 }, out: { x: -30, z: 39.25, yaw: 0 }, outDoor: { x: -30, z: 39.95 },
-  riser: { z0: 6.3, z1: 8.9, y: 0.25 } };   // the home cinema's second row stands on it (home14.py, world9.js floorY)
 export const ROOMS = {
   street: { kind: 'street', level: 0, rect: [STREET.x0, STREET.z0, STREET.x1, STREET.z1], outdoor: true, vis: ['lobby'] },
   lobby: { kind: 'lobby', level: 0, rect: [LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], ceil: LOBBY.ceil, vis: ['street', 'wc', 'corridor', 'spine'] },
   wc: { kind: 'wc', level: 0, rect: [WC.x0, WC.z0, WC.x1, WC.z1], ceil: WC.ceil, vis: ['lobby'] },
   corridor: { kind: 'corridor', level: L1, rect: [BRIDGE.x0, LINK_W.z0, BRIDGE.x1, BRIDGE.z1], ceil: L1 + 4.2, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
   spine: { kind: 'spine', level: 0, rect: [SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], ceil: SPINE.ceil, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
-  home: { kind: 'home', level: 0, rect: [HOME.x0, HOME.z0, HOME.x1, HOME.z1], ceil: HOME.ceil, vis: [] },
 };
 for (const h of Object.values(HALL)) {
   const a = h.toWorld(-h.width / 2, -1.25), b = h.toWorld(h.width / 2, h.depthIn);
@@ -127,7 +120,7 @@ export const POSTS = {
   vendor: { x: -15.4, y: 0, z: -6.0, yaw: -Math.PI / 2, room: 'lobby' },
   vendor2: { x: -15.4, y: 0, z: -2.4, yaw: -Math.PI / 2, room: 'lobby' },
   usher: { x: 6.8, y: 0, z: 5.6, yaw: Math.PI, room: 'lobby' },
-  server: { x: 0, y: L1, z: -23.6, yaw: 0, room: 'corridor' },   // the service pantry (a niche off the bridge, over the spine): the cart waits here
+  server: { x: -1.3, y: L1, z: -25.4, yaw: 0, room: 'corridor' },   // the service pantry (a niche off the bridge, over the spine): he and the cart wait at its back (v14b: out of the bridge's way)
   driver: { x: -6.0, y: 0, z: 27.8, yaw: Math.PI / 2, room: 'street' },
 };
 export const SPAWN = { quick: { x: -2, y: 0, z: 9, yaw: 0, room: 'lobby' }, kerb: { x: -6.0, y: 0, z: 25.4, yaw: Math.PI, room: 'street' } };

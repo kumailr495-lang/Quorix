@@ -36,7 +36,7 @@ export const CLASSES = {
 // corner to corner (hB 2.8: the band of three screens keeps its bottom edge).
 export const HALLS = [
   { id: 'MAX', no: 1, key: 'hallMax', name: 'LUMIERE MAX', format: 'max', side: -1, zc: -38.9, width: 33.0, W: 32.7, H: 14.6, hB: 0.95, sag: 0.0215, D1: 14.4, c: 0.2,
-    aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.6, rowK: 34, curtain: false, frame: 0.25,
+    aisleW: 1.5, cross: { after: 4, w: 1.7 }, rear: 2.6, rowK: 0, curtain: false, frame: 0.25,   // v14 straight stadium rows (the user, 11-21: "curved for no reason")
     groups: [{ seat: 'rocker', rows: 11, n: 37, pitch: 1.36, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
       { seat: 'pod', rows: 2, pairs: 10, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },
   { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -73.3, width: 28.6, W: 28.3, H: 12.0, hB: 1.05, sag: 0.1547, D1: 12.2, c: 0.2,
@@ -44,13 +44,13 @@ export const HALLS = [
     groups: [{ seat: 'recliner', rows: 7, n: 21, pitch: 1.92, cls: (r) => (r >= 2 && r <= 4 ? 'reclPlus' : 'recl') },
       { seat: 'sofa', rows: 1, pairs: 9, gap: 0.5, pitch: 2.0, cls: () => 'love' }] },
   { id: 'CLASSIC', no: 3, key: 'hallClassic', name: 'LUMIERE CLASSIC', format: 'classic', side: 1, zc: -34.7, width: 24.6, W: 24.3, H: 11.0, hB: 1.0, sag: 0, D1: 11.0, c: 0.2,
-    aisleW: 1.25, cross: null, rear: 2.6, rowK: 30, curtain: true, frame: 0.25,
+    aisleW: 1.25, cross: null, rear: 2.6, rowK: 0, curtain: true, frame: 0.25,   // v14 straight rows, as a picture palace
     groups: [{ seat: 'rocker', rows: 11, n: 27, pitch: 1.3, cls: (r) => (r >= 6 ? 'prime' : 'std') },
       { seat: 'sofa', rows: 1, pairs: 8, gap: 0.42, pitch: 1.75, cls: () => 'sofa' }] },
   // v9.3 (the user, photo of a real ScreenX hall: "it's connected"): the front screen runs corner to corner and the side screens start at
   // the corners with the same top and bottom, one band round three walls (its bottom edge 2.8 m up: v12b the exits are in the side walls under it)
   { id: 'X270', no: 4, key: 'hall270', name: 'LUMIERE X·270', format: 'x270', side: 1, zc: -63.0, width: 24.8, W: 24.7, H: 12.0, hB: 2.8, rakeHB: 1.25, sag: 0, D1: 11.4, c: 0.2,
-    aisleW: 1.3, cross: null, rear: 2.6, rowK: 30, curtain: false, frame: 0.25, panels: true,
+    aisleW: 1.3, cross: null, rear: 2.6, rowK: 0, curtain: false, frame: 0.25, panels: true,   // v14 straight rows (the user, 11-26: "why is every theatre curved rather than the curved one"): only CURVE has arcs
     groups: [{ seat: 'recliner', rows: 8, n: 19, pitch: 1.92, cls: (r) => (r >= 3 && r <= 5 ? 'x270p' : 'x270') }] },
 ];
 // placement (docs/V9-DESIGN.md section 4): the screen wall stands on the exit spine; the picture plane is SCREEN_GAP in front of it

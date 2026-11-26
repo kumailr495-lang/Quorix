@@ -2,6 +2,7 @@
 // photographed people, host a room or join with a code), the room badge and chat in the game, the other players in the cinema (the
 // people renderer with its AI switched off: they walk, sit, wave and talk as their phones say), their names over their heads, and the
 // host's shows started on every phone at the same moment. mp.js carries the messages.
+import { makeHeld, setHeldMaterial } from './held.js';
 import * as THREE from 'three';
 import { Multi, newCode, cleanCode } from './mp.js';
 import { RB, Person, LOOK, LOOK_SHOP, cleanLook, applyLook } from './people.js';
@@ -26,7 +27,8 @@ export class Together {
     this.c = ctx; this.remotes = new Map(); this.tags = new Map(); this._v = new THREE.Vector3(); this.last = { x: 0, z: 0 }; this.speed = 0;
     this.mp = new Multi({ onJoin: (p) => this.join_(p), onLeave: (p) => this.leave_(p), onState: () => {}, onShow: (s, p) => this.applyShow(s, p), onChat: (p, m) => this.chat_(p, m),
       onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); if (a && e === 'dance') a.danceUntil = performance.now() + 6000; }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.note(t('mp.newHost')); this.badge(); },
-      onCtl: (c, p) => this.applyCtl(c, p), onOrder: (p, key) => { const f = this.seatByKey(key); if (f && this.c.order) this.c.order(f.s, p.name); } });
+      onCtl: (c, p) => this.applyCtl(c, p), onOrder: (p, key) => { const f = this.seatByKey(key); if (f && this.c.order) this.c.order(f.s, p.name); },
+      onRoster: (r) => this.c.crowd.applyRoster(r), onCrowd: (c) => this.c.crowd.applyGuests(c), onLift: (b) => this.c.liftPress && this.c.liftPress(b) });
     this.log = []; this.unread = 0;
     // the menu button, after Quick play
     const q = document.querySelector('#mnQuick');
@@ -112,7 +114,7 @@ export class Together {
     if (!asHost) setTimeout(() => { if (this.active && this.mp.peers.size === 0 && this.panel) status.textContent = t('mp.failed'); }, 20000);
     setTimeout(() => { this.close(); this.c.enterPlay(); }, asHost ? 2200 : 900);
   }
-  leave() { this.mp.leave(); this.badge(); }
+  leave() { this.mp.leave(); this.c.crowd.mirrorGuests(false); this.badge(); }
   // ---------------------------------------------------------------- in the game: the badge, the bar (chat, emotes), the other players
   badge() {
     if (!this.active) { if (this.bdg) { this.bdg.remove(); this.bar.remove(); this.bdg = this.bar = null; } return; }
@@ -153,32 +155,44 @@ export class Together {
     a.hidden = true; this.remotes.set(p.id, a); this.note(t('mp.joined', { name: p.name }));
     const tag = el('b', { text: p.name }); this.tagLayer.appendChild(tag); this.tags.set(p.id, tag);
   }
-  leave_(p) { const a = this.remotes.get(p.id); if (a) { this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); if (a.ring) { a.ring.removeFromParent(); a.ring.geometry.dispose(); a.ring.material.dispose(); a.ring = null; } } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
+  leave_(p) { const a = this.remotes.get(p.id); if (a) { if (a.armTab) { a.armTab.hide(); a.armTab.group.removeFromParent(); a.armTab = null; } this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); if (a.ring) { a.ring.removeFromParent(); a.ring.geometry.dispose(); a.ring.material.dispose(); a.ring = null; } } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
   freeSeat(a) { if (a.viewer && a.viewer.seat && a.viewer.seat.npc === 'remote') { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.viewer = null; }
   seatByKey(key) { if (!key) return null; const [hk, id] = key.split(':'); const h = this.c.world.hallByKey(hk); if (!h) return null; const s = h.seats.find((q) => q.id === id); return s ? { s, h } : null; }
   // per frame: send me, move them, place their names
   frame(dt) {
-    if (!this.active) { if (this.tags.size) for (const tg of this.tags.values()) tg.style.display = 'none'; return; }
+    if (!this.active) { if (this.tags.size) for (const tg of this.tags.values()) tg.style.display = 'none'; if (this.c.crowd.mirror) this.c.crowd.mirrorGuests(false); return; }
     const P = this.c.player, d = Math.hypot(P.x - this.last.x, P.z - this.last.z); this.speed += ((dt > 0 ? d / dt : 0) - this.speed) * Math.min(1, dt * 6); this.last.x = P.x; this.last.z = P.z;
-    const seat = this.c.mySeat(); this.mp.tick(dt, { x: P.x, y: P.y, z: P.z, yaw: P.yaw, sit: P.seated ? 1 : 0, seat: seat ? `${seat.hallKey}:${seat.id}` : null, room: this.c.room(), v: Math.min(5, this.speed) });
+    const seat = this.c.mySeat(), spot = !seat && P.seated && this.c.mySpot ? this.c.mySpot() : -1, held = this.c.held ? this.c.held() : null;
+    this.mp.tick(dt, { x: P.x, y: P.y, z: P.z, yaw: P.yaw, sit: P.seated ? 1 : 0, seat: seat ? `${seat.hallKey}:${seat.id}` : spot >= 0 ? `spot:${spot}` : null, room: this.c.room(), v: Math.min(5, this.speed), held, tab: !!(this.c.tabOpen && this.c.tabOpen()) });
+    // v14 one set of lobby guests for everyone: the host sends them, the others show them (npc9.js mirrorGuests)
+    const C = this.c.crowd; if (this.mp.host) { if (C.mirror) C.mirrorGuests(false); this.mp.crowd(C.guestRoster(), C.guestState(), dt); }
     const cam = this.c.engine.camera, W = innerWidth, H = innerHeight, k = Math.min(1, dt * 10);
     for (const [id, a] of this.remotes) {
       const p = this.mp.peers.get(id), st = p && p.st, tag = this.tags.get(id); if (!st) { if (tag) tag.style.display = 'none'; continue; }
-      if (st.sit > 0.5 && st.seat) { const f = this.seatByKey(st.seat);
+      const sp0 = st.sit > 0.5 && st.seat && st.seat.startsWith('spot:') ? this.c.world.sitSpots[+st.seat.slice(5)] : null;
+      if (sp0 && !sp0.home) { if (a.viewer) this.freeSeat(a); a.x = sp0.x; a.z = sp0.z; a.y = sp0.fy ?? sp0.y - 0.45; a.yaw = sp0.face; a.perch = { h: sp0.y - a.y }; a.sit = Math.min(1, (a.sit || 0) + dt * 1.5); a.remoteWalk = 0; }   // v14 on a sofa: sitting, not standing on it
+      else if (st.sit > 0.5 && st.seat && !st.seat.startsWith('spot:')) { a.perch = null; const f = this.seatByKey(st.seat);
         if (f && (!a.viewer || a.viewer.seat !== f.s)) { this.freeSeat(a); if (f.s.npc && f.s.npc !== 'player' && f.s.npc !== 'remote' && this.c.crowd.dropViewer) this.c.crowd.dropViewer(f.s.npc); f.s.npc = 'remote'; f.s.taken = true; a.viewer = { seat: f.s, hall: f.h }; }
         if (a.viewer) { const s = a.viewer.seat; a.x = s.x; a.y = s.y; a.z = s.z; a.yaw = s.yaw + Math.PI; a.sit = Math.min(1, (a.sit || 0) + dt * 1.5); a.remoteWalk = 0; } }
-      else { if (a.viewer) { this.freeSeat(a); a.sit = 0; }
+      else { if (a.viewer) { this.freeSeat(a); a.sit = 0; } if (a.perch) { a.perch = null; a.sit = 0; }
         // their camera yaw faces -z at 0; a person faces +z at 0
         const sp = this.mp.sample(p), jump = Math.hypot(sp.x - a.x, sp.z - a.z) > 6;   // v14 interpolated (mp.js sample); a long jump (a lift, a fast exit) snaps
         if (jump) { a.x = sp.x; a.y = sp.y; a.z = sp.z; } else { a.x += (sp.x - a.x) * Math.min(1, dt * 18); a.y += (sp.y - a.y) * Math.min(1, dt * 18); a.z += (sp.z - a.z) * Math.min(1, dt * 18); }
         const want = sp.yaw + Math.PI; a.yaw += Math.atan2(Math.sin(want - a.yaw), Math.cos(want - a.yaw)) * Math.min(1, dt * 14); a.remoteWalk = st.v > 0.25 ? st.v : 0; }
+      // v14b their armrest tablet rises out of their seat while they use it (the user, 11-26: "the other person, it doesn't show that the
+      // player is using tablet")
+      { const want = !!(p.meta && p.meta.tab) && a.viewer && a.viewer.seat; if (want && !a.armTab && this.c.ArmTablet) a.armTab = new this.c.ArmTablet(this.c.world);
+        if (a.armTab) { if (want && !a.armTab.want) a.armTab.show(a.viewer.hall, a.viewer.seat, null); else if (!want && a.armTab.want) a.armTab.hide(); a.armTab.update(dt); } }
+      // v14 what they hold (the user, 11-21: "same for food, it wasent visible"): the menu item in their right hand, re-attached when their figure changes
+      const hid = (p.meta && p.meta.held) || null; if (hid !== a._held || (hid && a.ch && a._heldCh !== a.ch)) { if (a._heldCh) a._heldCh.detach('food'); a._heldCh = null; a._held = hid; a.item = hid;
+        if (hid && a.ch && this.c.heldMat) { const m = makeHeld({ id: hid }); setHeldMaterial(m, this.c.heldMat()); m.userData.setLevel && m.userData.setLevel(1); a.ch.attach('food', m, 'handR'); a._heldCh = a.ch; } }
       // v14 (the user, 11-20: "there's no difference between the player and the NPCs"): a player stands in a soft gold ring; NPCs never do
       if (a.ch && !a.ring) { const rg = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.46, 40), new THREE.MeshBasicMaterial({ color: p && p.host ? 0x7fd2ff : 0xe3b25f, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
         rg.rotation.x = -Math.PI / 2; rg.renderOrder = 3; a.ring = rg; this.c.engine.scene.add(rg); }
       if (a.ring) { a.ring.visible = !!(a.ch && a.ch.group.visible) && !a.viewer; a.ring.position.set(a.x, a.y + 0.02, a.z); a.ring.material.opacity = 0.55 + 0.2 * Math.sin(performance.now() * 0.004); }
       if (!tag) continue; const vis = a.ch && a.ch.group.visible && this.c.settings.mpNames !== false; if (!vis) { tag.style.display = 'none'; continue; }
       this._v.set(a.x, a.y + (a.viewer ? 1.45 : 2.0), a.z).project(cam); const near = Math.hypot(a.x - cam.position.x, a.z - cam.position.z) < 22;
-      if (this._v.z > 1 || !near) { tag.style.display = 'none'; continue; }
+      if (this._v.z > 1 || !near || !this.c.world.walls.sees(cam.position.x, cam.position.z, a.x, a.z, Math.min(cam.position.y, a.y + 1.5), Math.max(cam.position.y, a.y + 1.5) + 0.2)) { tag.style.display = 'none'; continue; }   // v14b never through a wall
       if (tag.style.display) tag.style.display = ''; tag.style.transform = `translate3d(${((this._v.x + 1) / 2 * W).toFixed(0)}px,${((1 - this._v.y) / 2 * H).toFixed(0)}px,0) translate(-50%,-100%)`;   // v14 compositor only (left/top re-laid out the page every frame)
       if (tag._host !== !!p.host) { tag._host = !!p.host; tag.classList.toggle('host', tag._host); }
     }
@@ -202,11 +216,12 @@ export class Together {
   }
   // the server: one for the whole cinema; an order from any phone joins his queue on every phone
   sendOrder(seat, hallKey) { if (this.active && seat && hallKey) this.mp.order(`${hallKey}:${seat.id}`); }
+  sendLift(b) { if (this.active) this.mp.lift(b); }
   // ---------------------------------------------------------------- shows: the host books, every phone starts it at the same moment
   onBooked(id) {
     if (!this.active || !this.mp.host) return; const s = this.c.shows.get(id); if (!s || !s.src) return; const src = s.src;
     const share = cleanShow(src.kind === 'film' ? src : { kind: src.kind, ytId: src.ytId, url: src.orig || src.url, title: src.title }); if (share) s.sync = true;
-    this.mp.show({ hall: id, src: share, title: src.title || '', local: !share, startAt: this.mp.hostNow() + Math.max(0, (s.startAt || 0) - performance.now()) });
+    this.mp.show({ hall: id, src: share, title: src.title || '', local: !share, startAt: this.mp.hostNow() + Math.max(0, (s.startAt || 0) - performance.now()), aud: this.c.crowd.audPlan(id) });   // v14 the same audience on every phone
   }
   applyShow(sh, p) {
     const H = this.c.world.hallById(sh.hall); if (!H) return; const hall = H.name.replace('LUMIERE ', '');
@@ -214,7 +229,7 @@ export class Together {
     // shows.now is the last frame's time: add the time since then, so a slow frame does not shift the start
     const d = Math.round(sh.startAt - this.mp.hostNow()), lag = Math.max(0, performance.now() - this.c.shows.now);
     if (!Number.isFinite(d) || d > 600000 || d < -6 * 3600000) return;
-    this.c.shows.book(sh.hall, src, Math.max(d, 1500) + lag, null, { minDelay: 1500, seekMs: d < 1500 ? 1500 - d : 0, sync: true });
+    this.c.shows.book(sh.hall, src, Math.max(d, 1500) + lag, null, { minDelay: 1500, seekMs: d < 1500 ? 1500 - d : 0, sync: true, aud: Array.isArray(sh.aud) ? sh.aud : null });
     this.c.toast(t('mp.hostStarted', { name: p.name, title: String(sh.title || '').slice(0, 60), hall }), 3600);
   }
 }

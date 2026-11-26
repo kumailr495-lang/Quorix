@@ -22,7 +22,6 @@
     T = await import('/vendor/three.module.js'); GM = await import('/js/geom.js'); HM = await import('/js/hallmath.js'); BLD = await import('/js/building.js');
     const L = window.__lumiere, E = L.engine; Object.assign(st, { L, W: L.world, E, R: E.renderer, S: E.scene });
     // v14 your flat with everything in it (home.js): the home cinema bought, so its seats, speakers and door are checked too
-    if (L.home && L.home.room && !L.home.s.cinema) { L.home.s.cinema = true; L.home.rebuild(); }
     if (!E._render0) { E._render0 = E.render.bind(E); E.render = () => {}; }
     st.MATN = Object.fromEntries(Object.entries(GM.MAT).map(([k, v]) => [v, k]));
     st.face = new T.MeshBasicMaterial({ side: T.DoubleSide, fog: false, toneMapped: false });
@@ -152,7 +151,7 @@
         const ny = W.floorY(p.x, p.z, y); if (Math.abs(ny - oy) > 0.42 || Math.hypot(p.x - tx, p.z - tz) > 0.06) return false; y = ny; }
       return Math.abs(y - b.y) < 0.05; }
     try {
-      for (const [x, z, y] of o.starts || [[0.6, 25.2, 0], [-2, 9, 0], [BLD.HOME.inside.x, BLD.HOME.inside.z - 0.8, 0]]) visit(Math.floor(x / C), Math.floor(z / C), y, null);   // v14 the flat: its door is a fade
+      for (const [x, z, y] of o.starts || [[0.6, 25.2, 0], [-2, 9, 0]]) visit(Math.floor(x / C), Math.floor(z / C), y, null);   // v14 the flat: its door is a fade
       const Lf = BLD.LIFT, inLift = (c) => c.x > Lf.x0 + 0.1 && c.x < Lf.x1 - 0.1 && c.z > Lf.z0 + 0.1 && c.z < Lf.z1 - 0.1;
       while (Q.length) { const a = Q.shift();
         for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) visit(a.ix + dx, a.iz + dz, a.y, a);

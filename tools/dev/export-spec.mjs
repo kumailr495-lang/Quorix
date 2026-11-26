@@ -14,5 +14,5 @@ const halls = Object.values(B.HALL).map((h) => {
 });
 const out = { v: 9, TREAD, STEP_MAX, SEAT, L1: B.L1, FACADE: B.FACADE, LOBBY: B.LOBBY, MEZZ: B.MEZZ, SPINE: B.SPINE, BRIDGE: B.BRIDGE, FLANK_W: B.FLANK_W, LINK_W: B.LINK_W,
   FLANK_E: B.FLANK_E, LINK_E: B.LINK_E, PANTRY: B.PANTRY, WC: B.WC, STREET: B.STREET, ESC: Object.fromEntries(Object.entries(B.ESC).map(([k, e]) => [k, { ...e, profile: B.escProfile(e) }])),
-  LIFT: B.LIFT, GALLERY: B.GALLERY, CORE: B.CORE, TRAVELATOR: B.TRAVELATOR, GATE: B.GATE, DOORS: B.DOORS, EXIT_PASSAGES: B.EXIT_PASSAGES, PASS_W: B.PASS_W, ROOMS: B.ROOMS, COUNTERS: B.COUNTERS, POSTS: B.POSTS, PALETTE: B.PALETTE, HOME: B.HOME, halls };
+  LIFT: B.LIFT, GALLERY: B.GALLERY, CORE: B.CORE, TRAVELATOR: B.TRAVELATOR, GATE: B.GATE, DOORS: B.DOORS, EXIT_PASSAGES: B.EXIT_PASSAGES, PASS_W: B.PASS_W, ROOMS: B.ROOMS, COUNTERS: B.COUNTERS, POSTS: B.POSTS, PALETTE: B.PALETTE, halls };
 const f = process.argv[2] || 'tools/blender/arch/spec.json'; fs.writeFileSync(f, JSON.stringify(out)); console.log('spec ->', f, (fs.statSync(f).size / 1024).toFixed(0), 'KB');

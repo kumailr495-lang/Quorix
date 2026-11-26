@@ -65,13 +65,16 @@ void main() { float dist = uWall.x + vUv.x * uWall.y, s = uSrc.z / max(1e-4, uBo
   float x = (uSide > 0.0 ? uSrc.x + uSrc.z : uSrc.x) + uSide * (dist + gap) * s, o = max(x - 1.0, -x), over = max(o, 0.0) / max(s, 1e-4);
   float xm = x > 1.0 ? 1.0 - (x - 1.0) * 0.55 : x < 0.0 ? -x * 0.55 : x, xc = clamp(xm, 0.002, 0.998);
   float y = uSrc.y + uSrc.w * ((vY - uFront.x) / uFront.y - uBox.y) / uBox.w; vec2 q = vec2(xc, clamp(y, 0.0, 1.0));
-  vec3 c = mix(texture2D(uVid, q).rgb, textureLod(uSpill, q, 1.0 + min(over * 0.35, 4.0)).rgb, smoothstep(0.0, 1.5, over)) * (1.0 - 0.35 * smoothstep(0.0, 14.0, over));
+  // v14b (the user, 11-26: "blured and weird border issues", a photo of streaks along the 270's side wall): past the frame's edge no stretched
+  // texels any more (one column smeared over metres): only the film's light, from the spill's small mips, dimmer with distance
+  vec3 soft = textureLod(uSpill, vec2(xc, clamp(y, 0.06, 0.94)), 3.0 + min(over * 0.3, 3.5)).rgb;
+  vec3 c = mix(texture2D(uVid, q).rgb, soft * 0.78, smoothstep(0.0, 0.25, over)) * (1.0 - 0.55 * smoothstep(0.0, 10.0, over));
   // v11 (the user, with a photo: "the side screens are not equal"): a film bright on one edge and dark on the other gave one burnt-out wall
   // and one dim one. Each wall is now pulled most of the way to the whole picture's mean brightness (its colours stay its own edge's),
   // and the picture replaces the lit surface instead of being added to it, a little under the front screen's level as in a real 270 hall
   vec3 all = textureLod(uSpill, vec2(0.5), 9.0).rgb, mine = textureLod(uSpill, vec2(uSide > 0.0 ? 0.92 : 0.08, 0.5), 5.0).rgb;
   float La = dot(all, vec3(0.2126, 0.7152, 0.0722)), Lm = dot(mine, vec3(0.2126, 0.7152, 0.0722));
-  c *= 0.82 * clamp(mix(1.0, (La + 0.02) / (Lm + 0.02), 0.75), 0.45, 1.9);
+  c *= 0.8 * clamp(mix(1.0, (La + 0.02) / (Lm + 0.02), 0.5), 0.6, 1.3);
   float fade = smoothstep(1.0, 0.94, vUv.x) * smoothstep(-0.01, 0.01, y) * smoothstep(1.01, 0.99, y);
   gl_FragColor = vec4(c, uAmt * fade);
   #include <colorspace_fragment>
@@ -130,7 +133,7 @@ export class Shows {
     else { s.src = { ...src, orig: src.orig || src.url }; const M = media; if (s.src.kind === 'link' && M && M.proxyBase) { try { const b = M.proxyBase(); if (b) s.src.url = b + encodeURIComponent(src.url); } catch (e) { s.src.url = src.url; } } }
     s.credits = false; s.curtainKeep = !!o.replay; this.active = id; s.startAt = this.now + Math.max(o.minDelay != null ? o.minDelay : o.replay ? 3000 : 12000, delayMs); s.seek = Math.max(0, (o.seekMs || 0) / 1000); s.sync = !!o.sync; s.state = 'pending'; s.phaseAt = this.now; s.booked = true;
     if (s.src.kind !== 'youtube') { const v = this.video; v.pause(); v.playbackRate = 1; v.src = s.src.url; v.load(); }
-    if (!o.replay) { this.crowd.clearAudience(id); const n = Math.min(this.engine.preset.crowd, Math.round(s.hall.seats.length * (0.4 + Math.random() * 0.3))); this.crowd.planAudience(id, n, Math.max(8000, s.startAt - this.now - 6000), new Set([playerSeat])); }
+    if (!o.replay) { this.crowd.clearAudience(id); const n = Math.min(this.engine.preset.crowd, Math.round(s.hall.seats.length * (0.4 + Math.random() * 0.3))); this.crowd.planAudience(id, n, Math.max(8000, s.startAt - this.now - 6000), new Set([playerSeat]), o.aud || null); }
     this._slideWaiting(s);
   }
   replay(id) { const s = this.s[id]; if (!s || !s.src) return false; this.book(id, s.src, 0, null, { replay: true }); return true; }
@@ -157,6 +160,8 @@ export class Shows {
     else { const p = v.play(); if (p && p.catch) p.catch((e) => { console.warn('[lumiere] play failed', e); this.hooks.onError && this.hooks.onError(s.src.kind); });
       const show = () => { if (s.state !== 'playing') return; this._fit(s, (v.videoWidth / v.videoHeight) || 16 / 9); s.hall.picMat.uniforms.map.value = this.vtex; s.hall.picMat.uniforms.uGain.value = 1; s.pic = true;
         this.sound.startFilm(s.hall.key, { video: v, hall: s.hall }); this.hooks.onPicture && this.hooks.onPicture(id);
+        // v14 a film whose sound this phone cannot decode (AC-3, E-AC-3, DTS in many downloaded films) plays without sound: say so once
+        if (s.src.kind !== 'film') setTimeout(() => { if (s.state === 'playing' && !v.paused && v.currentTime > 3 && v.webkitAudioDecodedByteCount === 0 && this.hooks.onNoAudio) this.hooks.onNoAudio(); }, 6000);
         if (s.src.kind === 'film') { const go = () => s.track && this.director.startTrack(id, s.track.cues, () => v.currentTime); if (s.track) go(); else loadTrack(s.src.filmId).then((tr) => { s.track = tr; go(); }); } else this.director.startLive(id, this.now); };
       if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => show()); else v.addEventListener('playing', () => setTimeout(show, 120), { once: true }); }
   }
@@ -233,7 +238,8 @@ export class Shows {
     const P = [[-pw / 2, ph / 2], [pw / 2, ph / 2], [pw / 2, -ph / 2], [-pw / 2, -ph / 2]].map(([u, v]) => new THREE.Vector3(cx + ux * u, cy + v, cz + uz * u).project(camera));
     const seen = P.some((p) => p.z < 1 && Math.abs(p.x) < 1.2 && Math.abs(p.y) < 1.2) || (P.every((p) => p.z < 1) && !(P.every((p) => p.x > 1) || P.every((p) => p.x < -1) || P.every((p) => p.y > 1) || P.every((p) => p.y < -1)));
     el.style.visibility = 'visible';
-    if (!seen) {   // looking away: a 2 px corner keeps the player "on screen" (an off-screen player may stop drawing and stall when you look back)
+    // v14b (the user, 11-26: "when i am far away or in lobby, i can see it through walls"): only inside its own hall
+    if (!seen || (this.sound.listener && this.sound.listener.room !== s.hall.key)) {   // looking away: a 2 px corner keeps the player "on screen" (an off-screen player may stop drawing and stall when you look back)
       el.style.perspective = ''; cam.style.transform = ''; f.style.transform = 'translate(-639px,-359px) scale(0.0016)'; f.style.opacity = '0.01'; return; }
     f.style.opacity = '1'; const fov = camera.projectionMatrix.elements[5] * Hh / 2, e = camera.matrixWorldInverse.elements, n = (v) => (Math.abs(v) < 1e-10 ? 0 : v);
     el.style.perspective = fov + 'px'; Object.assign(cam.style, { width: W + 'px', height: Hh + 'px' });

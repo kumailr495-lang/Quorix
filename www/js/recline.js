@@ -10,7 +10,7 @@ import { Acc, toGeometry } from './geom.js';
 import { makeHeld, setHeldMaterial } from './held.js';
 
 const BACK = /^(Back|Headrest)/, FOOT = /^Footrest/, CUP = /^Cup[AB]Well/, TRAVEL = 2.2;   // seconds, end to end
-const BACK_TILT = 0.56, FOOT_LIFT = 1.45;   // radians: about 32 and 83 degrees (the footrest level)
+const BACK_TILT = 0.38, FOOT_LIFT = 1.3;   // radians: about 22 and 75 degrees (v14, the user: "the seat reclines a lot"; it was 32)
 const flip = new THREE.Matrix4().makeRotationY(Math.PI);
 
 export class Recliner {
@@ -70,8 +70,8 @@ export class Recliner {
   // put what you hold (held: main.js's { kind, left, max, name }) into the nearest free holder; false if there is none
   put(held) {
     const h = this.freeHolder(); if (!h || !held) return false;
-    const mesh = makeHeld(held.kind === 'coffee' ? 'coffee' : held.kind); setHeldMaterial(mesh, this.itemMat); if (mesh.userData.setLevel) mesh.userData.setLevel(1);
-    mesh.position.copy(h.p); mesh.position.y += held.kind === 'popcorn' ? 0.02 : 0.03; mesh.rotation.y = this.cur.seat.yaw; this.cur.hall.room.group.add(mesh);
+    const mesh = makeHeld(held); setHeldMaterial(mesh, this.itemMat); if (mesh.userData.setLevel) mesh.userData.setLevel(held.left / held.max);
+    mesh.position.copy(h.p); mesh.position.y += held.kind === 'eat' || held.kind === 'popcorn' ? 0.04 : 0.06; mesh.rotation.y = this.cur.seat.yaw; this.cur.hall.room.group.add(mesh);
     h.used = true; this.cups.push({ held: { ...held }, mesh, h }); this.sound.cupKnock && this.sound.cupKnock(false); return true;
   }
   // take the last thing put down back into your hand

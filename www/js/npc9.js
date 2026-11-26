@@ -10,6 +10,7 @@ import { Person, CrowdRenderer, DATA, randomRecipe, staffRecipe, sitHeight } fro
 import { POSTS, NAV, HALL, L1, ESC, SPINE, ZONE, LOBBY, EXIT_PASSAGES } from './building.js';
 import { seatRoute, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { pick } from './i18n.js';
+import { ASSETS } from './assets.js';
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), adiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b)), rnd = (a, b) => a + Math.random() * (b - a);
 const HIDDEN = { visible: false }, SEAT_H = { rocker: 0.44, recliner: 0.5, sofa: 0.5, pod: 0.5 }, RECLINE = { rocker: 0.18, recliner: 0.32, sofa: 0.2, pod: 0.26 };
 const DENSITY = { off: 0, low: 10, medium: 20, high: 30 };   // v9.3 (the user: "everything feels so empty"): a busy evening lobby
@@ -82,8 +83,20 @@ export class Crowd {
     mk('cafe', 'vendor', 'Leo', 'cafe', 'barM', null, { x: -20.45, y: 0, z: -11.3, yaw: -Math.PI / 2 });   // v10: the barista behind the cafe counter
     mk('usher', 'usher', 'Marcel', 'usher', 'usher', 'usher'); mk('server', 'server', 'Rahul', 'server', 'server', 'server');
     this.staff.server.cart = true; this.cart = makeCart(this.mats, this.scene);
-    this.setDensity(this.density); this.streetFolk();
+    this.setDensity(this.density); this.streetFolk(); this.corridorFolk();
   }
+  // v14 (the user, 11-21: "the corridors like the upper area felt so empty and dead"): people upstairs between the shows. Three stroll the
+  // bridge between the halls' doors, each on a lane 0.9 m off the walking line (so they never meet the audience or the usher head-on), two
+  // pairs talk by the posters on the north wall, three sit round the bornes (world9.js BORNES) facing out
+  corridorFolk() {
+    const Y = L1, folk = this.folk = [], mk = (o) => { const rs = this.seed(), rec = randomRecipe(rs), a = this.spawn({ rec, role: 'guest', voice: rec.kind === 'f' ? 'guestF' : 'guestM', y: Y, talkable: true, ...o }); Object.assign(a, { rs, gn: 1000 + folk.length, gi: 0 }); folk.push(a); return a; };
+    for (const [x0, x1, lane] of [[-44, -6, -17.1], [-4, 12, -18.9], [14, 36, -17.1]]) { const a = mk({ x: (x0 + x1) / 2, z: lane, yaw: Math.PI / 2, state: 'street', speed: rnd(1.05, 1.3) }); a.idle = IDLES[0]; a.next = this.now + rnd(800, 5000);
+      a.leg = () => { const tx = rnd(x0, x1); a.go([{ x: tx, y: Y, z: lane }], () => { a.yaw = Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2; a.next = this.now + rnd(3000, 11000); }); }; }
+    for (const [x, z] of [[-27.5, -15.4], [18.6, -15.4]]) for (const s of [-1, 1]) { const a = mk({ x: x + s * 0.42, z, yaw: s < 0 ? Math.PI / 2 : -Math.PI / 2, state: 'still' }); a.idle = 'Idle_Talking_Loop'; a.gi = 4; }
+    const spots = this.world.sitSpots.filter((q) => q.ring && q.room === 'corridor' && !q.taken);
+    for (const sp of [spots[1], spots[4], spots[9]]) { if (!sp) continue; sp.taken = 'npc'; const a = mk({ x: sp.x, z: sp.z, y: sp.fy ?? Y, yaw: sp.face - Math.PI, state: 'still' }); a.perch = { h: sp.y - (sp.fy ?? Y) }; a.sit = 1; a.spot = sp; }
+  }
+  dropFolk() { for (const a of this.folk || []) { if (a.spot && a.spot.taken === 'npc') a.spot.taken = null; this.remove(a); } this.folk = []; }
   // v12 (the user: people on the street): passers-by on the far pavement, each in a stretch of their own (no two ever meet head-on on
   // its narrow walking line, between the tree pits and the cafe's tables), stopping at a shop window now and then; and three who stay
   // put: a doorman at the hotel, a couple at a cafe table, someone outside the ramen bar
@@ -97,15 +110,47 @@ export class Crowd {
   }
   // NPC density applies at once (v8: "the NPC setting doesn't change anything until restart"): guests join or leave the lobby now
   setDensity(d) {
+    if (this.mirror) { d = { few: 'low', normal: 'medium', many: 'high' }[d] || d; this.density = d in DENSITY ? d : 'medium'; return; }   // the host's guests stand in
     d = { few: 'low', normal: 'medium', many: 'high' }[d] || d; this.density = d in DENSITY ? d : 'medium'; const want = DENSITY[this.density];
     while (this.guests.length > want) { const g = this.guests.pop(); this.remove(g); }
     while (this.guests.length < want) { const g = this.newGuest(this.guests.length); if (!g) break; this.guests.push(g); }
   }
   newGuest(i) {
     const M = this.millNet(), free = M.spots.filter((s) => !s.by); if (!free.length) return null;   // v12b: never two guests on one spot (npc-clear found two)
-    const s = free[(i + Math.floor(this.seedBase)) % free.length], rec = randomRecipe(this.seed()), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
-    const a = this.spawn({ rec, role: 'guest', voice, x: s.x, y: 0, z: s.z, yaw: s.face + rnd(-0.6, 0.6), state: 'mill', talkable: true }); a.spot = [s.x, s.z]; a.millSpot = s; s.by = a; a.next = this.now + rnd(4000, 14000); a.idle = IDLES[i % IDLES.length]; return a;
+    const s = free[(i + Math.floor(this.seedBase)) % free.length], rs = this.seed(), rec = randomRecipe(rs), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
+    const a = this.spawn({ rec, role: 'guest', voice, x: s.x, y: 0, z: s.z, yaw: s.face + rnd(-0.6, 0.6), state: 'mill', talkable: true }); a.spot = [s.x, s.z]; a.millSpot = s; s.by = a; a.next = this.now + rnd(4000, 14000); a.idle = IDLES[i % IDLES.length];
+    a.gn = this.gnext = (this.gnext || 0) + 1; a.rs = rs; a.gi = i % IDLES.length; return a;
   }
+  // v14 play together (the user, 11-21: "it showed an npc at a place and i talked to him ... in other mobile it showed that there is no npc
+  // there"): the host's phone runs the lobby's guests and sends who they are (a roster: number, recipe seed, idle) and where they are (four
+  // times a second); every other phone drops its own guests and shows the host's, moved between the last two reports (puppets)
+  guestRoster() { return this.guests.concat(this.folk || []).filter((g) => g.alive && g.gn).map((g) => [g.gn, g.rs, g.gi]); }
+  guestState() { const o = []; for (const g of this.guests.concat(this.folk || [])) if (g.alive && g.gn) o.push(g.gn, Math.round(g.x * 100), Math.round(g.y * 100), Math.round(g.z * 100), Math.round(g.yaw * 100), g.perch && g.sit > 0.5 ? -Math.round(g.perch.h * 100) : Math.round((g.walkT || 0) * 10)); return o; }
+  mirrorGuests(on) { on = !!on; if (on === !!this.mirror) return; this.mirror = on; for (const g of this.guests) { if (g.millSpot && g.millSpot.by === g) g.millSpot.by = null; this.remove(g); } this.guests = []; this.dropFolk();
+    if (!on) { this.setDensity(this.density); this.corridorFolk(); } }
+  applyRoster(list) {
+    if (!Array.isArray(list)) return; if (!this.mirror) this.mirrorGuests(true); const want = new Map();
+    for (const r of list.slice(0, 60)) if (Array.isArray(r) && r.length >= 3 && Number.isFinite(+r[0]) && Number.isFinite(+r[1])) want.set(Math.round(+r[0]), r);
+    this.guests = this.guests.filter((g) => { if (want.has(g.gn)) return true; this.remove(g); return false; });
+    for (const [n, r] of want) { if (this.guests.some((g) => g.gn === n)) continue; const rs = Math.abs(Math.round(+r[1])) || 1, gi = Math.abs(Math.round(+r[2]) || 0) % IDLES.length, rec = randomRecipe(rs);
+      const a = this.spawn({ id: 'hg' + n, rec, role: 'guest', voice: rec.kind === 'f' ? (gi % 2 ? 'guestF2' : 'guestF') : (gi % 2 ? 'guestM2' : 'guestM'), x: 0, y: 0, z: -999, state: 'puppet', talkable: true });
+      Object.assign(a, { gn: n, rs, gi, idle: IDLES[gi], puppet: true, snaps: [] }); this.guests.push(a); } }
+  applyGuests(arr) {
+    if (!this.mirror || !Array.isArray(arr)) return; const now = performance.now(), num = (v, a, b) => (Number.isFinite(+v) ? Math.max(a, Math.min(b, +v)) : null);
+    for (let i = 0; i + 5 < Math.min(arr.length, 600); i += 6) { const g = this.guests.find((q) => q.gn === Math.round(+arr[i])); if (!g) continue;
+      const x = num(arr[i + 1] / 100, -900, 900), y = num(arr[i + 2] / 100, -60, 60), z = num(arr[i + 3] / 100, -900, 900), yaw = num(arr[i + 4] / 100, -100, 100), v6 = num(arr[i + 5], -150, 60), v = v6 == null ? 0 : Math.max(0, v6 / 10); if (x == null || y == null || z == null || yaw == null) continue;
+      if (v6 != null && v6 < 0) { g.perch = { h: Math.min(1.2, -v6 / 100) }; g.sit = 1; } else if (g.perch) { g.perch = null; g.sit = 0; }   // sitting on a borne or a sofa
+      const S = g.snaps; S.push({ t: now, x, y, z, yaw, v: v || 0 }); if (S.length > 6) S.shift(); if (g.z < -900) { g.x = x; g.y = y; g.z = z; g.yaw = yaw; } } }
+  // a puppet guest: 350 ms behind the host's reports (they come every 250 ms), between the two either side of that moment
+  puppet(a, dt) {
+    const S = a.snaps; if (!S.length || a.talking) { a.walkT = 0; return; } const tt = performance.now() - 350; let b = S.length - 1, x, y, z, yaw, v;
+    if (S[b].t <= tt || S.length < 2) ({ x, y, z, yaw, v } = S[b]);
+    else { while (b > 0 && S[b - 1].t > tt) b--; if (b === 0) ({ x, y, z, yaw, v } = S[0]); else { const A = S[b - 1], B = S[b], k = (tt - A.t) / Math.max(1, B.t - A.t); x = A.x + (B.x - A.x) * k; y = A.y + (B.y - A.y) * k; z = A.z + (B.z - A.z) * k; yaw = A.yaw + adiff(B.yaw, A.yaw) * k; v = B.v; } }
+    if (Math.hypot(x - a.x, z - a.z) > 5) { a.x = x; a.y = y; a.z = z; } else { const f = Math.min(1, dt * 12); a.x += (x - a.x) * f; a.y += (y - a.y) * f; a.z += (z - a.z) * f; }
+    a.yaw += adiff(yaw, a.yaw) * Math.min(1, dt * 10); a.walkT = v > 0.2 ? v : 0;
+  }
+  // the host's audience for a shared show (seat, recipe seed, arrival in ms from now, seated now): every phone fills the same seats
+  audPlan(hallId) { return (this.viewers[hallId] || []).filter((v) => v.state !== 'gone' && v.rs).map((v) => [v.seat.id, v.rs, v.state === 'due' ? Math.max(0, Math.round(v.at - this.now)) : 0, v.state === 'due' ? 0 : 1]); }
   // the guests' lobby (see PUBLIC): each hand-placed spot is checked against the building; one that fails moves to the nearest place within
   // 1.5 m that passes, or is dropped. The spot faces the open floor (its way in), as people stand with their backs to a wall or a counter.
   millNet() {
@@ -169,16 +214,26 @@ export class Crowd {
     const sc = r.U.uScreen.value, ls = Math.min(p.ls || 0, 0.6); out.screen.setRGB(Math.min(sc.r * ls, 0.5), Math.min(sc.g * ls, 0.5), Math.min(sc.b * ls, 0.5)); return out;
   }
   // ---------------------------------------------------------- the audience of a show
-  planAudience(hallId, n, windowMs, exclude = new Set()) {
+  planAudience(hallId, n, windowMs, exclude = new Set(), given = null) {
     const h = this.world.hallById(hallId); if (!h) return; this.clearAudience(hallId);
+    if (Array.isArray(given)) { const list = this.viewers[hallId] = [];   // v14 the host's plan (audPlan), with this phone's own seat left free
+      for (const g of given.slice(0, 400)) { if (!Array.isArray(g)) continue; const s = h.seats.find((q) => q.id === String(g[0])); if (!s || s.taken || s.player || exclude.has(s.id)) continue;
+        const rs = Math.abs(Math.round(+g[1])) || 1, rec = randomRecipe(rs), i = list.length, seated = +g[3] === 1; s.taken = true;
+        const v = { seat: s, hall: h, rec, rs, state: seated ? 'seated' : 'due', at: seated ? 0 : this.now + Math.max(0, Math.min(600000, +g[2] || 0)), agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
+        s.npc = v; list.push(v); }
+      list.sort((a, b) => a.at - b.at); return; }
     // strangers leave a seat between you and them (and nobody looms right beside your head)
     const mine = h.seats.find((s) => exclude.has(s.id) || s.player), near = mine ? new Set(h.seats.filter((s) => s.row === mine.row && Math.abs(s.col - mine.col) === 1).map((s) => s.id)) : new Set();
     const free = h.seats.filter((s) => !s.taken && !exclude.has(s.id) && !s.player && !near.has(s.id));
     // fill like people do: the middle rows and the middle of each row first, couples together, a few singles
     free.sort((a, b) => (Math.abs(a.row - h.cfg.rows.length * 0.55) + Math.abs(a.a) * 0.35 + Math.random() * 3.5) - (Math.abs(b.row - h.cfg.rows.length * 0.55) + Math.abs(b.a) * 0.35 + Math.random() * 3.5));
-    const list = this.viewers[hallId] = [], chosen = free.slice(0, n), t0 = this.now + 1500;
-    chosen.sort(() => Math.random() - 0.5).forEach((s, i) => { const rec = randomRecipe(this.seed()); s.taken = true;
-      const v = { seat: s, hall: h, rec, state: 'due', at: t0 + (i / Math.max(1, chosen.length)) * windowMs * 0.85 + rnd(0, 1200), agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
+    // v14 (the user, 11-21: "they come one by one and too slowly"): people come in parties of one to four (couples most often) that walk in
+    // together a second apart; the parties are spread over the first part of the window (at most four minutes), not the whole of it
+    const list = this.viewers[hallId] = [], chosen = free.slice(0, n), t0 = this.now + 1200, span = Math.min(windowMs * 0.7, 240000);
+    const parties = []; for (let i = 0; i < chosen.length;) { const k = Math.min(chosen.length - i, [1, 2, 2, 2, 3, 4][Math.floor(Math.random() * 6)]); parties.push(k); i += k; }
+    const when = []; parties.forEach((k, p) => { const at = t0 + (p / Math.max(1, parties.length)) * span + rnd(0, 1500); for (let j = 0; j < k; j++) when.push(at + j * rnd(700, 1100)); });
+    chosen.forEach((s, i) => { const rs = this.seed(), rec = randomRecipe(rs); s.taken = true;
+      const v = { seat: s, hall: h, rec, rs, state: 'due', at: when[i], agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
       s.npc = v; list.push(v); });
     list.sort((a, b) => a.at - b.at);
     // a show that starts soon: most of the audience is already in their seats; only a few still come in, one at a time
@@ -264,9 +319,10 @@ export class Crowd {
     const i = nearestOn(s.cameBy, s), back = s.cameBy.slice(0, i + 1).reverse(); s.go(back, () => { s.state = 'post'; s.yaw = s.home.yaw; s.cameBy = null; s.job = null; this._nextJob(); }, { state: 'leaving' }); }
   _nextJob() { const s = this.staff.server; if (!s || s.state !== 'post' || !this.srvQ || !this.srvQ.length) return; const j = this.srvQ.shift(); this.callServer(j.seat, j.onArrive); }
   // ---------------------------------------------------------- talking
+  // v14b the server serves seats in the halls (the bell, the tablet), not people in his pantry
   talkTarget(px, py, pz, fx, fz) {
     let best = null, bs = 0;
-    for (const a of this.agents) { if (!a.talkable || !a.alive || a.state === 'guiding' || Math.abs(a.y - py) > 1.2) continue; const dx = a.x - px, dz = a.z - pz, d = Math.hypot(dx, dz); if (d > 3.2 || d < 0.2) continue;
+    for (const a of this.agents) { if (!a.talkable || !a.alive || a.state === 'guiding' || (a.role === 'server' && a.state === 'post') || Math.abs(a.y - py) > 1.2) continue; const dx = a.x - px, dz = a.z - pz, d = Math.hypot(dx, dz); if (d > 3.2 || d < 0.2) continue;
       const c = (dx * fx + dz * fz) / d; if (c < 0.55) continue; const sc = c / (0.5 + d); if (sc > bs) { bs = sc; best = a; } }
     return best;
   }
@@ -301,9 +357,10 @@ export class Crowd {
     for (const h of this.world.halls) { const list = this.viewers[h.id], inHall = vis.has(h.key);
       for (const v of list) {
         if (v.state === 'due' && now >= v.at) {
-          const busy = list.some((o) => o.state === 'walking' && o.agent && Math.hypot(o.agent.x - h.cfg.toWorld(h.cfg.entryU, h.cfg.depthIn).x, o.agent.z - h.cfg.toWorld(h.cfg.entryU, h.cfg.depthIn).z) < 2.2);
-          if (busy) { v.at = now + 900; continue; }
-          if (inHall || vis.has('corridor')) { const route = this.hallRoute(h, v.seat, true), a = this.spawn({ rec: v.rec, role: 'aud', voice: v.voice, x: route[0].x, y: route[0].y, z: route[0].z, speed: rnd(1.1, 1.35) }); v.agent = a; a.viewer = v; v.state = 'walking';
+          // the door takes a few at a time (a party walks in together), and at most ten people walk at once (each is a skinned figure)
+          const door = h.cfg.toWorld(h.cfg.entryU, h.cfg.depthIn), walking = list.filter((o) => o.state === 'walking' && o.agent);
+          if (walking.filter((o) => Math.hypot(o.agent.x - door.x, o.agent.z - door.z) < 1.2).length >= 2 || walking.length >= 10) { v.at = now + 500; continue; }
+          if (inHall || vis.has('corridor')) { const route = this.hallRoute(h, v.seat, true), a = this.spawn({ rec: v.rec, role: 'aud', voice: v.voice, x: route[0].x, y: route[0].y, z: route[0].z, speed: rnd(1.3, 1.55) }); v.agent = a; a.viewer = v; v.state = 'walking';
             a.go([...route, { x: v.seat.x, y: v.seat.y, z: v.seat.z, seat: true }], () => { v.state = 'sitting'; a.sitT = 0; a.yaw = v.seat.yaw + Math.PI; }); }
           else v.state = 'seated';   // they came in while you were elsewhere
         }
@@ -340,6 +397,7 @@ export class Crowd {
   }
   step(a, dt, player) {
     if (a.role === 'remote') { a.walkT = a.remoteWalk || 0; return; }   // v9.3: another player (mpui.js moves them from their phone's messages)
+    if (a.puppet) { this.puppet(a, dt); return; }   // v14 the host's guest
     if (a.state === 'street' && !a.path && this.now >= a.next && a.leg) a.leg();   // v12 a passer-by's next stretch of window-shopping
     const now = this.now;
     if (a.state === 'standing') { a.sitT += dt; a.sit = Math.max(0, 1 - a.sitT / 1.1); if (a.sit <= 0) { if (a.viewer && a.viewer.seat.npc === a.viewer) { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.go(a.exitPath, () => { if (a.viewer) a.viewer.state = 'gone'; this.remove(a); }, { state: 'leavingHall' }); } return; }
@@ -366,6 +424,7 @@ export class Crowd {
         if (!blocked && player && !player.seated && inWay(player.x - a.x, player.z - a.z, player.y || 0)) blocked = true; }
       a.blockT = blocked ? (a.blockT || 0) + dt : 0;
       if (a.blockT > 1.5 && a.role === 'guest' && a.state === 'mill' && a.millTo) { a.blockT = 0; if (this.millBack(a, now)) return; }
+      if (a.blockT > 2 && a.state === 'street' && a.leg) { a.blockT = 0; a.leg(); return; }   // v14 a stroller kept waiting goes somewhere else
       const ride = !!t.ride, sp = ride ? (a.state === 'guiding' ? 1.15 : 0.62) : blocked ? 0 : a.speed;   // the guide walks up the moving steps
       a.walkT = ride || blocked ? 0 : sp;   // v11: this sat at the end of the comment above, so every walker glided in its standing pose
       if (d < 0.08 || (d < sp * dt + 0.02)) { a.x = t.x; a.z = t.z; a.y = t.y ?? a.y; a.pi++; if (a.pi >= a.path.length) { const f = a.onArrive; a.path = null; a.onArrive = null; a.walkT = 0; f && f(); } }
@@ -378,7 +437,9 @@ export class Crowd {
   }
   draw(a, dt, d, player) {
     const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < 9 ? 0 : d < 20 ? 1 : 2); ch.talking = a.talking || (this.now >= (a.talkFrom || 0) && this.now < a.talkUntil);
-    if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; } else ch.s.sit = 0;
+    if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; }
+    else if (a.perch) { ch.s.sit = a.sit; ch.s.drop = a.perch.h - sitHeight(a.rec); ch.s.recline = 0.12; }   // v14 another player on a sofa or a bench (mpui.js)
+    else ch.s.sit = 0;
     ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;
     if (a.danceUntil && performance.now() < a.danceUntil && !a.viewer) { ch.walkT = 0; ch.danceT = 1; } else ch.danceT = 0;   // v14 the dance emote (mpui.js)
     // where they look: the screen when seated in a hall; you, briefly, when you come close and they face you; ahead otherwise
@@ -402,14 +463,12 @@ export class Crowd {
   }
 }
 // a service trolley: walnut and brass, two shelves, popcorn tubs and cups on top (lit like the room it is in)
+// v14 the server's trolley (the user, 11-21: "the cart of the guy ... looked so bad"): tools/blender/props14.py service_cart, its parts in
+// their own colours under the trolley's own light (lightAt where the server is); the handle at -Z, toward him
 function makeCart(mats, scene) {
-  const U = { uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.2, 1, 0.3).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, mat = mats.propMat(U), grp = new THREE.Group();
-  const part = (geo, hex, x, y, z) => { const c = new THREE.Color(hex), n = geo.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); grp.add(m); };
-  for (const y of [0.32, 0.86]) part(new THREE.BoxGeometry(0.58, 0.04, 0.82), '#5b3a24', 0, y, 0);
-  for (const [x, z] of [[-0.27, -0.39], [0.27, -0.39], [-0.27, 0.39], [0.27, 0.39]]) { part(new THREE.CylinderGeometry(0.015, 0.015, 0.84, 8), '#c9a35e', x, 0.5, z); part(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12).rotateZ(Math.PI / 2), '#151515', x, 0.05, z); }
-  part(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 8).rotateZ(Math.PI / 2), '#c9a35e', 0, 0.98, -0.42);
-  for (let i = 0; i < 3; i++) { part(new THREE.CylinderGeometry(0.075, 0.06, 0.18, 14), i % 2 ? '#c3121c' : '#f1ece4', -0.15 + i * 0.15, 0.97, 0.18); part(new THREE.CylinderGeometry(0.06, 0.055, 0.04, 14), '#f2d27a', -0.15 + i * 0.15, 1.07, 0.18); }
-  for (let i = 0; i < 3; i++) part(new THREE.CylinderGeometry(0.045, 0.036, 0.16, 12), '#141416', -0.12 + i * 0.12, 0.96, -0.12);
+  const U = { uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.2, 1, 0.3).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, mat = mats.propMat(U), grp = new THREE.Group(), A = ASSETS.service_cart;
+  if (A) for (const p of A.parts) { if (p.lod !== 0 || p.leaf) continue; const g = p.geo.clone(), n = g.attributes.position.count, c = new Float32Array(n * 3), col = p.glow ? p.glowColor : p.tint;
+    for (let i = 0; i < n; i++) c.set(col, i * 3); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); grp.add(new THREE.Mesh(g, mat)); }
   grp.visible = false; scene.add(grp); const light = { amb: U.uAmb.value, key: U.uKey.value, dir: U.uKeyDir.value, screen: U.uScreenL.value };
   return { group: grp, t: 0, light };
 }
