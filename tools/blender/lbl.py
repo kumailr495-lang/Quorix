@@ -17,6 +17,7 @@ MAT_DEF = {
     'glass': ((0.02, 0.025, 0.03), 0.04, 0.0), 'paint_cream': ((0.8, 0.74, 0.63), 0.75, 0.0),
     'ceramic': ((0.8, 0.78, 0.74), 0.12, 0.0), 'mirror': ((0.9, 0.9, 0.9), 0.03, 1.0),
 }
+MAT_VC = set()   # v14b materials whose colour comes from the mesh's 'Col' attribute (food14.py)
 GLOW_DEF = {'glow_gold': ((1.0, 0.6, 0.18), 2.6), 'glow_ice': ((0.75, 0.88, 1.0), 3.0), 'glow_warm': ((1.0, 0.55, 0.24), 2.2), 'glow_blue': ((0.12, 0.42, 1.0), 3.0), 'glow_opal': ((1.0, 0.72, 0.45), 1.6), 'glow_white': ((1.0, 0.86, 0.68), 3.0)}
 
 
@@ -30,6 +31,8 @@ def material(name):
         c, s = GLOW_DEF[name]; b.inputs['Base Color'].default_value = (*c, 1); b.inputs['Emission Color'].default_value = (*c, 1); b.inputs['Emission Strength'].default_value = s
     else:
         c, r, mt = MAT_DEF[name]; b.inputs['Base Color'].default_value = (*c, 1); b.inputs['Roughness'].default_value = r; b.inputs['Metallic'].default_value = mt
+        if name in MAT_VC:
+            a = m.node_tree.nodes.new('ShaderNodeVertexColor'); a.layer_name = 'Col'; m.node_tree.links.new(a.outputs['Color'], b.inputs['Base Color'])
     return m
 
 
@@ -171,6 +174,7 @@ def part(name, lod, mat, build, mtx=Matrix.Identity(4), deform=None, smooth=True
     bm.transform(mtx)
     if not own_uv: bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces)); box_uv(bm)
     me = bpy.data.meshes.new(f'{name}_LOD{lod}'); bm.to_mesh(me); bm.free()
+    if me.color_attributes: me.color_attributes.active_color = me.color_attributes[0]   # v14b a builder's own 'Col' layer
     if smooth: me.shade_smooth(); me.set_sharp_from_angle(angle=math.radians(50))
     else: me.shade_flat()
     me.materials.append(material(mat))
@@ -201,11 +205,11 @@ def cup_holder(lod, x, y, ztop, ring_mat, glow=None, r_out=0.043, name='Cup', se
 
 
 
-def export(name, out_dir):
+def export(name, out_dir, colors=False):
     for o in bpy.context.scene.objects: o.select_set(o in PARTS)
     path = os.path.abspath(os.path.join(out_dir, name + '.glb'))
     bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_yup=True, export_apply=True, export_texcoords=True, export_normals=True,
-                              export_materials='EXPORT', export_vertex_color='NONE', export_extras=False, export_cameras=False, export_lights=False)
+                              export_materials='EXPORT', export_vertex_color='ACTIVE' if colors else 'NONE', export_extras=False, export_cameras=False, export_lights=False)
     def ntri(o): o.data.calc_loop_triangles(); return len(o.data.loop_triangles)
     tris = {lod: sum(ntri(o) for o in PARTS if o.name.endswith(f'LOD{lod}')) for lod in (0, 1)}
     lo = [min(v.co[i] for o in PARTS if o.name.endswith('LOD0') for v in o.data.vertices) for i in range(3)]

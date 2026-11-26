@@ -56,7 +56,7 @@ export function makeFood(item) {
     for (let i = 0; i < n; i++) { if (vc) { c[i * 3] = tint[0] * vc.getX(i); c[i * 3 + 1] = tint[1] * vc.getY(i); c[i * 3 + 2] = tint[2] * vc.getZ(i); } else c.set(tint, i * 3); }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.computeBoundingBox(); box.union(tmp.copy(g.boundingBox)); const m = new THREE.Mesh(g); m.userData.fill = /^Fill/.test(p.name); if (m.userData.fill) fill.push(m); grp.add(m); }
   const cy = (box.min.y + box.max.y) / 2, by = box.min.y; for (const m of grp.children) { m.geometry.translate(0, -cy, 0); if (m.userData.fill) m.userData.base = by - cy; }
-  grp.userData.setLevel = (k) => { for (const m of fill) { m.visible = k > 0.02; m.scale.y = 0.25 + 0.75 * k; m.position.y = (1 - m.scale.y) * (m.userData.base || 0); } };
+  grp.userData.setLevel = (k) => { for (const m of fill) { m.visible = k > 0.02; m.scale.y = 0.25 + 0.75 * k; m.scale.x = m.scale.z = 0.72 + 0.28 * k; m.position.y = (1 - m.scale.y) * (m.userData.base || 0); } };   // v14c narrower as it sinks: the tub tapers, the heap stays inside it
   return grp;
 }
 export function makeHeld(what) {

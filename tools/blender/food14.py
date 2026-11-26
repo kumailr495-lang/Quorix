@@ -33,7 +33,7 @@ ap = argparse.ArgumentParser(); ap.add_argument('--out', default='www/models'); 
 A = ap.parse_args(argv)
 FOOD_MATS = {
     'paper_white': ((0.82, 0.8, 0.76), 0.85, 0.0), 'paint_red': ((0.5, 0.03, 0.04), 0.6, 0.0), 'paint_black': ((0.01, 0.01, 0.012), 0.7, 0.0), 'popcorn': ((0.85, 0.7, 0.36), 0.8, 0.0),
-    'nacho': ((0.72, 0.45, 0.1), 0.7, 0.0), 'cheese_sauce': ((0.85, 0.5, 0.04), 0.25, 0.0), 'jalapeno': ((0.12, 0.35, 0.05), 0.4, 0.0), 'bun': ((0.62, 0.3, 0.08), 0.65, 0.0),
+    'nacho': ((0.72, 0.45, 0.1), 0.7, 0.0), 'nacho_dark': ((0.6, 0.32, 0.06), 0.7, 0.0), 'sleeve_purple': ((0.16, 0.03, 0.2), 0.45, 0.0), 'cheese_sauce': ((0.85, 0.5, 0.04), 0.25, 0.0), 'jalapeno': ((0.12, 0.35, 0.05), 0.4, 0.0), 'bun': ((0.62, 0.3, 0.08), 0.65, 0.0),
     'bun_inner': ((0.85, 0.7, 0.45), 0.85, 0.0), 'sausage': ((0.4, 0.09, 0.04), 0.35, 0.0), 'mustard': ((0.85, 0.62, 0.02), 0.35, 0.0), 'patty': ((0.12, 0.05, 0.025), 0.75, 0.0),
     'cheese_slice': ((0.9, 0.48, 0.03), 0.45, 0.0), 'lettuce': ((0.25, 0.55, 0.08), 0.6, 0.0), 'tomato': ((0.6, 0.06, 0.03), 0.35, 0.0), 'sesame': ((0.9, 0.8, 0.6), 0.6, 0.0),
     'crust': ((0.6, 0.32, 0.1), 0.7, 0.0), 'pizza_cheese': ((0.95, 0.72, 0.28), 0.5, 0.0), 'pepperoni': ((0.48, 0.06, 0.04), 0.45, 0.0), 'fry': ((0.95, 0.74, 0.3), 0.65, 0.0),
@@ -46,8 +46,22 @@ FOOD_MATS = {
     'bottle_blue': ((0.55, 0.75, 0.9), 0.12, 0.0), 'cap_blue': ((0.05, 0.25, 0.7), 0.4, 0.0), 'label': ((0.9, 0.92, 0.95), 0.6, 0.0), 'water_in': ((0.7, 0.85, 0.95), 0.05, 0.0),
 }
 for k, v in FOOD_MATS.items(): lbl.MAT_DEF[k] = v
+for k in ('popcorn', 'nacho', 'nacho_dark', 'sugar'): lbl.MAT_VC.add(k); lbl.MAT_DEF[k] = ((1.0, 1.0, 1.0), lbl.MAT_DEF[k][1], 0.0)   # v14b painted (paint())
 rnd = random.Random(14)
 RX = lambda deg: Matrix.Rotation(math.radians(deg), 4, 'X')
+
+
+def paint(bm, fn):
+    """v14b colour each vertex (the 'Col' attribute the engine multiplies with its tint): fn(co) -> (r, g, b) linear"""
+    cl = bm.loops.layers.color.get('Col') or bm.loops.layers.color.new('Col'); cache = {}
+    for f in bm.faces:
+        for lp in f.loops:
+            v = lp.vert; c = cache.get(v.index)
+            if c is None: c = cache[v.index] = fn(v.co)
+            lp[cl] = (c[0], c[1], c[2], 1.0)
+
+
+def mixc(a, b, t): t = max(0.0, min(1.0, t)); return tuple(a[i] + (b[i] - a[i]) * t for i in range(3))
 
 
 def bx(name, mat, a, b, r=0.0, M=None):
@@ -105,16 +119,30 @@ def food_popcorn():
     lat('Rim', 'paper_white', [(R1 - 0.003, H - 0.002), (R1 + 0.003, H - 0.002), (R1 + 0.0045, H + 0.002), (R1 + 0.002, H + 0.005), (R1 - 0.003, H + 0.003)], seg=40)
     # the heap: kernels on a dome above the rim, packed from the rim inward (part 'Fill' sinks as you eat)
     def heap(bm):
+        # v14c (the user circled it: kernels stuck outside the tub's wall, grey showing between them, "gravel"): a buttery dome under the
+        # kernels fills every gap; the kernels stay inside the wall (their outer ring 1.5 cm in from the rim); smaller, denser and paler,
+        # with only a fleck of hull here and there
+        dome = [(R1 - 0.004, H - 0.006), (R1 * 0.75, H + 0.016), (R1 * 0.45, H + 0.034), (1e-4, H + 0.041)]
+        lathe(bm, [(1e-4, H - 0.03), (0.0753, H - 0.03)] + dome, 28)   # a closed solid; its skirt follows the tub's inner wall down (1-2 mm inside it)
+        bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=3e-4)   # the rings at the axis become one point each: no pinholes (only the dome exists yet)
         k = 0
-        for ring in range(6):
-            rr = R1 * (1.0 - ring / 6.0) * 0.95; n = max(1, int(2 * math.pi * rr / 0.022)) if ring < 5 else 3
+        for ring in range(7):
+            rr = (R1 - 0.0155) * (1.0 - ring / 7.0); n = max(1, int(2 * math.pi * rr / 0.0148)) if ring < 6 else 3
             for j in range(n):
-                a = 2 * math.pi * (j + 0.5 * ring) / n; h = H - 0.012 + 0.055 * (1 - (rr / R1) ** 2) + rnd.uniform(-0.004, 0.004)
-                t = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=0.0125)
-                vs = t['verts']; c = Vector((rr * math.cos(a), rr * math.sin(a), h)); sd = rnd.random() * 10
-                for v in vs:
-                    nn = noise.noise(v.co * 90 + Vector((sd, sd * 0.7, sd * 1.3))); v.co = v.co * (1 + 0.35 * nn); v.co.z *= 0.8; v.co += c
+                a = 2 * math.pi * (j + 0.5 * ring) / n; h = H - 0.006 + 0.05 * (1 - (rr / R1) ** 2) + rnd.uniform(-0.003, 0.004)
+                c = Vector((rr * math.cos(a), rr * math.sin(a), h)); sd = rnd.random() * 10
+                for lobe in range(3):   # three lobes of different sizes, puffed and wrinkled (a popped kernel's "butterfly")
+                    d = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.2, 0.9))); d = d.normalized() * (0.0 if lobe == 0 else 0.0048); rl = (0.0076, 0.0062, 0.0056)[lobe]
+                    t = bmesh.ops.create_icosphere(bm, subdivisions=0, radius=rl)   # 20 faces a lobe: a held tub is a few centimetres on screen (v14c: 7.8k -> 4k triangles)
+                    for v in t['verts']:
+                        nn = noise.noise(v.co * 150 + Vector((sd + lobe, sd * 0.7, sd * 1.3))); v.co = v.co * (1 + 0.36 * nn); v.co.z *= 0.88; v.co += c + d
                 k += 1
+        bm.verts.index_update()
+        def col(co):
+            n1 = noise.noise(co * 55.0 + Vector((3.1, 1.7, 0.4))); n2 = noise.noise(co * 300.0 + Vector((9.0, 2.0, 5.0)))
+            c = mixc((0.98, 0.94, 0.8), (0.95, 0.8, 0.45), n1 * 1.3 + 0.3)
+            return mixc(c, (0.5, 0.33, 0.15), (n2 - 0.62) * 9.0)
+        paint(bm, col)
     part('Fill', 0, 'popcorn', heap)
 
 
@@ -132,7 +160,7 @@ def food_nachos():
             bm.faces.new((V[12 + i], V[12 + j], V[8 + j], V[8 + i]))       # inner walls
             bm.faces.new((V[4 + i], V[4 + j], V[12 + j], V[12 + i]))       # rim
         bm.faces.new((V[8], V[9], V[10], V[11]))                           # inner floor (up)
-    part('Boat', 0, 'paint_black', boat, smooth=False)
+    part('Boat', 0, 'paint_red', boat, smooth=False)
     lat('Cup', 'paper_white', [(1e-4, 0.002), (0.022, 0.002), (0.027, 0.04), (0.0255, 0.0405), (0.0205, 0.006), (1e-4, 0.006)], T(0.055, 0.03, 0.0), seg=28)   # 1 mm into the boat's floor, its own floor 3 mm over it
     lat('Cheese', 'cheese_sauce', [(1e-4, 0.03), (0.0255, 0.03), (0.0255, 0.0335), (0.016, 0.0365), (1e-4, 0.037)], T(0.055, 0.03, 0.0), seg=28)
     for i in range(16):   # chips: thin triangles, slightly cupped, piled
@@ -142,9 +170,14 @@ def food_nachos():
             p = [(s, 0.0), (-s * 0.5, s * 0.87), (-s * 0.5, -s * 0.87)]; top = [bm.verts.new((px, py, 0.0016)) for px, py in p]; bot = [bm.verts.new((px, py, -0.0016)) for px, py in p]
             bm.faces.new(top); bm.faces.new(list(reversed(bot)))
             for k in range(3): bm.faces.new((bot[k], bot[(k + 1) % 3], top[(k + 1) % 3], top[k]))
-            bmesh.ops.subdivide_edges(bm, edges=list(bm.edges), cuts=2, use_grid_fill=True)
-            for v in bm.verts: v.co.z += 6 * (v.co.x ** 2 + v.co.y ** 2) * 0.6
-        part('Chip', 0, 'nacho', chip, T(x, y, z) @ RZ(math.degrees(a)) @ RY(rnd.uniform(-25, 25)))
+            bmesh.ops.subdivide_edges(bm, edges=list(bm.edges), cuts=4, use_grid_fill=True)
+            for v in bm.verts:
+                v.co.z += 6 * (v.co.x ** 2 + v.co.y ** 2) * 0.6 + 0.0012 * noise.noise(v.co * 400.0)
+                r = math.hypot(v.co.x, v.co.y)
+                if r > s * 0.42: k = 1.0 + 0.06 * noise.noise(Vector((v.co.x * 90.0, v.co.y * 90.0, 1.3))); v.co.x *= k; v.co.y *= k   # a ragged, broken edge
+            bm.verts.index_update(); sd = rnd.random() * 20
+            paint(bm, lambda co: mixc(mixc((0.9, 0.66, 0.28), (0.55, 0.32, 0.1), (noise.noise(co * 160.0 + Vector((sd, 0, 0))) - 0.15) * 2.2), (0.98, 0.95, 0.86), (noise.noise(co * 900.0 + Vector((0, sd, 0))) - 0.6) * 6.0))
+        part('Chip', 0, 'nacho' if i % 3 else 'nacho_dark', chip, T(x, y, z) @ RZ(math.degrees(a)) @ RY(rnd.uniform(-25, 25)))
     for (x, y) in ((0.045, 0.026), (0.062, 0.038), (0.063, 0.02)):   # jalapeño rings floating in the cheese, apart
         lat('Jalapeno', 'jalapeno', [(0.003, 0.0), (0.0065, 0.0), (0.0065, 0.002), (0.003, 0.002)], T(x, y, 0.0345), seg=14)
 
@@ -261,17 +294,18 @@ def food_icecream():
 def food_churros():
     lat('Cup', 'paper_white', [(1e-4, 0.0), (0.03, 0.0), (0.042, 0.085), (0.0405, 0.0855), (0.0285, 0.0015), (1e-4, 0.0015)], seg=32)
     lat('Band', 'cup_band', [(0.0345, 0.035), (0.0391, 0.035), (0.0402, 0.06), (0.0355, 0.06)], seg=32)
-    star = [((0.0115 if k % 2 == 0 else 0.0082) * math.cos(math.pi * k / 6), (0.0115 if k % 2 == 0 else 0.0082) * math.sin(math.pi * k / 6)) for k in range(12)]
-    for i, (dx, dy, tilt) in enumerate(((-0.013, 0.0, 9), (0.011, 0.011, 7), (0.007, -0.013, 10))):
+    star = [((0.0135 if k % 2 == 0 else 0.0095) * math.cos(math.pi * k / 6), (0.0135 if k % 2 == 0 else 0.0095) * math.sin(math.pi * k / 6)) for k in range(12)]
+    for i, (dx, dy, tilt) in enumerate(((-0.014, 0.0, 9), (0.012, 0.012, 7), (0.008, -0.014, 11), (0.0, 0.0, 3))):
         def churro(bm, dx=dx, dy=dy):
             L = 0.17; rings = []
             for j in range(13):
-                z = L * j / 12; bend = 0.005 * math.sin(math.pi * j / 12)
+                z = L * j / 12; bend = 0.012 * math.sin(math.pi * j / 12)
                 rings.append([bm.verts.new((px + bend, py, z)) for (px, py) in star])
             for j in range(12):
                 for k in range(12): k2 = (k + 1) % 12; bm.faces.new((rings[j][k], rings[j][k2], rings[j + 1][k2], rings[j + 1][k]))
-            bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
-        part('Churro', 0, 'sugar', churro, T(dx, dy, 0.008) @ RZ(i * 120) @ RY(tilt))
+            bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1]); bm.verts.index_update()
+            paint(bm, lambda co: mixc(mixc((0.5, 0.27, 0.09), (0.86, 0.66, 0.4), (math.hypot(co.x - 0.012 * math.sin(math.pi * co.z / 0.17), co.y) - 0.0095) / 0.004), (0.97, 0.93, 0.85), (noise.noise(co * 700.0) - 0.55) * 5.0))
+        part('Churro', 0, 'sugar', churro, T(dx, dy, 0.008 + 0.004 * (i == 3)) @ RZ(i * 95) @ RY(tilt))
 
 
 def food_choc():
@@ -280,7 +314,8 @@ def food_choc():
         for j in range(1, 4):   # the pieces out of the sleeve, the first 5 mm clear of its end
             bx('Piece', 'chocolate', (-0.0115, -0.0115, 0.0), (0.0115, 0.0115, 0.006), r=0.0025, M=T(-0.025 + 0.025 * i, 0.062 + 0.025 * j, 0.008))
     bx('Slab', 'chocolate', (-0.036, 0.045, 0.002), (0.036, 0.157, 0.009))
-    bx('Sleeve', 'sleeve_gold', (-0.039, -0.06, 0.0), (0.039, 0.07, 0.0175), r=0.002)
+    bx('Sleeve', 'sleeve_purple', (-0.039, -0.06, 0.0), (0.039, 0.07, 0.0175), r=0.002)
+    bx('Band', 'sleeve_gold', (-0.0415, -0.012, -0.0025), (0.0415, 0.012, 0.02), r=0.002)   # 2.5 mm proud all round
     def foil(bm):
         n = 8; V = [[bm.verts.new((-0.0385 + 0.077 * i / n, 0.07 + 0.03 * j / 4, 0.0135 + 0.012 * (j / 4) ** 2)) for j in range(5)] for i in range(n + 1)]
         for i in range(n):
@@ -383,11 +418,18 @@ VARIANTS = {'food_popcorn': {'caramel': {'popcorn': (0.45, 0.22, 0.06)}, 'cheese
 def variant_icons(name, out):
     for vid, sw in VARIANTS.get(name, {}).items():
         keep = {}
+        mixes = []
         for mat, col in sw.items():
             m = bpy.data.materials.get(mat)
-            if m: b = m.node_tree.nodes['Principled BSDF']; keep[mat] = tuple(b.inputs['Base Color'].default_value); b.inputs['Base Color'].default_value = (*col, 1)
+            if not m: continue
+            nt = m.node_tree; b = nt.nodes['Principled BSDF']; vc = [n for n in nt.nodes if n.type == 'VERTEX_COLOR']
+            if vc:   # a painted material: the variant multiplies its paint, as the engine's tint does
+                mx = nt.nodes.new('ShaderNodeMix'); mx.data_type = 'RGBA'; mx.blend_type = 'MULTIPLY'; mx.inputs[0].default_value = 1.0
+                nt.links.new(vc[0].outputs['Color'], mx.inputs[6]); mx.inputs[7].default_value = (*col, 1); nt.links.new(mx.outputs[2], b.inputs['Base Color']); mixes.append((nt, mx, vc[0], b))
+            else: keep[mat] = tuple(b.inputs['Base Color'].default_value); b.inputs['Base Color'].default_value = (*col, 1)
         sc = bpy.context.scene; sc.render.filepath = os.path.join(out, 'food_' + vid + '.png'); bpy.ops.render.render(write_still=True)
         for mat, col in keep.items(): bpy.data.materials[mat].node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = col
+        for nt, mx, vc, b in mixes: nt.links.new(vc.outputs['Color'], b.inputs['Base Color']); nt.nodes.remove(mx)
 
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -395,6 +437,6 @@ os.makedirs(A.out, exist_ok=True)
 report = []
 for name, fn in BUILD.items():
     if A.only and name not in A.only.split(','): continue
-    reset(); fn(); report.append(lbl.export(name, A.out))
+    reset(); fn(); report.append(lbl.export(name, A.out, colors=True))
     if A.icons: os.makedirs(A.icons, exist_ok=True); icon(name, A.icons); variant_icons(name, A.icons)
 for r in report: print('FOOD14', r['asset'], r['tris'][0], 'tris', r['parts'], 'parts', r['bytes'] // 1024, 'KB', [[round(v, 3) for v in c] for c in r['bbox_blender']])
