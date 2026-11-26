@@ -478,7 +478,8 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
     add('lobby', 'rug_round', WX, 0, WZ, 0, { collide: false, swap: CRIMSON }); add('lobby', 'scan_concrete_table', WX, 0, WZ, 0, { deep: true });   // its long side to the sofas (they face each other across x)
     add('lobby', 'scan_chesterfield', WX - 1.62, 0, WZ, Math.PI / 2); add('lobby', 'scan_chesterfield', WX + 1.62, 0, WZ, -Math.PI / 2);
     add('lobby', 'scan_lounge_chair', WX, 0, WZ + 1.75, Math.PI); add('lobby', 'scan_lounge_chair', WX, 0, WZ - 1.75, 0);
-    for (const [dx, dz] of [[-1.75, -1.75], [1.75, 1.75]]) { add('lobby', 'scan_plant_stand', WX + dx, 0, WZ + dz); add('lobby', 'scan_plant', WX + dx, 0.762, WZ + dz, dx * 0.7, { collide: false }); } }
+    // v14c tall planters (the scanned potted plants' leaf cards overlapped in one plane: the z-fighting gate found 3,672 places, seen from the menu camera)
+    for (const [dx, dz] of [[-1.75, -1.75], [1.75, 1.75]]) add('lobby', 'planter_tall', WX + dx, 0, WZ + dz); }
   for (const [cx, cz] of [[-11.6, 15.2]]) add('lobby', 'rug_runner', cx, 0, cz + 0.35, Math.PI / 2, { collide: false, swap: CRIMSON });
   // v13 the entrance runner is floor now (rooms.py lobby12.runner_to_ring: its end cut to the brand ring's arc; this prop stopped 0.22 m short)
   add('lobby', 'popcorn_cart', -12.6, 0, 2.6, Math.PI / 2 + 0.35);

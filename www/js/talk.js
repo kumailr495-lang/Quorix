@@ -3,6 +3,8 @@
 // a wave by the name shows who is speaking; the subtitles switch hides the panel text, the bubbles switch the bubbles.
 import * as THREE from 'three';
 import { t, pick } from './i18n.js';
+// v14c (the user, 11-26: "shouldnt the names appear with the language"): staff names written in the language you play in (lang staff.<id>)
+const nm = (npc) => (npc && npc.nameKey && t(npc.nameKey) !== npc.nameKey ? t(npc.nameKey) : (npc && npc.name) || '');
 const $ = (s) => document.querySelector(s);
 const ROLE = { reception: 'role.reception', usher: 'role.usher', vendor: 'role.vendor', bar: 'role.bar', server: 'role.server', greeter: 'role.greeter', host: 'role.greeter', box: 'role.reception', driver: 'role9.driver', cafe: 'role9.barista' };
 export class Talk {
@@ -15,7 +17,7 @@ export class Talk {
   }
   setOptions(s) { this.enabled = s.bubbles !== false; this.subs = s.subtitles !== false; this.el.classList.toggle('nosubs', !this.subs); if (!this.enabled) this.clearBubbles(); }
   get open() { return !!this.npc; }
-  start(npc, tree) { this.npc = npc; this.tree = tree; this.el.hidden = false; document.body.classList.add('talking'); this.nameEl.textContent = npc.name; this.roleEl.textContent = t(ROLE[npc.role] || 'role.guest'); this.removeBubble(npc); this.go(tree.start); }
+  start(npc, tree) { this.npc = npc; this.tree = tree; this.el.hidden = false; document.body.classList.add('talking'); this.nameEl.textContent = nm(npc); this.roleEl.textContent = t(ROLE[npc.role] || 'role.guest'); this.removeBubble(npc); this.go(tree.start); }
   go(id) {
     if (!this.npc) return; if (id === 'end') { this.close(); return; }
     if (id.startsWith('act:')) { const r = this.hooks.action ? this.hooks.action(id.slice(4), this.npc, this) : null; if (!r) this.close(); return; }
@@ -37,7 +39,7 @@ export class Talk {
     const text = typeof ln === 'string' ? ln : ln && ln.text; if (!this.enabled || !text) return; if (this.npc === npc) return;
     let b = this.bubbles.get(npc); if (!b) { if (this.bubbles.size >= 4) { const oldest = [...this.bubbles.entries()].sort((a, c) => a[1].t0 - c[1].t0)[0]; this.removeBubble(oldest[0]); }
       const el = document.createElement('div'); el.className = 'bubble'; const nm = document.createElement('small'), who = document.createElement('span'), wv = document.createElement('i'), tx = document.createElement('span'); wv.className = 'wv'; wv.innerHTML = '<b></b><b></b><b></b>'; nm.append(who, wv); el.append(nm, tx); this.layer.appendChild(el); b = { el, who, tx, t0: 0, until: 0 }; this.bubbles.set(npc, b); }
-    b.who.textContent = npc.name || ''; b.tx.textContent = text; b.t0 = performance.now(); b.until = b.t0 + dur * 1000;
+    b.who.textContent = nm(npc); b.tx.textContent = text; b.t0 = performance.now(); b.until = b.t0 + dur * 1000;
   }
   removeBubble(npc) { const b = this.bubbles.get(npc); if (b) { b.el.remove(); this.bubbles.delete(npc); } }
   clearBubbles() { for (const n of [...this.bubbles.keys()]) this.removeBubble(n); }

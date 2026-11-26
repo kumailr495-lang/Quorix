@@ -12,7 +12,7 @@
 // Nothing here pretends: an app shows what exists or says plainly that it is empty.
 import { t } from './i18n.js';
 import { SHOP } from './career.js';
-import { DAILY_CAP } from './credits.js';
+import { DAILY_CAP, LOAN } from './credits.js';
 import { THEMES, SWATCH } from './theatres.js';
 import { BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E, PANTRY, HALL, LOBBY, MEZZ, WC, SPINE, STREET, CORE, COUNTERS } from './building.js';
 import { itemById } from './menu.js';
@@ -22,7 +22,7 @@ const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('lumier
 // v14 Wallet (Lumiere Credits, credits.js), Jobs, Tasks and Shop (career.js) join the apps; the old Tab is the wallet's history now
 const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
 const two = (n) => String(n).padStart(2, '0');
-const LINE = { ticket: 'phone.line.ticket', tablet: 'phone.line.tablet', salted: 'opt9.salted', caramel: 'opt9.caramel', cheese: 'opt9.cheese', nachos: 'opt9.nachos', cola: 'opt9.drink', coffee: 'opt9.coffee', water: 'item.water', combo: 'opt9.combo' };
+const LINE = { loan: 'loan.got', ticket: 'phone.line.ticket', tablet: 'phone.line.tablet', salted: 'opt9.salted', caramel: 'opt9.caramel', cheese: 'opt9.cheese', nachos: 'opt9.nachos', cola: 'opt9.drink', coffee: 'opt9.coffee', water: 'item.water', combo: 'opt9.combo' };
 export class Phone {
   // hooks: ticket (the booking or null), bill, stubs, player, room, snap (hands back the photo after the next frame), guide, showTicket,
   // together, settings, sound, toast, native (true inside the Android app)
@@ -120,10 +120,15 @@ export class Phone {
     const W = this.h.credits, top = el('div', 'ph-bal'); top.append(el('small', null, t('wallet.balance')), el('b', null, W.fmt(W.bal)));
     const cap = el('div', 'ph-cap'), bar = el('i'); bar.style.transform = `scaleX(${Math.min(1, W.earnedToday / DAILY_CAP).toFixed(3)})`; cap.append(el('small', null, t('wallet.cap', { n: W.earnedToday, cap: DAILY_CAP })), bar); top.appendChild(cap); C.appendChild(top);
     if (W.restored) C.appendChild(el('p', 'note', t('wallet.restored')));
+    // v14c a loan: 500 LC now, 550 back out of what you earn (40 % of each payment) or at once
+    { const L = W.loan, box = el('div', 'ph-card ph-loan'); box.appendChild(el('b', null, t('loan.title')));
+      if (L) { box.appendChild(el('small', null, t('loan.owed', { n: W.fmt(L.owed) }))); const b = el('button', 'btn sm secondary', t('loan.repay')); b.disabled = W.bal <= 0; b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); W.repay(); this.show('wallet'); }); box.appendChild(b); }
+      else { box.appendChild(el('small', null, t('loan.offer', { n: W.fmt(LOAN.amount), back: W.fmt(LOAN.amount * (1 + LOAN.fee)) }))); const b = el('button', 'btn sm primary', t('loan.take', { n: W.fmt(LOAN.amount) })); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); W.borrow(); this.show('wallet'); }); box.appendChild(b); }
+      C.appendChild(box); }
     const list = el('div', 'ph-list'); for (const h of W.history().slice(0, 40)) { const r = el('div', 'ph-li ' + (h.n >= 0 ? 'in' : 'out')); const a = el('div'); a.append(el('span', null, this.why(h.why)), el('small', null, new Date(h.t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))); r.append(a, el('b', null, (h.n >= 0 ? '+' : '−') + W.fmt(Math.abs(h.n)))); list.appendChild(r); }
     C.appendChild(list);
   }
-  why(w) { const [k, a] = String(w).split(':'); if (itemById(k)) return t('food.' + k); if (LINE[k]) return t(LINE[k]); if (k === 'film' || k === 'filmEnd') return t('wallet.why.' + k); if (k === 'job') return t('wallet.why.job', { job: t('job.title.' + a) }); if (k === 'shop') return t('shop.' + a); if (['mission', 'task', 'welcome', 'tablet', 'ticket'].includes(k)) return t('wallet.why.' + k); return String(w); }
+  why(w) { const [k, a] = String(w).split(':'); if (k === 'loan') return t(a === 'back' ? 'loan.paid' : 'loan.got'); if (itemById(k)) return t('food.' + k); if (LINE[k]) return t(LINE[k]); if (k === 'film' || k === 'filmEnd') return t('wallet.why.' + k); if (k === 'job') return t('wallet.why.job', { job: t('job.title.' + a) }); if (k === 'shop') return t('shop.' + a); if (['mission', 'task', 'welcome', 'tablet', 'ticket'].includes(k)) return t('wallet.why.' + k); return String(w); }
   // jobs: three shifts; taking one shows the way there (career.js Jobs)
   app_jobs(C) {
     const J = this.h.jobs(); if (J.active) { const k = J.job.kind, card = el('div', 'ph-job on'); card.append(el('b', null, t('job.title.' + k)), el('small', null, t('job.active'))); C.appendChild(card); const r = el('div', 'ph-row'); this.btn(r, t('job.cancel'), 'ghost', () => { J.cancel(); this.show('jobs'); }); C.appendChild(r); return; }

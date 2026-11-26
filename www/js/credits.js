@@ -6,7 +6,8 @@
 // catches casual edits (a mismatch restores the starting balance), a determined player can still edit their own phone. Credits are never
 // shared or traded between players, so nobody else is affected by that.
 const KEY = 'lumiere.credits.v1', SALT = 'lumiere.credits.k', START = 1500;
-export const DAILY_CAP = 2500;   // the most anyone can earn in a day (films, jobs and tasks together)
+export const DAILY_CAP = 2500;
+export const LOAN = { amount: 500, fee: 0.1, cut: 0.4 };   // the most anyone can earn in a day (films, jobs and tasks together)
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 function fnv(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(36); }
 function salt() {
@@ -35,8 +36,15 @@ export class Credits {
   // earn: capped per day; returns what was actually added (0 once the day's cap is reached)
   earn(n, why) {
     n = Math.max(0, Math.round(n)); this._roll(); const g = Math.min(n, Math.max(0, DAILY_CAP - this.s.day.earned)); if (!g) return 0;
-    this.s.bal += g; this.s.day.earned += g; this._log(g, why); return g;
+    this.s.bal += g; this.s.day.earned += g; this._log(g, why);
+    // v14c a loan is paid back out of what you earn: 40 % of each payment until it is cleared
+    const L = this.s.loan; if (L && L.owed > 0) { const back = Math.min(L.owed, Math.max(1, Math.round(g * LOAN.cut)), this.s.bal); if (back > 0) { L.owed -= back; this.s.bal -= back; if (L.owed <= 0) this.s.loan = null; this._log(-back, 'loan:back'); } }
+    return g;
   }
+  // v14c (the user, 11-26: "they can also take loans"): one loan at a time, 500 LC, 550 LC to pay back (10 %), repaid from earnings or at once
+  get loan() { return this.s.loan || null; }
+  borrow() { if (this.s.loan) return false; this.s.loan = { owed: LOAN.amount + Math.round(LOAN.amount * LOAN.fee), t: Date.now() }; this.s.bal += LOAN.amount; this._log(LOAN.amount, 'loan'); return true; }
+  repay() { const L = this.s.loan; if (!L) return false; const n = Math.min(L.owed, this.s.bal); if (n <= 0) return false; L.owed -= n; this.s.bal -= n; if (L.owed <= 0) this.s.loan = null; this._log(-n, 'loan:back'); return true; }
   spend(n, why) { n = Math.max(0, Math.round(n)); if (!n) return true; if (this.s.bal < n) return false; this.s.bal -= n; this._log(-n, why); return true; }
   _log(n, why) { this.s.hist.unshift({ t: Date.now(), n, why: String(why || '').slice(0, 40) }); if (this.s.hist.length > 80) this.s.hist.length = 80; this._save(); this._emit(); }
   history() { return this.s.hist; }

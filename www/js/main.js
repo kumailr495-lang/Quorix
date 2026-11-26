@@ -226,7 +226,7 @@ async function boot() {
     setTimeout(() => { npc.say(pick('ush.check.' + ticket.hall)); npc.gesture('give', 1.0); }, 1500);
     setTimeout(() => { npc.say(pick('ush.tear')); ticket.checked = true; tut.event('showed'); world.gate.pass(12000); if (!settings.seen || !settings.seen.escort) escort(npc); else ui.toast(t('toast9.gateOpen'), 2600); }, 3400);
   }
-  function escort(npc) { const h = world.hallById(ticket.hall), s = seatOf(ticket); world.gate.pass(20000); if (crowd.guide(npc, h, s, player)) { npc.say(pick('ush.lead')); ui.toast(t('toast.followUsher', { name: npc.name }), 2600); settings.seen = { ...(settings.seen || {}), escort: true }; saveSettings(settings); } }
+  function escort(npc) { const h = world.hallById(ticket.hall), s = seatOf(ticket); world.gate.pass(20000); if (crowd.guide(npc, h, s, player)) { npc.say(pick('ush.lead')); ui.toast(t('toast.followUsher', { name: npc.nameKey && t(npc.nameKey) !== npc.nameKey ? t(npc.nameKey) : npc.name }), 2600); settings.seen = { ...(settings.seen || {}), escort: true }; saveSettings(settings); } }
   // "locate my seat" (no red arrow, v8 feedback): your seat's reading light glows for a few seconds
   let glowSeat = null, glowT = 0; function highlightSeat() { const s = seatOf(ticket); if (!s) return; glowSeat = s; glowT = 10; seatGlow.position.set(s.x, s.y + 0.02, s.z); seatGlow.visible = true;
     const rm = world.rooms[s.hallKey]; if (rm && seatGlow.parent !== rm.group) { if (seatGlow.parent) seatGlow.parent.remove(seatGlow); rm.group.add(seatGlow); } }   // v12b: drawn with its hall only (in the scene's root it shone through the hall's walls)
@@ -491,7 +491,7 @@ async function boot() {
     // v11: nothing is offered through a wall (world9.js Walls.sees): people at eye height (over counters and their glass), seats and
     // fittings at chest height
     const sees = (x, z, lo, hi) => world.walls.sees(player.x, player.z, x, z, player.y + lo, player.y + hi);
-    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t(npc.role === 'bar' || npc.role === 'cafe' ? 'hud.order' : npc.role === 'box' ? 'hud.buy' : npc.name ? 'hud.talk' : 'hud.hello', { name: npc.name }), () => startTalk(npc)); return; }
+    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t(npc.role === 'bar' || npc.role === 'cafe' ? 'hud.order' : npc.role === 'box' ? 'hud.buy' : npc.name ? 'hud.talk' : 'hud.hello', { name: npc.nameKey && t(npc.nameKey) !== npc.nameKey ? t(npc.nameKey) : npc.name }), () => startTalk(npc)); return; }
     if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
     if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
     // v11 the ticket machines between the box office and the concessions: the box office sheet without the queue

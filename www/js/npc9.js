@@ -48,7 +48,7 @@ function walkClear(walls, ax, az, bx, bz, y = 0) {
 // ------------------------------------------------------------------ one person
 class Agent {
   constructor(crowd, o) {
-    Object.assign(this, { crowd, id: o.id, role: o.role || 'guest', name: o.name || '', voice: o.voice || null, rec: o.rec, x: o.x, y: o.y || 0, z: o.z, yaw: o.yaw || 0, home: o.home || null,
+    Object.assign(this, { crowd, id: o.id, role: o.role || 'guest', name: o.name || '', nameKey: o.nameKey || null, voice: o.voice || null, rec: o.rec, x: o.x, y: o.y || 0, z: o.z, yaw: o.yaw || 0, home: o.home || null,
       path: null, pi: 0, speed: o.speed || rnd(1.15, 1.4), ride: false, sit: 0, sitT: 0, seat: null, hall: null, state: o.state || 'idle', look: { yaw: 0, pitch: 0, amt: 0 }, alive: true,
       gest: null, gestUntil: 0, talkUntil: 0, talkable: !!o.talkable, wait: 0, onArrive: null, items: {}, item: null, r: 0.26 });
     // how this person takes to a stranger: fixed per person (from the id), so the same guest is the same every time you try
@@ -76,7 +76,7 @@ export class Crowd {
   remove(a) { a.dispose(); const i = this.agents.indexOf(a); if (i >= 0) this.agents.splice(i, 1); }
   // ---------------------------------------------------------- staff and guests
   init() {
-    const P = POSTS, mk = (id, look, name, role, voice, post, at) => { const p = at || P[post]; const a = this.spawn({ id, rec: staffRecipe(look, id.length * 131 + 17), name, role, voice, x: p.x, y: p.y || 0, z: p.z, yaw: p.yaw + Math.PI, home: { ...p, yaw: p.yaw + Math.PI }, state: 'post', talkable: true }); this.staff[id] = a; return a; };
+    const P = POSTS, mk = (id, look, name, role, voice, post, at) => { const p = at || P[post]; const a = this.spawn({ id, rec: staffRecipe(look, id.length * 131 + 17), name, nameKey: 'staff.' + id, role, voice, x: p.x, y: p.y || 0, z: p.z, yaw: p.yaw + Math.PI, home: { ...p, yaw: p.yaw + Math.PI }, state: 'post', talkable: true }); this.staff[id] = a; return a; };
     // behind the counters (the posts in building.js are the customers' side), facing the lobby
     mk('host', 'greeter', 'Clara', 'host', 'host', 'greeter');
     mk('box1', 'receptionist', 'Éloïse', 'box', 'box', null, { x: -18.1, y: 0, z: 9.0, yaw: -Math.PI / 2 }); mk('box2', 'vendor', 'Priya', 'box', 'box', null, { x: -18.1, y: 0, z: 6.2, yaw: -Math.PI / 2 });

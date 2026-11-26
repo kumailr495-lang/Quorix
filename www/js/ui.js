@@ -36,7 +36,7 @@ export class UI {
   modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk', '#tablet', '#atm', '#tutAsk', '#layoutEd', '#mpPanel'].some((s) => $(s) && !$(s).hidden) || !$('#menu').hidden; }
   // ---------------- ticket ----------------
   showTicket(tk, quick) {
-    $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = tk.row; $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = String(tk.hallName || '').replace('LUMIERE ', '');
+    $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = String(tk.seat || '').replace(/\d+$/, '') || tk.row;   /* v14c the row's letter (D), as on the seat plates and the chip; it showed the row's index (3) */ $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = String(tk.hallName || '').replace('LUMIERE ', '');
     $('#tkHint').textContent = quick ? t('tk.hintQuick') : t('tk.hintStory', { n: Math.round(tk.delay / 60) }); $('#tkJump').hidden = !quick; $('#ticket').hidden = false; this.hooks.onModal(true);
   }
   // ---------------- settings / language / info / pause ----------------

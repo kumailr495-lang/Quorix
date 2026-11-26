@@ -153,6 +153,31 @@ The user installed 13.0 and played it. Every point, in their words where short. 
 | LUMIERE name cropped | Done: the place pill shows the hall's short name and wraps its second line |
 | Houses with interiors, beaches, skydiving, swimming, a whole enterable city, voice chat, public room browser | Open: beyond one session and a phone WebView's memory; listed for later stages |
 
+## The 11-26 phone test (13 + 6 + 5 screenshots; "scrap the city ... an indie game where people watch movies together"; "first fix the seats")
+
+Engine renders (headless Chromium + SwiftShader), not the phone. Commits 0f7cdcd, b8ad169 (v14b), 4767251, e5786a9, 610b851, 0e2147b (v14c).
+
+| Ask | Status |
+|---|---|
+| CURVE seats "not placed in curved manner" (a seat plan with arcs round the stage) | Done: the cause was a sign error (hallmath yawOf) that turned every seat of the west halls away from the screen; every seat now faces the arcs' centre (a logic test reads all of them, 0.5 deg limit). Rows curve round a point 3 m behind the picture; past the aisles the floor steps straight to the walls (exits stay on the front floor); re-baked; walks pass |
+| Only CURVE curved, the others straight | Done (v14b) |
+| Loading screen is a screenshot (with the HUD in it) and a weird transition; "like GTA 6 artworks" | Done: four painted key-art pieces from our own scenes (Kuwahara paint, ink, grade), title per piece, staged fade to black then the menu; the menu camera no longer flies through the statue |
+| Phone UI does not fit (last row cut, gold bar) | Done: home page fits 740x340 to 915x412 with no scroll; status bar fixed |
+| "E" key badge on the phone | Done: volume/power keys and mouse-type presses on a touch screen no longer switch to the keyboard HUD |
+| Food looks bad (popcorn, nachos, churros, chocolate) | Done: vertex-painted models, a full popcorn heap with no gaps, new icons |
+| NPCs hand things over properly; ticket in the usher's hand | Done (v14b/c): items in the palm, hand-offs at the counters, the usher holds a ticket |
+| Surprise bundle; MP3 on the screen, NPCs dance, throw popcorn or money | Done: Music Night (a song as your show: a light show on the screen, the hall claps and cheers on the beat, popcorn and confetti thrown from the seats) |
+| Names in the chosen language | Done for the staff (Clara, Rahul ... in Devanagari and Urdu script) |
+| Seated audiences missing far away | Fixed: the far crowd's shader did not link since the outfit-colour change |
+| Exits: walk out fast, come back by the entrance | Done (v14b light-lock, two-way entrances); walks expect the one fade |
+| Proximity voice, voice notes, mute; host-only tablet; MP fixes; lift sync | Done (v14b) |
+| Scrap the flat, vehicles, phone Order app | Done (v14b) |
+| Private theatres (custom, home with a 3D remote, jungle, drive-in, panorama, space) | Open: each is a new baked room; not in this build |
+| Separate washrooms, lobby/corridor restructure | Open: builder and bake work beyond this build |
+| Loans, room QR codes, host transfer | Open |
+| Netflix/Prime films | Not possible legally: the app streams public-domain and CC films, your own videos and links |
+| "IMAX is named MAX" | Kept: IMAX is a trademark; MAX is our own format name |
+
 ## Theatres
 
 | Ask | Status |

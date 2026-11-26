@@ -24,7 +24,7 @@ export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club',
   // fountain, espresso machine, cafe counter and till and the v7 ribbon chandelier)
   'popcorn_kettle', 'drinks_tower', 'espresso_lever', 'till_pos', 'tub_stack', 'bar_walnut', 'chandelier_deco', 'popcorn_case', 'ticket_kiosk',
   // v14 CC0 photoscanned props (Poly Haven; tools/blender/scans14.py, tools/textures/scans.py) and the bust's plinth (tools/blender/props14.py)
-  'scan_chesterfield', 'scan_armchair', 'scan_lounge_chair', 'scan_coffee_table', 'scan_bust', 'scan_plant_stand', 'scan_plant', 'scan_cine_camera', 'plinth_marble', 'scan_concrete_table',
+  'scan_chesterfield', 'scan_armchair', 'scan_lounge_chair', 'scan_coffee_table', 'scan_bust', 'scan_cine_camera', 'plinth_marble', 'scan_concrete_table',
   // v14 the menu's food and drinks, held in your hand and set in cup holders (tools/blender/food14.py; held.js makeFood)
   'food_popcorn', 'food_nachos', 'food_hotdog', 'food_burger', 'food_pizza', 'food_fries', 'food_icecream', 'food_churros', 'food_choc', 'food_gummies',
   'food_cup', 'food_shake', 'food_slush', 'food_coffee', 'food_chai', 'food_water',
@@ -76,7 +76,7 @@ function prepare(scene, name) {
 export const TWO_SIDED = { sofa_curve: [17], rope_velvet: [0], lamp_post: [3], bollard_light: [1], // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
   letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [0, 1, 2], car_taxi: [80, 81, 90, 91], car_sedan: [80, 81],
   // v14b (the user, 11-26: "hollow", photos looking down on the lounge furniture): the photoscans are open shells (no underside, open seams)
-  scan_chesterfield: [0], scan_armchair: [0, 1], scan_coffee_table: [0], scan_plant_stand: [0], scan_plant: [0, 1], scan_cine_camera: [0, 1], scan_concrete_table: [0], food_popcorn: [0, 1, 2, 3, 4, 5] };
+  scan_chesterfield: [0], scan_armchair: [0, 1], scan_coffee_table: [0], scan_cine_camera: [0, 1], scan_concrete_table: [0], food_popcorn: [0, 1, 2, 3, 4, 5] };
 const CHECK = typeof location !== 'undefined' && /[?&]assetcheck=1/.test(location.search);
 // ?assetcheck=1: the open edges of a glTF node are counted over all its primitives together. A mesh with several materials comes in as one
 // primitive per material, and each of those is open along its seams with the others (a car's paint, trim and glass) while the whole is
