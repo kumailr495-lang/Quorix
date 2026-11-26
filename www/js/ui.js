@@ -4,6 +4,7 @@
 // The booking sheet lives in booking9.js, the tablet in tablet.js, the room panel and chat in mpui.js.
 import { t, setLang, LANGS, lang } from './i18n.js';
 import { CATALOG, posterURL } from './films.js';
+import { HALLS } from './hallmath.js';
 const $ = (s) => document.querySelector(s);
 const LANG_SUB = { en: 'English', hi: 'Hindi', ur: 'Urdu', es: 'Spanish' }, LANG_CLASS = { hi: 'dev', ur: 'urd' };
 // context-action icons for the HUD prompt (talk, sit, stand, give, pay...)
@@ -36,7 +37,7 @@ export class UI {
   modalOpen() { return ['#book', '#ticket', '#settings', '#langPick', '#info', '#pause', '#talk', '#tablet', '#atm', '#tutAsk', '#layoutEd', '#mpPanel'].some((s) => $(s) && !$(s).hidden) || !$('#menu').hidden; }
   // ---------------- ticket ----------------
   showTicket(tk, quick) {
-    $('#tkTitle').textContent = tk.title; $('#tkScreen').textContent = /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : tk.hall === 'I' ? '1' : tk.hall === 'II' ? '2' : '3'; $('#tkRow').textContent = String(tk.seat || '').replace(/\d+$/, '') || tk.row;   /* v14c the row's letter (D), as on the seat plates and the chip; it showed the row's index (3) */ $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = String(tk.hallName || '').replace('LUMIERE ', '');
+    $('#tkTitle').textContent = tk.title; { const hh = HALLS.find((q) => q.id === tk.hall || q.key === tk.hallKey); $('#tkScreen').textContent = hh ? String(hh.no) : /^\d+$/.test(String(tk.hall)) ? String(tk.hall) : '1'; }   /* v14c the screen's number from the hall (MAX 1 ... X-270 4); it fell back to 3 for every id it did not know */ $('#tkRow').textContent = String(tk.seat || '').replace(/\d+$/, '') || tk.row;   /* v14c the row's letter (D), as on the seat plates and the chip; it showed the row's index (3) */ $('#tkSeat').textContent = tk.col; $('#tkKind').textContent = String(tk.hallName || '').replace('LUMIERE ', '');
     $('#tkHint').textContent = quick ? t('tk.hintQuick') : t('tk.hintStory', { n: Math.round(tk.delay / 60) }); $('#tkJump').hidden = !quick; $('#ticket').hidden = false; this.hooks.onModal(true);
   }
   // ---------------- settings / language / info / pause ----------------

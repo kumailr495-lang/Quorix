@@ -174,7 +174,8 @@ Engine renders (headless Chromium + SwiftShader), not the phone. Commits 0f7cdcd
 | Scrap the flat, vehicles, phone Order app | Done (v14b) |
 | Private theatres (custom, home with a 3D remote, jungle, drive-in, panorama, space) | Open: each is a new baked room; not in this build |
 | Separate washrooms, lobby/corridor restructure | Open: builder and bake work beyond this build |
-| Loans, room QR codes, host transfer | Open |
+| Loans | Done: Wallet, 500 LC now, 550 back from 40 % of earnings or at once |
+| Room QR codes, host transfer | Open (room codes work: type or share the code) |
 | Netflix/Prime films | Not possible legally: the app streams public-domain and CC films, your own videos and links |
 | "IMAX is named MAX" | Kept: IMAX is a trademark; MAX is our own format name |
 

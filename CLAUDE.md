@@ -117,6 +117,26 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v14b/v14c (2026-11-26: the user's phone test; "scrap the city: an indie game where people watch movies together"; APK 14.1, docs/V14-RELEASE-NOTES.md)
+- **Scrapped**: the flat, the vehicles, the phone's Order app (orders come from the armrest tablet and the counters). Story starts with the taxi.
+- **Seat yaw**: hallmath `yawOf(t) = (f > 0 ? -PI/2 : PI/2) + t` (the old `- f * t` turned the west halls' seats away from the screen). test-logic
+  fails when any seat faces > 0.5 deg away from the picture (the arcs' centre on curved rows). A seat's front is (-sin yaw, -cos yaw).
+- **Curved rows (CURVE only, rowK 3)**: past each side aisle's outer edge the floor steps straight to the wall (hallmath `edgeD`/`edgeE`,
+  `hallFloor`; halls.py `band`, `side_riser`, the last-row polygon), so the side exits stay on the front floor; routes walk curved aisles and
+  lanes in short chords (seatRoute, npc9 exitRoute). Curved-row seats are narrowed by fr x pitch / radius (world9 buildHall).
+- **Loader**: four painted key-art pieces in www/load (tools/art: engine stills at 2400 px -> paint.py anisotropic Kuwahara in Blender's compositor
+  -> grade.py ink, grade, vignette, grain); titles `load.art`; the art fades to black, then the black lifts off the menu. Never put a screenshot
+  with the HUD in the loader. Menu camera: an arc 6.4 m round the statue, 3 m up.
+- **Music Night** (party.js, film9 `_music`): an audio-only own show turns the screen into a canvas light show (MusicScreen) driven by
+  sound.an; beats -> npc9 onFilmEvent 'beat' (clap) / 'drop' (cheer, every 4th) and Confetti bursts from seated viewers. The file input and the
+  Android chooser accept audio.
+- **Far crowd shader**: VERT_CROWD_RB must declare every varying FRAG_RB reads (vH); a link failure there hides every seated audience.
+- **Food**: vertex-painted models (lbl.py MAT_VC, export colors=True; held.js multiplies tint by COLOR_0); popcorn heap = a closed dome + kernels.
+- **Other**: loans (credits.js LOAN), staff names per language (`staff.<id>`, talk.js nm), ticket row letter, phone home fits 340-412 px tall,
+  no E badge from mouse-type presses on touch screens, Sound9.setHead ignores non-finite values, walk.mjs exit walks expect the light-lock's jump.
+- **Probe lessons**: hall height is `H.cfg.y0` (world halls have no y0); `L.pose` puts the player at camera y - 1.62, keep it above the floor;
+  long scripts outlive a 40 s test film (its show ends and idles); a scanned plant's leaf cards can lie in one plane (zcheck engine pass).
+
 ## v14 (2026-11-20: the 13.0 phone test, then "finish every feature ... GTA level models ... money, jobs, missions, tasks, streaming, customizable theatres, cars, motorcycles"; docs/ASKS-LEDGER.md "v14 push")
 - **Halls**: hallmath.js HALLS bigger with curved rows (rowK), building.js `L1` constant 4.662 (every hall lifted: y0 = L1 - total); halls.py: no
   baffle, 270's ceiling a light grid. Exits are walked (no fast exit; walk.mjs expects tele 0). Seats named (world9.js seatLabels), seat finder.
