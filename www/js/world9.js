@@ -398,7 +398,7 @@ export const PANEL_DRAW = {
   cafemenu: (g, w, h) => { g.fillStyle = '#16110d'; g.fillRect(0, 0, w, h); g.strokeStyle = '#c9a35e'; g.lineWidth = Math.max(2, h * 0.012); g.strokeRect(h * 0.05, h * 0.05, w - h * 0.1, h - h * 0.1);
     const cols = [['COFFEE', [['Espresso', 160], ['Americano', 190], ['Cappuccino', 210], ['Café latte', 220], ['Mocha', 240]]], ['TEA & MORE', [['Masala chai', 150], ['Iced tea', 180], ['Hot chocolate', 220], ['Cold coffee', 230]]], ['SWEETS', [['Cheesecake', 260], ['Brownie', 180], ['Croissant', 160], ['Blueberry muffin', 170]]]];
     g.textBaseline = 'middle'; cols.forEach(([head, items], c) => { const x0 = w * (0.05 + c * 0.315), x1 = x0 + w * 0.27; g.fillStyle = '#e3b25f'; g.font = `600 ${h * 0.12}px ${SANS}`; g.textAlign = 'left'; g.fillText(head, x0, h * 0.2);
-      g.font = `400 ${h * 0.09}px ${SANS}`; items.forEach(([nm, pr], i) => { const y = h * (0.37 + i * 0.13); g.fillStyle = '#f2ebdd'; g.textAlign = 'left'; g.fillText(nm, x0, y); g.textAlign = 'right'; g.fillStyle = '#e3b25f'; g.fillText('₹' + pr, x1, y); }); }); },
+      g.font = `400 ${h * 0.09}px ${SANS}`; items.forEach(([nm, pr], i) => { const y = h * (0.37 + i * 0.13); g.fillStyle = '#f2ebdd'; g.textAlign = 'left'; g.fillText(nm, x0, y); g.textAlign = 'right'; g.fillStyle = '#e3b25f'; g.fillText(pr + ' LC', x1, y); }); }); },
   cafesign: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1d140d'); gr.addColorStop(1, '#0d0906'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     g.fillStyle = '#e8c27a'; g.font = `500 ${h * 0.52}px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.12}px`; g.fillText('CAFÉ LUMIÈRE', w / 2, h * 0.5); if ('letterSpacing' in g) g.letterSpacing = '0px'; g.fillRect(w * 0.28, h * 0.86, w * 0.44, Math.max(2, h * 0.025)); },
   // v12 the marquee's boards; the front is redrawn with tonight's films by panels9.js attraction()
@@ -744,7 +744,10 @@ function buildHall(world, h, room) {
   for (const F of Object.values(fams)) {
     const geo = [0, 1].map((l) => assetGeometry(F.sn, l, flip, toGeometry, Acc, over)); if (!geo[0]) { console.warn('seat model missing: ' + F.sn); continue; }
     geo[0].computeBoundingBox(); const bw = geo[0].boundingBox.max.x - geo[0].boundingBox.min.x, aw = ASSETS[F.an] ? ASSETS[F.an].box.max.x - ASSETS[F.an].box.min.x : 0.06;
-    const want = SEAT[F.kind].w - Math.min(0.12, aw), sx = clamp(want / Math.max(0.2, bw), 0.75, 1.7);
+    // v14c curved rows: neighbours turn towards each other, so the seats' fronts close up by fr x pitch / radius; the seat is that much
+    // narrower (row A of CURVE: 3 cm) so its front corners stay clear of the arms
+    const rrMin = h.rowK ? Math.min(...h.rows.filter((r) => r.seat === F.kind).map((r) => r.dHip + h.rowK)) : Infinity;
+    const want = SEAT[F.kind].w - Math.min(0.12, aw) - (Number.isFinite(rrMin) ? SEAT[F.kind].fr * SEAT[F.kind].w / rrMin : 0), sx = clamp(want / Math.max(0.2, bw), 0.75, 1.7);
     const idx = F.list.map((s) => s.i), sub = new Float32Array(idx.length * 7); idx.forEach((i, k) => sub.set(lit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, F.list, sub, sx);
     for (const s of F.list) { s.sx = sx; s.fam = F.sn; }   // v12 recline.js copies your own seat at the same width
   }

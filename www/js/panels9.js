@@ -56,9 +56,13 @@ export function attraction(P, shows) {
 // the menu boards (drawn once; the prices are the bill's)
 export function menuBoard(P, t, fmt, prices) {
   if (!P) return; const { g, canvas: c, tex } = P, W = c.width, H = c.height; g.fillStyle = '#0a0809'; g.fillRect(0, 0, W, H);
-  const cols = [['panel9.popcorn', [['opt9.salted', prices.salted], ['opt9.caramel', prices.caramel], ['opt9.cheese', prices.cheese]]], ['panel9.drinks', [['opt9.drink', prices.cola], ['opt9.coffee', prices.coffee], ['item.water', prices.water]]], ['panel9.more', [['opt9.nachos', prices.nachos], ['opt9.combo', prices.combo]]]];
-  const cw = W / cols.length; cols.forEach(([title, items], k) => { const x = k * cw + cw * 0.08; g.fillStyle = '#e3b25f'; g.font = `600 ${H * 0.16}px ${SANS}`; g.textAlign = 'left'; g.textBaseline = 'middle'; sp(g, H * 0.03); g.fillText(t(title).toUpperCase(), x, H * 0.17); sp(g, 0);
-    items.forEach(([lab, p], i) => { const y = H * (0.42 + i * 0.2); g.fillStyle = '#f2ebdd'; g.font = `500 ${H * 0.13}px ${SANS}`; g.textAlign = 'left'; g.fillText(t(lab), x, y); g.textAlign = 'right'; g.fillStyle = 'rgba(242,235,221,.8)'; g.fillText(fmt(p), (k + 1) * cw - cw * 0.08, y); });
+  const cols = [['cat.popcorn', [['food.salted', prices.salted], ['food.caramel', prices.caramel], ['food.cheese', prices.cheese]]], ['cat.cold', [['food.cola', prices.cola], ['food.lemonade', prices.lemonade], ['food.shake', prices.shake]]], ['cat.hot', [['food.nachos', prices.nachos], ['food.hotdog', prices.hotdog], ['food.combo', prices.combo]]]];   // v14b the menu (menu.js)
+  // v14b one size for every line (each long name used to shrink on its own, so the columns read in three sizes)
+  const cw = W / cols.length, base = H * 0.13; g.font = `500 ${base}px ${SANS}`; let fit = 1;
+  for (const [, items] of cols) for (const [lab, p] of items) fit = Math.min(fit, (cw * 0.78 - g.measureText(fmt(p)).width) / Math.max(1, g.measureText(t(lab)).width));
+  const fs = Math.max(H * 0.07, base * Math.min(1, fit));
+  cols.forEach(([title, items], k) => { const x = k * cw + cw * 0.08; g.fillStyle = '#e3b25f'; g.font = `600 ${H * 0.16}px ${SANS}`; g.textAlign = 'left'; g.textBaseline = 'middle'; sp(g, H * 0.03); g.fillText(t(title).toUpperCase(), x, H * 0.17); sp(g, 0);
+    items.forEach(([lab, p], i) => { const y = H * (0.42 + i * 0.2); g.fillStyle = '#f2ebdd'; g.font = `500 ${fs}px ${SANS}`; g.textAlign = 'left'; g.fillText(t(lab), x, y); g.textAlign = 'right'; g.fillStyle = 'rgba(242,235,221,.8)'; g.fillText(fmt(p), (k + 1) * cw - cw * 0.08, y); });
     if (k) { g.fillStyle = 'rgba(227,178,95,.25)'; g.fillRect(k * cw, H * 0.1, 2, H * 0.8); } });
   tex.needsUpdate = true;
 }

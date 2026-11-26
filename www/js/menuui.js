@@ -16,8 +16,8 @@ export function renderMenu(root, o) {
     lastCat = cat; for (const b of tabs.children) b.classList.toggle('on', b.dataset.c === cat); grid.innerHTML = '';
     for (const it of MENU.filter((m) => m.cat === cat)) {
       const card = el('div', 'mn-card'), pic = el('div', 'mn-pic'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.src = `img/food/${it.img}.webp`; pic.appendChild(img);
-      const mark = el('i', 'mn-veg ' + (it.veg ? 'v' : 'nv')); mark.setAttribute('aria-label', t(it.veg ? 'menu.veg' : 'menu.nonveg')); pic.appendChild(mark);
-      const info = el('div', 'mn-info'); info.append(el('b', null, t('food.' + it.id)), el('small', null, t('food.d.' + it.id)));
+      const mark = el('i', 'mn-veg ' + (it.veg ? 'v' : 'nv')); mark.setAttribute('aria-label', t(it.veg ? 'menu.veg' : 'menu.nonveg'));   // v14b beside the name (it sat over the picture)
+      const info = el('div', 'mn-info'), name = el('b', null, t('food.' + it.id)); name.prepend(mark); info.append(name, el('small', null, t('food.d.' + it.id)));
       const row = el('div', 'mn-row'), price = el('span', 'mn-price', o.free ? t('menu.free') : o.price(it.id)), go = el('button', 'btn primary sm mn-go', t('menu.order'));
       go.addEventListener('click', (e) => { e.stopPropagation(); o.sound && o.sound.click(); if (o.order(it.id)) { card.classList.add('ok'); setTimeout(() => card.classList.remove('ok'), 900); } });
       row.append(price, go); info.appendChild(row); card.append(pic, info); grid.appendChild(card);

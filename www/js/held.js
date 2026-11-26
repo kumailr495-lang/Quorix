@@ -52,7 +52,8 @@ export function makeCup(kind) {
 export function makeFood(item) {
   const A = item && ASSETS[item.model]; if (!A) return null; const grp = new THREE.Group(), fill = [], box = new THREE.Box3(), tmp = new THREE.Box3();
   for (const p of A.parts) { if (p.lod !== 0 || p.glow || p.leaf) continue; const g = p.geo.clone(), n = g.attributes.position.count, c = new Float32Array(n * 3);
-    const sw = item.swap && item.swap[p.matName], tint = sw ? new THREE.Color(sw).toArray() : p.tint; for (let i = 0; i < n; i++) c.set(tint, i * 3);
+    const sw = item.swap && item.swap[p.matName], tint = sw ? new THREE.Color(sw).toArray() : p.tint, vc = p.geo.attributes.color;   // v14b a painted part (food14.py paint): its colours times the tint
+    for (let i = 0; i < n; i++) { if (vc) { c[i * 3] = tint[0] * vc.getX(i); c[i * 3 + 1] = tint[1] * vc.getY(i); c[i * 3 + 2] = tint[2] * vc.getZ(i); } else c.set(tint, i * 3); }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.computeBoundingBox(); box.union(tmp.copy(g.boundingBox)); const m = new THREE.Mesh(g); m.userData.fill = /^Fill/.test(p.name); if (m.userData.fill) fill.push(m); grp.add(m); }
   const cy = (box.min.y + box.max.y) / 2, by = box.min.y; for (const m of grp.children) { m.geometry.translate(0, -cy, 0); if (m.userData.fill) m.userData.base = by - cy; }
   grp.userData.setLevel = (k) => { for (const m of fill) { m.visible = k > 0.02; m.scale.y = 0.25 + 0.75 * k; m.position.y = (1 - m.scale.y) * (m.userData.base || 0); } };

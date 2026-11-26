@@ -40,7 +40,7 @@ export const HALLS = [
     groups: [{ seat: 'rocker', rows: 11, n: 37, pitch: 1.36, cls: (r) => (r >= 5 && r <= 8 ? 'maxPrime' : 'maxStd') },
       { seat: 'pod', rows: 2, pairs: 10, gap: 0.62, pitch: 2.25, lift: 0.2, cls: () => 'pod' }] },
   { id: 'CURVE', no: 2, key: 'hallCurve', name: 'LUMIERE CURVE', format: 'curve', side: -1, zc: -73.3, width: 28.6, W: 28.3, H: 12.0, hB: 1.05, sag: 0.1547, D1: 12.2, c: 0.2,
-    aisleW: 1.4, cross: null, rear: 2.6, rowK: 9, curtain: true, frame: 0.25,
+    aisleW: 1.4, cross: null, rear: 2.6, rowK: 3, curtain: true, frame: 0.25,   // v14c (the user, 11-26, a seat plan with arcs round the stage: "not placed in curved manner"): arcs round a point 3 m behind the picture (was 9: from eye level the rows read straight)
     groups: [{ seat: 'recliner', rows: 7, n: 21, pitch: 1.92, cls: (r) => (r >= 2 && r <= 4 ? 'reclPlus' : 'recl') },
       { seat: 'sofa', rows: 1, pairs: 9, gap: 0.5, pitch: 2.0, cls: () => 'love' }] },
   { id: 'CLASSIC', no: 3, key: 'hallClassic', name: 'LUMIERE CLASSIC', format: 'classic', side: 1, zc: -34.7, width: 24.6, W: 24.3, H: 11.0, hB: 1.0, sag: 0, D1: 11.0, c: 0.2,
@@ -93,6 +93,12 @@ export function makeHall(s) {
   // row coordinates: (a, e) = (arc length across, distance from the picture); straight rows when rowK = 0
   h.toRow = (u, d) => { if (!k) return { a: u, e: d }; const rr = Math.hypot(u, d + k); return { a: rr * Math.atan2(u, d + k), e: rr - k }; };
   h.fromRow = (a, e) => { if (!k) return { u: a, d: e, yaw: 0 }; const rr = e + k, t = a / rr; return { u: rr * Math.sin(t), d: rr * Math.cos(t) - k, yaw: t }; };
+  // v14c curved rows: past each side aisle's outer edge (|a| > aisle[1]) the floor steps straight across to the side wall, each step at
+  // the distance where its arc meets the aisle's edge (arcs run on to the wall swept the risers forward over the exit doors). edgeD(e):
+  // that distance for arc e; edgeE(d): its inverse (edgeD rises with e: d/drr = cos t + t sin t > 0)
+  const eLo = k ? aisle[1] / (Math.PI / 2) - k + 1e-3 : 0;
+  h.edgeD = (e) => (k ? (e + k) * Math.cos(aisle[1] / (e + k)) - k : e);
+  h.edgeE = (d) => { if (!k) return d; let lo = eLo, hi = depthIn + 40; if (d <= h.edgeD(lo)) return lo; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (h.edgeD(m) < d) lo = m; else hi = m; } return (lo + hi) / 2; };
   // world: the audience faces +x (west halls) or -x (east halls); +u is the viewer's right (+z when facing +x)
   const f = -s.side; h.dir = f;
   h.xPic = s.side < 0 ? SPINE.x0 - WALL - SCREEN_GAP : SPINE.x1 + WALL + SCREEN_GAP;
@@ -100,7 +106,9 @@ export function makeHall(s) {
   h.toWorld = (u, d) => ({ x: h.xPic - f * d, z: s.zc + f * u });
   h.toLocal = (x, z) => ({ u: (z - s.zc) * f, d: (h.xPic - x) * f });
   // three.js yaw (rotation about +y) of something in the hall facing the screen, turned by t towards +u
-  h.yawOf = (t) => (f > 0 ? -Math.PI / 2 : Math.PI / 2) - f * t;
+  // v14c (the user, 11-26: "they are not placed correctly in the curved theatre"): + t on both sides. The old "- f * t" turned the seats of
+  // the west halls (f = 1: MAX, CURVE) away from the screen's centre, so a curved row fanned outwards; the east halls were right
+  h.yawOf = (t) => (f > 0 ? -Math.PI / 2 : Math.PI / 2) + t;
   // entrance: the rear corner on the lobby side (+z for every hall: the bridge is north of them). Exits (v12b): one door in each side wall
   // at the front; building.js places them along the wall (h.exits, from the stairs their passages need) once it knows the hall's floor
   h.entryU = f * (s.width / 2 - 1.3);
@@ -136,7 +144,8 @@ export function hallSeats(h) {
 // floor height (above the hall's front floor) at local (u, d): row platforms, the side aisles' steps (each riser split into equal steps
 // taken out of the lower platform, in front of the riser), the rear aisle level with the last row
 export function hallFloor(h, u, d) {
-  const { a, e } = h.toRow(u, d), rows = h.rows, aa = Math.abs(a), inAisle = aa >= h.aisle[0] - 0.05;
+  let { a, e } = h.toRow(u, d); if (h.rowK && Math.abs(a) > h.aisle[1]) { e = h.edgeE(d); a = Math.sign(a) * (h.aisle[1] - 0.01); }   // v14c the straight steps past the aisle
+  const rows = h.rows, aa = Math.abs(a), inAisle = aa >= h.aisle[0] - 0.05;
   let r = 0; while (r < rows.length - 1 && e >= rows[r + 1].pf) r++;
   const y = rows[r].y; if (!inAisle || r === rows.length - 1) return y;
   const nx = rows[r + 1], t = nx.pf - e; if (!nx.steps || t >= (nx.steps - 1) * nx.tread) return y;
@@ -146,8 +155,16 @@ export function hallFloor(h, u, d) {
 export function seatRoute(h, seat) {
   const row = h.rows[seat.row], sideA = seat.a >= 0 ? (h.aisle[0] + h.aisle[1]) / 2 : -(h.aisle[0] + h.aisle[1]) / 2;
   const laneE = (row.lane[0] + row.lane[1]) / 2, rearE = h.rearD + h.rear * 0.45, P = (a, e) => h.fromRow(a, e);
-  const entry = h.toRow(h.entryU, h.depthIn - 0.6);
-  return [P(entry.a, rearE), P(sideA, rearE), P(sideA, laneE), P(seat.a, laneE)].map((p) => ({ u: p.u, d: p.d }));
+  const entry = h.toRow(h.entryU, h.depthIn - 0.6), pts = [];
+  // v14c curved rows: the door is past the aisle's edge (the straight steps), so straight from it to the aisle's top; down the aisle and
+  // along the row's lane in short chords (a long chord across an arc left the lane)
+  if (!h.rowK || Math.abs(entry.a) <= h.aisle[1]) pts.push(P(entry.a, rearE));
+  pts.push(P(sideA, rearE));
+  if (h.rowK) for (let e = rearE - 2.5; e > laneE + 1.2; e -= 2.5) pts.push(P(sideA, e));
+  pts.push(P(sideA, laneE));
+  if (h.rowK) { const n = Math.ceil(Math.abs(sideA - seat.a) / 2); for (let i = 1; i < n; i++) pts.push(P(sideA + (seat.a - sideA) * i / n, laneE)); }
+  pts.push(P(seat.a, laneE));
+  return pts.map((p) => ({ u: p.u, d: p.d }));
 }
 // the table printed by tools/dev/hall-calc.mjs and quoted in docs/V9-DESIGN.md
 export function hallReport(h) {

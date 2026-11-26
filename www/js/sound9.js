@@ -176,6 +176,7 @@ export class Sound9 extends Sound {
   // the listener: your head (position and turn) for the virtual speakers
   setHead(x, y, z, yaw, pitch) {
     if (!this.ready) return; const L = this.ctx.listener, fx = -Math.sin(yaw) * Math.cos(pitch), fy = Math.sin(pitch), fz = -Math.cos(yaw) * Math.cos(pitch), t = this.ctx.currentTime;
+    if (!(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(fx) && Number.isFinite(fy) && Number.isFinite(fz))) return;   // v14c a non-finite head threw and stopped the rest of the frame
     if (L.positionX) { L.positionX.setTargetAtTime(x, t, 0.03); L.positionY.setTargetAtTime(y, t, 0.03); L.positionZ.setTargetAtTime(z, t, 0.03); L.forwardX.setTargetAtTime(fx, t, 0.03); L.forwardY.setTargetAtTime(fy, t, 0.03); L.forwardZ.setTargetAtTime(fz, t, 0.03); L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; }
     else { L.setPosition(x, y, z); L.setOrientation(fx, fy, fz, 0, 1, 0); }
   }

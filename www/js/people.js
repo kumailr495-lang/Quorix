@@ -228,6 +228,7 @@ export function personMaterial(r) {
     uHide: { value: hideFor(r) }, uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.3, 0.8, 0.4).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } } });
 }
 // ------------------------------------------------------------------ IK and pose helpers (world space, no knowledge of bone axes needed)
+const _hk1 = new THREE.Vector3(), _hk2 = new THREE.Vector3(), _hk4 = new THREE.Vector3(), _hn = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3(), _ID = new THREE.Quaternion();
 function rotWorld(bone, q, w = 1) {   // apply a world-space rotation q (blended by w) to a bone, keeping its parent
   if (w <= 0) return; bone.parent.getWorldQuaternion(_pq); bone.getWorldQuaternion(_q2); _q.copy(_ID).slerp(q, w); _q2.premultiply(_q); bone.quaternion.copy(_pq.invert().multiply(_q2)); bone.updateMatrixWorld(true);
@@ -256,7 +257,7 @@ const GEST = {
   shush: (t) => ({ R: [-0.01, 0.17, 0.1], from: 'chest' }),
   wave: (t) => ({ R: [-0.32 + 0.07 * Math.sin(t * 9), 0.52, 0.1], from: 'chest' }),
   read: (t) => ({ L: [0.08, -0.12, 0.3], R: [-0.08, -0.12, 0.3], from: 'chest', head: 0.38 }),
-  hold: (t) => ({ R: [-0.17, -0.3, 0.24], from: 'chest' }),
+  hold: (t) => ({ R: [-0.15, -0.24, 0.3], from: 'chest' }),   // v14b higher and further out: the forearm level, the thing in front of you
   type: (t) => ({ L: [0.13, -0.3, 0.4 + 0.02 * Math.sin(t * 13)], R: [-0.13, -0.3, 0.4 + 0.02 * Math.sin(t * 11 + 2)], from: 'chest', head: 0.25 }),
   point: (t) => ({ R: [-0.42, 0.06, 0.48], from: 'chest' }),
   give: (t) => ({ R: [-0.08, -0.12, 0.46], from: 'chest' }),
@@ -345,7 +346,13 @@ export class Person {
   detach(name) { const m = this.items[name]; if (m && m.parent) m.parent.remove(m); delete this.items[name]; }
   _items() {
     for (const k in this.items) { const m = this.items[k], b = m.userData.hand; b.getWorldPosition(_a); this.group.matrixWorld.extractBasis(_fx, _fy, _fz);
-      _a.addScaledVector(_fy.normalize(), -0.03).addScaledVector(_fz.normalize(), 0.035); b.worldToLocal(m.position.copy(_a));
+      // v14b (the user, 11-26: things floating beside a hand): in the palm, from the Rocketbox finger roots: 70 % of the way from the wrist
+      // to the middle knuckle and 2.8 cm out of the palm (the palm's side: the body's centre for the right hand)
+      const fr = (n) => b.children.find((c) => c.name.endsWith(n)), f1 = fr('Finger1'), f2 = fr('Finger2'), f4 = fr('Finger4');
+      if (f1 && f2 && f4) { f1.getWorldPosition(_hk1); f2.getWorldPosition(_hk2); f4.getWorldPosition(_hk4); _hn.subVectors(_hk1, _a).cross(_hk4.sub(_a)).normalize();
+        if (_hn.dot(_fx.normalize()) * (b.name.endsWith('_l') ? -1 : 1) < 0) _hn.negate(); _a.lerp(_hk2, 0.7).addScaledVector(_hn, 0.028); }
+      else _a.addScaledVector(_fy.normalize(), -0.03).addScaledVector(_fz.normalize(), 0.035);
+      b.worldToLocal(m.position.copy(_a));
       this.group.getWorldQuaternion(_q2); b.getWorldQuaternion(_pq); m.quaternion.copy(_pq.invert().multiply(_q2)); }
   }
   update(dt, light) {

@@ -11,6 +11,7 @@ import { POSTS, NAV, HALL, L1, ESC, SPINE, ZONE, LOBBY, EXIT_PASSAGES } from './
 import { seatRoute, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { pick } from './i18n.js';
 import { ASSETS } from './assets.js';
+import { makeHeld, setHeldMaterial } from './held.js';
 const TAU = Math.PI * 2, clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), adiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b)), rnd = (a, b) => a + Math.random() * (b - a);
 const HIDDEN = { visible: false }, SEAT_H = { rocker: 0.44, recliner: 0.5, sofa: 0.5, pod: 0.5 }, RECLINE = { rocker: 0.18, recliner: 0.32, sofa: 0.2, pod: 0.26 };
 const DENSITY = { off: 0, low: 10, medium: 20, high: 30 };   // v9.3 (the user: "everything feels so empty"): a busy evening lobby
@@ -119,7 +120,7 @@ export class Crowd {
     const M = this.millNet(), free = M.spots.filter((s) => !s.by); if (!free.length) return null;   // v12b: never two guests on one spot (npc-clear found two)
     const s = free[(i + Math.floor(this.seedBase)) % free.length], rs = this.seed(), rec = randomRecipe(rs), voice = rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM');
     const a = this.spawn({ rec, role: 'guest', voice, x: s.x, y: 0, z: s.z, yaw: s.face + rnd(-0.6, 0.6), state: 'mill', talkable: true }); a.spot = [s.x, s.z]; a.millSpot = s; s.by = a; a.next = this.now + rnd(4000, 14000); a.idle = IDLES[i % IDLES.length];
-    a.gn = this.gnext = (this.gnext || 0) + 1; a.rs = rs; a.gi = i % IDLES.length; return a;
+    a.gn = this.gnext = (this.gnext || 0) + 1; a.rs = rs; a.gi = i % IDLES.length; if (i % 4 === 1) this.handProp(a, ['cola', 'latte', 'salted', 'caramel'][i % 3]); return a;
   }
   // v14 play together (the user, 11-21: "it showed an npc at a place and i talked to him ... in other mobile it showed that there is no npc
   // there"): the host's phone runs the lobby's guests and sends who they are (a roster: number, recipe seed, idle) and where they are (four
@@ -233,7 +234,7 @@ export class Crowd {
     const parties = []; for (let i = 0; i < chosen.length;) { const k = Math.min(chosen.length - i, [1, 2, 2, 2, 3, 4][Math.floor(Math.random() * 6)]); parties.push(k); i += k; }
     const when = []; parties.forEach((k, p) => { const at = t0 + (p / Math.max(1, parties.length)) * span + rnd(0, 1500); for (let j = 0; j < k; j++) when.push(at + j * rnd(700, 1100)); });
     chosen.forEach((s, i) => { const rs = this.seed(), rec = randomRecipe(rs); s.taken = true;
-      const v = { seat: s, hall: h, rec, rs, state: 'due', at: when[i], agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
+      const v = { item: i % 3 === 0 ? ['salted', 'cola', 'caramel', 'nachos', 'icedtea'][i % 5] : null, seat: s, hall: h, rec, rs, state: 'due', at: when[i], agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
       s.npc = v; list.push(v); });
     list.sort((a, b) => a.at - b.at);
     // a show that starts soon: most of the audience is already in their seats; only a few still come in, one at a time
@@ -254,7 +255,11 @@ export class Crowd {
   exitRoute(h, seat) {
     const H = h.cfg, row = H.rows[seat.row], laneE = (row.lane[0] + row.lane[1]) / 2, sg = seat.a >= 0 ? 1 : -1, sideA = sg * (H.aisle[0] + H.aisle[1]) / 2, ex = H.exits.find((q) => q.sg === sg) || H.exits[0], pts = [];
     let y = seat.y; const add = (a, e) => { const q = H.fromRow(a, e), w = H.toWorld(q.u, q.d); y = this.world.floorY(w.x, w.z, y); pts.push({ x: w.x, y, z: w.z }); };
-    const dc = (ex.d0 + ex.d1) / 2; add(seat.a, laneE); add(sideA, laneE); add(sideA, dc + 0.6);
+    const dc = (ex.d0 + ex.d1) / 2; add(seat.a, laneE);
+    if (H.rowK) { const n = Math.ceil(Math.abs(sideA - seat.a) / 2); for (let i = 1; i < n; i++) add(seat.a + (sideA - seat.a) * i / n, laneE); }   // v14c along a curved lane in short chords
+    add(sideA, laneE);
+    if (H.rowK) { const eA = (H.rows[0].lane[0] + H.rows[0].lane[1]) / 2; for (let e = laneE - 2.5; e > eA + 1.2; e -= 2.5) add(sideA, e); if (laneE - eA > 0.05) add(sideA, eA); }   // down the curved aisle to row A's lane, then straight to the door (the aisle's arc runs into the screen in front of row A)
+    else add(sideA, dc + 0.6);
     for (const u of [H.width / 2 - 0.6, H.width / 2 + WALL + 0.7]) { const w = H.toWorld(ex.sg * u, dc); pts.push({ x: w.x, y: H.y0, z: w.z }); }
     const o = H.toWorld(ex.sg * (H.width / 2 + WALL + 0.7), ex.d0 + 0.1); pts.push({ x: o.x, y: H.y0, z: o.z });
     return pts;
@@ -319,6 +324,17 @@ export class Crowd {
     const i = nearestOn(s.cameBy, s), back = s.cameBy.slice(0, i + 1).reverse(); s.go(back, () => { s.state = 'post'; s.yaw = s.home.yaw; s.cameBy = null; s.job = null; this._nextJob(); }, { state: 'leaving' }); }
   _nextJob() { const s = this.staff.server; if (!s || s.state !== 'post' || !this.srvQ || !this.srvQ.length) return; const j = this.srvQ.shift(); this.callServer(j.seat, j.onArrive); }
   // ---------------------------------------------------------- talking
+  // v14b (the user, 11-26: "the guy who checks tickets doesnt actually have ticket in his hand ... the people dont actually hand off the
+  // popcorns ... the thing teleports into the hand"): what people hold is a real thing in their palm (people.js attach): the usher your
+  // ticket while he reads it, a vendor or the server the item on its way to you, some guests and some of the audience a drink or popcorn
+  handProp(a, what) { if (!a) return; a._propWhat = what || null; a.item = what || null; }
+  _prop(a, ch) {
+    if (a._propCh && (a._propCh !== ch || a._propHas !== a._propWhat)) { a._propCh.detach('prop'); a._propCh = null; a._propHas = null; }
+    if (!a._propWhat || a._propCh) return;
+    const m = a._propWhat === 'ticket' ? ticketMesh() : makeHeld({ id: a._propWhat }); if (!m) return;
+    setHeldMaterial(m, a._pm || (a._pm = this.mats.propMat({ uAmb: { value: a.light.amb }, uKey: { value: a.light.key }, uKeyDir: { value: a.light.dir }, uScreenL: { value: a.light.screen } })));
+    if (m.userData.setLevel) m.userData.setLevel(1); ch.attach('prop', m, 'handR'); a._propCh = ch; a._propHas = a._propWhat;
+  }
   // v14b the server serves seats in the halls (the bell, the tablet), not people in his pantry
   talkTarget(px, py, pz, fx, fz) {
     let best = null, bs = 0;
@@ -360,7 +376,7 @@ export class Crowd {
           // the door takes a few at a time (a party walks in together), and at most ten people walk at once (each is a skinned figure)
           const door = h.cfg.toWorld(h.cfg.entryU, h.cfg.depthIn), walking = list.filter((o) => o.state === 'walking' && o.agent);
           if (walking.filter((o) => Math.hypot(o.agent.x - door.x, o.agent.z - door.z) < 1.2).length >= 2 || walking.length >= 10) { v.at = now + 500; continue; }
-          if (inHall || vis.has('corridor')) { const route = this.hallRoute(h, v.seat, true), a = this.spawn({ rec: v.rec, role: 'aud', voice: v.voice, x: route[0].x, y: route[0].y, z: route[0].z, speed: rnd(1.3, 1.55) }); v.agent = a; a.viewer = v; v.state = 'walking';
+          if (inHall || vis.has('corridor')) { const route = this.hallRoute(h, v.seat, true), a = this.spawn({ rec: v.rec, role: 'aud', voice: v.voice, x: route[0].x, y: route[0].y, z: route[0].z, speed: rnd(1.3, 1.55) }); v.agent = a; a.viewer = v; v.state = 'walking'; if (v.item) this.handProp(a, v.item);
             a.go([...route, { x: v.seat.x, y: v.seat.y, z: v.seat.z, seat: true }], () => { v.state = 'sitting'; a.sitT = 0; a.yaw = v.seat.yaw + Math.PI; }); }
           else v.state = 'seated';   // they came in while you were elsewhere
         }
@@ -410,8 +426,8 @@ export class Crowd {
       if (a.follow && a.state === 'guiding') { const f = a.follow, dx = f.x - a.x, dz = f.z - a.z, d = Math.hypot(dx, dz), dy = Math.abs((f.y || 0) - a.y), t0 = a.path[a.pi];
         if (f.seated || (a.lostAt && this.now - a.lostAt > 20000)) { a.follow = null; a.waitFor = false; a.lostAt = 0; if (f.seated) a.say(pick('ush.enjoy')); this.sendHome(a); return; }
         const ahead = !!t0 && (dx * (t0.x - a.x) + dz * (t0.z - a.z)) > 0 && d > 1.2;
-        a.speed = ahead ? (d > 4 ? 3.0 : 2.4) : 1.95;
-        if (!ahead && (d > 6 || dy > 2.5)) a.waitFor = true; else if (ahead || d < 3.5) a.waitFor = false;
+        a.speed = ahead ? (d > 4 ? 3.0 : 2.5) : d < 2.5 ? 2.3 : 2.05;   // v14b (the user, 11-26: "he stops even if I am 2 seconds away"): brisker, and he waits only for someone 8 m behind
+        if (!ahead && (d > 8 || dy > 2.5)) a.waitFor = true; else if (ahead || d < 4.5) a.waitFor = false;
         a.lostAt = d > 22 || dy > 2.5 ? a.lostAt || this.now : 0;
         if (a.waitFor) { a.walkT = 0; a.yaw += adiff(Math.atan2(dx, dz), a.yaw) * Math.min(1, dt * 3); return; } }
       const t = a.path[a.pi], dx = t.x - a.x, dz = t.z - a.z, d = Math.hypot(dx, dz);
@@ -440,7 +456,7 @@ export class Crowd {
     if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; }
     else if (a.perch) { ch.s.sit = a.sit; ch.s.drop = a.perch.h - sitHeight(a.rec); ch.s.recline = 0.12; }   // v14 another player on a sofa or a bench (mpui.js)
     else ch.s.sit = 0;
-    ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;
+    this._prop(a, ch); ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;
     if (a.danceUntil && performance.now() < a.danceUntil && !a.viewer) { ch.walkT = 0; ch.danceT = 1; } else ch.danceT = 0;   // v14 the dance emote (mpui.js)
     // where they look: the screen when seated in a hall; you, briefly, when you come close and they face you; ahead otherwise
     let ly = 0, lp = 0, amt = 0;
@@ -465,6 +481,10 @@ export class Crowd {
 // a service trolley: walnut and brass, two shelves, popcorn tubs and cups on top (lit like the room it is in)
 // v14 the server's trolley (the user, 11-21: "the cart of the guy ... looked so bad"): tools/blender/props14.py service_cart, its parts in
 // their own colours under the trolley's own light (lightAt where the server is); the handle at -Z, toward him
+function ticketMesh() {
+  const g = new THREE.Group(), part = (w, h, y, hex) => { const geo = new THREE.BoxGeometry(w, h, 0.002), n = geo.attributes.position.count, c = new Float32Array(n * 3), col = new THREE.Color(hex); for (let i = 0; i < n; i++) col.toArray(c, i * 3); geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); const m = new THREE.Mesh(geo); m.position.y = y; g.add(m); };
+  part(0.064, 0.1, 0.02, '#efe3c6'); part(0.064, 0.036, -0.05, '#8c1d24'); g.userData.setLevel = () => {}; return g;
+}
 function makeCart(mats, scene) {
   const U = { uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.2, 1, 0.3).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, mat = mats.propMat(U), grp = new THREE.Group(), A = ASSETS.service_cart;
   if (A) for (const p of A.parts) { if (p.lod !== 0 || p.leaf) continue; const g = p.geo.clone(), n = g.attributes.position.count, c = new Float32Array(n * 3), col = p.glow ? p.glowColor : p.tint;

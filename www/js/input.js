@@ -15,7 +15,9 @@ export class Input {
   constructor(c) {
     this.c = c; this.mode = 'touch'; this.pad = null; this.prev = []; this.vr = false; this._q = new THREE.Quaternion(); this._e = new THREE.Euler();
     this.setMode(matchMedia('(pointer: fine)').matches && !('ontouchstart' in window) ? 'kbm' : 'touch');
-    addEventListener('pointerdown', (e) => this.setMode(e.pointerType === 'touch' || e.pointerType === 'pen' ? 'touch' : 'kbm'), { capture: true });
+    // v14c (the user, 11-26: the E key badge on the phone): on a touch screen a "mouse" press (a screenshot overlay, an injected event)
+    // never turns the keyboard HUD on; a real key press still does
+    addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' || e.pointerType === 'pen') this.setMode('touch'); else if (!navigator.maxTouchPoints) this.setMode('kbm'); }, { capture: true });
     addEventListener('keydown', (e) => this.key(e));
     addEventListener('gamepadconnected', (e) => { this.pad = e.gamepad.index; this.setMode('pad'); });
     addEventListener('gamepaddisconnected', (e) => { if (this.pad === e.gamepad.index) { this.pad = null; this.setMode('touch'); } });

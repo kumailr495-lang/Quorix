@@ -658,3 +658,6 @@ body.ph-open #where,body.ph-open #goal{opacity:0;pointer-events:none;transition:
 .tb-now{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin:8px 10px 0;padding:10px 14px;border-radius:14px;background:linear-gradient(120deg,rgba(224,178,90,.2),rgba(224,178,90,.05));border:1px solid rgba(224,178,90,.4);color:var(--cream);text-align:start;width:calc(100% - 20px)}
 .tb-now small{font:600 10px/1 var(--font);color:var(--brass);letter-spacing:.1em;text-transform:uppercase}.tb-now b{font:600 15px/1.2 var(--display)}
 .tb-homebar{display:block;width:120px;height:5px;margin:4px auto 7px;border:0;border-radius:3px;background:rgba(246,236,216,.42);flex:none}
+
+/* v14b the veg mark inline before the item's name */
+.mn-info b .mn-veg{position:relative;top:auto;inset-inline-start:auto;display:inline-block;vertical-align:-1px;margin-inline-end:6px;width:10px;height:10px}

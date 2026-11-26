@@ -21,6 +21,12 @@ for (const s of HALLS) {
   ok(seats.length === want && seats.length > 80, `${s.id} seat count ${seats.length}`);
   for (const row of h.rows) if (!row.pairs) ok(row.n % 2 === 1 && row.places.some((p) => Math.abs(p.u) < 1e-6), `${s.id} row ${row.letter} has a middle seat`);
   ok(Math.min(...h.rows.slice(1).map((r) => r.clear)) >= 0.5, `${s.id} a row lane is narrower than 0.5 m`);
+  // v14c (the user, 11-26: the CURVE seats fanned outwards): every seat faces the picture: on curved rows the arcs' centre behind the
+  // picture, on straight rows straight ahead. A seat's front is its model's -z turned by yaw: (-sin yaw, -cos yaw)
+  { const k = h.rowK || 0, c = h.toWorld(0, -k); let worst = 0, who = '';
+    for (const q of seats) { const fx = -Math.sin(q.yaw), fz = -Math.cos(q.yaw); let tx, tz; if (k) { tx = c.x - q.x; tz = c.z - q.z; } else { tx = h.dir; tz = 0; }
+      const tl = Math.hypot(tx, tz), err = Math.acos(Math.max(-1, Math.min(1, (fx * tx + fz * tz) / tl))) * 180 / Math.PI; if (err > worst) { worst = err; who = q.id; } }
+    ok(worst < 0.5, `${s.id} seat ${who} faces ${worst.toFixed(1)} deg away from the picture`); }
   // side aisle walked front to back in 1 cm steps: the floor changes only by steps <= STEP_MAX
   for (const sg of [-1, 1]) { let prev = hallFloor(h, sg * (h.aisle[0] + h.aisle[1]) / 2, 0), max = 0; for (let d = 0; d < h.depthIn; d += 0.01) { const y = hallFloor(h, sg * (h.aisle[0] + h.aisle[1]) / 2, d); max = Math.max(max, Math.abs(y - prev)); prev = y; }
     ok(max <= STEP_MAX + 1e-6, `${s.id} aisle step ${max.toFixed(3)} m > ${STEP_MAX}`); }

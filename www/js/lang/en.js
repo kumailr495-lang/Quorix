@@ -120,4 +120,5 @@ export const EN = {
   "mp.mic": "Mic", "mp.micOn": "Your mic is on: people near you hear you.", "mp.noMic": "No microphone: allow LUMIÈRE to use it in the phone's settings.", "mp.hold": "Hold to record a voice note", "mp.noteSec": "{n} s voice note", "mp.noteLong": "That note is too long (30 s at most).",
   "up.title": "Upgrades", "up.tablet": "Armrest tablet", "up.tabletD": "Order to your seat, films and your videos from the armrest.", "up.buy": "Add", "up.seat": "{cls} seat {seat}", "up.seatD": "A better seat in this screen, free now.", "up.move": "Move", "up.tabletOk": "The tablet is in your armrest.", "up.moved": "Your seat is now {seat}.",
   "tab.home": "Home",
+  "hud.hello": "Say hello",
 };

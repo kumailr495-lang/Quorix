@@ -107,4 +107,5 @@ export const ES = {
   "mp.mic": "Micro", "mp.micOn": "Tu micro está encendido: te oyen quienes están cerca.", "mp.noMic": "Sin micrófono: permite que LUMIÈRE lo use en los ajustes del teléfono.", "mp.hold": "Mantén pulsado para grabar una nota de voz", "mp.noteSec": "Nota de voz de {n} s", "mp.noteLong": "Esa nota es muy larga (30 s como máximo).",
   "up.title": "Mejoras", "up.tablet": "Tableta en el reposabrazos", "up.tabletD": "Pide a tu butaca y elige películas y tus vídeos desde el brazo.", "up.buy": "Añadir", "up.seat": "Butaca {cls} {seat}", "up.seatD": "Una butaca mejor en esta sala, libre ahora.", "up.move": "Cambiar", "up.tabletOk": "La tableta está en tu reposabrazos.", "up.moved": "Tu butaca ahora es la {seat}.",
   "tab.home": "Inicio",
+  "hud.hello": "Saludar",
 };

@@ -149,7 +149,7 @@ async function boot() {
   const marq = attraction(world.panels.attraction_f, shows), marquee = (title) => marq.own(title);
   let snapCb = null;   // v13 a photo for the phone's camera: the frame after the next render
   const stubs = { get() { try { return JSON.parse(localStorage.getItem('lumiere.stubs') || '[]'); } catch (e) { return []; } }, add(x) { try { const a = this.get(); a.unshift(x); localStorage.setItem('lumiere.stubs', JSON.stringify(a.slice(0, 20))); } catch (e) { /* private mode */ } } };
-  const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => '₹' + n, PRICES);
+  const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => n + ' LC', PRICES);
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
     order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });
   tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
@@ -203,9 +203,9 @@ async function boot() {
     if (verb === 'book' || verb === 'bookOwn') { setTimeout(() => { booking.open({ quick: game === 'quick', own: verb === 'bookOwn' }); if (verb === 'bookOwn') pickOwn(); }, 60); return false; }
     if (verb === 'buy') { if (held) { tk.line(pick('bar.bye') || t('ven.full'), [['opt.thanks', 'end']]); ui.toast(t('toast9.handsFull'), 2400); return true; }
       if (!bill.pay(bill.itemPrice(arg), arg)) { ui.toast(t('lc.short', { price: bill.fmt(bill.itemPrice(arg)) }), 2800, 'error'); sound.liftDeny && sound.liftDeny(); return true; } if (game === 'flow') sound.pay();
-      if (npc.role === 'server') { npc.say(pick('srv.order')); npc.gesture('give', 1.2); setTimeout(() => { takeItem(arg); npc.say(pick('srv.hand')); }, 1400); tk.line(pick('srv.back'), [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]); return true; }
+      if (npc.role === 'server') { npc.say(pick('srv.order')); setTimeout(() => { npc.gesture('give', 1.2); crowd.handProp(npc, menuItem(arg).id); }, 600); setTimeout(() => { crowd.handProp(npc, null); takeItem(arg); npc.say(pick('srv.hand')); }, 1500); tk.line(pick('srv.back'), [['opt9.order', 'menu'], ['opt9.nothing', 'act:serverBye']]); return true; }
       const cafe = npc.role === 'cafe', mi = menuItem(arg); npc.gesture(mi.use !== 'eat' ? 'pour' : 'scoop', cafe ? 4.2 : 2.2); if (cafe && sound.espresso && mi.use === 'hot') { sound.espresso(npc); life.steam(performance.now()); } else sound.pour();
-      setTimeout(() => { npc.gesture('give', 1.2); takeItem(arg); npc.say(pick(cafe ? 'cafe.ready' : 'bar.ready')); }, cafe ? 4300 : 2300); return false; }
+      setTimeout(() => { npc.gesture('give', 1.2); crowd.handProp(npc, mi.id); npc.say(pick(cafe ? 'cafe.ready' : 'bar.ready')); }, cafe ? 4300 : 2300); setTimeout(() => { crowd.handProp(npc, null); takeItem(arg); }, (cafe ? 4300 : 2300) + 900); return false; }
     if (verb === 'ticket') { if (!ticket) { tk.line(pick('ush.noTicket'), [['opt.thanks', 'end']]); return true; } checkTicket(npc); return false; }
     if (verb === 'escort') { escort(npc); return false; }
     if (verb === 'ownWay') { world.gate.pass(); npc.say(pick('ush.enjoy')); highlightSeat(); return false; }
@@ -218,7 +218,7 @@ async function boot() {
     if (npc.role === 'guest' && npc.temper === 'curt') setTimeout(() => { if (talk.open && talk.npc === npc) talk.close(); }, 2800); }   // a curt stranger says one thing and turns away
   // the usher reads your ticket and tears the stub; the gate opens. The first time he walks you in; later he asks.
   function checkTicket(npc) {
-    ticket.shown = true; npc.gesture('read', 1.6); ui.ticketHandoff && ui.ticketHandoff(ticket); sound.ticket();
+    ticket.shown = true; npc.gesture('read', 1.6); crowd.handProp(npc, 'ticket'); setTimeout(() => crowd.handProp(npc, null), 3500); ui.ticketHandoff && ui.ticketHandoff(ticket); sound.ticket();
     setTimeout(() => { npc.say(pick('ush.check.' + ticket.hall)); npc.gesture('give', 1.0); }, 1500);
     setTimeout(() => { npc.say(pick('ush.tear')); ticket.checked = true; tut.event('showed'); world.gate.pass(12000); if (!settings.seen || !settings.seen.escort) escort(npc); else ui.toast(t('toast9.gateOpen'), 2600); }, 3400);
   }
@@ -328,7 +328,7 @@ async function boot() {
   function orderToSeat(k) {
     if (held) { ui.toast(t('toast9.handsFull'), 2400); return false; } if (!bill.pay(bill.itemPrice(k), k)) { ui.toast(t('lc.short', { price: bill.fmt(bill.itemPrice(k)) }), 2800, 'error'); return false; } if (game === 'flow') sound.pay();
     const seat = player.seated ? (game === 'flow' && ticket ? seatOf(ticket) : mySeatNow()) : null;
-    if (seat) { const r = crowd.callServer(seat, (npc) => { npc.gesture('give', 1.2); npc.say(pick('srv.hand')); setTimeout(() => { takeItem(k); setTimeout(() => crowd.serverLeave(), 1500); }, 900); });
+    if (seat) { const r = crowd.callServer(seat, (npc) => { npc.gesture('give', 1.2); crowd.handProp(npc, menuItem(k).id); npc.say(pick('srv.hand')); setTimeout(() => { crowd.handProp(npc, null); takeItem(k); setTimeout(() => crowd.serverLeave(), 1500); }, 900); });
       if (r) { if (room) together.sendOrder(seat, room); ui.toast(t(r === 'queued' ? 'srv.queued' : 'toast9.serverComing'), 2400); return true; } }
     setTimeout(() => takeItem(k), game === 'quick' ? 600 : 2500); return true;
   }
@@ -484,7 +484,7 @@ async function boot() {
     // v11: nothing is offered through a wall (world9.js Walls.sees): people at eye height (over counters and their glass), seats and
     // fittings at chest height
     const sees = (x, z, lo, hi) => world.walls.sees(player.x, player.z, x, z, player.y + lo, player.y + hi);
-    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t(npc.role === 'bar' || npc.role === 'cafe' ? 'hud.order' : npc.role === 'box' ? 'hud.buy' : 'hud.talk', { name: npc.name }), () => startTalk(npc)); return; }
+    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t(npc.role === 'bar' || npc.role === 'cafe' ? 'hud.order' : npc.role === 'box' ? 'hud.buy' : npc.name ? 'hud.talk' : 'hud.hello', { name: npc.name }), () => startTalk(npc)); return; }
     if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
     if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
     // v11 the ticket machines between the box office and the concessions: the box office sheet without the queue

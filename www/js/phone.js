@@ -89,8 +89,8 @@ export class Phone {
   app_map(C) {
     const P = this.h.player, up = this.mapUp ?? (P.y > 2.5), tk = this.h.ticket();
     const chips = el('div', 'ph-chips'); for (const [k, lab] of [[false, 'map.ground'], [true, 'map.upstairs']]) { const b = el('button', 'ph-chip' + (k === up ? ' on' : ''), t(lab)); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.mapUp = k; this.show('map'); }); chips.appendChild(b); }
-    C.appendChild(chips); const cv = el('canvas', 'ph-map'), W = 320, H = 330; cv.width = W; cv.height = H; C.appendChild(cv); const g = cv.getContext('2d');
-    const x0 = up ? -52 : -25, x1 = up ? 44 : 35, z0 = up ? -92 : -34, z1 = up ? -10 : 28, k = Math.min((W - 12) / (x1 - x0), (H - 12) / (z1 - z0)), ox = (W - (x1 - x0) * k) / 2 - x0 * k, oz = (H - (z1 - z0) * k) / 2 - z0 * k, X = (x) => ox + x * k, Z = (z) => oz + z * k;
+    C.appendChild(chips); const cv = el('canvas', 'ph-map'), W = 320, H = up ? 330 : 250; cv.width = W; cv.height = H; C.appendChild(cv); const g = cv.getContext('2d');
+    const x0 = up ? -52 : -23, x1 = up ? 44 : 33, z0 = up ? -92 : -19, z1 = up ? -10 : 24, k = Math.min((W - 12) / (x1 - x0), (H - 12) / (z1 - z0)), ox = (W - (x1 - x0) * k) / 2 - x0 * k, oz = (H - (z1 - z0) * k) / 2 - z0 * k, X = (x) => ox + x * k, Z = (z) => oz + z * k;
     g.fillStyle = '#0e0b10'; g.fillRect(0, 0, W, H);
     const box = (r, fill, stroke, lw = 1) => { g.fillStyle = fill; g.fillRect(X(r[0]), Z(r[1]), (r[2] - r[0]) * k, (r[3] - r[1]) * k); if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.strokeRect(X(r[0]) + 0.5, Z(r[1]) + 0.5, (r[2] - r[0]) * k - 1, (r[3] - r[1]) * k - 1); } };
     const label = (txt, x, z, o = {}) => { g.font = `${o.w || 600} ${o.s || 12}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 3; g.strokeStyle = 'rgba(14,11,16,.9)'; g.strokeText(txt, X(x), Z(z)); g.fillStyle = o.c || '#f6ecd8'; g.fillText(txt, X(x), Z(z)); };
@@ -100,9 +100,9 @@ export class Phone {
       box([LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], 'rgba(246,236,216,.10)', line); box([WC.x0, WC.z0, WC.x1, WC.z1], dim, line); box([SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], dim, line);
       box([CORE.x0, -9.8, CORE.x1, CORE.z1], 'rgba(224,178,90,.12)', 'rgba(224,178,90,.5)');
       const B = COUNTERS.boxOffice, F = COUNTERS.concessions; box([B.x0, B.z0, B.x1, B.z1], 'rgba(224,178,90,.18)', null); box([F.x0, F.z0, F.x1, F.z1], 'rgba(224,178,90,.18)', null);
-      label(t('map.tickets'), -12.5, 9.6); label(t('map.food'), -12.5, -3.6); label(t('map.cafe'), -14.5, -11.6, { s: 11 }); label(t('map.lobby'), 0, 4, { s: 14, w: 700, c: gold });
-      label(t('map.escalators'), 12, -3.2, { s: 10 }); label(t('map.lift'), 12, 1.6, { s: 10 }); label(t('map.wc'), 27, -4, { s: 11 }); label('⇧ ' + t('map.entrance'), 0, 15.6, { s: 10, c: '#99846f' });
-      g.save(); g.translate(X(0), Z(-25)); g.rotate(-Math.PI / 2); g.font = '600 11px Inter, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#cdbba6'; g.fillText(t('map.exitWay'), 0, 4); g.restore();
+      label(t('map.tickets'), -12.5, 9.6, { s: 14 }); label(t('map.food'), -11.5, -3.6, { s: 14 }); label(t('map.cafe'), -15.5, -11.4, { s: 13 }); label(t('map.lobby'), 1, 6, { s: 17, w: 700, c: gold });
+      label(t('map.escalators'), 12, -4.2, { s: 12 }); label(t('map.lift'), 12, 2.2, { s: 12 }); label(t('map.wc'), 27, -4, { s: 13 }); label(t('map.entrance') + ' ⇩', 0, 16.4, { s: 12, c: '#99846f' });
+      label('⇧ ' + t('map.exitWay'), 0, -16.6, { s: 11, c: '#cdbba6' });
     } else {
       for (const c of [BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E, PANTRY]) box([c.x0, c.z0, c.x1, c.z1], 'rgba(246,236,216,.12)', null);
       box([LOBBY.x0, MEZZ.z0, LOBBY.x1, MEZZ.z1], dim, line); label(t('map.mezz'), -6, (MEZZ.z0 + MEZZ.z1) / 2, { s: 10, c: '#cdbba6' }); label(t('map.corridor'), -24, -18, { s: 11, c: '#cdbba6' });

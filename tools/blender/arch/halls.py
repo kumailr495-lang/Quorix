@@ -37,9 +37,24 @@ def build_hall(h, L1):
     def a_wall(e):
         if not k: return W2 + 0.06
         rr = e + k; return rr * math.asin(min(1.0, (W2 + 0.06) / rr))
+    # v14c curved rows (hallmath.js edgeD/edgeE): past each side aisle's outer edge the floor steps straight across to the side wall, each
+    # step at the distance where its arc meets the aisle's edge (arcs run on to the wall swept the risers forward over the exit doors)
+    e_lo = (aW / (math.pi / 2) - k + 1e-3) if k else 0.0
+    def edgeD(e):
+        return (e + k) * math.cos(aW / (e + k)) - k if k else e
+    def edgeE(d):
+        if not k: return d
+        lo, hi = e_lo, depth + 40
+        if d <= edgeD(lo): return lo
+        for _ in range(40):
+            m = (lo + hi) / 2
+            if edgeD(m) < d: lo = m
+            else: hi = m
+        return (lo + hi) / 2
     def floor_at(u, d):
         if k: rr = math.hypot(u, d + k); e = rr - k; a = rr * math.atan2(u, d + k)
         else: e, a = d, u
+        if k and abs(a) > aW: e = edgeE(d); a = math.copysign(aW - 0.01, a)
         r = 0
         while r < len(rows) - 1 and e >= rows[r + 1]['pf']: r += 1
         y = rows[r]['y']
@@ -60,12 +75,38 @@ def build_hall(h, L1):
             aa, ab = a_0 + (a_1 - a_0) * i / nseg, a_0 + (a_1 - a_0) * (i + 1) / nseg
             p, q = P(aa, e), P(ab, e)
             acc.quad((q[0], ya, q[1]), (p[0], ya, p[1]), (p[0], yb, p[1]), (q[0], yb, q[1]), mat, col)
+    def up4(q, y, mat, col):
+        """a horizontal quad from four (u, d) corners, wound to face up"""
+        p = [(c[0], y, c[1]) for c in q]
+        ny = (p[1][2] - p[0][2]) * (p[2][0] - p[0][0]) - (p[1][0] - p[0][0]) * (p[2][2] - p[0][2])
+        if ny < 0: p = p[::-1]
+        acc.quad(p[0], p[1], p[2], p[3], mat, col)
+    def vface(p, q, ya, yb, mat, col):
+        """a vertical face from (u, d) point p to q, facing the screen (-d)"""
+        if yb - ya < 1e-4: return
+        A, B, C, D = (p[0], ya, p[1]), (q[0], ya, q[1]), (q[0], yb, q[1]), (p[0], yb, p[1])
+        nd = (B[0] - A[0]) * (D[1] - A[1]) - (B[1] - A[1]) * (D[0] - A[0])   # z of (B - A) x (D - A)
+        if nd > 0: acc.quad(A, D, C, B, mat, col)
+        else: acc.quad(A, B, C, D, mat, col)
+    def wall_pt(sg, e):
+        return (sg * (W2 + 0.06), edgeD(e))
     def band(sg, e_0, e_1, y, mat, col):
-        """aisle band from the aisle's inner edge to the side wall, flat at y, facing up"""
+        """aisle band from the aisle's inner edge to the side wall, flat at y, facing up (v14c curved rows: the aisle on its arcs, then the
+        straight steps from the aisle's outer edge to the wall)"""
+        if k:
+            up4([P(sg * a0w, e_0), P(sg * aW, e_0), P(sg * aW, e_1), P(sg * a0w, e_1)], y, mat, col)
+            up4([P(sg * aW, e_0), wall_pt(sg, e_0), wall_pt(sg, e_1), P(sg * aW, e_1)], y, mat, col)
+            return
         pA, pB = P(sg * a0w, e_0), P(sg * a0w, e_1); pC, pD = P(sg * a_wall(e_0), e_0), P(sg * a_wall(e_1), e_1)
         pts = [(pA[0], y, pA[1]), (pC[0], y, pC[1]), (pD[0], y, pD[1]), (pB[0], y, pB[1])]
         if sg > 0: acc.quad(pts[0], pts[3], pts[2], pts[1], mat, col)
         else: acc.quad(pts[0], pts[1], pts[2], pts[3], mat, col)
+    def side_riser(sg, e, ya, yb, mat, col):
+        """the riser across a side aisle and on to the wall at arc e, facing the screen"""
+        if k:
+            vface(P(sg * a0w, e), P(sg * aW, e), ya, yb, mat, col); vface(P(sg * aW, e), wall_pt(sg, e), ya, yb, mat, col); return
+        aa, ab = (a0w, a_wall(e)) if sg > 0 else (-a_wall(e), -a0w)
+        riser(aa, ab, e, ya, yb, mat, col)
     def side(a, e_0, e_1, ya, yb, face, mat, col):
         """vertical face along a = const (an aisle edge) from arc e_0 to e_1, facing +a (face 1) or -a (face -1): the side of an aisle step
         that stands above the seat platform beside it (v9 see-through test: without it you looked under the step from the seats)"""
@@ -107,7 +148,8 @@ def build_hall(h, L1):
             # (outside the last arc) are floor too (the see-through gate found a 4.7 m pit there)
             # v14 its front edge runs exactly along the risers below it (the aisle risers are one chord, the middle one nC chords): an arc
             # there left a sliver over the chords that showed the risers' backs (see-through test, top step of CURVE and X-270)
-            ea = a_wall(e0); arc = [P(-ea, e0)] + [P(-a0w + 2 * a0w * i / nC, e0) for i in range(nC + 1)] + [P(ea, e0)]
+            # v14c the side parts follow the side risers: across the aisle on its arc, then straight to the wall
+            arc = [wall_pt(-1, e0), P(-aW, e0)] + [P(-a0w + 2 * a0w * i / nC, e0) for i in range(nC + 1)] + [P(aW, e0), wall_pt(1, e0)]
             pg = arc + [(W2 + 0.06, depth), (-W2 - 0.06, depth)]
             ar = sum(pg[i][0] * pg[(i + 1) % len(pg)][1] - pg[(i + 1) % len(pg)][0] * pg[i][1] for i in range(len(pg)))
             if ar > 0: pg = pg[::-1]
@@ -119,16 +161,14 @@ def build_hall(h, L1):
             for j in range(1, kst):
                 ea, eb = e1 - (kst - j) * tr, e1 - (kst - j - 1) * tr; yy = y + j * nx['riser'] / kst
                 band(sg, ea, eb, yy, MAT['hallCarpet'], carpet)
-                aa, ab = (a0w, a_wall(ea)) if sg > 0 else (-a_wall(ea), -a0w)
-                riser(aa, ab, ea, yy - nx['riser'] / kst, yy, MAT['hallCarpet'], rcol)
+                side_riser(sg, ea, yy - nx['riser'] / kst, yy, MAT['hallCarpet'], rcol)
                 side(sg * a0w, ea, eb, y, yy, -sg, MAT['hallCarpet'], rcol)
                 nosing(sg, ea, yy)
         kk = rows[r]['steps']
         riser(-a0w, a0w, e0, yp, y, MAT['hallCarpet'], rcol, nC)
         for sg in (-1, 1):
             ya = y - rows[r]['riser'] / kk if kk > 1 else yp
-            aa, ab = (a0w, a_wall(e0)) if sg > 0 else (-a_wall(e0), -a0w)
-            riser(aa, ab, e0, ya, y, MAT['hallCarpet'], rcol)
+            side_riser(sg, e0, ya, y, MAT['hallCarpet'], rcol)
             nosing(sg, e0, y)
     # aisle steps up to row B, carved out of the front floor
     r1 = rows[1]; kk = r1['steps']; tr = r1['tread']
@@ -136,8 +176,7 @@ def build_hall(h, L1):
         for j in range(1, kk):
             ea, eb = r1['pf'] - (kk - j) * tr, r1['pf'] - (kk - j - 1) * tr; yy = j * r1['riser'] / kk
             band(sg, ea, eb, yy, MAT['hallCarpet'], carpet)
-            aa, ab = (a0w, a_wall(ea)) if sg > 0 else (-a_wall(ea), -a0w)
-            riser(aa, ab, ea, yy - r1['riser'] / kk, yy, MAT['hallCarpet'], rcol)
+            side_riser(sg, ea, yy - r1['riser'] / kk, yy, MAT['hallCarpet'], rcol)
             side(sg * a0w, ea, eb, 0.0, yy, -sg, MAT['hallCarpet'], rcol)
             nosing(sg, ea, yy)
     # ---------------------------------------------------------------- pod tier parapet (MAX): solid walnut wall with warm underglow
@@ -370,7 +409,11 @@ def build_hall(h, L1):
     for s in h['seats']:
         hw, dep, ht = {'rocker': (0.35, 0.62, 1.04), 'recliner': (0.5, 0.98, 1.08), 'sofa': (0.45, 0.94, 1.0), 'pod': (0.46, 1.0, 1.06)}[s['kind']]   # v12b wider seats
         u, d, y = s['u'], s['d'], s['y'] - y0
-        occ.box(u - hw, y, d - dep * 0.45, u + hw, y + ht, d + dep * 0.55, 0, (0.18, 0.16, 0.15))
+        if k:   # v14c turned with the seat on its arc (an axis-aligned box ran into the aisle at the row ends)
+            t = math.atan2(u, d + k); ct, st = math.cos(t), math.sin(t)
+            cs4 = [(u + al * ct + be * st, d - al * st + be * ct) for al, be in ((-hw, -dep * 0.45), (hw, -dep * 0.45), (hw, dep * 0.55), (-hw, dep * 0.55))]
+            occ.prism(cs4, y, y + ht, 0, (0.18, 0.16, 0.15))   # (prism winds its own walls)
+        else: occ.box(u - hw, y, d - dep * 0.45, u + hw, y + ht, d + dep * 0.55, 0, (0.18, 0.16, 0.15))
         # bake_room.py probe: point above the seat back, normal A up and back (house light on what you see of a seat), normal B
         # toward the screen (its light). three.js yaw: local +z is the seat's back
         sn, cs = math.sin(s['yaw']), math.cos(s['yaw']); bk = dep * 0.33

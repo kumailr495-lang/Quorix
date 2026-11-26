@@ -52,10 +52,10 @@
    ]
   },
   "hallCurve": {
-   "avg": 0.03445222806938685,
+   "avg": 0.03513408989449935,
    "glb": "hallCurve.glb",
    "hall": true,
-   "hash": "v9.ef156a5d6d32",
+   "hash": "v9.04d54d47ecaf",
    "maps": [
     "hallCurve_h.jpg",
     "hallCurve_f.jpg",
@@ -64,9 +64,9 @@
    "probes": "hallCurve_probes.json",
    "res": 2048,
    "scale": [
-    0.7613331286907283,
-    0.4557012047767701,
-    0.9085478186607361
+    0.7804683717760985,
+    0.47796293067932494,
+    0.9086427092552185
    ]
   },
   "hallMax": {
