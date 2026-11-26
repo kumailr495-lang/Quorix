@@ -634,3 +634,27 @@ body.vr #xhair{display:none}
 .ph-head{padding-top:2px}
 body.ph-open #where,body.ph-open #goal{opacity:0;pointer-events:none;transition:opacity .2s}
 .ph-map{width:100%;height:auto;border-radius:12px;display:block;margin-top:6px}
+
+/* v14b voice: the mic is off until you turn it on (struck through when off); a speaking player's name glows; voice notes in the chat */
+#mpBar button.off .ic{opacity:.55}#mpBar button.off{position:relative}#mpBar button.off::after{content:'';position:absolute;left:30%;right:30%;top:42%;height:2px;background:var(--alarm);transform:rotate(-35deg);border-radius:2px}
+#mpTags b.talk{box-shadow:0 0 0 2px var(--exit),0 0 12px rgba(62,207,142,.6)}
+.mpRec{min-width:40px;padding:0 10px}.mpRec .ic{width:18px;height:18px}.mpRec.rec{background:var(--alarm);color:#fff;border-color:var(--alarm);animation:pop .6s ease infinite alternate}
+.mpNote{margin-left:6px;padding:3px 9px;border-radius:999px;border:1px solid var(--line-2);background:rgba(255,255,255,.06);color:var(--cream);font:600 11px/1.2 var(--font)}
+
+/* v14b the armrest tablet as a tablet: a camera dot in the bezel, a status bar, a home screen of apps, a back arrow, a home bar */
+.tab-dev{position:relative}
+.tab-cam{position:absolute;left:4px;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:#050506;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.tab-scr{background:radial-gradient(110% 70% at 15% 0%,rgba(224,178,90,.14),transparent 60%),radial-gradient(90% 70% at 100% 100%,rgba(104,22,40,.35),transparent 65%),linear-gradient(180deg,#151117,#0a080b)!important}
+.tb-status{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 0;font:600 10px/1 var(--font);color:var(--mute);letter-spacing:.04em}
+.tb-status span:not(.tb-sig){color:var(--brass);font-size:9px;letter-spacing:.24em}
+.tb-sig{display:flex;align-items:flex-end;gap:2px}.tb-sig i{display:block;width:3px;background:var(--mute);border-radius:1px}.tb-sig i:nth-child(1){height:4px}.tb-sig i:nth-child(2){height:6px}.tb-sig i:nth-child(3){height:8px}.tb-sig em{display:block;width:16px;height:8px;margin-left:5px;border:1px solid var(--mute);border-radius:2px;background:linear-gradient(90deg,var(--exit) 70%,transparent 70%)}
+.tb-head{border-bottom:0!important;padding:6px 10px 4px 10px!important}
+.tb-back{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.08);color:var(--cream)}.tb-back .ic{width:16px;height:16px}
+#tablet.at-home .tb-back{visibility:hidden}
+.tb-apps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px 10px;padding:22px 10px 10px}
+.tb-app{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;color:var(--cream);font:600 12px/1.2 var(--font)}
+.tb-app i{display:grid;place-items:center;width:62px;height:62px;border-radius:18px;background:linear-gradient(160deg,#30271f,#131013);box-shadow:inset 0 0 0 1px rgba(224,178,90,.45),0 6px 14px rgba(0,0,0,.5);transition:transform .12s var(--ease)}
+.tb-app:active i{transform:scale(.92)}.tb-app .ic{width:28px;height:28px;color:var(--brass)}
+.tb-now{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin:8px 10px 0;padding:10px 14px;border-radius:14px;background:linear-gradient(120deg,rgba(224,178,90,.2),rgba(224,178,90,.05));border:1px solid rgba(224,178,90,.4);color:var(--cream);text-align:start;width:calc(100% - 20px)}
+.tb-now small{font:600 10px/1 var(--font);color:var(--brass);letter-spacing:.1em;text-transform:uppercase}.tb-now b{font:600 15px/1.2 var(--display)}
+.tb-homebar{display:block;width:120px;height:5px;margin:4px auto 7px;border:0;border-radius:3px;background:rgba(246,236,216,.42);flex:none}

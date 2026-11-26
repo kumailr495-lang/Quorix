@@ -46,7 +46,7 @@ export class Phone {
   body(cls) { const B = $('#phBody'); B.innerHTML = ''; B.className = 'ph-body ph-k-' + cls; $('#phone').classList.toggle('viewfinder', cls === 'camera'); document.body.classList.toggle('ph-cam', cls === 'camera'); return B; }
   // ---------------- home ----------------
   home() {
-    this.app = null; const B = this.body('home'), d = new Date();
+    this.app = null; const B = this.body('home'), d = new Date(); this._quickJump = this.h.jump ? this.h.jump() : null;
     const top = el('div', 'ph-time'); top.appendChild(el('b', null, '')).id = 'phBig';
     top.appendChild(el('small', null, d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }))); B.appendChild(top);
     const w = el('div', 'ph-widgets'), next = el('button', 'ph-wg next'); next.id = 'phNext'; next.addEventListener('click', (e) => { e.stopPropagation(); this.show('ticket'); }); w.appendChild(next);
@@ -57,6 +57,8 @@ export class Phone {
     const grid = el('div', 'ph-apps'), dock = el('div', 'ph-dock'), DOCK = new Set(['camera', 'photos', 'friends', 'settings']);
     for (const [k, ic] of APPS) { const a = el('button', 'ph-app'); a.dataset.k = k; a.innerHTML = `<i>${icon(ic)}</i><span>${t('phone.app.' + k)}</span>`; a.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.show(k); }); (DOCK.has(k) ? dock : grid).appendChild(a); }
     B.appendChild(grid); B.appendChild(dock); this.tick();
+    // v14b (the user, 11-26: "in quick play add it so that you can directly tp to theatres"): the four screens, one tap each
+    if (this._quickJump) { const row = el('div', 'ph-chips ph-jump'); for (const h of this._quickJump.halls) { const b = el('button', 'ph-chip', h.name); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.close(); this._quickJump.go(h.key); }); row.appendChild(b); } B.insertBefore(row, B.children[2] || null); }
   }
   nextShow(n) {
     const tk = this.h.ticket(); if (!tk) { n.innerHTML = `${icon('i-ticket')}<b>${t('phone.noShow')}</b><small>${t('phone.bookHint')}</small>`; return; }
@@ -77,6 +79,10 @@ export class Phone {
     const row = el('div', 'ph-tk-row'); for (const [lab, v] of [[t('tk.screen'), tk.hallName.replace('LUMIERE ', '')], [t('tk.row'), tk.row], [t('tk.seat'), tk.col ?? tk.seat]]) { const q = el('div'); q.append(el('small', null, lab), el('b', null, String(v ?? ''))); row.appendChild(q); }
     c.appendChild(row); C.appendChild(c);
     const r = el('div', 'ph-row'); this.btn(r, t('phone.showIt'), 'secondary', () => { this.close(); this.h.showTicket(); }); this.btn(r, t('phone.guideMe'), 'primary', () => { this.h.guide(); this.h.toast(t('phone.guiding'), 2200); this.close(); }); C.appendChild(r);
+    // v14b (the user, 11-26: "theres no option to change or upgrade your seat or like upgrade to armrest tablet"): upgrades on your ticket
+    const up = this.h.upgrades ? this.h.upgrades() : null; if (!up) return; C.appendChild(el('h4', 'ph-sub', t('up.title')));
+    if (!tk.tablet) { const c2 = el('div', 'ph-job'); c2.append(el('b', null, t('up.tablet')), el('small', null, t('up.tabletD')), el('em', null, up.fmt(up.tabletPrice))); const b = el('button', 'btn primary sm', t('up.buy')); b.addEventListener('click', (e) => { e.stopPropagation(); if (up.buyTablet()) this.show('ticket'); }); c2.appendChild(b); C.appendChild(c2); }
+    for (const o of up.seats) { const c2 = el('div', 'ph-job'); c2.append(el('b', null, t('up.seat', { cls: o.label, seat: o.id })), el('small', null, t('up.seatD')), el('em', null, '+' + up.fmt(o.extra))); const b = el('button', 'btn primary sm', t('up.move')); b.addEventListener('click', (e) => { e.stopPropagation(); if (up.moveTo(o)) this.close(); }); c2.appendChild(b); C.appendChild(c2); }
   }
   // v14b (the user, 11-26: "look at the map, i dont understand shit"): a plan you can read: the floor you are on (the other a tap away),
   // every place named, the four screens by name, your screen in gold with its door, you as an arrow

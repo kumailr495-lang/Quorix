@@ -10,5 +10,5 @@ try {
   if (m) { K = m[1]; sessionStorage.setItem('lumiere.k', K); history.replaceState(history.state, '', location.pathname + location.search); }
   else K = sessionStorage.getItem('lumiere.k') || '';
 } catch (e) { /* no storage: the key lives only in this module */ }
-const NAMES = ['hasPermission', 'requestPermission', 'base', 'proxyBase', 'serverError', 'list', 'frameUrl', 'codecs', 'info', 'vibrate', 'stopVibrate', 'download', 'cancelDownload', 'downloaded', 'removeDownload'];
+const NAMES = ['hasPermission', 'requestPermission', 'base', 'proxyBase', 'serverError', 'list', 'frameUrl', 'codecs', 'info', 'vibrate', 'stopVibrate', 'download', 'cancelDownload', 'downloaded', 'removeDownload', 'audioStart', 'audioSync', 'audioStop'];
 export const media = N ? Object.fromEntries(NAMES.filter((n) => typeof N[n] === 'function').map((n) => [n, (...a) => N[n](K, ...a)])) : null;

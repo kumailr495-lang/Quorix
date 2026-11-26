@@ -89,7 +89,7 @@ export class Jobs {
     if (j.kind === 'clean') {
       if (!j.spawned && hallKey === j.hall.key) this.spawnLitter(j.hall);
       if (j.spawned) {
-        let best = null, bd = 1.1; for (const l of this.litter) { if (l.got) continue; const d = Math.hypot(l.x - p.x, l.z - p.z); if (d < bd && Math.abs(l.y - (p.y - 1.62)) < 1.2) { bd = d; best = l; } }
+        let best = null, bd = 1.1; for (const l of this.litter) { if (l.got) continue; const d = Math.hypot(l.x - p.x, l.z - p.z); if (d < bd && Math.abs(l.y - p.y) < 1.2) { bd = d; best = l; } }   // v14b p.y is your feet (it was taken as your eyes: nothing could be picked)
         if (best && this.bag < 8) return { label: t('job.pick'), fn: () => this.pick(best) };
         if (this.bag && this.h.nearBin()) return { label: t('job.empty', { n: this.bag }), fn: () => this.empty() };
       }

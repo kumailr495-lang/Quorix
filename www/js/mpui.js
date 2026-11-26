@@ -28,7 +28,9 @@ export class Together {
     this.mp = new Multi({ onJoin: (p) => this.join_(p), onLeave: (p) => this.leave_(p), onState: () => {}, onShow: (s, p) => this.applyShow(s, p), onChat: (p, m) => this.chat_(p, m),
       onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); if (a && e === 'dance') a.danceUntil = performance.now() + 6000; }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.note(t('mp.newHost')); this.badge(); },
       onCtl: (c, p) => this.applyCtl(c, p), onOrder: (p, key) => { const f = this.seatByKey(key); if (f && this.c.order) this.c.order(f.s, p.name); },
-      onRoster: (r) => this.c.crowd.applyRoster(r), onCrowd: (c) => this.c.crowd.applyGuests(c), onLift: (b) => this.c.liftPress && this.c.liftPress(b) });
+      onRoster: (r) => this.c.crowd.applyRoster(r), onCrowd: (c) => this.c.crowd.applyGuests(c), onLift: (b) => this.c.liftPress && this.c.liftPress(b),
+      onVoice: (id, st) => this.voiceIn(id, st), onNote: (p, b, s) => this.noteIn(p, b, s) });
+    this.voices = new Map();
     this.log = []; this.unread = 0;
     // the menu button, after Quick play
     const q = document.querySelector('#mnQuick');
@@ -114,7 +116,33 @@ export class Together {
     if (!asHost) setTimeout(() => { if (this.active && this.mp.peers.size === 0 && this.panel) status.textContent = t('mp.failed'); }, 20000);
     setTimeout(() => { this.close(); this.c.enterPlay(); }, asHost ? 2200 : 900);
   }
-  leave() { this.mp.leave(); this.c.crowd.mirrorGuests(false); this.badge(); }
+  leave() { this.mp.leave(); for (const id of [...this.voices.keys()]) this.voiceOut(id); this.c.crowd.mirrorGuests(false); this.badge(); }
+  // ---------------------------------------------------------------- voice: live (by distance, quieter through walls) and voice notes
+  toggleMic() { const S = this.c.sound; S && S.click && S.click();
+    if (this.mp.mic) { this.mp.micOff(); this.badge(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { this.c.toast(t('mp.noMic'), 3000); return; }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } })
+      .then((st) => { if (!this.active) { st.getTracks().forEach((x) => x.stop()); return; } this.mp.micOn(st); this.badge(); this.c.toast(t('mp.micOn'), 2200); })
+      .catch(() => this.c.toast(t('mp.noMic'), 3200)); }
+  voiceIn(id, stream) {
+    this.voiceOut(id); const ctx = this.c.sound && this.c.sound.ctx, au = new Audio(); au.srcObject = stream; au.autoplay = true;
+    if (!ctx) { this.voices.set(id, { au }); au.play().catch(() => {}); return; }
+    au.muted = true; au.play().catch(() => {});   // Chrome feeds a remote stream to Web Audio only while an element plays it
+    const src = ctx.createMediaStreamSource(stream), g = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 256; g.gain.value = 0; src.connect(an); src.connect(g); g.connect(ctx.destination);
+    this.voices.set(id, { au, src, g, an, buf: new Uint8Array(256) }); }
+  voiceOut(id) { const v = this.voices.get(id); if (!v) return; try { v.src && v.src.disconnect(); v.g && v.g.disconnect(); } catch (e) { /* gone */ } v.au.srcObject = null; this.voices.delete(id); }
+  noteIn(p, b64, sec) { try { const bin = atob(b64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); this.addLog(p.name, '', false, false, { url: URL.createObjectURL(new Blob([u8], { type: 'audio/webm' })), sec }); } catch (e) { /* a broken note */ } }
+  recNote(btn) {
+    if (this._rec) return; const S = this.c.sound; S && S.click && S.click();
+    const go = (st, own) => { let mr; try { mr = new MediaRecorder(st, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 24000 }); } catch (e) { try { mr = new MediaRecorder(st); } catch (e2) { this.c.toast(t('mp.noMic'), 3000); return; } }
+      const parts = [], t0 = performance.now(); mr.ondataavailable = (e) => { if (e.data && e.data.size) parts.push(e.data); };
+      mr.onstop = () => { if (own) st.getTracks().forEach((x) => x.stop()); btn.classList.remove('rec'); this._rec = null; const sec = Math.round((performance.now() - t0) / 1000); if (sec < 1 || !parts.length) return;
+        const blob = new Blob(parts, { type: 'audio/webm' }), fr = new FileReader(); fr.onload = () => { const b64 = String(fr.result).split(',')[1] || ''; if (b64.length > 600000) { this.c.toast(t('mp.noteLong'), 2600); return; } this.mp.note(b64, sec); this.addLog(this.mp.me.name, '', true, false, { url: URL.createObjectURL(blob), sec }); }; fr.readAsDataURL(blob); };
+      this._rec = mr; btn.classList.add('rec'); mr.start(); this._recStop = setTimeout(() => { if (mr.state === 'recording') mr.stop(); }, 30000); };
+    if (this.mp.mic) go(this.mp.mic, false);
+    else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then((st) => go(st, true)).catch(() => this.c.toast(t('mp.noMic'), 3000));
+    else this.c.toast(t('mp.noMic'), 3000); }
+  stopNote() { clearTimeout(this._recStop); const mr = this._rec; if (mr && mr.state === 'recording') mr.stop(); }
   // ---------------------------------------------------------------- in the game: the badge, the bar (chat, emotes), the other players
   badge() {
     if (!this.active) { if (this.bdg) { this.bdg.remove(); this.bar.remove(); this.bdg = this.bar = null; } return; }
@@ -125,13 +153,14 @@ export class Together {
       const btn = (iconId, label) => { const b = el('button', { 'aria-label': label }); b.innerHTML = `<svg class="ic"><use href="#i-${iconId}"/></svg><small>${label}</small>`; return b; };
       const chatB = this.chatB = btn('chat', t('mp.chatB')); chatB.appendChild(el('i', { cls: 'dot' })); chatB.addEventListener('click', () => this.chatBox());
       const namesB = this.namesB = btn('tag', t('mp.names')); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
-      this.bar = el('div', { id: 'mpBar' }, [chatB, namesB]);
+      const micB = this.micB = btn('mic', t('mp.mic')); micB.addEventListener('click', () => this.toggleMic());
+      this.bar = el('div', { id: 'mpBar' }, [micB, chatB, namesB]);
       // v14 the dance is bought in the shop (career.js SHOP emote_dance): it plays the avatars' own Dance_Loop clip on every phone
       for (const [e, ic] of [['wave', 'wave'], ['clap', 'clap'], ['cheer', 'party'], ['dance', 'party']]) { if (e === 'dance' && !(this.c.owns && this.c.owns('emote_dance'))) continue; const b = btn(ic, t('mp.emote.' + e)); b.addEventListener('click', () => { this.mp.emote(e); this.c.ev && this.c.ev('emote'); this.c.sound && this.c.sound.click(); b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300); }); this.bar.appendChild(b); }
       const hud = document.querySelector('#hudTL') || document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
     }
     this.bdg.classList.toggle('host', this.mp.host); this.bdg.querySelector('span').textContent = t('mp.badge', { code: this.mp.code, n: this.mp.count }); this.list();
-    const S = this.c.settings; this.namesB.classList.toggle('off', S.mpNames === false); this.chatB.classList.toggle('unread', this.unread > 0 && S.mpMsgs !== false); this.chatB.hidden = false;
+    const S = this.c.settings; this.micB.classList.toggle('off', !this.mp.mic); this.namesB.classList.toggle('off', S.mpNames === false); this.chatB.classList.toggle('unread', this.unread > 0 && S.mpMsgs !== false); this.chatB.hidden = false;
   }
   chatBox() {
     if (this.chatEl) { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); return; }
@@ -139,14 +168,16 @@ export class Together {
     const close = () => { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); };
     const go = () => { const m = inp.value.trim(); if (m) { this.mp.chat(m); this.addLog(this.mp.me.name, m, true); this.c.ev && this.c.ev('chat'); } inp.value = ''; this.renderLog(); };
     send.addEventListener('click', go); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); });
-    send.innerHTML = '<svg class="ic"><use href="#i-send"/></svg>'; const head = el('div', { cls: 'mpChatHead' }, [el('b', { text: t('mp.chatB') }), el('button', { cls: 'icon x', 'aria-label': t('mp.close') })]); head.lastChild.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>'; head.lastChild.addEventListener('click', () => close());
-    this.chatEl = el('div', { id: 'mpChat' }, [head, logEl, el('div', { cls: 'mpIn' }, [inp, send])]); document.body.appendChild(this.chatEl); this.c.onModal(true);
+    send.innerHTML = '<svg class="ic"><use href="#i-send"/></svg>'; const rec = el('button', { cls: 'btn secondary mpRec', 'aria-label': t('mp.hold') }); rec.innerHTML = '<svg class="ic"><use href="#i-mic"/></svg>';
+    rec.addEventListener('pointerdown', (e) => { e.preventDefault(); this.recNote(rec); }); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) rec.addEventListener(ev, () => this.stopNote()); const head = el('div', { cls: 'mpChatHead' }, [el('b', { text: t('mp.chatB') }), el('button', { cls: 'icon x', 'aria-label': t('mp.close') })]); head.lastChild.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>'; head.lastChild.addEventListener('click', () => close());
+    this.chatEl = el('div', { id: 'mpChat' }, [head, logEl, el('div', { cls: 'mpIn' }, [inp, rec, send])]); document.body.appendChild(this.chatEl); this.c.onModal(true);
     this.unread = 0; this.badge(); this.renderLog(); setTimeout(() => inp.focus(), 50);
   }
-  addLog(who, text, mine = false, sys = false) { this.log.push({ who, text, mine, sys }); if (this.log.length > 40) this.log.shift(); if (!this.chatEl && !mine && !sys) this.unread++; this.renderLog(); this.badge(); }
+  addLog(who, text, mine = false, sys = false, note = null) { this.log.push({ who, text, mine, sys, note }); if (this.log.length > 40) this.log.shift(); if (!this.chatEl && !mine && !sys) this.unread++; this.renderLog(); this.badge(); }
   note(text) { this.addLog('', text, false, true); }
+  noteBtn(n) { const b = el('button', { cls: 'mpNote', text: '▶ ' + t('mp.noteSec', { n: n.sec }) }); b.addEventListener('click', () => { const a = new Audio(n.url); a.play().catch(() => {}); }); return b; }
   renderLog() { const L = this.chatEl && this.chatEl.querySelector('.mpLog'); if (!L) return; L.textContent = ''; const hide = this.c.settings.mpMsgs === false;
-    for (const m of this.log) { if (hide && !m.sys && !m.mine) continue; L.appendChild(el('div', { cls: m.sys ? 'sys' : m.mine ? 'me' : '' }, m.sys ? [el('span', { text: m.text })] : [el('b', { text: m.who }), el('span', { text: ' ' + m.text })])); }
+    for (const m of this.log) { if (hide && !m.sys && !m.mine) continue; L.appendChild(el('div', { cls: m.sys ? 'sys' : m.mine ? 'me' : '' }, m.sys ? [el('span', { text: m.text })] : [el('b', { text: m.who }), m.note ? this.noteBtn(m.note) : el('span', { text: ' ' + m.text })])); }
     L.scrollTop = L.scrollHeight; }
   chat_(p, m) { if (!m) return; this.addLog(p.name, m); if (this.c.settings.mpMsgs === false) return; const a = this.remotes.get(p.id); if (a) a.say({ text: m }, Math.max(2.5, m.length * 0.07)); }
   join_(p) {
@@ -155,7 +186,7 @@ export class Together {
     a.hidden = true; this.remotes.set(p.id, a); this.note(t('mp.joined', { name: p.name }));
     const tag = el('b', { text: p.name }); this.tagLayer.appendChild(tag); this.tags.set(p.id, tag);
   }
-  leave_(p) { const a = this.remotes.get(p.id); if (a) { if (a.armTab) { a.armTab.hide(); a.armTab.group.removeFromParent(); a.armTab = null; } this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); if (a.ring) { a.ring.removeFromParent(); a.ring.geometry.dispose(); a.ring.material.dispose(); a.ring = null; } } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
+  leave_(p) { this.voiceOut(p.id); const a = this.remotes.get(p.id); if (a) { if (a.armTab) { a.armTab.hide(); a.armTab.group.removeFromParent(); a.armTab = null; } this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); if (a.ring) { a.ring.removeFromParent(); a.ring.geometry.dispose(); a.ring.material.dispose(); a.ring = null; } } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
   freeSeat(a) { if (a.viewer && a.viewer.seat && a.viewer.seat.npc === 'remote') { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.viewer = null; }
   seatByKey(key) { if (!key) return null; const [hk, id] = key.split(':'); const h = this.c.world.hallByKey(hk); if (!h) return null; const s = h.seats.find((q) => q.id === id); return s ? { s, h } : null; }
   // per frame: send me, move them, place their names
@@ -167,6 +198,10 @@ export class Together {
     // v14 one set of lobby guests for everyone: the host sends them, the others show them (npc9.js mirrorGuests)
     const C = this.c.crowd; if (this.mp.host) { if (C.mirror) C.mirrorGuests(false); this.mp.crowd(C.guestRoster(), C.guestState(), dt); }
     const cam = this.c.engine.camera, W = innerWidth, H = innerHeight, k = Math.min(1, dt * 10);
+    { const ctx = this.c.sound && this.c.sound.ctx, off = this.c.settings.mpVoice === false;
+      for (const [id, v] of this.voices) { if (!v.g || !ctx) continue; const a = this.remotes.get(id); let k = 0;
+        if (a && !off) { const d = Math.hypot(a.x - P.x, a.z - P.z, (a.y || 0) - P.y); k = d < 2.5 ? 1 : Math.max(0, 1 - (d - 2.5) / 17); if (k > 0 && !this.c.world.walls.sees(P.x, P.z, a.x, a.z, P.y + 1.2, P.y + 1.8)) k *= 0.25; }
+        v.g.gain.setTargetAtTime(k * 1.4, ctx.currentTime, 0.12); } }
     for (const [id, a] of this.remotes) {
       const p = this.mp.peers.get(id), st = p && p.st, tag = this.tags.get(id); if (!st) { if (tag) tag.style.display = 'none'; continue; }
       const sp0 = st.sit > 0.5 && st.seat && st.seat.startsWith('spot:') ? this.c.world.sitSpots[+st.seat.slice(5)] : null;
@@ -195,6 +230,7 @@ export class Together {
       if (this._v.z > 1 || !near || !this.c.world.walls.sees(cam.position.x, cam.position.z, a.x, a.z, Math.min(cam.position.y, a.y + 1.5), Math.max(cam.position.y, a.y + 1.5) + 0.2)) { tag.style.display = 'none'; continue; }   // v14b never through a wall
       if (tag.style.display) tag.style.display = ''; tag.style.transform = `translate3d(${((this._v.x + 1) / 2 * W).toFixed(0)}px,${((1 - this._v.y) / 2 * H).toFixed(0)}px,0) translate(-50%,-100%)`;   // v14 compositor only (left/top re-laid out the page every frame)
       if (tag._host !== !!p.host) { tag._host = !!p.host; tag.classList.toggle('host', tag._host); }
+      { const v = this.voices.get(id); if (v && v.g) { let sm = 0; v.an.getByteTimeDomainData(v.buf); for (const q of v.buf) sm += (q - 128) * (q - 128); const talk = Math.sqrt(sm / v.buf.length) > 6; if (tag.__talk !== talk) { tag.__talk = talk; tag.classList.toggle('talk', talk); } } }
     }
   }
   // ---------------------------------------------------------------- the film's controls belong to the host (the user: "only the host has

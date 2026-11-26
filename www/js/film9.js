@@ -161,7 +161,10 @@ export class Shows {
       const show = () => { if (s.state !== 'playing') return; this._fit(s, (v.videoWidth / v.videoHeight) || 16 / 9); s.hall.picMat.uniforms.map.value = this.vtex; s.hall.picMat.uniforms.uGain.value = 1; s.pic = true;
         this.sound.startFilm(s.hall.key, { video: v, hall: s.hall }); this.hooks.onPicture && this.hooks.onPicture(id);
         // v14 a film whose sound this phone cannot decode (AC-3, E-AC-3, DTS in many downloaded films) plays without sound: say so once
-        if (s.src.kind !== 'film') setTimeout(() => { if (s.state === 'playing' && !v.paused && v.currentTime > 3 && v.webkitAudioDecodedByteCount === 0 && this.hooks.onNoAudio) this.hooks.onNoAudio(); }, 6000);
+        // the Android app plays it through the phone's own player instead (MainActivity audioStart); a browser says what is wrong
+        if (s.src.kind !== 'film') setTimeout(() => { if (s.state !== 'playing' || v.paused || v.currentTime < 3 || v.webkitAudioDecodedByteCount !== 0) return;
+          const M = media, vol = this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1;
+          if (M && M.audioStart && M.audioStart(v.currentSrc || v.src, v.currentTime, v.playbackRate, vol)) this._nat = { s }; else if (this.hooks.onNoAudio) this.hooks.onNoAudio(); }, 4000);
         if (s.src.kind === 'film') { const go = () => s.track && this.director.startTrack(id, s.track.cues, () => v.currentTime); if (s.track) go(); else loadTrack(s.src.filmId).then((tr) => { s.track = tr; go(); }); } else this.director.startLive(id, this.now); };
       if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => show()); else v.addEventListener('playing', () => setTimeout(show, 120), { once: true }); }
   }
@@ -172,6 +175,9 @@ export class Shows {
   }
   // ---------------------------------------------------------- per frame (logic)
   update(dt, now, room, vis) {
+    if (this._nat) { const M = media, s = this._nat.s, v = this.video;   // v14b the native sound (see _roll): kept on the picture's clock
+      if (!M || s.state !== 'playing' || this.cur() !== s) { if (M && M.audioStop) M.audioStop(); this._nat = null; }
+      else if (now - (this._natT || 0) > 600) { this._natT = now; M.audioSync(v.currentTime, !v.paused && !this.buffering, v.playbackRate, this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1); } }
     this.now = now; this.vis = vis;
     // v11 (the user: "go far away and come back: the movie is frozen and the audio continues, for 15-20 s"): a phone's decoder can go idle
     // while nothing draws the picture, then shows nothing until the film's next keyframe. While a film plays and its clock runs, a new

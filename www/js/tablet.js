@@ -20,22 +20,35 @@ export class Tablet {
   constructor(shows, sound, wallet, settings, hooks) {
     this.shows = shows; this.sound = sound; this.wallet = wallet; this.settings = settings; this.hooks = hooks; this.tab = 'remote'; this.server = false; this.onLocal = null;
     this.q = ''; this.sort = 'recent'; this.album = null; this.view = 'all'; this.fav = new Set(store.get('fav', [])); this.cols = store.get('cols', {}); this.items = null; this._raf = 0;
-    const root = $('#tablet'); root.innerHTML = `<div class="tab-dev"><div class="tab-scr">
-      <header class="tb-head"><div class="tb-title"><small>LUMIÈRE</small><b id="tbTitle"></b></div><nav class="tb-tabs" id="tbTabs"><button data-t="remote">${t('tab.remote')}</button><button data-t="films">${t('tab.films')}</button><button data-t="stream">${t('str.tab')}</button><button data-t="mine">${t('tab.mine')}</button><button data-t="order">${t('tab9.order')}</button></nav><button class="btn secondary sm" id="tbClose"></button></header>
-      <div class="tb-body" id="tbBody"></div></div></div>`;
+    // v14b (the user, 11-26: "the tablet UI sucks, it doesnt feel like tablet"): a status bar, a home screen of apps, each app full screen
+    // with a back arrow and the title, a home bar at the bottom
+    const root = $('#tablet'); root.innerHTML = `<div class="tab-dev"><i class="tab-cam"></i><div class="tab-scr">
+      <div class="tb-status"><b id="tbClock"></b><span>LUMIÈRE</span><span class="tb-sig"><i></i><i></i><i></i><em></em></span></div>
+      <header class="tb-head"><button class="tb-back" id="tbBack"><svg class="ic"><use href="#i-back"/></svg></button><div class="tb-title"><small>LUMIÈRE</small><b id="tbTitle"></b></div><nav class="tb-tabs" id="tbTabs" hidden><button data-t="remote">${t('tab.remote')}</button><button data-t="films">${t('tab.films')}</button><button data-t="stream">${t('str.tab')}</button><button data-t="mine">${t('tab.mine')}</button><button data-t="order">${t('tab9.order')}</button></nav><button class="btn secondary sm" id="tbClose"></button></header>
+      <div class="tb-body" id="tbBody"></div><button class="tb-homebar" id="tbHomeBar" aria-label="home"></button></div></div>`;
     root.addEventListener('click', (e) => { if (e.target === root) this.close(); });
     $('#tbClose').addEventListener('click', (e) => { e.stopPropagation(); this.close(); });
+    for (const id of ['#tbBack', '#tbHomeBar']) $(id).addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.show('home'); });
     for (const b of root.querySelectorAll('#tbTabs button')) b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.show(b.dataset.t); });
     // the preview player for seeking (a second element; never heard)
     this.pv = document.createElement('video'); this.pv.muted = true; this.pv.playsInline = true; this.pv.preload = 'metadata'; this.pv.setAttribute('playsinline', '');
   }
   isOpen() { return !$('#tablet').hidden; }
-  open(tab = 'remote', o = {}) { this.server = !!o.server; $('#tablet').hidden = false; $('#tbClose').textContent = t(this.server ? 'tab.handBack' : 'tab.close'); this.sound.tablet && this.sound.tablet(true); this.show(tab); this.hooks.onModal(true); }
-  close() { if (!this.isOpen()) return; $('#tablet').hidden = true; cancelAnimationFrame(this._raf); this.pv.removeAttribute('src'); this.pv.load(); this.sound.tablet && this.sound.tablet(false); if (this.server) { this.server = false; this.hooks.handBack(); } this.hooks.onModal(false); }
+  open(tab = 'home', o = {}) { this.server = !!o.server; $('#tablet').hidden = false; clearInterval(this._clk); const ck = () => { const d = new Date(); $('#tbClock').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }; ck(); this._clk = setInterval(ck, 15000); $('#tbClose').textContent = t(this.server ? 'tab.handBack' : 'tab.close'); this.sound.tablet && this.sound.tablet(true); this.show(tab); this.hooks.onModal(true); }
+  close() { if (!this.isOpen()) return; clearInterval(this._clk); $('#tablet').hidden = true; cancelAnimationFrame(this._raf); this.pv.removeAttribute('src'); this.pv.load(); this.sound.tablet && this.sound.tablet(false); if (this.server) { this.server = false; this.hooks.handBack(); } this.hooks.onModal(false); }
   refresh() { if (this.isOpen()) this.show(this.tab); }
   show(tab) {
     this.tab = tab; for (const b of document.querySelectorAll('#tbTabs button')) b.classList.toggle('on', b.dataset.t === tab); cancelAnimationFrame(this._raf);
-    const B = $('#tbBody'); B.innerHTML = ''; B.className = 'tb-body ' + tab; if (tab === 'remote') this.remote(B); else if (tab === 'films') this.films(B); else if (tab === 'stream') this.stream(B); else if (tab === 'order') this.order(B); else this.mine(B);
+    const B = $('#tbBody'); B.innerHTML = ''; B.className = 'tb-body ' + tab; $('#tablet').classList.toggle('at-home', tab === 'home'); if (tab === 'home') this.homeScreen(B); else if (tab === 'remote') this.remote(B); else if (tab === 'films') this.films(B); else if (tab === 'stream') this.stream(B); else if (tab === 'order') this.order(B); else this.mine(B);
+  }
+  // ---------------- v14b the home screen: the apps, each with its icon and name; what is playing in a strip at the top
+  homeScreen(B) {
+    $('#tbTitle').textContent = t('tab.home'); const pb = this.shows.playback();
+    if (pb && this.shows.isOn(pb.id)) { const np = el('button', 'tb-now'); np.append(el('small', null, t('tab.remote')), el('b', null, this.shows.title(pb.id))); np.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.show('remote'); }); B.appendChild(np); }
+    const grid = el('div', 'tb-apps');
+    for (const [k, ic, lab] of [['remote', 'i-play', 'tab.remote'], ['films', 'i-film', 'tab.films'], ['stream', 'i-globe', 'str.tab'], ['mine', 'i-image', 'tab.mine'], ['order', 'i-popcorn', 'tab9.order']]) {
+      const b = el('button', 'tb-app'); b.innerHTML = `<i><svg class="ic"><use href="#${ic}"/></svg></i>`; b.appendChild(el('span', null, t(lab))); b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.show(k); }); grid.appendChild(b); }
+    B.appendChild(grid);
   }
   // ---------------- remote ----------------
   remote(B) {

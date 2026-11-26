@@ -68,8 +68,12 @@ export class Multi {
     // an order: the cinema has one server, who serves every seat that called him in turn
     const sOrder = act('order', (o, id) => { const p = this.peers.get(id); if (p && o && typeof o === 'object' && this.hooks.onOrder) this.hooks.onOrder(p, String(o.seat || '').slice(0, 40)); });
     const sEmote = act('emote', (e, id) => { const p = this.peers.get(id); if (p && this.hooks.onEmote) this.hooks.onEmote(p, String(e || '').slice(0, 12)); });
-    Object.assign(this, { sHello, sState, sMeta, sShow, sChat, sEmote, sHost, sCtl, sOrder, sCrowd, sRoster, sLift });
-    room.onPeerJoin = (id) => { sHello(this.hello(), id); if (this._metaObj) sMeta(this._metaObj, id); this._q = null; this._roster = null; this.hooks.onCount && this.hooks.onCount(this.count); };
+    // v14b voice (the user, 11-26: "do the proximity chat ... the voice thing like in insta you record and send voice in chat, do the mute and
+    // unmute"): your microphone as an audio stream to every phone in the room (peer to peer, like the rest), voice notes as small Opus files
+    room.onPeerStream = (stream, id) => { if (this.peers.has(id) && this.hooks.onVoice) this.hooks.onVoice(id, stream); };
+    const sNote = act('vn', (d, id) => { const p = this.peers.get(id); if (!p || !d || typeof d !== 'object' || typeof d.b !== 'string' || d.b.length > 600000 || !/^[A-Za-z0-9+/=]+$/.test(d.b)) return; if (this.hooks.onNote) this.hooks.onNote(p, d.b, Math.max(1, Math.min(60, Math.round(+d.s || 1)))); });
+    Object.assign(this, { sHello, sState, sMeta, sShow, sChat, sEmote, sHost, sCtl, sOrder, sCrowd, sRoster, sLift, sNote });
+    room.onPeerJoin = (id) => { sHello(this.hello(), id); if (this.mic) { try { room.addStream(this.mic, { target: id }); } catch (e) { /* the peer went */ } } if (this._metaObj) sMeta(this._metaObj, id); this._q = null; this._roster = null; this.hooks.onCount && this.hooks.onCount(this.count); };
     room.onPeerLeave = (id) => { const p = this.peers.get(id); this.peers.delete(id); if (p && this.hooks.onLeave) this.hooks.onLeave(p); this.elect(); this.hooks.onCount && this.hooks.onCount(this.count); };
     this.hooks.onCount && this.hooks.onCount(this.count);
   }
@@ -113,6 +117,9 @@ export class Multi {
   control(c) { if (this.room && this.host) { this.sCtl(c); if (this.lastShow && c && Number.isFinite(c.startAt)) this.lastShow = { ...this.lastShow, startAt: c.startAt }; if (c && c.cmd === 'stop') this.lastShow = null; } }
   order(seatKey) { if (this.room) this.sOrder({ seat: seatKey }); }
   lift(b) { if (this.room) this.sLift(b); }
+  micOn(stream) { this.micOff(); this.mic = stream; if (this.room) { try { this.room.addStream(stream, {}); } catch (e) { console.warn('[mp] voice', e); } } }
+  micOff() { const s = this.mic; this.mic = null; if (!s) return; try { if (this.room) this.room.removeStream(s); } catch (e) { /* the room went */ } for (const tr of s.getTracks()) tr.stop(); }
+  note(b64, sec) { if (this.room) this.sNote({ b: b64, s: sec }); }
   emote(e) { if (this.room) this.sEmote(e); }
-  leave() { if (!this.room) return; try { this.room.leave(); } catch (e) { /* already gone */ } this.room = null; for (const p of this.peers.values()) if (this.hooks.onLeave) this.hooks.onLeave(p); this.peers.clear(); this.lastShow = null; this.early = null; this.offset = 0; this.host = false; this.hooks.onCount && this.hooks.onCount(0); }
+  leave() { if (!this.room) return; this.micOff(); try { this.room.leave(); } catch (e) { /* already gone */ } this.room = null; for (const p of this.peers.values()) if (this.hooks.onLeave) this.hooks.onLeave(p); this.peers.clear(); this.lastShow = null; this.early = null; this.offset = 0; this.host = false; this.hooks.onCount && this.hooks.onCount(0); }
 }

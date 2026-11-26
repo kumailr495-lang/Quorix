@@ -7,7 +7,7 @@ export const PRESETS = {
   // old ceilings (0.75 / 1.0 / 1.3) drew a quarter to a half of the screen's pixels and the browser stretched them. The ceiling is now the
   // screen's own pixels on High and three quarters of them on Medium; `start` is where the governor begins, `floor` where it stops
   low: { scale: 1.0, start: 0.8, floor: 0.6, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 5, aa: false },
-  medium: { scale: 1.5, start: 1.15, floor: 0.8, people: 10, crowd: 140, peopleFar: 12, detail: 1, seatLod: 7, aa: true },
+  medium: { scale: 1.3, start: 1.0, floor: 0.75, people: 8, crowd: 120, peopleFar: 10, detail: 1, seatLod: 7, aa: true },   // v14b (the user, 11-26: "it lags"): a lower ceiling, fewer skinned people
   high: { scale: 2.0, start: 1.3, floor: 0.8, people: 10, crowd: 180, peopleFar: 14, detail: 1, seatLod: 9, aa: true },   // v14 the user's itel held 21 fps on High at its 1.0 floor: lower floor, fewer skinned people
 };
 const LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0];
@@ -34,7 +34,7 @@ export class Engine {
     // v8 switches: LOD distances, render distance, reflection strength (Off also drops the reflection lookup: Materials.setReflections)
     this.lodK = { aggressive: 0.65, normal: 1, far: 1.45 }[s.lod] || 1; this.viewFar = { near: 95, medium: 120, far: 170 }[s.viewDist] || 120;   // near >= the 84 m bridge: at 70 m its far end was cut off
     this.camera.far = this.viewFar; this.camera.updateProjectionMatrix();   // v11: this sat at the end of the comment above (the setting did nothing)
-    G.uReflK.value = { off: 0, soft: 0.18, full: 0.45 }[s.reflections] ?? 0.18; /* v14 (the user, 11-20: "the reflections are so heavy") */ this.resize();
+    G.uReflK.value = { off: 0, soft: 0.12, full: 0.3 }[s.reflections] ?? 0.12;   /* v14b (the user, 11-26: "the reflection is just way too strong") */ /* v14 (the user, 11-20: "the reflections are so heavy") */ this.resize();
   }
   resize() {
     const w = innerWidth, h = innerHeight; this.renderer.setPixelRatio(this.scale); this.renderer.setSize(w, h, false);
@@ -45,9 +45,14 @@ export class Engine {
   // so it changes at most once per 6 s, steps down only after 2 s of slow frames and up only after 12 s of fast ones (v5.10 hopped
   // between 0.90x, 1.05x and 1.13x on the phone)
   governor(dt, now) {
-    this.ema = this.ema * 0.94 + Math.min(dt, 0.2) * 1000 * 0.06; this.stats.ms = this.ema; this.stats.fps = 1000 / this.ema; if (this.fixed || this.auto === false) return;
+    this.ema = this.ema * 0.94 + Math.min(dt, 0.2) * 1000 * 0.06; this.stats.ms = this.ema; this.stats.fps = 1000 / this.ema;
+    // v14b (the user, 11-26: "the whole app is flickering ... it lags"): an uneven 35-45 fps reads as stutter; under ~45 for 3 s the game
+    // draws every other display frame, a steady 30. The resolution search below settles in the first minute and afterwards only steps down
+    if (!this.cap30 && this.pace !== 60) { this._p30 = this.ema > 22 ? (this._p30 || now) : 0; if (this._p30 && now - this._p30 > 3000) { this.cap30 = true; this._tAdj = now; } }
+    if (this.pace === 30) this.cap30 = true;
+    if (this.fixed || this.auto === false) return;
     const lv = LEVELS.filter((l) => l >= this.minScale - 1e-6 && l <= this.maxScale + 1e-6), i = lv.reduce((b, l, k) => (Math.abs(l - this.scale) < Math.abs(lv[b] - this.scale) ? k : b), 0);
-    this._slow = this.ema > 33 ? (this._slow || now) : 0;   /* v14 steps down under 30 fps (it waited for 28) */ this._fast = this.ema < 19 ? (this._fast || now) : 0;
+    const slowMs = this.cap30 ? 40 : 33; this._slow = this.ema > slowMs ? (this._slow || now) : 0;   /* v14 steps down under 30 fps (it waited for 28) */ this._fast = this.ema < 19 ? (this._fast || now) : 0;
     // v12: a step up is a trial. If the new level cannot hold about 50 frames a second for 2.5 s it goes back, and that level is not
     // tried again for five minutes (v5.10 hopped between levels for ever). In the first minute the search is quick (4 s of fast frames
     // per step, mostly behind the menu), afterwards slow (12 s), so the picture settles at the sharpest level the phone holds smoothly
@@ -60,7 +65,7 @@ export class Engine {
     const early = now - (this._born || 0) < 60000, capped = this._ceil && now < this._ceilUntil && i < lv.length - 1 && lv[i + 1] > this._ceil + 1e-6;
     if (now - this._tAdj < (early ? 3000 : 6000)) return;
     if (this._slow && now - this._slow > 2000 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); }
-    else if (this._fast && now - this._fast > (early ? 4000 : 12000) && i < lv.length - 1 && !capped) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this._trial = true; this._lag = 0; this.resize(); }
+    else if (early && !this.cap30 && this._fast && now - this._fast > 4000 && i < lv.length - 1 && !capped) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this._trial = true; this._lag = 0; this.resize(); }
   }
   // v9 show mode: watching the film you get the screen's full resolution (up to the device's pixels); the governor still steps down
   // if the phone can't keep up, and leaving your seat returns to the preset

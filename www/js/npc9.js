@@ -450,7 +450,7 @@ export class Crowd {
       if (!a.path || a.state === 'mill') a.yaw += adiff(yawTo, a.yaw) * Math.min(1, dt * 2.2); if (this.now >= a.glare - 50) a.glareAt = null; }   // v14 turned on you (a bump) or toward a horn
     else if (player && d < 3.0 && (a.talkable || a.role === 'guest')) { const yawTo = Math.atan2(player.x - a.x, player.z - a.z), rel = adiff(yawTo, a.yaw); if (Math.abs(rel) < 1.6) { ly = rel; lp = -Math.atan2((player.y || 0) + 1.6 - (a.y + 1.6), d) * 0.6; amt = a.talking ? 1 : 0.7; } }
     const L = a.look; L.yaw += (ly - L.yaw) * Math.min(1, dt * 3.5); L.pitch += (lp - L.pitch) * Math.min(1, dt * 3.5); L.amt += (amt - L.amt) * Math.min(1, dt * 2.5); ch.s.lookYaw = L.yaw; ch.s.lookPitch = L.pitch; ch.s.lookAmt = L.amt;
-    a.lightT -= dt; if (a.lightT <= 0) { a.lightT = 0.3; const want = this.lightAt(a.x, a.y + 1.2, a.z, { amb: new THREE.Color(), key: new THREE.Color(), dir: new THREE.Vector3(), screen: new THREE.Color() }); a.lightWant = want; }
+    a.lightT -= dt; if (a.lightT <= 0) { a.lightT = 0.3; const want = this.lightAt(a.x, a.y + 1.2, a.z, a._lw || (a._lw = { amb: new THREE.Color(), key: new THREE.Color(), dir: new THREE.Vector3(), screen: new THREE.Color() })); a.lightWant = want; }   // v14b one light record per person (no garbage every 0.3 s)
     if (a.lightWant) { const k = Math.min(1, dt * 4), W = a.lightWant, Lt = a.light; Lt.amb.lerp(W.amb, k); Lt.key.lerp(W.key, k); Lt.dir.lerp(W.dir, k).normalize(); Lt.screen.lerp(W.screen, k); }
     ch.update(dt, a.light);
   }

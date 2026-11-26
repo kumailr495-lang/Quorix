@@ -127,7 +127,7 @@ async function boot() {
     onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(),
     onSettings: (gfx) => applySettings(gfx), onPreset: (g) => Object.assign(settings, presetFor(g)),
     onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), stubs: () => stubs.get(), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
-    openRemote: () => tablet.open('remote'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
+    openRemote: () => tablet.open('home'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
   // v9.3 playing together (mp.js, mpui.js): a room code, your look, the other players in the cinema, the host's shows on every phone
   const together = new Together({ liftPress: (b) => world.lift.press(b), tabOpen: () => tablet.isOpen(), ArmTablet, mySpot: () => world.sitSpots.findIndex((q) => q.taken === 'player'), held: () => (held ? held.id || held.kind || null : null), heldMat: () => itemMat, world, crowd, shows, player, engine, settings, sound, save: () => saveSettings(settings), toast: (m, ms) => ui.toast(m, ms), onModal: (m) => onModal(m),
@@ -159,7 +159,9 @@ async function boot() {
   const phone = new Phone({ ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, theatres: () => theatres, halls: () => world.halls.map((h) => ({ id: h.id, name: h.name.replace('LUMIERE ', '') })), stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
     guide: () => { settings.goal = true; saveSettings(settings); }, showTicket: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'),
     together: () => together.open(), settings: () => ui.openSettings(), sound, toast: (m, ms, k) => ui.toast(m, ms, k), native: !!window.LumiereMedia,
-    renderer: engine.renderer });   // inside the Android app a photo cannot be saved as a file (no picture bridge yet)
+   
+    jump: () => (game === 'quick' && mode === 'play' ? { halls: world.halls.map((h) => ({ key: h.key, name: h.name.replace('LUMIERE ', '') })), go: (k) => { const h = world.hallByKey(k), best = Math.round(h.cfg.rows.length * 0.58), s = h.seats.filter((q) => !q.taken && !q.npc).sort((p, q) => (Math.abs(p.row - best) * 2 + Math.abs(p.a) * 0.8) - (Math.abs(q.row - best) * 2 + Math.abs(q.a) * 0.8))[0]; if (s) { if (player.seated) stand(); setTimeout(() => jumpToSeat(s), 350); } } } : null),
+    upgrades: () => (game === 'flow' && ticket && ticket.seat ? upgrades() : null), renderer: engine.renderer });   // inside the Android app a photo cannot be saved as a file (no picture bridge yet)
   $('#bPhone').addEventListener('click', (e) => { e.stopPropagation(); if (mode === 'play') phone.toggle(); });
   addEventListener('keydown', (e) => { const tag = (e.target && e.target.tagName) || ''; if (e.code === 'KeyF' && mode === 'play' && tag !== 'INPUT' && tag !== 'TEXTAREA') phone.toggle(); });
   const life = new LobbyLife(world, engine);   // v12c the lobby's life: popcorn popping, the fountain's water, steam at the bar, the marquee's bulbs, the boards' sheen
@@ -170,7 +172,7 @@ async function boot() {
   const career = new Career(credits, { toast: (m, ms) => ui.toast(m, ms), coin });
   { const te = tut.event.bind(tut); tut.event = (n, d) => { te(n, d); if (['ticket', 'item', 'seated', 'bell', 'binned'].includes(n)) career.event(n); }; }
   const jobs = new Jobs({ credits, career, sound, coin, world, toast: (m, ms) => ui.toast(m, ms), onModal: (m) => onModal(m), nearBin: () => nearBin(), hallState: (id) => { const st = shows.get(id); return st ? st.state : 'idle'; },
-    films: () => CATALOG.slice(0, 8).map((f) => f.short || f.title), staffPass: (on) => { world.gate.pass = on || !!(ticket && ticket.checked); } });
+    films: () => CATALOG.slice(0, 8).map((f) => f.short || f.title), staffPass: (on) => { world.gate.staff = !!on; } });   // v14b a shift opens the gate for you (this used to overwrite the gate's pass())
   const intro = new Intro(engine, world, mats, sound, { fade: (a, d) => ui.fade(a, d), done: () => arrived(), driver: (k, cx, cz) => { const ln = pick(k); if (cx != null) { driverAgent.x = cx; driverAgent.z = cz; } if (ln) { talk.bubble(driverAgent, ln, 2.6); voice.speak(driverAgent, ln, { full: true }); } } });
   const driverAgent = { x: 1.6, y: 0, z: 27.9, name: t('role9.driver'), role: 'driver', voice: 'driver', alive: true, ch: { s: { sit: 1 }, scale: 1 }, group: { visible: true }, crowd };
   // v12 the street's traffic: the taxi leaves after dropping you (intro9.js), saloons pass now and then (traffic.js); both are solid to you
@@ -183,7 +185,7 @@ async function boot() {
     tablet.close = () => { close0(); armTab.hide(); }; }
   bill.onChange = () => ui.setWallet(game === 'flow' ? credits.fmt(credits.bal) : null); credits.onChange(() => bill.onChange());   // v14 the wallet chip: your Lumiere Credits
   function applySettings(gfx) {
-    saveSettings(settings); engine.applySettings(settings); { const lo = settings.graphics === 'low'; mats.setQuality({ normalMaps: !lo, macro: !lo, detile: settings.graphics === 'high', texSize: lo ? 256 : 512 }); }   // v13 the preset at once, as at boot
+    saveSettings(settings); engine.applySettings(settings); { const lo = settings.graphics === 'low'; mats.setQuality({ normalMaps: !lo, macro: settings.graphics === 'high', detile: settings.graphics === 'high', texSize: lo ? 256 : 512 }); }   // v14b macro tone only on High   // v13 the preset at once, as at boot
     { const on = settings.reflections !== 'off' && settings.graphics !== 'low'; mats.setReflections(on, heroRefl(settings)); if (on && world.captureReflections) world.captureReflections(); } crowd.setDensity(DENS[settings.npcs] || 'medium');
     if (settings.npcs === 'off') for (const h of world.halls) crowd.clearAudience(h.id);   // off means an empty hall, now
     sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd }); sound.surround = !!settings.surround; if (input.vr !== !!settings.vr) input.setVR(!!settings.vr); talk.setOptions(settings); voice.setOptions(settings); applyLayout(settings);
@@ -288,6 +290,17 @@ async function boot() {
     return { x: s.x - Math.sin(s.yaw) * 0.04, y: eye, z: s.z - Math.cos(s.yaw) * 0.04, yaw: s.yaw, pitch }; };
   function claim(s) { if (sitRelease) sitRelease(); s.npc = s.npc || 'player'; recliner.attach(s.hallKey && world.hallByKey(s.hallKey), s);
     sitRelease = () => { const back = recliner.detach(!held); if (back) giveBack(back); if (s.npc === 'player') s.npc = null; sitRelease = null; }; }
+  // v14b the Ticket app's upgrades: the armrest tablet for this show, or a better free seat in the same hall for the difference in price
+  function upgrades() {
+    const h = world.hallByKey(ticket.hallKey), cur = seatOf(ticket), price = (s) => (CLASSES[s.cls] || { price: 0 }).price, mine = cur ? price(cur) : 0;
+    const better = h ? [...new Map(h.seats.filter((s) => !s.taken && !s.npc && price(s) > mine).sort((a, b) => price(a) - price(b) || Math.abs(a.a) - Math.abs(b.a)).map((s) => [s.cls, s])).values()].slice(0, 3) : [];
+    return { fmt: (n) => bill.fmt(n), tabletPrice: PRICES.tablet,
+      buyTablet: () => { if (!bill.pay(PRICES.tablet, 'tablet')) { ui.toast(t('lc.short', { price: bill.fmt(PRICES.tablet) }), 2800, 'error'); return false; } sound.pay(); ticket.tablet = true; ui.toast(t('up.tabletOk'), 2600); return true; },
+      seats: better.map((s) => ({ id: s.id, label: (CLASSES[s.cls] || {}).label || s.cls, extra: price(s) - mine, s })),
+      moveTo: (o) => { if (!bill.pay(o.extra, 'ticket')) { ui.toast(t('lc.short', { price: bill.fmt(o.extra) }), 2800, 'error'); return false; } sound.pay();
+        if (cur) { cur.player = false; cur.taken = false; if (cur.npc === 'player') cur.npc = null; } const s = o.s; s.player = true; s.taken = true; ticket.seat = s.id; ticket.row = s.id.replace(/\d+/, ''); ticket.col = s.col;
+        ui.toast(t('up.moved', { seat: s.id }), 2800); if (player.seated && room === ticket.hallKey) { stand(); setTimeout(() => jumpToSeat(s), 400); } return true; } };
+  }
   function jumpToSeat(seat) { const s = seat || seatOf(ticket); if (!s) return; fadeTo(0.45, () => { claim(s); player.placeSeated(seatPose(s), crowd.laneStand(s)); player.y = s.y; tut.event('seated'); }); }
   function sitSeat(s) { if (s.npc && s.npc !== 'player') return; claim(s); player.sit(seatPose(s), crowd.laneStand(s), () => { sound.thud(); tut.event('seated'); if (ticket && ticket.tablet && game === 'flow') ui.toast(t('toast9.tabletArm'), 3000); }); }
   function sitSpot(sp) { sp.taken = 'player'; if (sitRelease) sitRelease(); sitRelease = () => { if (sp.taken === 'player') sp.taken = null; sitRelease = null; }; player.sit({ x: sp.x, y: sp.y + 0.72, z: sp.z, yaw: sp.face }, sp.stand, () => sound.thud()); }
@@ -362,7 +375,8 @@ async function boot() {
   const SIDE_BTNS = ['#bRemote', '#bBell', '#bRecline', '#bCup'].map((q) => $(q)); let sideKey = '';
   const fwd = new THREE.Vector3(); let last = performance.now(), slowT = 0, errT = -1e9, audT = 0, curFilm = null, dbg = null; const actors = [];
   function frame(now) {
-    requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now; G.uTime.value = now / 1000; const c0 = performance.now();
+    requestAnimationFrame(frame); if (engine.cap30 && now - last < 28) return;   // v14b steady 30 fps pacing on phones that cannot hold 60 (engine.governor)
+    const dt = Math.min(0.05, (now - last) / 1000); last = now; G.uTime.value = now / 1000; const c0 = performance.now();
     try { step(dt, now); } catch (e) { if (now - errT > 5000) { errT = now; console.error('[lumiere] frame update failed (rendering anyway):', e); } }
     engine.stats.cpu = engine.stats.cpu * 0.92 + (performance.now() - c0) * 0.08; engine.governor(dt, now);
     shows.frame(engine.camera, engine.renderer); engine.render(); together.preview(engine.renderer, dt); phone.frame(dt);

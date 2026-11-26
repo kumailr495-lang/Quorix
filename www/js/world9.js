@@ -929,11 +929,11 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     g.passUntil = 0; g.npcUntil = 0; g.always = false;
     // v11 a light on the leaf's top rail: red while it is shut to you, green once your ticket (or Quick play) opens it
     const lamp = new THREE.Mesh(new THREE.BoxGeometry(w - 0.3, 0.014, 0.03), new THREE.MeshBasicMaterial({ color: 0xff4d5a })); lamp.position.set(w / 2, GH + 0.007, 0); lamp.name = 'gate-lamp'; grp.add(lamp); g.lamp = lamp;
-    g.update = (dt, actors) => { const now = performance.now(); if (lamp.material.color) lamp.material.color.setHex(g.always || g.passUntil > now ? 0x3ecf8e : 0xff4d5a);   // (test tools swap materials)
+    g.update = (dt, actors) => { const now = performance.now(); if (lamp.material.color) lamp.material.color.setHex(g.always || g.staff || g.passUntil > now ? 0x3ecf8e : 0xff4d5a);   // (test tools swap materials)
       if (actors) for (const a of actors) if (a.path && a.x > g.x0 - 0.4 && a.x < g.x1 + 0.4 && Math.abs(a.z - g.z) < 1.3 && (a.y || 0) < 1) { g.npcUntil = now + 1200; break; }
-      g.target = g.always || g.passUntil > now || g.npcUntil > now ? 1 : 0; g.open += (g.target - g.open) * (1 - Math.exp(-dt * 4)); grp.rotation.y = g.open * 1.5; };   // swings in, towards the escalator
+      g.target = g.always || g.staff || g.passUntil > now || g.npcUntil > now ? 1 : 0; g.open += (g.target - g.open) * (1 - Math.exp(-dt * 4)); grp.rotation.y = g.open * 1.5; };   // swings in, towards the escalator
     g.pass = (ms = 9000) => { g.passUntil = performance.now() + ms; };
-    g.letsPlayer = () => (g.always || g.passUntil > performance.now()) && g.open >= 0.6; }
+    g.letsPlayer = () => (g.always || g.staff || g.passUntil > performance.now()) && g.open >= 0.6; }
   // v10 free exit (the ticket zone's way out, from the down escalator and the lift): two half leaves in the gate line that swing out into the
   // lobby when anyone inside comes near. From the lobby side they never let you in (world.collide).
   { const E = GATE.exit, z = GATE.z, wl = (E[1] - E[0]) / 2 - 0.04, x = world.exitGate = { x0: E[0], x1: E[1], z, open: 0, until: 0, leaves: [] }, grp = new THREE.Group();

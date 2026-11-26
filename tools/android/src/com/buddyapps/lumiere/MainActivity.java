@@ -63,7 +63,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
-    static final int PICK = 1, PERM = 2, PORT = 47821;
+    static final int PICK = 1, PERM = 2, MIC = 3, PORT = 47821;
+    android.webkit.PermissionRequest micReq;
     WebView web;
     FrameLayout root;
     View custom;
@@ -76,6 +77,8 @@ public class MainActivity extends Activity {
     };
     final Map<String, Thread> downloads = new HashMap<>();
     MediaMetadataRetriever mmr; long mmrId = -1;
+    android.media.MediaPlayer ap; volatile boolean apReady = false, apPlay = false; volatile double apWant = 0, apRate = 1, apVol = 1;   // v14b the film's sound when the WebView cannot decode it
+    void stopAudio() { android.media.MediaPlayer m = ap; ap = null; apReady = false; if (m != null) { try { m.stop(); } catch (Exception e) { /* not started */ } try { m.release(); } catch (Exception e) { /* released */ } } }
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -131,9 +134,10 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
-    @Override protected void onPause() { js("window.__lumiereLifecycle && window.__lumiereLifecycle('pause')"); web.onPause(); super.onPause(); }
+    @Override protected void onPause() { js("window.__lumiereLifecycle && window.__lumiereLifecycle('pause')"); web.onPause(); try { if (ap != null && ap.isPlaying()) ap.pause(); } catch (Exception e) { /* not ready */ } super.onPause(); }
     @Override protected void onResume() { super.onResume(); web.onResume(); immersive(); js("window.__lumiereLifecycle && window.__lumiereLifecycle('resume')"); }
     @Override protected void onDestroy() {
+        stopAudio();
         if (web != null) { web.destroy(); web = null; }
         if (server != null) server.stop();
         synchronized (this) { if (mmr != null) { try { mmr.release(); } catch (Exception e) { /* released */ } mmr = null; } }
@@ -197,6 +201,7 @@ public class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
         super.onRequestPermissionsResult(req, perms, res);
+        if (req == MIC) { final android.webkit.PermissionRequest r = micReq; micReq = null; if (r != null) { if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) r.grant(new String[] { android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE }); else r.deny(); } return; }
         if (req != PERM) return;
         boolean ok = res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED;
         js("window.__lumiereMediaPermission && window.__lumiereMediaPermission(" + ok + ")");
@@ -295,6 +300,34 @@ public class MainActivity extends Activity {
             return out.toString();
         }
         @JavascriptInterface public boolean removeDownload(String k, String name) { if (!key(k)) return false; File d = filmsDir(); if (d == null || !name.matches("[A-Za-z0-9._-]{1,80}")) return false; return new File(d, name).delete(); }
+        // v14b (the user, 11-26: "the audio doesnt work ... its only working for blender movies"): a film whose sound the WebView cannot
+        // decode (AC-3, E-AC-3, DTS, or AAC inside an MKV) still plays its picture there; the platform's own player plays its sound (no
+        // picture), kept in step with the page's video by audioSync (position, playing, speed, volume)
+        @JavascriptInterface public boolean audioStart(String k, final String url, final double sec, final double rate, final double vol) { if (!key(k)) return false;
+            if (url == null || !(url.startsWith("http://127.0.0.1:") || url.startsWith("https://"))) return false;
+            runOnUiThread(new Runnable() { public void run() {
+                stopAudio();
+                try { android.media.MediaPlayer m = new android.media.MediaPlayer(); m.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC); m.setDataSource(url);
+                    m.setOnPreparedListener(new android.media.MediaPlayer.OnPreparedListener() { public void onPrepared(android.media.MediaPlayer mp) {
+                        try { mp.seekTo((int) (Math.max(0, apWant) * 1000)); mp.setVolume((float) apVol, (float) apVol); if (Build.VERSION.SDK_INT >= 23) mp.setPlaybackParams(mp.getPlaybackParams().setSpeed((float) Math.max(0.5, Math.min(2.0, apRate)))); if (apPlay) mp.start(); apReady = true; } catch (Exception e) { /* a stream that will not seek */ } } });
+                    m.setOnErrorListener(new android.media.MediaPlayer.OnErrorListener() { public boolean onError(android.media.MediaPlayer mp, int w, int x) { apReady = false; return true; } });
+                    ap = m; apReady = false; apWant = sec; apRate = rate; apVol = vol; apPlay = true; m.prepareAsync();
+                } catch (Exception e) { ap = null; }
+            } });
+            return true;
+        }
+        @JavascriptInterface public void audioSync(String k, final double sec, final boolean playing, final double rate, final double vol) { if (!key(k)) return;
+            runOnUiThread(new Runnable() { public void run() {
+                apWant = sec; apPlay = playing; apRate = rate; apVol = vol; final android.media.MediaPlayer m = ap; if (m == null || !apReady) return;
+                try { m.setVolume((float) vol, (float) vol);
+                    if (!playing) { if (m.isPlaying()) m.pause(); return; }
+                    if (Build.VERSION.SDK_INT >= 23) { float sp = (float) Math.max(0.5, Math.min(2.0, rate)); if (Math.abs(m.getPlaybackParams().getSpeed() - sp) > 0.01) m.setPlaybackParams(m.getPlaybackParams().setSpeed(sp)); }
+                    if (Math.abs(m.getCurrentPosition() / 1000.0 - sec) > 0.25) m.seekTo((int) (sec * 1000));
+                    if (!m.isPlaying()) m.start();
+                } catch (Exception e) { /* not ready yet */ }
+            } });
+        }
+        @JavascriptInterface public void audioStop(String k) { if (!key(k)) return; runOnUiThread(new Runnable() { public void run() { stopAudio(); } }); }
     }
 
     static final long MAX_FILM = 4L * 1024 * 1024 * 1024;
@@ -440,5 +473,16 @@ public class MainActivity extends Activity {
             custom = view; customCb = cb; root.addView(view, new FrameLayout.LayoutParams(-1, -1)); web.setVisibility(View.GONE); immersive();
         }
         @Override public void onHideCustomView() { hideCustom(); }
+        // v14b voice in Play together (the user, 11-26: "proximity chat ... the voice thing like in insta"): the page may use the microphone
+        // (only the app's own page asks; the Android permission is asked the first time)
+        @Override public void onPermissionRequest(final android.webkit.PermissionRequest r) {
+            runOnUiThread(new Runnable() { public void run() {
+                boolean ours = r.getOrigin() != null && "127.0.0.1".equals(r.getOrigin().getHost()); boolean mic = false;
+                for (String x : r.getResources()) if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x)) mic = true;
+                if (!ours || !mic) { r.deny(); return; }
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) { r.grant(new String[] { android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE }); return; }
+                micReq = r; requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, MIC);
+            } });
+        }
     }
 }
