@@ -464,7 +464,12 @@ public class MainActivity extends Activity {
         @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
             if (pickCb != null) pickCb.onReceiveValue(null);
             pickCb = cb;
-            Intent i = new Intent(Intent.ACTION_GET_CONTENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.setType("video/*");
+            // v14c Music Night: the page asks for video or audio ("video/*,audio/*"); the picker offers what the page accepts
+            java.util.ArrayList<String> types = new java.util.ArrayList<>();
+            if (p != null && p.getAcceptTypes() != null) for (String a : p.getAcceptTypes()) for (String t : a.split(",")) { t = t.trim(); if (t.startsWith("video/") || t.startsWith("audio/")) types.add(t); }
+            if (types.isEmpty()) types.add("video/*");
+            Intent i = new Intent(Intent.ACTION_GET_CONTENT); i.addCategory(Intent.CATEGORY_OPENABLE);
+            if (types.size() == 1) i.setType(types.get(0)); else { i.setType("*/*"); i.putExtra(Intent.EXTRA_MIME_TYPES, types.toArray(new String[0])); }
             try { startActivityForResult(Intent.createChooser(i, null), PICK); return true; }
             catch (ActivityNotFoundException e) { pickCb = null; return false; }
         }

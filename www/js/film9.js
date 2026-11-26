@@ -14,6 +14,7 @@ import { makeCanvas, SANS, SERIF } from './textures.js';
 import { t } from './i18n.js';
 import { media } from './bridge.js';
 import { G } from './materials.js';
+import { MusicScreen, Confetti } from './party.js';
 const LIGHT = { idle: 1, pending: 1, countdown: 0.06, playing: 0.02, credits: 0.3, ended: 0.85 };
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), ss = (u) => u * u * u * (u * (u * 6 - 15) + 10);
 export function youtubeId(u) { const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; }
@@ -94,6 +95,7 @@ export class Shows {
     // v11 frame watchdog: when the last new frame arrived and how far apart frames come (update() wakes a decoder that has gone idle)
     this._vfAt = 0; this._vfDt = 42; this.stalls = 0;
     if ('requestVideoFrameCallback' in v) { const tick = () => { const n = performance.now(), d = n - this._vfAt; if (d < 500) this._vfDt += (d - this._vfDt) * 0.1; this._vfAt = n; v.requestVideoFrameCallback(tick); }; v.requestVideoFrameCallback(tick); }
+    this.confetti = new Confetti(engine.scene);   // v14c Music Night
     this.vtex = new THREE.VideoTexture(v); this.vtex.colorSpace = THREE.SRGBColorSpace; this.vtex.minFilter = THREE.LinearFilter; this.vtex.magFilter = THREE.LinearFilter; this.vtex.generateMipmaps = false;
     this.s = {};
     for (const h of world.halls) { const id = h.id; this.s[id] = { id, hall: h, state: 'idle', src: null, startAt: 0, phaseAt: 0, light: 1, lightFrom: 1, lightAt: 0, lightWant: 1, track: null, credits: false, slides: slides(h.cfg.aspect), curtainKeep: false }; }
@@ -140,7 +142,7 @@ export class Shows {
   _abort(id) { const s = this.s[id]; this._stopPicture(s); if (this.active === id) this.active = null; this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'idle'; s.booked = false; this._idle(s); this.crowd.clearAudience(id); }
   _idle(s) { const u = s.hall.picMat.uniforms; u.map.value = s.hall.slate; u.uGain.value = 0.55; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; if (u.uExtOn) u.uExtOn.value = 0; if (s.hall.curtains) s.hall.curtains.target = 1; s.pic = false; }
   _slideWaiting(s) { const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; u.uGain.value = 0.8; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; s.pic = false; }
-  _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) s.pic = false; }
+  _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) { s.pic = false; if (s.music) { s.music.dispose(); s.music = null; this.confetti && this.confetti.clear(); } } }
   _fit(s, aspect) { const A = s.hall.cfg.aspect, u = s.hall.picMat.uniforms, b = u.uBox.value, pan = !!s.hall.cfg.panels, split = pan && aspect >= 2.8, wrap = pan && !split;
     // the 270 hall (one band of screen round three walls): a panoramic film fills the front with its middle at full height and its outer
     // parts run on round the side screens; any other film keeps its whole frame on the front and its edges carry on, softening, beside it
@@ -166,7 +168,15 @@ export class Shows {
           const M = media, vol = this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1;
           if (M && M.audioStart && M.audioStart(v.currentSrc || v.src, v.currentTime, v.playbackRate, vol)) this._nat = { s }; else if (this.hooks.onNoAudio) this.hooks.onNoAudio(); }, 4000);
         if (s.src.kind === 'film') { const go = () => s.track && this.director.startTrack(id, s.track.cues, () => v.currentTime); if (s.track) go(); else loadTrack(s.src.filmId).then((tr) => { s.track = tr; go(); }); } else this.director.startLive(id, this.now); };
-      if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => show()); else v.addEventListener('playing', () => setTimeout(show, 120), { once: true }); }
+      if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => show()); else v.addEventListener('playing', () => setTimeout(show, 120), { once: true });
+      // v14c Music Night: a song has no picture (no frame ever arrives): once it plays, the screen becomes its light show
+      const song = () => { if (s.state === 'playing' && !s.pic && !v.videoWidth && v.readyState >= 2) this._music(id); };
+      v.addEventListener('playing', () => setTimeout(song, 350), { once: true }); setTimeout(song, 1500); }
+  }
+  _music(id) {
+    const s = this.s[id], v = this.video, H = s.hall.cfg; if (s.music) return;
+    s.music = new MusicScreen(H.W / H.H, s.src && s.src.title); this._fit(s, H.W / H.H); const u = s.hall.picMat.uniforms; u.map.value = s.music.tex; u.uGain.value = 1; s.pic = true;
+    this.sound.startFilm(s.hall.key, { video: v, hall: s.hall }); this.hooks.onPicture && this.hooks.onPicture(id); s.beatN = 0;
   }
   _finish(id, applause) {
     const s = this.s[id]; if (s.state !== 'playing') return; this._stopPicture(s); if (applause) this.crowd.onFilmEvent(id, { type: 'end', k: 1 });
@@ -178,7 +188,7 @@ export class Shows {
     if (this._nat) { const M = media, s = this._nat.s, v = this.video;   // v14b the native sound (see _roll): kept on the picture's clock
       if (!M || s.state !== 'playing' || this.cur() !== s) { if (M && M.audioStop) M.audioStop(); this._nat = null; }
       else if (now - (this._natT || 0) > 600) { this._natT = now; M.audioSync(v.currentTime, !v.paused && !this.buffering, v.playbackRate, this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1); } }
-    this.now = now; this.vis = vis;
+    this.now = now; this.vis = vis; if (this.confetti) this.confetti.update(dt);
     // v11 (the user: "go far away and come back: the movie is frozen and the audio continues, for 15-20 s"): a phone's decoder can go idle
     // while nothing draws the picture, then shows nothing until the film's next keyframe. While a film plays and its clock runs, a new
     // frame must arrive every 1.5 s; if none does, seek to exactly where it is (a fresh decode from the keyframe before, shown at once).
@@ -199,6 +209,11 @@ export class Shows {
           const sk = v.seekable, end = sk && sk.length ? sk.end(sk.length - 1) : 0;
           if (v.duration && want > v.duration) v.playbackRate = 1; else if (Math.abs(err) > 1.5 && want + 0.1 < end) { try { v.currentTime = want + 0.1; } catch (e) { /* not seekable */ } v.playbackRate = 1; }
           else v.playbackRate = Math.abs(err) < 0.05 ? 1 : clamp(1 - err * 0.5, 0.9, 1.1); } }
+      if (s.music && s.state === 'playing' && visible) { const beat = s.music.draw(this.sound.an, dt, now);
+        if (beat) { s.beatN = (s.beatN || 0) + 1; this.crowd.onFilmEvent(id, { type: beat === 2 ? 'drop' : 'beat', k: 1 });
+          if (this.confetti && (beat === 2 || s.beatN % 2 === 0)) { const V = (this.crowd.viewers[id] || []).filter((q) => q.state === 'seated'), pts = [];
+            for (let i = 0; i < (beat === 2 ? 5 : 2) && V.length; i++) { const q = V[Math.floor(Math.random() * V.length)].seat; pts.push({ x: q.x, y: q.y + 1.3, z: q.z, floor: q.y }); }
+            this.confetti.burst(pts, beat === 2 ? 9 : 5); } } }
       // house lights: a timed smootherstep to each phase's level (10 s down in the countdown, 5 s up after)
       const want = s.state === 'playing' && s.credits ? LIGHT.credits : LIGHT[s.state] ?? 1;
       if (want !== s.lightWant) { s.lightWant = want; s.lightFrom = s.light; s.lightAt = now; }

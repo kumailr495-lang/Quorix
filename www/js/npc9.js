@@ -281,12 +281,12 @@ export class Crowd {
   // the show's events -> who reacts, how, when; plus one crowd sound for the hall
   onFilmEvent(hallId, ev) {
     const list = (this.viewers[hallId] || []).filter((v) => v.state === 'seated'); if (!list.length) return;
-    const MAP = { laugh: ['laugh', 0.55], gasp: ['gasp', 0.5], scare: ['scream', 0.35], tension: ['lean', 0.35], climax: ['cheer', 0.3], aww: ['aww', 0.4], end: ['clap', 0.85], wow: ['gasp', 0.45] }, m = MAP[ev.type]; if (!m) return;
+    const MAP = { laugh: ['laugh', 0.55], gasp: ['gasp', 0.5], scare: ['scream', 0.35], tension: ['lean', 0.35], climax: ['cheer', 0.3], aww: ['aww', 0.4], end: ['clap', 0.85], wow: ['gasp', 0.45], beat: ['clap', 0.16], drop: ['cheer', 0.42] }, m = MAP[ev.type]; if (!m) return;   // v14c beat / drop: Music Night (film9 _music)
     let n = 0; const k = ev.k ?? 1;
-    for (const v of list) { if (Math.random() > m[1] * (0.6 + 0.4 * k)) continue; n++; const d = rnd(0, ev.type === 'end' ? 1.4 : 0.45), len = ev.type === 'end' ? rnd(4, 7) : rnd(1.4, 2.6);
+    for (const v of list) { if (Math.random() > m[1] * (0.6 + 0.4 * k)) continue; n++; const d = rnd(0, ev.type === 'end' ? 1.4 : ev.type === 'beat' || ev.type === 'drop' ? 0.12 : 0.45), len = ev.type === 'end' ? rnd(4, 7) : ev.type === 'beat' ? rnd(0.9, 1.5) : rnd(1.4, 2.6);
       setTimeout(() => { v.clipB = m[0]; v.t0B = this.now / 1000; v.reactUntil = this.now + len * 1000; if (v.agent) v.agent.gesture(m[0], len, m[0] === 'laugh' ? 'laugh' : m[0] === 'scream' ? 'scream' : null); }, d * 1000); }
     const h = this.world.hallById(hallId), c = h.cfg.toWorld(0, h.cfg.depthIn * 0.5);
-    if (n && this.hooks.crowdSound) this.hooks.crowdSound(hallId, ev.type === 'end' ? 'applause' : ev.type === 'scare' ? 'scream' : ev.type === 'laugh' ? 'laugh' : ev.type === 'aww' ? 'aww' : 'gasp', n, k, c.x, c.z);
+    if (n && this.hooks.crowdSound && ev.type !== 'beat' && ev.type !== 'drop') this.hooks.crowdSound(hallId, ev.type === 'end' ? 'applause' : ev.type === 'scare' ? 'scream' : ev.type === 'laugh' ? 'laugh' : ev.type === 'aww' ? 'aww' : 'gasp', n, k, c.x, c.z);
     if (ev.type === 'end') for (const v of list) if (Math.random() < 0.08) { const s = v.seat; setTimeout(() => this.hooks.bubble && v.agent && v.agent.say(pick('aud.end')), rnd(2000, 6000)); }
   }
   // ---------------------------------------------------------- the usher walks you to your seat (first visit) or points the way

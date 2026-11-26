@@ -3,7 +3,7 @@ export const EN = {
   // ---- loading / menu ----
   'load.title': 'LUMIÈRE', 'load.sub': 'Cinema', 'load.lobby': 'Building the lobby', 'load.gallery': 'Lighting the gallery', 'load.tunnel': 'Starting the video tunnel', 'load.restrooms': 'Polishing the restrooms', 'load.street': 'Switching on the street', 
   'load.art': ['Premiere Night', 'The Grand Foyer', 'Fresh from the Kettle', 'Showtime'], 'load.halls': 'Setting up the screens', 'load.bake': 'Lighting {room}', 'load.people': 'Seating the guests', 'load.ready': 'Ready',
-  'tips': ["Tip: book at the box office or a kiosk, then show your ticket to the usher.", "Tip: MAX is the giant screen. The middle rows are the best seats.", "Tip: in X·270 the film wraps round three walls.", "Tip: your seat glows when you walk into your hall.", "Tip: the phone button opens your ticket, the map and the camera.", "Tip: order popcorn at the POPCORN counter, or ring for the server from your seat.", "Tip: the recliners in CURVE recline. Tap the recline button once you sit.", "Tip: play your own videos from the tablet on any screen."],
+  'tips': ['Tip: pick a song instead of a film: the screen becomes a light show and the whole hall cheers on the beat.', "Tip: book at the box office or a kiosk, then show your ticket to the usher.", "Tip: MAX is the giant screen. The middle rows are the best seats.", "Tip: in X·270 the film wraps round three walls.", "Tip: your seat glows when you walk into your hall.", "Tip: the phone button opens your ticket, the map and the camera.", "Tip: order popcorn at the POPCORN counter, or ring for the server from your seat.", "Tip: the recliners in CURVE recline. Tap the recline button once you sit.", "Tip: play your own videos from the tablet on any screen."],
   'menu.play': 'Enter the cinema', 'menu.continue': 'Continue', 'menu.settings': 'Settings', 'menu.language': 'Language', 'menu.help': 'How to play', 'menu.credits': 'Credits', 'menu.quit': 'Back to menu', 'menu.resume': 'Resume', 'menu.paused': 'Paused',
   
   'help.body': 'Move with the stick on the left. Drag anywhere else to look around. Walk up to people and tap Talk. Book a ticket at Tickets, grab snacks at the red counter, then follow the usher or the glowing path to your seat. Tap the eye icon to hide the controls while you watch.',
@@ -24,7 +24,7 @@ export const EN = {
   'toast.seatTaken': 'That seat is taken.', 'toast.uiHidden': 'Controls hidden. Tap the eye to bring them back.',
   // ---- booking ----
   'book.title': 'Book a ticket', 'book.film': 'Film', 'book.when': 'Starts', 'book.now': 'Now', 'book.1m': 'In 1 min', 'book.3m': 'In 3 min', 'book.seat': 'Choose your seat', 'book.screen': 'Screen',
-  'book.own': "Your video", 'book.gallery': 'From gallery', 'book.link': 'Paste a video link (.mp4 / .webm)', 'book.useLink': 'Use link', 'book.ownNone': "No video chosen yet.", 'book.ownSet': 'Ready: {name}',
+  'book.own': "Your video or song", 'book.gallery': 'From gallery', 'book.link': 'Paste a video link (.mp4 / .webm)', 'book.useLink': 'Use link', 'book.ownNone': "No video or song chosen yet.", 'book.ownSet': 'Ready: {name}',
   'book.selected': 'Row {row} · Seat {seat}', 'book.full': 'This screen is full', 'book.confirm': 'Confirm', 'book.free': 'Free', 'book.taken': 'Taken', 'book.yours': 'Yours', 'book.mins': '{n} min',
   'kind.standard': 'Standard', 'kind.curved': 'Curved Premium · recliners', 'kind.imax': 'MAX · 22 m screen',
   'genre.thriller': 'Thriller', 'genre.romance': 'Romance', 'genre.horror': 'Horror',
