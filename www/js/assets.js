@@ -29,7 +29,9 @@ export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club',
   'food_popcorn', 'food_nachos', 'food_hotdog', 'food_burger', 'food_pizza', 'food_fries', 'food_icecream', 'food_churros', 'food_choc', 'food_gummies',
   'food_cup', 'food_shake', 'food_slush', 'food_coffee', 'food_chai', 'food_water',
   // v14 the seat server's trolley (tools/blender/props14.py; npc9.js makeCart)
-  'service_cart'];
+  'service_cart',
+  // v14b the corridor's round velvet banquettes (world9.js BORNES): missing from this list until v14d, so only their planters showed, in the air
+  'borne_round'];
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
