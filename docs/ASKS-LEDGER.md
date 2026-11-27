@@ -14,7 +14,7 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Songs: custom UI with their own pictures | Done: the cover (embedded or Android's album art), title, artist, progress on the big screen and a Now Playing card |
 | Z-Archiver / a late song: the app closes and starts from the beginning | Done: songs listed in the app (no outside picker needed), the WebView rebuilt if Android kills it, a snapshot puts you back where you were |
 | The car interior / the whole taxi intro | Done: filmed from outside (crane, tracking shot, the kerb), no cabin |
-| The app lags a lot | Done in part: lobby 899k -> 495k triangles, halls 1M -> 235-413k, street draws 291 -> about 210; not measured on the phone |
+| The app lags a lot | Done in part: lobby 899k -> 495k triangles, halls 1M -> 235-413k, street draws 291 -> about 219; not measured on the phone |
 | The song glitches and duplicates itself | Done: a song never starts the native player; the page's copy is muted while the native player plays |
 | The theatres are not premium | Partly: brass nosings and lit strips on every aisle step, lights that really go down in the film, a soft screen spill |
 | Upstairs seats, sofas: I go through them | Done: everything on the mezzanine and the corridor collides |
@@ -32,6 +32,7 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | 11-26: host transfer | There since v10: Make host in the host's room list; if the host leaves, the longest-present player takes over |
 | Netflix-style streaming | Not possible legally; public-domain films, your own videos and songs, links |
 | IMAX name | Stays MAX (trademark) |
+| (found in the 14.2 checks) | Fixed: the host role jumped to a guest after a connection blip (shared shows stopped), the Suite's models were left out of the APK, the corridor's banquettes never loaded (planters in the air), hall bins refused cups |
 
 ## Why the user kept stopping me (the pattern)
 

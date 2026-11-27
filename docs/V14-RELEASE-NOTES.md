@@ -1,3 +1,89 @@
+# LUMIÈRE 14.2 (2026-11-27)
+
+APK: `Lumiere-14.2.apk`, 54.06 MB, SHA-256 `fdfe9391512cebb1ab12f56833ffd2b03c023ce941017e303a7d1091434d2e17`.
+Package `com.buddyapps.lumiere`, versionCode 1420, versionName 14.2, v2 signature with the same certificate as 14.1
+(SHA-256 `df8f000f...ba8595a`), target SDK 35, landscape. It installs over 14.1 and keeps your saved data.
+
+As before, everything below was checked in the real engine running headless (Chromium + SwiftShader, a software GPU) and with Node and
+Blender checks, not on the phone. Flicker, frame rate, sound, the song library, the camera and touch need your phone to confirm.
+
+## Your 17 points from the 14.1 test
+1. **Flicker everywhere.** Edges are smoothed (MSAA) on every preset, Low included. The resolution no longer changes while you play:
+   it is chosen in the first 45 s and after that steps down at most twice, 20 s apart. The street's neon no longer flickers on purpose,
+   sign chases glide, and window blinds and curtains are filtered so their stripes do not shimmer. On phones with a 16-bit depth buffer
+   the near plane moves out to stop distant surfaces fighting. The FPS line (Settings) now ends with `AA<n> · Z<bits>`: a screenshot of
+   it tells me what your phone gives the game.
+2. **Interact by looking.** Every action is offered only for what the crosshair is on: litter, bins, seats, sofas, people, the restroom
+   fittings, the kiosks, the shifts, the Suite.
+3. **Songs with their own pictures.** The tablet has a Songs tab that lists the songs on your phone with their album covers. A song
+   plays with its cover, title and artist on the big screen, a turning record and a progress bar; a Now Playing card shows the same.
+   Songs picked as files show their own embedded cover (MP3, M4A, FLAC).
+4. **The app closing when you pick a song.** Songs come from the in-app list, so Android no longer has to open another app. If Android
+   still closes the game's page in the background, the app rebuilds it and a snapshot (kept 30 minutes) puts you back where you were.
+5. **The taxi ride.** Filmed from outside now: a crane over the lit street, the taxi tracked from the road side, the kerb as it pulls in,
+   then your own eyes as you step out. No car interior.
+6. **Lag.** Measured in fixed views against 14.1: the lobby 495k triangles (14.1: 899k), the corridor 467k (855k), a hall 235-413k
+   (about 1M), the street about 219 draws (291). Rooms behind a hall's door are drawn only near that door; furniture is grouped so the camera skips what is behind you;
+   heavy props were simplified; people and seats switch to their lighter models sooner.
+7. **The song glitching and playing twice.** A song never starts the phone's own player. When a film uses it, the page's copy is silent.
+8. **Theatres not premium.** Every aisle step has a brass nosing and a lit strip, built from the step itself. When the film starts the
+   hall's lights go down to a third and stay down; the screen's light on the room is soft and eased (no flashes on cuts).
+9. **Walking through upstairs furniture.** Everything on the mezzanine and in the corridor is solid.
+10. **People holding things wrongly, only sitting.** Held things are gripped by their side at the right height. Seated people eat, drink,
+    read their tickets and check their phones.
+11. **Dancing at the screen.** At Music Night a party walks down to the floor in front of the screen, dances, throws popcorn and bank
+    notes on the big beats, and goes back to their seats.
+12. **The lift in Play together.** The host's phone runs the one lift; everyone else's follows it, doors included.
+13. **Quitting a room.** Leave is on the room bar and in the pause menu. Leaving ends the room's shared show and lift for you.
+14. **Recline seen only by you.** Your recline reaches every phone; the seat reclines and you lean back with it.
+15. **Too much light bounce; lights not dimming.** See 8: screen spill 1.1 (was 3.6), fixed lights to a third during the film.
+16. **Aisle lights.** On every step's edge (halls re-baked).
+17. **Something new.** The LUMIÈRE Suite, separate restrooms, room QR codes, the new arrival, Music Night with covers (below).
+
+## New
+- **The LUMIÈRE Suite**: a private apartment up from the lobby, with a living room TV and its own screening room with a projector. Open
+  the Suite app on the phone (300 LC, free in Quick play) or ask the host. A real remote lies on the coffee table and on the cinema's
+  console: pick it up and tap its keys (power, play and pause, previous and next film, volume, lights, cinema). Furniture and colours
+  are chosen in the phone app. Not available inside a Play together room.
+- **Separate restrooms**: the women's door and the men's door, each with its own sign and vestibule.
+- **Room QR code**: hosting shows the room's code as a QR; Scan reads a friend's code with the camera (where the phone supports it).
+- **The corridor's round velvet banquettes** appear at last, with people sitting on them. Since 14.1 only their planters showed,
+  floating in the air: the banquette model was never loaded.
+- **Bins in the halls** take your empty cup again (the game looked for them on the hall's lowest floor). CURVE's bin moved to the side
+  wall, off the way to the far aisle.
+- A song with no picture shows a note on the tablet's player (it showed a broken image); the Songs tab's search says songs.
+- Passing the host role: the host's room list has Make host next to each player (there since v10; the 14.1 notes said it was missing).
+
+## Validation
+- `sh tools/run-tests.sh`: logic (halls, seat facing, building, nav, director), i18n 1039 keys in es/hi/ur, syntax, bakes 10/10, spec,
+  CSP, comment lint: all pass.
+- `sh tools/dev/zcheck.sh`: all ten rooms 0 visible coplanar, 0 close. The Suite is reached by travel, so it now gets its own 673 eye
+  points (standing and seated) and its furniture: 0 and 0. The engine pass lists 62 small pairs (4.6 cm² at most): 50 inside the
+  Rocketbox avatars' own meshes (clothing over the body), 11 in one lobby prop, 1 other.
+- `node tools/dev/walk.mjs`: 31/31 walks (street, lobby, both restrooms, escalator, lift, the ticket zone shut and open, every hall's
+  entrance to a seat and both exits); every NAV edge clear of walls and furniture.
+- `node tools/dev/npc-clear.mjs 120`: 56 people (19 guests walked), nobody inside a wall, a prop or another person, nobody stuck.
+- Every seat's way in, in every hall (1,077 seats, 344k points), is clear of solid furniture; the bin in each hall takes your cup.
+- glb_check: the banquette model clean (39 parts, 0 floating, 0 coplanar, 0 folds); `seethru.mjs --assets`: TWO_SIDED matches all 98 models.
+- `node tools/dev/uishots.mjs`: 17 screens at 806 x 360, no page errors; the Songs tab and the tablet's player (with and without a
+  cover) reviewed on the staged build.
+- `node tools/dev/mp-sync.mjs` (three players on one machine over the public relays): shows start 1 ms apart, drift under 0.02 s, a
+  connection blip keeps the host, the host leaving hands the room on, a late joiner plays in step (0.01 s).
+- The staged APK content boots with no missing files and no errors. On it: the Suite (travel, remote, projector film), a song from the
+  Songs tab (plays with its title, artist and cover), the room QR, and a cold start after the whole app was closed (back where you were).
+
+## Limits
+- Not phone-tested: flicker, frame rate on the itel P65, sound, the song library and its permission, the camera scan, touch.
+- Not built: the jungle, drive-in and space theatres.
+- Netflix or Prime films cannot be streamed legally; the app plays public-domain and CC films, your own videos and songs, and links.
+- "IMAX" stays "MAX": IMAX is a registered trademark.
+- Credits are kept on the phone with a checksum; with no server, they are not tamper-proof.
+
+## Rollback
+- The source: the 14.2 changes are commits b5604bb..HEAD on `ccr-7bb5aa6a-upup1u`; `git revert` any of them, or check out efcbf31 for 14.1.
+- The phone: Android does not install an older versionCode over a newer one, so going back to 14.1 means uninstalling 14.2 first
+  (that clears the saved credits and settings).
+
 # LUMIÈRE 14.1 (2026-11-26)
 
 APK: `Lumiere-14.1.apk`, 52.99 MB, SHA-256 `6c8f972e6a7b4f84ab824add0ea607adf0d9fe5ae1b8037957e547f5d92f90a4`.
