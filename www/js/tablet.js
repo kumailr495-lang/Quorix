@@ -57,7 +57,10 @@ export class Tablet {
       if (pb) { const tick = () => { if (!this.isOpen() || this.tab !== 'remote') return; if (this.shows.isOn(pb.id)) { this.show('remote'); return; } this._raf = requestAnimationFrame(tick); }; this._raf = requestAnimationFrame(tick); } return; }
     const v = pb.el, wrap = el('div', 'rm'), art = el('div', 'rm-art'), img = new Image(); img.alt = ''; if (pb.src === 'film') img.src = posterURL(pb.filmId); art.appendChild(img); wrap.appendChild(art);
     // v14d a song shows its own cover (or the one the Music Night screen drew for it) and its artist and album
-    const cs = this.shows.cur(), song = cs && cs.src && cs.src.song; if (song) { art.classList.add('song'); if (cs.src.art) img.src = cs.src.art; else if (cs.music && cs.music.cover && cs.music.cover.toDataURL) { try { img.src = cs.music.cover.toDataURL('image/jpeg', 0.85); } catch (e) { /* drawn later */ } } }
+    const cs = this.shows.cur(), song = cs && cs.src && cs.src.song; if (song) { art.classList.add('song');
+      // a cover that will not load (the phone has no picture for the song) falls back to the one the Music Night screen drew, else a note
+      const drawn = () => { const m = cs.music; if (m && m.cover && m.cover.toDataURL) { try { img.src = m.cover.toDataURL('image/jpeg', 0.85); return true; } catch (e) { /* not drawn yet */ } } return false; };
+      img.onerror = () => { img.onerror = null; if (!drawn()) { img.remove(); art.classList.add('none'); } }; if (cs.src.art) img.src = cs.src.art; else if (!drawn()) { img.remove(); art.classList.add('none'); } }
     const side = el('div', 'rm-side'); side.appendChild(el('h3', null, this.shows.title(pb.id))); const f = pb.src === 'film' && filmById(pb.filmId); side.appendChild(el('p', 'note', f ? `${f.year} · ${f.by} · ${f.lic}` : song ? ([cs.src.artist, cs.src.album].filter(Boolean).join(' · ') || '\u266A') : t('tab.yourVideo')));
     // seek bar with a picture preview over the thumb
     const bar = el('div', 'rm-bar'), track = el('div', 'rm-track'), fill = el('i'), knob = el('b'), bubble = el('div', 'rm-pv'), ptime = el('span'); track.append(fill, knob); bubble.append(this.pv, ptime); bubble.hidden = true; bar.append(bubble, track);
@@ -190,7 +193,7 @@ export class Tablet {
     if (!M.hasAudio()) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.permTitle'))); e.appendChild(el('p', 'note', t('tab.songPerm'))); const ask = el('button', 'btn primary', t('tab.permAsk'));
       ask.addEventListener('click', (ev) => { ev.stopPropagation(); window.__lumiereMediaPermission = () => { this.songList = null; this.items = null; this.show('mine'); }; M.requestPermission(); }); e.appendChild(ask); B.appendChild(e); return; }
     if (!this.songList) { try { this.songList = JSON.parse(M.listAudio() || '[]'); } catch (e) { this.songList = []; } }
-    const bar = el('div', 'tb-bar'), search = el('div', 'inp'); search.innerHTML = '<svg class="ic"><use href="#i-search"/></svg>'; const q = el('input'); q.placeholder = t('tab.search'); q.value = this.sq || ''; search.appendChild(q); bar.appendChild(search); B.appendChild(bar);
+    const bar = el('div', 'tb-bar'), search = el('div', 'inp'); search.innerHTML = '<svg class="ic"><use href="#i-search"/></svg>'; const q = el('input'); q.placeholder = t('tab.searchSongs'); q.value = this.sq || ''; search.appendChild(q); bar.appendChild(search); B.appendChild(bar);
     const ql = (this.sq || '').toLowerCase(), list = this.songList.filter((it) => !ql || `${it.title} ${it.artist} ${it.album} ${it.name}`.toLowerCase().includes(ql));
     const grid = el('div', 'tb-songlist'); if (!list.length) grid.appendChild(el('p', 'note', t('tab.noSongs')));
     for (const it of list.slice(0, 300)) { const c = el('button', 'tb-song'), art = el('div', 'art'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.onerror = () => { img.remove(); art.classList.add('none'); }; img.src = it.art; art.appendChild(img);

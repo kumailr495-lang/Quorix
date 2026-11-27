@@ -713,6 +713,7 @@ body.ph-open #where,body.ph-open #goal{opacity:0;pointer-events:none;transition:
 .tb-song .art{grid-row:1/3;width:50px;height:50px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,var(--velvet-3),var(--ink))}
 .tb-song .art img{width:100%;height:100%;object-fit:cover;display:block}
 .tb-song .art.none::after{content:'\266A';display:flex;align-items:center;justify-content:center;height:100%;color:var(--brass);font-size:22px}
+.rm-art.song.none{background:linear-gradient(135deg,var(--velvet-3),var(--ink))}.rm-art.song.none::after{content:'\266A';display:flex;align-items:center;justify-content:center;height:100%;color:var(--brass);font-size:56px}
 .tb-song b{font:600 12.5px/1.25 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:end}
 .tb-song small{font-size:10.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:start}
 #nowPlaying{position:fixed;left:calc(12px + var(--sal,0px));bottom:calc(12px + var(--sab,0px));z-index:22;display:flex;align-items:center;gap:10px;max-width:min(320px,46vw);padding:8px 12px 8px 8px;border-radius:14px;background:var(--plate);box-shadow:inset 0 0 0 1px var(--line),0 8px 24px rgba(0,0,0,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:none;transition:opacity .4s,transform .4s}
