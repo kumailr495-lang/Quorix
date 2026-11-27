@@ -30,9 +30,9 @@ const seat = (P, k) => P.evaluate((k) => { const L = window.__lumiere, h = L.wor
   const row = h.seats.filter((q) => q.row === mr).sort((a, b) => a.a - b.a), s = row[(row.length >> 1) + k]; L.player.place(s.x, s.z, s.yaw, 0, s.y); return s.id; }, k);
 const clock = (P) => P.evaluate(() => { const L = window.__lumiere, s = L.shows.get('CLASSIC'); return { state: s.state, title: s.src && s.src.title, kind: s.src && s.src.kind, start: Math.round(Date.now() + (s.startAt - performance.now())), at: Date.now(), ct: L.shows.video.currentTime, want: (s.seek || 0) + (performance.now() - s.startAt) / 1000, host: L.together.mp.host }; });
 const A = await page('A'), B = await page('B'), C = await page('C'); console.log('A, B, C loaded');
-await A.click('#mnTogether'); await A.fill('#mpName', 'Alice'); await A.click('#mpAv button:nth-child(3)'); await A.click('#mpHost'); await A.waitForTimeout(300);
+await A.click('#mnTogether'); await A.fill('#mpName', 'Alice'); await A.evaluate(() => document.querySelector('#mpAv button:nth-child(3)').click());   /* v14d: the look picker is folded away under "Your look" */ await A.click('#mpHost'); await A.waitForTimeout(300);
 const code = ((await A.textContent('#mpStatus')).match(/[A-Z0-9]{6}/) || [])[0]; console.log('room', code);
-await B.click('#mnTogether'); await B.fill('#mpName', 'Bob'); await B.click('#mpAv button:nth-child(10)'); await B.fill('#mpCode', code); await B.click('#mpJoin');
+await B.click('#mnTogether'); await B.fill('#mpName', 'Bob'); await B.evaluate(() => document.querySelector('#mpAv button:nth-child(10)').click()); await B.fill('#mpCode', code); await B.click('#mpJoin');
 console.log('A+B connected after', await waitN(A, 2), 's /', await waitN(B, 2), 's'); await A.waitForTimeout(2500);
 console.log('seats', await seat(A, 0), await seat(B, 1));
 // 1) the host books a shared link film 12 s ahead
@@ -45,11 +45,15 @@ await A.waitForTimeout(4000); const [a2, b2] = await Promise.all([clock(A), cloc
 console.log('playing: A want', a2.want.toFixed(2), 'B want', b2.want.toFixed(2), '| A ct', a2.ct.toFixed(2), 'at', a2.at, '| B ct', b2.ct.toFixed(2), 'at', b2.at, '| drift s', ((b2.ct - (b2.at - a2.at) / 1000) - a2.ct).toFixed(2));
 await A.waitForTimeout(8000); const [a5, b5] = await Promise.all([clock(A), clock(B)]); console.log('8 s later: A ct', a5.ct.toFixed(2), 'want', a5.want.toFixed(2), '| B ct', b5.ct.toFixed(2), 'want', b5.want.toFixed(2), '| drift s', ((b5.ct - (b5.at - a5.at) / 1000) - a5.ct).toFixed(2));
 await A.screenshot({ path: path.join(OUT, 'A-film.png') }); await B.screenshot({ path: path.join(OUT, 'B-film.png') });
+// 1b) v14d: a blip (Bob's phone loses the host for a moment, then hears it again) must not move the host role
+await B.evaluate(() => { const mp = window.__lumiere.together.mp, e = [...mp.peers.entries()].find(([, q]) => q.host); if (e) mp.room.onPeerLeave(e[0]); });
+await B.waitForTimeout(1200); await A.evaluate(() => { const mp = window.__lumiere.together.mp; for (const id of mp.peers.keys()) mp.sHello(mp.hello(), id); });
+await B.waitForTimeout(7000); console.log('after a blip: A host', (await clock(A)).host, 'B host', (await clock(B)).host, '(want true, false)');
 // 2) the host leaves: Bob takes over
-await A.evaluate(() => window.__lumiere.together.leave()); await B.waitForTimeout(4000);
+await A.evaluate(() => window.__lumiere.together.leave()); await B.waitForTimeout(7500);   // v14d: the room waits 5 s before electing (mp.js onPeerLeave)
 const b3 = await clock(B); console.log('after Alice left: B host', b3.host, 'badge', await badge(B));
 // 3) a late joiner catches up with the film
-await C.click('#mnTogether'); await C.fill('#mpName', 'Cara'); await C.click('#mpAv button:nth-child(6)'); await C.fill('#mpCode', code); await C.click('#mpJoin');
+await C.click('#mnTogether'); await C.fill('#mpName', 'Cara'); await C.evaluate(() => document.querySelector('#mpAv button:nth-child(6)').click()); await C.fill('#mpCode', code); await C.click('#mpJoin');
 console.log('C connected after', await waitN(C, 2), 's'); await seat(C, -1);
 await C.waitForFunction(() => window.__lumiere.shows.get('CLASSIC').state === 'playing', null, { timeout: 90000 }).catch(() => {});
 await C.waitForTimeout(8000); const [b4, c4] = await Promise.all([clock(B), clock(C)]);

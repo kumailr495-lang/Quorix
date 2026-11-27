@@ -77,7 +77,9 @@ export class Multi {
     const sNote = act('vn', (d, id) => { const p = this.peers.get(id); if (!p || !d || typeof d !== 'object' || typeof d.b !== 'string' || d.b.length > 600000 || !/^[A-Za-z0-9+/=]+$/.test(d.b)) return; if (this.hooks.onNote) this.hooks.onNote(p, d.b, Math.max(1, Math.min(60, Math.round(+d.s || 1)))); });
     Object.assign(this, { sHello, sState, sMeta, sShow, sChat, sEmote, sHost, sCtl, sOrder, sCrowd, sRoster, sLift, sLiftSt, sNote });
     room.onPeerJoin = (id) => { sHello(this.hello(), id); if (this.mic) { try { room.addStream(this.mic, { target: id }); } catch (e) { /* the peer went */ } } if (this._metaObj) sMeta(this._metaObj, id); this._q = null; this._roster = null; this.hooks.onCount && this.hooks.onCount(this.count); };
-    room.onPeerLeave = (id) => { const p = this.peers.get(id); this.peers.delete(id); if (p && this.hooks.onLeave) this.hooks.onLeave(p); this.elect(); this.hooks.onCount && this.hooks.onCount(this.count); };
+    // v14d (mp-sync: the host lost the role to a guest who had just joined): a peer that drops for a moment (relay churn) used to make the others
+    // elect a new host at once, and the higher term then took the role from the real host when it came back; now the room waits 5 s first
+    room.onPeerLeave = (id) => { const p = this.peers.get(id); this.peers.delete(id); if (p && this.hooks.onLeave) this.hooks.onLeave(p); clearTimeout(this._elT); this._elT = setTimeout(() => this.elect(), 5000); this.hooks.onCount && this.hooks.onCount(this.count); };
     this.hooks.onCount && this.hooks.onCount(this.count);
   }
   takeShow(s, p) { if (!p.host) return; this.lastShow = s; this.hooks.onShow && this.hooks.onShow(s, p); }
@@ -125,5 +127,5 @@ export class Multi {
   micOff() { const s = this.mic; this.mic = null; if (!s) return; try { if (this.room) this.room.removeStream(s); } catch (e) { /* the room went */ } for (const tr of s.getTracks()) tr.stop(); }
   note(b64, sec) { if (this.room) this.sNote({ b: b64, s: sec }); }
   emote(e) { if (this.room) this.sEmote(e); }
-  leave() { if (!this.room) return; this.micOff(); try { this.room.leave(); } catch (e) { /* already gone */ } this.room = null; for (const p of this.peers.values()) if (this.hooks.onLeave) this.hooks.onLeave(p); this.peers.clear(); this.lastShow = null; this.early = null; this.offset = 0; this.host = false; this.hooks.onCount && this.hooks.onCount(0); }
+  leave() { clearTimeout(this._elT); if (!this.room) return; this.micOff(); try { this.room.leave(); } catch (e) { /* already gone */ } this.room = null; for (const p of this.peers.values()) if (this.hooks.onLeave) this.hooks.onLeave(p); this.peers.clear(); this.lastShow = null; this.early = null; this.offset = 0; this.host = false; this.hooks.onCount && this.hooks.onCount(0); }
 }
