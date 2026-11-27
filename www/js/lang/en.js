@@ -20,7 +20,7 @@ export const EN = {
   // ---- toasts ----
   'toast.welcome': 'Welcome to LUMIÈRE', 'toast.noTicket': 'Book a ticket at Tickets first.', 'toast.follow': 'Follow the glowing path', 'toast.followUsher': 'Follow {name}', 'toast.lightsDown': 'The lights are going down…',
   'toast.starting': "{screen} is starting. Show your ticket to the usher.", 'toast.end': 'The End. Thanks for coming!', 'toast.videoError': 'That video could not be played. Try another file or a direct .mp4 link.',
-  'toast.gotPopcorn': 'You got {item}', 'toast.empty': 'All gone. Very efficient.', 'toast.ownReady': 'Your video is ready. Pick a seat and confirm.', 'toast.badLink': 'Paste a direct link that starts with http(s)://',
+  'toast.gotPopcorn': 'You got {item}', 'toast.empty': 'All gone. Very efficient.', 'toast.ownReady': 'Ready to play. Pick a seat and confirm, or play it from the tablet.', 'tab.pickSong': 'Pick a song', 'toast.badLink': 'Paste a direct link that starts with http(s)://',
   'toast.seatTaken': 'That seat is taken.', 'toast.uiHidden': 'Controls hidden. Tap the eye to bring them back.',
   // ---- booking ----
   'book.title': 'Book a ticket', 'book.film': 'Film', 'book.when': 'Starts', 'book.now': 'Now', 'book.1m': 'In 1 min', 'book.3m': 'In 3 min', 'book.seat': 'Choose your seat', 'book.screen': 'Screen',

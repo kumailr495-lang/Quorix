@@ -199,7 +199,7 @@ async function boot() {
     $('#infoBody').textContent += `\n\n${t('help9.diag')}\n${I.model || ''} · Android ${I.android || ''} · ${I.webview || ''}\n${t('help9.server')}: ${I.server || ''}\n${t('help9.decoders')}: ${hw.join(', ')}\n${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`; } catch (e) { /* older wrapper */ } }; }
   // ---------- your own video and links ----------
   function pickOwn() { if (media) { tablet.open('mine'); return; } $('#file').click(); }
-  $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; shows.loadFile(f, cleanTitle(f.name || 'Video')); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); tablet.refresh(); e.target.value = ''; });
+  $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; shows.loadFile(f, cleanTitle(f.name || 'Video')); if (tablet.isOpen()) tablet.refresh(); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); tablet.refresh(); e.target.value = ''; });
   function useLink(u) { const own = shows.loadURL(u, cleanTitle(decodeURIComponent(u.split('/').pop().split('?')[0]) || 'Link')); ui.toast(t(own.kind === 'youtube' ? 'toast9.youtube' : 'toast.ownReady'), 2600); booking.build(); }
   // ---------- conversations ----------
   function action(a, npc, tk) {

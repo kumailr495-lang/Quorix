@@ -16,7 +16,7 @@ export const HI = {
   'ticket.chip': '{screen} · लाइन {row} · सीट {seat}', 'rotate': 'फ़ोन को आड़ा करें', 'pre.silence': 'कृपया अपना फ़ोन साइलेंट करें', 'pre.soon': 'जल्द शुरू',
   'toast.welcome': 'LUMIÈRE में आपका स्वागत है', 'toast.noTicket': 'पहले टिकट काउंटर से टिकट लें।', 'toast.follow': 'चमकते रास्ते पर चलें', 'toast.followUsher': '{name} के पीछे चलें', 'toast.lightsDown': 'बत्तियाँ धीमी हो रही हैं…',
   'toast.starting': "{screen} शुरू होने वाली है। अशर को अपना टिकट दिखाइए।", 'toast.end': 'समाप्त। आने के लिए शुक्रिया!', 'toast.videoError': 'यह वीडियो नहीं चल पाया। कोई और फ़ाइल या सीधा .mp4 लिंक आज़माएँ।',
-  'toast.gotPopcorn': 'आपको मिला: {item}', 'toast.empty': 'सब ख़त्म। बहुत तेज़ी दिखाई।', 'toast.ownReady': 'आपका वीडियो तैयार है। सीट चुनें और पक्का करें।', 'toast.badLink': 'http(s):// से शुरू होने वाला सीधा लिंक डालें',
+  'toast.gotPopcorn': 'आपको मिला: {item}', 'toast.empty': 'सब ख़त्म। बहुत तेज़ी दिखाई।', 'toast.ownReady': 'तैयार है। सीट चुनें और पक्का करें, या टैबलेट से चलाएँ।', 'tab.pickSong': 'गाना चुनें', 'toast.badLink': 'http(s):// से शुरू होने वाला सीधा लिंक डालें',
   'toast.seatTaken': 'यह सीट पहले से भरी है।', 'toast.uiHidden': 'कंट्रोल छिप गए। वापस लाने के लिए आँख दबाएँ।',
   'book.title': 'टिकट बुक करें', 'book.film': 'फ़िल्म', 'book.when': 'शुरू', 'book.now': 'अभी', 'book.1m': '1 मिनट में', 'book.3m': '3 मिनट में', 'book.seat': 'अपनी सीट चुनें', 'book.screen': 'स्क्रीन',
   'book.own': "आपका वीडियो या गाना", 'book.gallery': 'गैलरी से', 'book.link': 'वीडियो लिंक डालें (.mp4 / .webm)', 'book.useLink': 'लिंक लगाएँ', 'book.ownNone': "अभी कोई वीडियो या गाना नहीं चुना।", 'book.ownSet': 'तैयार: {name}',
