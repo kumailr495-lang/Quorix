@@ -234,7 +234,7 @@ export class Crowd {
     const parties = []; for (let i = 0; i < chosen.length;) { const k = Math.min(chosen.length - i, [1, 2, 2, 2, 3, 4][Math.floor(Math.random() * 6)]); parties.push(k); i += k; }
     const when = []; parties.forEach((k, p) => { const at = t0 + (p / Math.max(1, parties.length)) * span + rnd(0, 1500); for (let j = 0; j < k; j++) when.push(at + j * rnd(700, 1100)); });
     chosen.forEach((s, i) => { const rs = this.seed(), rec = randomRecipe(rs); s.taken = true;
-      const v = { item: i % 3 === 0 ? ['salted', 'cola', 'caramel', 'nachos', 'icedtea'][i % 5] : null, seat: s, hall: h, rec, rs, state: 'due', at: when[i], agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
+      const v = { item: i % 5 < 2 ? ['salted', 'cola', 'caramel', 'nachos', 'icedtea', 'latte', 'salted'][i % 7] : null, seat: s, hall: h, rec, rs, state: 'due', at: when[i], agent: null, clip: 'Sitting_Idle_Loop', t0: Math.random() * 10, clipB: null, t0B: 0, blend: 0, reactUntil: 0, voice: rec.kind === 'f' ? (i % 2 ? 'guestF2' : 'guestF') : (i % 2 ? 'guestM2' : 'guestM') };
       s.npc = v; list.push(v); });
     list.sort((a, b) => a.at - b.at);
     // a show that starts soon: most of the audience is already in their seats; only a few still come in, one at a time
@@ -252,6 +252,24 @@ export class Crowd {
     return pts;
   }
   // v12b the exits are in the side walls at the front: down your side's aisle to the front, across to the door, through it onto the passage's landing
+  // v14d Music Night (the user, 11-27: "they dance at the stage near the screens ... throw popcorn and money"): when a song is the show a
+  // party from the front rows gets up, walks down the side aisles to the floor in front of the screen and dances there, facing the light
+  // show; when the song ends they go back to their own seats. Their seats stay theirs meanwhile.
+  stage(hallId, on) {
+    const h = this.world.halls.find((q) => q.id === hallId); if (!h) return; const H = h.cfg, list = this.viewers[hallId] || []; this._stage = this._stage || {};
+    if (on) { if (this._stage[hallId]) return;
+      const pool = list.filter((v) => v.state === 'seated' && !(v.seat.npc && v.seat.npc !== v)).sort((a, b) => a.seat.row - b.seat.row || Math.abs(a.seat.a) - Math.abs(b.seat.a)), n = Math.min(9, Math.ceil(pool.length * 0.4)), chosen = [];
+      for (let i = 0; i < pool.length && chosen.length < n; i += pool.length > n * 2 ? 2 : 1) chosen.push(pool[i]);
+      const dHi = Math.max(2.2, H.rows[0].lane[0] - 0.3), dLo = Math.min(dHi - 0.4, SCREEN_GAP + 0.6), spread = H.width / 2 - 1.5, scr = H.toWorld(0, -6); this._stage[hallId] = chosen;
+      chosen.forEach((v, i) => { const u = -spread + 2 * spread * ((i + 0.5) / chosen.length) + (((i * 37) % 7) - 3) * 0.08, d = dLo + (dHi - dLo) * (0.25 + 0.6 * (((i * 53) % 10) / 10)), w = H.toWorld(u, d);
+        let a = v.agent; if (!a) { a = v.agent = this.spawn({ rec: v.rec, role: 'aud', voice: v.voice, x: v.seat.x, y: v.seat.y, z: v.seat.z, yaw: v.seat.yaw + Math.PI }); a.viewer = v; a.sit = 1; if (v.item) this.handProp(a, v.item); }
+        const route = this.exitRoute(h, v.seat).slice(0, -3); route.push({ x: w.x, y: H.y0, z: w.z });
+        v.state = 'dancing'; a.state = 'standing'; a.sitT = -0.35 * i; a.speed = 1.55 + ((i * 17) % 5) * 0.08; a.stagePath = route;   /* up one after another, brisk: a party, not a queue */ a.stageYaw = Math.atan2(scr.x - w.x, scr.z - w.z) + (((i * 29) % 9) - 4) * 0.12; a.stageBack = route.slice(0, -1).reverse(); }); }
+    else { const ds = this._stage[hallId]; if (!ds) return; delete this._stage[hallId];
+      for (const v of ds) { const a = v.agent; if (!a || !a.alive) { v.agent = null; v.state = 'seated'; continue; } a.stage = false; a.stagePath = null; const s = v.seat;
+        a.go([...(a.stageBack || []), { x: s.x, y: s.y, z: s.z, seat: true }], () => { v.state = 'sitting'; a.state = 'sitting'; a.sitT = 0; a.yaw = s.yaw + Math.PI; }, { state: 'toSeat' }); v.state = 'walking'; } }
+  }
+  dancers(hallId) { return (this._stage && this._stage[hallId] || []).map((v) => v.agent).filter((a) => a && a.stage); }
   exitRoute(h, seat) {
     const H = h.cfg, row = H.rows[seat.row], laneE = (row.lane[0] + row.lane[1]) / 2, sg = seat.a >= 0 ? 1 : -1, sideA = sg * (H.aisle[0] + H.aisle[1]) / 2, ex = H.exits.find((q) => q.sg === sg) || H.exits[0], pts = [];
     let y = seat.y; const add = (a, e) => { const q = H.fromRow(a, e), w = H.toWorld(q.u, q.d); y = this.world.floorY(w.x, w.z, y); pts.push({ x: w.x, y, z: w.z }); };
@@ -395,6 +413,14 @@ export class Crowd {
         const A = v.agent, B = o.agent, T = now + rnd(5000, 9000); A.chatWith = B; B.chatWith = A; A.chatUntil = B.chatUntil = T;
         A.talkFrom = now + 300; A.talkUntil = now + rnd(1800, 2800); B.talkFrom = A.talkUntil + 350; B.talkUntil = B.talkFrom + rnd(1500, 2600);
         if (Math.random() < 0.35) setTimeout(() => { if (now < T && A.alive) A.gesture('laugh', 1.6, 'laugh'); }, rnd(800, 2400)); } }
+    // v14d (the user, 11-27: "the NPCs do nothing rather than just sit"): seated people eat their popcorn and drink, quietly in the film
+    // too; before it the ones with empty hands look at their ticket or their phone
+    if (!this._pastT || now > this._pastT) { this._pastT = now + rnd(600, 1200);
+      for (const h of this.world.halls) { if (!vis.has(h.key)) continue; const ph = this.phase && this.phase[h.id], film = ph === 'dimming' || ph === 'playing';
+        const sat = (this.viewers[h.id] || []).filter((v) => v.state === 'seated' && v.agent && v.agent.ch && v.agent.ch.group.visible && v.agent.sit > 0.9 && !(now < v.agent.gestUntil) && !(now < v.agent.chatUntil));
+        for (let k = 0; k < Math.min(2, sat.length); k++) { const v = sat[Math.floor(Math.random() * sat.length)], A = v.agent, it = A.item;
+          if (it && Math.random() < (film ? 0.35 : 0.5)) A.gesture(/cola|icedtea|latte|shake|water|chai|coffee|slush/.test(it) ? 'drink' : 'eat', /cola|icedtea|latte|shake|water|chai|coffee|slush/.test(it) ? 3 : 2.6);
+          else if (!it && !film && Math.random() < 0.25) A.gesture(Math.random() < 0.5 ? 'read' : 'type', rnd(3, 5)); } } }
     // people: move, sit, look, animate, draw
     for (const a of [...this.agents]) {
       if (!a.alive) continue; this.step(a, dt, player);
@@ -416,7 +442,9 @@ export class Crowd {
     if (a.puppet) { this.puppet(a, dt); return; }   // v14 the host's guest
     if (a.state === 'street' && !a.path && this.now >= a.next && a.leg) a.leg();   // v12 a passer-by's next stretch of window-shopping
     const now = this.now;
-    if (a.state === 'standing') { a.sitT += dt; a.sit = Math.max(0, 1 - a.sitT / 1.1); if (a.sit <= 0) { if (a.viewer && a.viewer.seat.npc === a.viewer) { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.go(a.exitPath, () => { if (a.viewer) a.viewer.state = 'gone'; this.remove(a); }, { state: 'leavingHall' }); } return; }
+    if (a.state === 'standing') { a.sitT += dt; a.sit = Math.min(1, Math.max(0, 1 - a.sitT / 1.1)); if (a.sit <= 0) {
+        if (a.stagePath) { const p = a.stagePath; a.stagePath = null; a.go(p, () => { a.stage = true; a.yaw = a.stageYaw ?? a.yaw; a.state = 'dancing'; a.danceT0 = this.now; }, { state: 'toStage' }); return; }   // v14d Music Night: down to the floor in front of the screen
+        if (a.viewer && a.viewer.seat.npc === a.viewer) { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.go(a.exitPath, () => { if (a.viewer) a.viewer.state = 'gone'; this.remove(a); }, { state: 'leavingHall' }); } return; }
     if (a.state === 'sitting') { a.sitT += dt; a.sit = Math.min(1, a.sitT / 1.2); const s = a.viewer.seat; a.x += (s.x - a.x) * Math.min(1, dt * 4); a.z += (s.z - a.z) * Math.min(1, dt * 4); a.y += (s.y - a.y) * Math.min(1, dt * 6);
       if (a.sit >= 1) { a.viewer.state = 'seated'; a.state = 'seated'; } return; }
     if (a.path) {
@@ -439,6 +467,10 @@ export class Crowd {
       let blocked = false; if (a.role !== 'usher' && a.role !== 'server') { for (const o of this.agents) { if (o === a || !o.alive || o.sit > 0.2 || (!o.path && o.role !== 'guest')) continue; if (inWay(o.x - a.x, o.z - a.z, o.y)) { blocked = true; break; } }
         if (!blocked && player && !player.seated && inWay(player.x - a.x, player.z - a.z, player.y || 0)) blocked = true; }
       a.blockT = blocked ? (a.blockT || 0) + dt : 0;
+      // v14d Music Night: someone held up on the way down dances where they are (they are on the front floor by then); on the way back a
+      // hold-up of 2.5 s lets them step on past it
+      if (a.blockT > 1.2 && a.state === 'toStage') { a.blockT = 0; a.path = null; a.stage = true; a.state = 'dancing'; a.yaw = a.stageYaw ?? a.yaw; a.walkT = 0; return; }
+      if (a.blockT > 2.5 && a.state === 'toSeat' && a.pi < a.path.length - 1) { a.blockT = 0; a.pi++; }
       if (a.blockT > 1.5 && a.role === 'guest' && a.state === 'mill' && a.millTo) { a.blockT = 0; if (this.millBack(a, now)) return; }
       if (a.blockT > 2 && a.state === 'street' && a.leg) { a.blockT = 0; a.leg(); return; }   // v14 a stroller kept waiting goes somewhere else
       const ride = !!t.ride, sp = ride ? (a.state === 'guiding' ? 1.15 : 0.62) : blocked ? 0 : a.speed;   // the guide walks up the moving steps
@@ -457,7 +489,7 @@ export class Crowd {
     else if (a.perch) { ch.s.sit = a.sit; ch.s.drop = a.perch.h - sitHeight(a.rec); ch.s.recline = 0.12; }   // v14 another player on a sofa or a bench (mpui.js)
     else ch.s.sit = 0;
     this._prop(a, ch); ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;
-    if (a.danceUntil && performance.now() < a.danceUntil && !a.viewer) { ch.walkT = 0; ch.danceT = 1; } else ch.danceT = 0;   // v14 the dance emote (mpui.js)
+    if ((a.stage && a.state === 'dancing') || (a.danceUntil && performance.now() < a.danceUntil && !a.viewer)) { ch.walkT = 0; ch.danceT = 1; } else ch.danceT = 0;   // v14 the dance emote (mpui.js)
     // where they look: the screen when seated in a hall; you, briefly, when you come close and they face you; ahead otherwise
     let ly = 0, lp = 0, amt = 0;
     if (a.viewer && a.sit > 0.5 && this.now < a.chatUntil && a.chatWith && a.chatWith.alive) { const o = a.chatWith; ly = clamp(adiff(Math.atan2(o.x - a.x, o.z - a.z), a.yaw), -1.2, 1.2); lp = 0.05; amt = 0.95; }

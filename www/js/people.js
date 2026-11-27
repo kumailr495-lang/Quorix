@@ -342,7 +342,11 @@ export class Person {
   setExpr(e) { this.expr = e; }
   setLOD(l) { l = Math.min(l, 2); if (l === this.lod) return; this.lod = l; for (const k in this.meshes) this.meshes[k].visible = k === 'L' + l; }
   // a carried thing rides in the palm and stays upright (a bucket of popcorn does not tip with the wrist)
-  attach(name, mesh, bone) { this.detach(name); const b = this.rig.get({ handR: 'hand_r', handL: 'hand_l', head: 'Head' }[bone] || bone) || this.rig.get('hand_r'); b.add(mesh); mesh.userData.hand = b; this.items[name] = mesh; }
+  attach(name, mesh, bone) { this.detach(name); const b = this.rig.get({ handR: 'hand_r', handL: 'hand_l', head: 'Head' }[bone] || bone) || this.rig.get('hand_r');
+    // v14d (the user, 11-27: "NPCs hold the items wrongly"): the hand closes round the thing's side, a third of the way up, instead of the
+    // thing's middle sitting in the palm (a popcorn tub floated in front of the hand, the hand inside it)
+    mesh.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(mesh); if (!bb.isEmpty()) { mesh.userData.r = Math.min(0.12, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2); mesh.userData.h = Math.min(0.3, bb.max.y - bb.min.y); mesh.userData.y0 = bb.min.y; }
+    b.add(mesh); mesh.userData.hand = b; this.items[name] = mesh; }
   detach(name) { const m = this.items[name]; if (m && m.parent) m.parent.remove(m); delete this.items[name]; }
   _items() {
     for (const k in this.items) { const m = this.items[k], b = m.userData.hand; b.getWorldPosition(_a); this.group.matrixWorld.extractBasis(_fx, _fy, _fz);
@@ -350,7 +354,7 @@ export class Person {
       // to the middle knuckle and 2.8 cm out of the palm (the palm's side: the body's centre for the right hand)
       const fr = (n) => b.children.find((c) => c.name.endsWith(n)), f1 = fr('Finger1'), f2 = fr('Finger2'), f4 = fr('Finger4');
       if (f1 && f2 && f4) { f1.getWorldPosition(_hk1); f2.getWorldPosition(_hk2); f4.getWorldPosition(_hk4); _hn.subVectors(_hk1, _a).cross(_hk4.sub(_a)).normalize();
-        if (_hn.dot(_fx.normalize()) * (b.name.endsWith('_l') ? -1 : 1) < 0) _hn.negate(); _a.lerp(_hk2, 0.7).addScaledVector(_hn, 0.028); }
+        if (_hn.dot(_fx.normalize()) * (b.name.endsWith('_l') ? -1 : 1) < 0) _hn.negate(); _a.lerp(_hk2, 0.7).addScaledVector(_hn, 0.012 + 0.9 * (m.userData.r || 0.016)).addScaledVector(_fy.normalize(), -(m.userData.y0 || 0) - 0.35 * (m.userData.h || 0)); }
       else _a.addScaledVector(_fy.normalize(), -0.03).addScaledVector(_fz.normalize(), 0.035);
       b.worldToLocal(m.position.copy(_a));
       this.group.getWorldQuaternion(_q2); b.getWorldQuaternion(_pq); m.quaternion.copy(_pq.invert().multiply(_q2)); }

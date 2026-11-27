@@ -77,7 +77,7 @@ export class MusicScreen {
 }
 
 // popcorn and confetti thrown up from the seats: ballistic pieces in one instanced mesh (unlit: they catch the light show)
-const CAP = 260, COLS = [[0.62, 0.56, 0.42], [0.95, 0.72, 0.25], [0.95, 0.25, 0.55], [0.25, 0.75, 0.95], [0.95, 0.92, 0.85]];
+const CASH = [[0.36, 0.62, 0.38], [0.45, 0.7, 0.45], [0.3, 0.52, 0.34]], CAP = 260, COLS = [[0.62, 0.56, 0.42], [0.95, 0.72, 0.25], [0.95, 0.25, 0.55], [0.25, 0.75, 0.95], [0.95, 0.92, 0.85]];
 export class Confetti {
   constructor(scene) {
     // pieces bigger than life, so one reads across a hall
@@ -86,17 +86,18 @@ export class Confetti {
     this.p = []; this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._e = new THREE.Euler(); this._s = new THREE.Vector3(); this._v = new THREE.Vector3();
   }
   // n pieces from each of the points (x, y, z: hands over a seat); popcorn is cream, confetti flat and bright
+  // v14d money: o.money throws bank notes (flat green slips that flutter down slowly) with the confetti
   burst(points, n = 6) {
-    for (const o of points) for (let i = 0; i < n && this.p.length < CAP; i++) { const pop = Math.random() < 0.55, a = Math.random() * Math.PI * 2, sp = 0.5 + Math.random() * 0.9;
-      this.p.push({ x: o.x, y: o.y, z: o.z, vx: Math.cos(a) * sp, vy: 2.6 + Math.random() * 1.8, vz: Math.sin(a) * sp, floor: o.floor ?? o.y - 1.2, r: Math.random() * 6, w: (Math.random() - 0.5) * 14, pop, c: pop ? COLS[0] : COLS[1 + Math.floor(Math.random() * 4)], life: 0 }); }
+    for (const o of points) for (let i = 0; i < n && this.p.length < CAP; i++) { const cash = !!o.money && Math.random() < 0.6, pop = !cash && Math.random() < 0.55, a = Math.random() * Math.PI * 2, sp = 0.5 + Math.random() * 0.9;
+      this.p.push({ x: o.x, y: o.y, z: o.z, vx: Math.cos(a) * sp, vy: 2.6 + Math.random() * 1.8, vz: Math.sin(a) * sp, floor: o.floor ?? o.y - 1.2, r: Math.random() * 6, w: (Math.random() - 0.5) * (cash ? 6 : 14), pop, cash, c: cash ? CASH[Math.floor(Math.random() * CASH.length)] : pop ? COLS[0] : COLS[1 + Math.floor(Math.random() * 4)], life: 0 }); }
   }
   update(dt) {
     const P = this.p; let k = 0;
-    for (let i = 0; i < P.length; i++) { const q = P[i]; q.life += dt; const drag = q.pop ? 0.4 : 2.2; q.vx *= 1 - drag * dt; q.vz *= 1 - drag * dt; q.vy -= (q.pop ? 9.8 : 4.0) * dt; if (!q.pop && q.vy < -1.1) q.vy = -1.1;
+    for (let i = 0; i < P.length; i++) { const q = P[i]; q.life += dt; const drag = q.pop ? 0.4 : 2.2; q.vx *= 1 - drag * dt; q.vz *= 1 - drag * dt; q.vy -= (q.pop ? 9.8 : 4.0) * dt; if (!q.pop && q.vy < (q.cash ? -0.7 : -1.1)) q.vy = q.cash ? -0.7 : -1.1;
       q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.r += q.w * dt;
       if (q.y < q.floor || q.life > 7) continue; P[k++] = q; }
     P.length = k; const M = this.mesh, C = M.instanceColor.array;
-    for (let i = 0; i < k; i++) { const q = P[i]; this._e.set(q.r, q.r * 0.7, 0); this._q.setFromEuler(this._e); this._s.set(q.pop ? 1 : 1.7, q.pop ? 1 : 0.12, q.pop ? 1 : 1.15);
+    for (let i = 0; i < k; i++) { const q = P[i]; this._e.set(q.r, q.r * 0.7, 0); this._q.setFromEuler(this._e); this._s.set(q.cash ? 3.2 : q.pop ? 1 : 1.7, q.pop ? 1 : 0.1, q.cash ? 1.5 : q.pop ? 1 : 1.15);
       this._m.compose(this._v.set(q.x, q.y, q.z), this._q, this._s); M.setMatrixAt(i, this._m); C[i * 3] = q.c[0]; C[i * 3 + 1] = q.c[1]; C[i * 3 + 2] = q.c[2]; }
     M.count = k; if (k) { M.instanceMatrix.needsUpdate = true; M.instanceColor.needsUpdate = true; }
   }

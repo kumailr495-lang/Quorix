@@ -15,7 +15,7 @@ import { t } from './i18n.js';
 import { media } from './bridge.js';
 import { G } from './materials.js';
 import { MusicScreen, Confetti } from './party.js';
-const LIGHT = { idle: 1, pending: 1, countdown: 0.05, playing: 0.015, credits: 0.25, ended: 0.85 };
+const D_GEST = true, LIGHT = { idle: 1, pending: 1, countdown: 0.05, playing: 0.015, credits: 0.25, ended: 0.85 };
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), ss = (u) => u * u * u * (u * (u * 6 - 15) + 10);
 export function youtubeId(u) { const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; }
 // where a film is played from: a download, the app's server (proxy), or the web
@@ -144,7 +144,7 @@ export class Shows {
   _abort(id) { const s = this.s[id]; this._stopPicture(s); if (this.active === id) this.active = null; this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'idle'; s.booked = false; this._idle(s); this.crowd.clearAudience(id); }
   _idle(s) { const u = s.hall.picMat.uniforms; u.map.value = s.hall.slate; u.uGain.value = 0.55; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; if (u.uExtOn) u.uExtOn.value = 0; if (s.hall.curtains) s.hall.curtains.target = 1; s.pic = false; }
   _slideWaiting(s) { const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; u.uGain.value = 0.8; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; s.pic = false; }
-  _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) { s.pic = false; if (s.music) { s.music.dispose(); s.music = null; this.confetti && this.confetti.clear(); } } }
+  _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) { s.pic = false; if (s.music) { s.music.dispose(); s.music = null; this.confetti && this.confetti.clear(); } if (s.staged) { s.staged = false; this.crowd.stage && this.crowd.stage(s.id, false); } } }
   _fit(s, aspect) { const A = s.hall.cfg.aspect, u = s.hall.picMat.uniforms, b = u.uBox.value, pan = !!s.hall.cfg.panels, split = pan && aspect >= 2.8, wrap = pan && !split;
     // the 270 hall (one band of screen round three walls): a panoramic film fills the front with its middle at full height and its outer
     // parts run on round the side screens; any other film keeps its whole frame on the front and its edges carry on, softening, beside it
@@ -215,7 +215,12 @@ export class Shows {
         if (beat) { s.beatN = (s.beatN || 0) + 1; this.crowd.onFilmEvent(id, { type: beat === 2 ? 'drop' : 'beat', k: 1 });
           if (this.confetti && (beat === 2 || s.beatN % 2 === 0)) { const V = (this.crowd.viewers[id] || []).filter((q) => q.state === 'seated'), pts = [];
             for (let i = 0; i < (beat === 2 ? 5 : 2) && V.length; i++) { const q = V[Math.floor(Math.random() * V.length)].seat; pts.push({ x: q.x, y: q.y + 1.3, z: q.z, floor: q.y }); }
-            this.confetti.burst(pts, beat === 2 ? 9 : 5); } } }
+            // v14d the dancers in front of the screen throw popcorn and money up on the big beats
+            const D = this.crowd.dancers ? this.crowd.dancers(id) : []; for (let i = 0; i < (beat === 2 ? 4 : 1) && D.length; i++) { const a = D[Math.floor(Math.random() * D.length)]; pts.push({ x: a.x, y: a.y + 1.95, z: a.z, floor: a.y, money: beat === 2 || Math.random() < 0.4 }); }
+            this.confetti.burst(pts, beat === 2 ? 9 : 5); }
+          if (beat && D_GEST && this.crowd.dancers) for (const a of this.crowd.dancers(id)) if (Math.random() < 0.25) a.gesture(beat === 2 ? 'cheer' : 'clap', beat === 2 ? 1.2 : 0.8); } }
+      // v14d after the song's first 8 s a party gets up and dances in front of the screen (npc9 stage)
+      if (s.music && s.state === 'playing' && !s.staged && this.now - (s.playStart || this.now) > 8000 && this.crowd.stage) { s.staged = true; this.crowd.stage(id, true); }
       // house lights: a timed smootherstep to each phase's level (10 s down in the countdown, 5 s up after)
       const want = s.state === 'playing' && s.credits ? LIGHT.credits : LIGHT[s.state] ?? 1;
       if (want !== s.lightWant) { s.lightWant = want; s.lightFrom = s.light; s.lightAt = now; }
