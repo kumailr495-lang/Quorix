@@ -125,15 +125,17 @@ export class Shows {
   countdown(id) { const s = this.s[id]; return s && s.state === 'pending' ? Math.max(0, (s.startAt - this.now) / 1000) : 0; }
   title(id) { const s = this.s[id]; return s && s.src ? s.src.title : ''; }
   // ---------------------------------------------------------- your own video / a link
-  loadLocal(url, title) { this.own = { kind: 'own', url, title, label: title }; return this.own; }
-  loadFile(file, title) { if (this._obj) URL.revokeObjectURL(this._obj); this._obj = URL.createObjectURL(file); this.own = { kind: 'own', url: this._obj, title, label: title }; return this.own; }
+  // v14d a song carries its own words and picture (meta: { song, art, artist, album, title } from tags.js or the phone's library)
+  loadLocal(url, title, meta) { const m = meta || {}; this.own = { kind: 'own', url, title: m.title || title, label: m.title || title, song: !!m.song, art: m.art || null, artist: m.artist || '', album: m.album || '', mediaId: m.id ?? null }; return this.own; }
+  loadFile(file, title, meta) { if (this._obj) URL.revokeObjectURL(this._obj); if (this._art && (!meta || meta.art !== this._art)) URL.revokeObjectURL(this._art); this._obj = URL.createObjectURL(file); const m = meta || {}; this._art = m.art || null;
+    this.own = { kind: 'own', url: this._obj, title: m.title || title, label: m.title || title, song: !!m.song, art: m.art || null, artist: m.artist || '', album: m.album || '' }; return this.own; }
   loadURL(url, title) { const yt = youtubeId(url); this.own = yt ? { kind: 'youtube', ytId: yt, url, title: title || 'YouTube', label: title || 'YouTube' } : { kind: 'link', url, title, label: title }; return this.own; }
   // book: src = { kind: 'film', filmId } | this.own; delayMs before the countdown; replay: keep the curtain open, short wait
   book(id, src, delayMs, playerSeat, o = {}) {
     const s = this.s[id]; if (this.active && this.active !== id) this._abort(this.active); if (s.state !== 'idle') this._stopPicture(s);
     if (src.kind === 'film') { const f = filmById(src.filmId) || filmById(FEATURED[id]) || CATALOG[0]; s.src = { kind: 'film', filmId: f.id, title: f.title, ...filmURL(f) }; s.track = null; loadTrack(f.id).then((tr) => { s.track = tr; }); }
     else { s.src = { ...src, orig: src.orig || src.url }; const M = media; if (s.src.kind === 'link' && M && M.proxyBase) { try { const b = M.proxyBase(); if (b) s.src.url = b + encodeURIComponent(src.url); } catch (e) { s.src.url = src.url; } } }
-    s.credits = false; s.curtainKeep = !!o.replay; this.active = id; s.startAt = this.now + Math.max(o.minDelay != null ? o.minDelay : o.replay ? 3000 : 12000, delayMs); s.seek = Math.max(0, (o.seekMs || 0) / 1000); s.sync = !!o.sync; s.state = 'pending'; s.phaseAt = this.now; s.booked = true;
+    s.credits = false; s.curtainKeep = !!o.replay; this.active = id; s.startAt = this.now + Math.max(o.minDelay != null ? o.minDelay : o.replay ? 3000 : 12000, delayMs); s.seek = Math.max(0, (o.seekMs || 0) / 1000) || Math.max(0, +src.resumeAt || 0); if (src.resumeAt) delete src.resumeAt; s.sync = !!o.sync;   /* v14d resumeAt: a song or video carried on after Android closed the game (main.js snapshot) */ s.state = 'pending'; s.phaseAt = this.now; s.booked = true;
     if (s.src.kind !== 'youtube') { const v = this.video; v.pause(); v.playbackRate = 1; v.src = s.src.url; v.load(); }
     if (!o.replay) { this.crowd.clearAudience(id); const n = Math.min(this.engine.preset.crowd, Math.round(s.hall.seats.length * (0.4 + Math.random() * 0.3))); this.crowd.planAudience(id, n, Math.max(8000, s.startAt - this.now - 6000), new Set([playerSeat]), o.aud || null); }
     this._slideWaiting(s);
@@ -160,13 +162,13 @@ export class Shows {
     const s = this.s[id], v = this.video; s.state = 'playing'; s.phaseAt = this.now; s.playStart = this.now;
     if (s.src.kind === 'youtube') { this._ytStart(s); }
     else { const p = v.play(); if (p && p.catch) p.catch((e) => { console.warn('[lumiere] play failed', e); this.hooks.onError && this.hooks.onError(s.src.kind); });
-      const show = () => { if (s.state !== 'playing') return; this._fit(s, (v.videoWidth / v.videoHeight) || 16 / 9); s.hall.picMat.uniforms.map.value = this.vtex; s.hall.picMat.uniforms.uGain.value = 1; s.pic = true;
+      const show = () => { if (s.state !== 'playing' || !v.videoWidth) return;   /* v14d a song has no picture: _music takes it (show() as well started its sound a second time) */ this._fit(s, (v.videoWidth / v.videoHeight) || 16 / 9); s.hall.picMat.uniforms.map.value = this.vtex; s.hall.picMat.uniforms.uGain.value = 1; s.pic = true;
         this.sound.startFilm(s.hall.key, { video: v, hall: s.hall }); this.hooks.onPicture && this.hooks.onPicture(id);
         // v14 a film whose sound this phone cannot decode (AC-3, E-AC-3, DTS in many downloaded films) plays without sound: say so once
         // the Android app plays it through the phone's own player instead (MainActivity audioStart); a browser says what is wrong
-        if (s.src.kind !== 'film') setTimeout(() => { if (s.state !== 'playing' || v.paused || v.currentTime < 3 || v.webkitAudioDecodedByteCount !== 0) return;
+        if (s.src.kind !== 'film' && !s.src.song) setTimeout(() => { if (s.state !== 'playing' || s.music || !v.videoWidth || v.paused || v.currentTime < 3 || v.webkitAudioDecodedByteCount !== 0 || this._nat) return;
           const M = media, vol = this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1;
-          if (M && M.audioStart && M.audioStart(v.currentSrc || v.src, v.currentTime, v.playbackRate, vol)) this._nat = { s }; else if (this.hooks.onNoAudio) this.hooks.onNoAudio(); }, 4000);
+          if (M && M.audioStart && M.audioStart(v.currentSrc || v.src, v.currentTime, v.playbackRate, vol)) { this._nat = { s }; this.sound.nativeMute = true; } else if (this.hooks.onNoAudio) this.hooks.onNoAudio(); }, 4000);   // v14d the page's own copy goes quiet while the phone's player plays (two copies sounded like an echo)
         if (s.src.kind === 'film') { const go = () => s.track && this.director.startTrack(id, s.track.cues, () => v.currentTime); if (s.track) go(); else loadTrack(s.src.filmId).then((tr) => { s.track = tr; go(); }); } else this.director.startLive(id, this.now); };
       if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => show()); else v.addEventListener('playing', () => setTimeout(show, 120), { once: true });
       // v14c Music Night: a song has no picture (no frame ever arrives): once it plays, the screen becomes its light show
@@ -175,7 +177,7 @@ export class Shows {
   }
   _music(id) {
     const s = this.s[id], v = this.video, H = s.hall.cfg; if (s.music) return;
-    s.music = new MusicScreen(H.W / H.H, s.src && s.src.title); this._fit(s, H.W / H.H); const u = s.hall.picMat.uniforms; u.map.value = s.music.tex; u.uGain.value = 1; s.pic = true;
+    s.music = new MusicScreen(H.W / H.H, s.src && s.src.title, s.src || {}); this._fit(s, H.W / H.H); const u = s.hall.picMat.uniforms; u.map.value = s.music.tex; u.uGain.value = 1; s.pic = true;
     this.sound.startFilm(s.hall.key, { video: v, hall: s.hall }); this.hooks.onPicture && this.hooks.onPicture(id); s.beatN = 0;
   }
   _finish(id, applause) {
@@ -186,7 +188,7 @@ export class Shows {
   // ---------------------------------------------------------- per frame (logic)
   update(dt, now, room, vis) {
     if (this._nat) { const M = media, s = this._nat.s, v = this.video;   // v14b the native sound (see _roll): kept on the picture's clock
-      if (!M || s.state !== 'playing' || this.cur() !== s) { if (M && M.audioStop) M.audioStop(); this._nat = null; }
+      if (!M || s.state !== 'playing' || this.cur() !== s) { if (M && M.audioStop) M.audioStop(); this._nat = null; this.sound.nativeMute = false; }
       else if (now - (this._natT || 0) > 600) { this._natT = now; M.audioSync(v.currentTime, !v.paused && !this.buffering, v.playbackRate, this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1); } }
     this.now = now; this.vis = vis; if (this.confetti) this.confetti.update(dt);
     // v11 (the user: "go far away and come back: the movie is frozen and the audio continues, for 15-20 s"): a phone's decoder can go idle
@@ -209,7 +211,7 @@ export class Shows {
           const sk = v.seekable, end = sk && sk.length ? sk.end(sk.length - 1) : 0;
           if (v.duration && want > v.duration) v.playbackRate = 1; else if (Math.abs(err) > 1.5 && want + 0.1 < end) { try { v.currentTime = want + 0.1; } catch (e) { /* not seekable */ } v.playbackRate = 1; }
           else v.playbackRate = Math.abs(err) < 0.05 ? 1 : clamp(1 - err * 0.5, 0.9, 1.1); } }
-      if (s.music && s.state === 'playing' && visible) { const beat = s.music.draw(this.sound.an, dt, now);
+      if (s.music && s.state === 'playing' && visible) { const beat = s.music.draw(this.sound.an, dt, now, this.video.currentTime, this.video.duration);
         if (beat) { s.beatN = (s.beatN || 0) + 1; this.crowd.onFilmEvent(id, { type: beat === 2 ? 'drop' : 'beat', k: 1 });
           if (this.confetti && (beat === 2 || s.beatN % 2 === 0)) { const V = (this.crowd.viewers[id] || []).filter((q) => q.state === 'seated'), pts = [];
             for (let i = 0; i < (beat === 2 ? 5 : 2) && V.length; i++) { const q = V[Math.floor(Math.random() * V.length)].seat; pts.push({ x: q.x, y: q.y + 1.3, z: q.z, floor: q.y }); }

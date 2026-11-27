@@ -56,7 +56,9 @@ export class Tablet {
     if (!pb || !this.shows.isOn(pb.id)) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.nothing'))); e.appendChild(el('p', 'note', t(pb ? 'tab.startsSoon' : 'tab.pickFilm'))); const go = el('button', 'btn primary', t('tab.films')); go.addEventListener('click', () => this.show('films')); e.appendChild(go); B.appendChild(e);
       if (pb) { const tick = () => { if (!this.isOpen() || this.tab !== 'remote') return; if (this.shows.isOn(pb.id)) { this.show('remote'); return; } this._raf = requestAnimationFrame(tick); }; this._raf = requestAnimationFrame(tick); } return; }
     const v = pb.el, wrap = el('div', 'rm'), art = el('div', 'rm-art'), img = new Image(); img.alt = ''; if (pb.src === 'film') img.src = posterURL(pb.filmId); art.appendChild(img); wrap.appendChild(art);
-    const side = el('div', 'rm-side'); side.appendChild(el('h3', null, this.shows.title(pb.id))); const f = pb.src === 'film' && filmById(pb.filmId); side.appendChild(el('p', 'note', f ? `${f.year} · ${f.by} · ${f.lic}` : t('tab.yourVideo')));
+    // v14d a song shows its own cover (or the one the Music Night screen drew for it) and its artist and album
+    const cs = this.shows.cur(), song = cs && cs.src && cs.src.song; if (song) { art.classList.add('song'); if (cs.src.art) img.src = cs.src.art; else if (cs.music && cs.music.cover && cs.music.cover.toDataURL) { try { img.src = cs.music.cover.toDataURL('image/jpeg', 0.85); } catch (e) { /* drawn later */ } } }
+    const side = el('div', 'rm-side'); side.appendChild(el('h3', null, this.shows.title(pb.id))); const f = pb.src === 'film' && filmById(pb.filmId); side.appendChild(el('p', 'note', f ? `${f.year} · ${f.by} · ${f.lic}` : song ? ([cs.src.artist, cs.src.album].filter(Boolean).join(' · ') || '\u266A') : t('tab.yourVideo')));
     // seek bar with a picture preview over the thumb
     const bar = el('div', 'rm-bar'), track = el('div', 'rm-track'), fill = el('i'), knob = el('b'), bubble = el('div', 'rm-pv'), ptime = el('span'); track.append(fill, knob); bubble.append(this.pv, ptime); bubble.hidden = true; bar.append(bubble, track);
     const times = el('div', 'rm-times'), cur = el('span'), tot = el('span'); times.append(cur, tot); side.append(bar, times);
@@ -150,11 +152,13 @@ export class Tablet {
     $('#tbTitle').textContent = t('tab.mine'); const M = media;
     if (!M) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.noBridge'))); e.appendChild(el('p', 'note', t('tab.noBridgeHint'))); const pick = el('button', 'btn primary', t('book.gallery')); pick.addEventListener('click', (ev) => { ev.stopPropagation(); this.hooks.pickOwn(); }); e.appendChild(pick);
       if (this.shows.own) { const play = el('button', 'btn secondary', t('tab.playOwn', { name: this.shows.own.label })); play.addEventListener('click', (ev) => { ev.stopPropagation(); if (this.hooks.playFilm({ own: true })) this.show('remote'); }); e.appendChild(play); } B.appendChild(e); return; }
-    // v14c Music Night in the app: the gallery lists videos only, so a song comes through the system's file picker (the page's file input,
-    // which accepts audio); once one is chosen, play it from here
-    { const row = el('div', 'tb-songs'), song = el('button', 'btn secondary sm', '♪ ' + t('tab.pickSong')); song.addEventListener('click', (ev) => { ev.stopPropagation(); this.sound.click(); const f = document.getElementById('file'); if (f) f.click(); }); row.appendChild(song);
+    // v14d (the user, 11-27: the file picker app took over and Android closed the game): the phone's songs are listed here like its videos,
+    // with their covers; the system picker stays as a second way in
+    { const row = el('div', 'tb-songs'), seg = el('div', 'seg'); for (const [k, lab] of [['videos', t('tab.videos')], ['songs', '♪ ' + t('tab.songs')]]) { const b = el('button', (this.lib || 'videos') === k ? 'on' : '', lab); b.addEventListener('click', (ev) => { ev.stopPropagation(); this.sound.click(); this.lib = k; this.show('mine'); }); seg.appendChild(b); } row.appendChild(seg);
+      const song = el('button', 'btn ghost sm', '⋯ ' + t('tab.pickSong')); song.addEventListener('click', (ev) => { ev.stopPropagation(); this.sound.click(); const f = document.getElementById('file'); if (f) f.click(); }); row.appendChild(song);
       if (this.shows.own) { const play = el('button', 'btn primary sm', t('tab.playOwn', { name: this.shows.own.label })); play.addEventListener('click', (ev) => { ev.stopPropagation(); if (this.hooks.playFilm({ own: true })) this.show('remote'); }); row.appendChild(play); }
       B.appendChild(row); }
+    if (this.lib === 'songs') { $('#tbTitle').textContent = t('tab.songs'); this.songs(B, M); return; }
     if (!M.hasPermission()) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.permTitle'))); e.appendChild(el('p', 'note', t('tab.permBody'))); const ask = el('button', 'btn primary', t('tab.permAsk')); ask.addEventListener('click', (ev) => { ev.stopPropagation(); window.__lumiereMediaPermission = (ok) => { if (ok) { this.items = null; this.show('mine'); } else this.hooks.toast(t('tab.permDenied'), 3200, 'error'); }; M.requestPermission(); }); e.appendChild(ask); B.appendChild(e); return; }
     if (!this.items) { try { this.items = JSON.parse(M.list() || '[]'); } catch (e) { this.items = []; } }
     const bar = el('div', 'tb-bar'), search = el('div', 'inp'); search.innerHTML = '<svg class="ic"><use href="#i-search"/></svg>'; const q = el('input'); q.placeholder = t('tab.search'); q.value = this.q; search.appendChild(q); bar.appendChild(search);
@@ -179,5 +183,22 @@ export class Tablet {
       grid.appendChild(c); }
     B.appendChild(grid);
     q.addEventListener('input', () => { this.q = q.value; clearTimeout(this._qt); this._qt = setTimeout(() => { const pos = q.selectionStart; this.show('mine'); const nq = document.querySelector('#tbBody .tb-bar input'); if (nq) { nq.focus(); nq.setSelectionRange(pos, pos); } }, 250); });
+  }
+  // v14d the phone's songs (MediaStore audio through the app), newest first, with their covers; a tap makes it your show
+  songs(B, M) {
+    if (!M.hasAudio || !M.listAudio) { B.appendChild(el('p', 'note', t('tab.noSongs'))); return; }
+    if (!M.hasAudio()) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.permTitle'))); e.appendChild(el('p', 'note', t('tab.songPerm'))); const ask = el('button', 'btn primary', t('tab.permAsk'));
+      ask.addEventListener('click', (ev) => { ev.stopPropagation(); window.__lumiereMediaPermission = () => { this.songList = null; this.items = null; this.show('mine'); }; M.requestPermission(); }); e.appendChild(ask); B.appendChild(e); return; }
+    if (!this.songList) { try { this.songList = JSON.parse(M.listAudio() || '[]'); } catch (e) { this.songList = []; } }
+    const bar = el('div', 'tb-bar'), search = el('div', 'inp'); search.innerHTML = '<svg class="ic"><use href="#i-search"/></svg>'; const q = el('input'); q.placeholder = t('tab.search'); q.value = this.sq || ''; search.appendChild(q); bar.appendChild(search); B.appendChild(bar);
+    const ql = (this.sq || '').toLowerCase(), list = this.songList.filter((it) => !ql || `${it.title} ${it.artist} ${it.album} ${it.name}`.toLowerCase().includes(ql));
+    const grid = el('div', 'tb-songlist'); if (!list.length) grid.appendChild(el('p', 'note', t('tab.noSongs')));
+    for (const it of list.slice(0, 300)) { const c = el('button', 'tb-song'), art = el('div', 'art'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.onerror = () => { img.remove(); art.classList.add('none'); }; img.src = it.art; art.appendChild(img);
+      const title = it.title || cleanTitle(it.name); c.append(art, el('b', null, title), el('small', null, [it.artist && it.artist !== '<unknown>' ? it.artist : '', fmt((it.dur || 0) / 1000)].filter(Boolean).join(' · ')));
+      c.addEventListener('click', (ev) => { ev.stopPropagation(); this.sound.click(); this.onLocal && this.onLocal(it.url, title, { song: true, title, artist: it.artist && it.artist !== '<unknown>' ? it.artist : '', album: it.album || '', art: it.art, id: it.id });
+        if (this.hooks.quick() || this.server) { if (this.hooks.playFilm({ own: true })) this.show('remote'); } else this.close(); });
+      grid.appendChild(c); }
+    B.appendChild(grid);
+    q.addEventListener('input', () => { this.sq = q.value; clearTimeout(this._qt); this._qt = setTimeout(() => { const pos = q.selectionStart; this.show('mine'); const nq = document.querySelector('#tbBody .tb-bar input'); if (nq) { nq.focus(); nq.setSelectionRange(pos, pos); } }, 250); });
   }
 }

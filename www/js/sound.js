@@ -59,7 +59,7 @@ export class Sound {
   // v14 (the user, 11-21: "the sound of the video or movie i play isnt working and is glitched"): the film's own sound no longer waits for the
   // Web Audio context (a context Android left suspended muted every film; the film pauses with the app anyway), and its volume moves in small
   // smoothed steps (each volume write is a hard step on Android: walking or turning made a zipper noise)
-  _directVol() { const f = this.film; if (!f || !f.direct) return; const a = this.listener, want = Math.max(0, Math.min(1, (this.muted ? 0 : this.vol.master) * this.vol.film * (a.filmAud || 0)));
+  _directVol() { const f = this.film; if (!f || !f.direct) return; const a = this.listener, want = this.nativeMute ? 0 : Math.max(0, Math.min(1, (this.muted ? 0 : this.vol.master) * this.vol.film * (a.filmAud || 0)));
     f.vol = f.vol == null ? want : f.vol + (want - f.vol) * 0.25; const q = Math.round(f.vol * 50) / 50; if (Math.abs(q - f.direct.volume) >= 0.02 || (q === 0) !== (f.direct.volume === 0)) f.direct.volume = q; }
   startFilm(hallKey, src) {
     if (!this.ready) { this._pendingFilm = [hallKey, src]; return; } this.stopFilm(); this.film = { hall: hallKey, gain: 1, nodes: [] };

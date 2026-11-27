@@ -706,3 +706,23 @@ body.ph-open #where,body.ph-open #goal{opacity:0;pointer-events:none;transition:
 .ph-loan b{font:600 12.5px/1.2 var(--font);color:var(--cream)}.ph-loan small{font-size:10.5px;line-height:1.35;color:var(--mute)}
 /* v14c the tablet's song picker row (Music Night in the app) */
 .tb-songs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+/* v14d the phone's songs on the tablet, each with its cover; the Now Playing card over the HUD while a song is your show */
+.tb-songlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.tb-song{display:grid;grid-template-columns:50px minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;row-gap:2px;align-items:center;text-align:left;padding:6px;border-radius:12px;background:rgba(246,236,216,.05);box-shadow:inset 0 0 0 1px var(--line);color:var(--cream);font:inherit}
+.tb-song:active{transform:scale(.98)}
+.tb-song .art{grid-row:1/3;width:50px;height:50px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,var(--velvet-3),var(--ink))}
+.tb-song .art img{width:100%;height:100%;object-fit:cover;display:block}
+.tb-song .art.none::after{content:'\266A';display:flex;align-items:center;justify-content:center;height:100%;color:var(--brass);font-size:22px}
+.tb-song b{font:600 12.5px/1.25 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:end}
+.tb-song small{font-size:10.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:start}
+#nowPlaying{position:fixed;left:calc(12px + var(--sal,0px));bottom:calc(12px + var(--sab,0px));z-index:22;display:flex;align-items:center;gap:10px;max-width:min(320px,46vw);padding:8px 12px 8px 8px;border-radius:14px;background:var(--plate);box-shadow:inset 0 0 0 1px var(--line),0 8px 24px rgba(0,0,0,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:none;transition:opacity .4s,transform .4s}
+#nowPlaying[hidden]{display:flex!important;opacity:0;transform:translateY(12px)}
+#nowPlaying .art{flex:0 0 44px;width:44px;height:44px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,var(--velvet-3),var(--ink));display:flex;align-items:center;justify-content:center;color:var(--brass);font-size:20px}
+#nowPlaying .art img{width:100%;height:100%;object-fit:cover}
+#nowPlaying .tx{display:flex;flex-direction:column;min-width:0;gap:1px}
+#nowPlaying small{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+#nowPlaying b{font:600 12.5px/1.2 var(--font);color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#nowPlaying i{font-style:normal;font-size:11px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#nowPlaying .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.14);margin-top:4px;overflow:hidden}
+#nowPlaying .bar u{display:block;height:100%;width:0;background:var(--brass);text-decoration:none}
+.rm-art.song{aspect-ratio:1/1;width:30%;align-self:center}.rm-art.song img{width:100%;height:100%;object-fit:cover}

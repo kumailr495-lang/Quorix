@@ -41,6 +41,7 @@ import { makeHeld, setHeldMaterial } from './held.js';
 import { PRICES as MENU_PRICES, menuItem } from './menu.js';
 import { Recliner } from './recline.js';
 import { cleanTitle } from './films.js';
+import { readTags, isSong } from './tags.js';
 import { ledWall, showtimes, menuBoard, attraction } from './panels9.js';
 import { makeRain } from './rain.js';
 import { Traffic } from './traffic.js';
@@ -156,7 +157,7 @@ async function boot() {
   const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => n + ' LC', PRICES);
   const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
     order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });
-  tablet.onLocal = (url, name) => { shows.loadLocal(url, cleanTitle(name)); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
+  tablet.onLocal = (url, name, meta) => { shows.loadLocal(url, meta && meta.title ? meta.title : cleanTitle(name), meta); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
   const way = new Wayfinder(world, crowd); let wayT = 0; const guide = new Guide(engine.scene, world);   // v12b the way on the floor and a light at the goal
   // v13 the phone (phone.js): your ticket, the map, your tab, a camera, your photos and stubs, friends, settings; it never stops the game
   const theatres = new Theatres(world); theatres.applyAll();   // v14 My Theatre: each hall's saved look
@@ -199,7 +200,9 @@ async function boot() {
     $('#infoBody').textContent += `\n\n${t('help9.diag')}\n${I.model || ''} · Android ${I.android || ''} · ${I.webview || ''}\n${t('help9.server')}: ${I.server || ''}\n${t('help9.decoders')}: ${hw.join(', ')}\n${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`; } catch (e) { /* older wrapper */ } }; }
   // ---------- your own video and links ----------
   function pickOwn() { if (media) { tablet.open('mine'); return; } $('#file').click(); }
-  $('#file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; shows.loadFile(f, cleanTitle(f.name || 'Video')); if (tablet.isOpen()) tablet.refresh(); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); tablet.refresh(); e.target.value = ''; });
+  // v14d a picked song brings its own title, artist and cover (tags.js) to the Music Night screen
+  $('#file').addEventListener('change', async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; e.target.value = ''; const song = isSong(f), meta = song ? { ...(await readTags(f)), song: true } : null;
+    shows.loadFile(f, cleanTitle(f.name || 'Video'), meta); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); tablet.refresh(); });
   function useLink(u) { const own = shows.loadURL(u, cleanTitle(decodeURIComponent(u.split('/').pop().split('?')[0]) || 'Link')); ui.toast(t(own.kind === 'youtube' ? 'toast9.youtube' : 'toast.ownReady'), 2600); booking.build(); }
   // ---------- conversations ----------
   function action(a, npc, tk) {
@@ -356,7 +359,7 @@ async function boot() {
     const b = locked ? aimBtn : (world.roomAt(player.x, player.y, player.z) === 'lobby' ? world.lift.pick(engine.camera, player.y, x, y, innerWidth, innerHeight, 44) : null); if (b) pressLift(b); };
   addEventListener('pointerdown', () => sound.unlock(), { capture: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } });
-  window.__lumiereLifecycle = (s) => { if (s === 'pause') { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } };
+  window.__lumiereLifecycle = (s) => { if (s === 'pause') { snapSave(0); sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } };
   window.__lumiereInsets = (l, r, tp, b) => { const s = document.documentElement.style; s.setProperty('--safe-l', l + 'px'); s.setProperty('--safe-r', r + 'px'); s.setProperty('--safe-t', tp + 'px'); s.setProperty('--safe-b', b + 'px'); };
   // ---------- modes ----------
   function newGame(m) {
@@ -371,10 +374,36 @@ async function boot() {
     if (mode === 'play') return; ui.fade(1, 0.35);
     setTimeout(() => { if (m || !game) newGame(m || 'flow'); mode = 'play'; ui.showMenu(false); onModal(); bill.onChange(); ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } if (!intro.active) maybeAskTutorial(); }, 380);
   }
-  function toMenu() { if (intro.active) intro.finish(); if (together.active) together.leave(); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); phone.close(); }
+  function toMenu() { snapClear(); if (intro.active) intro.finish(); if (together.active) together.leave(); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); phone.close(); }
   function maybeAskTutorial() { if (mode === 'play' && game === 'flow' && !settings.tutorialAsked && !settings.tutorialDone && settings.lang) setTimeout(() => ui.askTutorial(), 1400); }
   function startTutorial(fromAsk) { settings.tutorialAsked = true; saveSettings(settings); if (mode !== 'play' || game !== 'flow') enterPlay('flow'); setTimeout(() => tut.start(), fromAsk ? 200 : 900); }
   addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (booking.isOpen()) booking.close(); else if (tablet.isOpen()) tablet.close(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } } });
+  // v14d (the user, 11-27: "when I open Z Archiver or play the song a bit late, the whole app closes ... it starts from the very start"):
+  // where you are is kept every 4 s and when the game goes to the background. If Android closes the game (or only its page: MainActivity
+  // reloads it with resume=1) you come back where you were: the mode, the place, and a song or video from the phone's library ready to play
+  // from where it had got to. Quitting to the menu forgets it.
+  const SNAP = 'lumiere.snap.v1'; let snapT = 0;
+  function snapSave(now) { if (now && now - snapT < 4000) return; snapT = now || performance.now(); if (mode !== 'play' || !game || intro.active) return;
+    try { const s = shows.cur(), src = s && s.src, own = src && src.kind === 'own' && src.mediaId != null ? { id: src.mediaId, song: !!src.song, title: src.title || '', artist: src.artist || '', album: src.album || '', t: s.state === 'playing' ? shows.video.currentTime || 0 : 0 } : null;
+      localStorage.setItem(SNAP, JSON.stringify({ t: Date.now(), game, pos: [player.x, player.y, player.z, player.yaw], own })); } catch (e) { /* storage full or off */ } }
+  function snapClear() { try { localStorage.removeItem(SNAP); } catch (e) { /* none */ } }
+  function snapLoad() { try { const o = JSON.parse(localStorage.getItem(SNAP) || 'null'); if (!o || !(Date.now() - o.t < 30 * 60000) || !['flow', 'quick'].includes(o.game) || !Array.isArray(o.pos) || !o.pos.every(Number.isFinite)) return null; return o; } catch (e) { return null; } }
+  function resumeSnap(sn) {
+    if (mode === 'play') return; mode = 'play'; ui.showMenu(false); onModal(); if (settings.seen) settings.seen.intro = true;
+    game = sn.game; bill.unlimited = game === 'quick'; world.gate.always = game !== 'flow'; ui.setButton('#bRemote', game === 'quick'); visits++;
+    const [x, y, z, yaw] = sn.pos; player.place(x, z, yaw, 0, y); bill.onChange(); ui.fade(0, 0.6); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ }
+    let msg = t('toast.resumed');
+    if (sn.own && media) { try { const list = JSON.parse((sn.own.song ? media.listAudio && media.listAudio() : media.list && media.list()) || '[]'), it = list.find((q) => q.id === sn.own.id);
+      if (it) { shows.loadLocal(it.url, sn.own.title || cleanTitle(it.name), { song: sn.own.song, title: sn.own.title, artist: sn.own.artist, album: sn.own.album, art: it.art || null, id: it.id }); shows.own.resumeAt = sn.own.t || 0; msg = t('toast.resumedSong', { title: sn.own.title || cleanTitle(it.name) }); } } catch (e) { /* the library changed */ } }
+    ui.toast(msg, 3600); }
+  addEventListener('visibilitychange', () => { if (document.hidden) snapSave(0); });
+  // v14d the Now Playing card: the song's cover, title, artist and progress while a song is the show in the hall you are in
+  const npEl = $('#nowPlaying'); let npKey = '', npT = 0;
+  function nowPlaying(now, r) { if (!npEl || now - npT < 250) return; npT = now; const s = shows.cur(); const on = !!(s && s.state === 'playing' && s.music && mode === 'play' && r === s.hall.key);
+    npEl.hidden = !on; if (!on) return; const art = npEl.querySelector('.art');
+    if (s.src.url !== npKey) { npKey = s.src.url; art.textContent = ''; if (s.src.art) { const im = new Image(); im.alt = ''; im.onerror = () => { im.remove(); art.textContent = '\u266A'; }; im.src = s.src.art; art.appendChild(im); } else art.textContent = '\u266A';
+      npEl.querySelector('b').textContent = s.src.title || ''; npEl.querySelector('i').textContent = [s.src.artist, s.src.album].filter(Boolean).join(' \u00b7 '); }
+    const v = shows.video; npEl.querySelector('u').style.width = (v && v.duration > 0 ? Math.min(100, 100 * v.currentTime / v.duration) : 0) + '%'; }
   // ---------- frame ----------
   const SIDE_BTNS = ['#bRemote', '#bBell', '#bRecline', '#bCup'].map((q) => $(q)); let sideKey = '';
   const fwd = new THREE.Vector3(); let last = performance.now(), slowT = 0, errT = -1e9, audT = 0, curFilm = null, dbg = null; const actors = [];
@@ -408,7 +437,7 @@ async function boot() {
     exitLock(dt, r);
     const cam = engine.camera; world.setVisibility(r, cam.position.x, cam.position.y, cam.position.z);
     const watching = mode === 'play' && !!player.seated && r.startsWith('hall') && shows.isOn(world.hallByKey(r).id);
-    engine.setZoom(watching ? fitZoom(r) : 1, dt); document.body.classList.toggle('watching', watching); engine.showMode && engine.showMode(watching);
+    engine.setZoom(watching ? fitZoom(r) : 1, dt); document.body.classList.toggle('watching', watching); engine.showMode && engine.showMode(watching); nowPlaying(now, r); snapSave(now);
     actors.length = 0; actors.push(player); for (const a of crowd.agents) if (a.path) actors.push(a);
     world.update(dt, actors, now);
     for (const h of world.halls) if (h.room.group.visible) h.updateLOD(cam, false, engine.preset.seatLod * (engine.lodK || 1));
@@ -509,6 +538,7 @@ async function boot() {
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); clearInterval(ldTimer); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 1300); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
+  else { const sn = snapLoad(); if (sn && settings.lang) setTimeout(() => resumeSnap(sn), 900 + hold); }
   window.__lumiere = { THREE, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };

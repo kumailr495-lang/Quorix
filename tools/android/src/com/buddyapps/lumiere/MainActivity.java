@@ -90,17 +90,8 @@ public class MainActivity extends Activity {
         }
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         root = new FrameLayout(this); root.setBackgroundColor(0xff000000);
-        web = new WebView(this); web.setBackgroundColor(0xff000000);
-        WebView.setWebContentsDebuggingEnabled(false);
-        WebSettings s = web.getSettings();
-        s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setMediaPlaybackRequiresUserGesture(false);
-        s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setSupportZoom(false); s.setBuiltInZoomControls(false);
-        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW); s.setCacheMode(WebSettings.LOAD_DEFAULT);
         { byte[] kb = new byte[16]; new java.security.SecureRandom().nextBytes(kb); StringBuilder ks = new StringBuilder(); for (byte x : kb) ks.append(String.format(java.util.Locale.ROOT, "%02x", x)); bridgeKey = ks.toString(); }
-        web.addJavascriptInterface(new Media(), "LumiereMedia");
-        web.setWebViewClient(new Client());
-        web.setWebChromeClient(new Chrome());
-        root.addView(web, new FrameLayout.LayoutParams(-1, -1));
+        makeWeb();
         root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
                 sendInsets(in);
@@ -121,21 +112,40 @@ public class MainActivity extends Activity {
         web.loadUrl(url);
     }
 
+    // v14d the WebView in its own method: when Android kills its renderer to free memory (another app in front, the file picker, Z-Archiver)
+    // the app used to die with it and start again from the beginning; now a new WebView loads the game, which resumes where you were
+    void makeWeb() {
+        web = new WebView(this); web.setBackgroundColor(0xff000000);
+        WebView.setWebContentsDebuggingEnabled(false);
+        WebSettings s = web.getSettings();
+        s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setMediaPlaybackRequiresUserGesture(false);
+        s.setAllowFileAccess(false); s.setAllowContentAccess(false); s.setSupportZoom(false); s.setBuiltInZoomControls(false);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW); s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        web.addJavascriptInterface(new Media(), "LumiereMedia");
+        web.setWebViewClient(new Client());
+        web.setWebChromeClient(new Chrome());
+        // the renderer keeps the app's own priority while another app is in front (the picker), so it is not the first thing Android frees
+        if (Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
+        root.addView(web, 0, new FrameLayout.LayoutParams(-1, -1));
+    }
+
     void startServer() {
         try {
             server = new LocalServer();
             server.assets(new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return asset(path); } });
             server.route("/m/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return media(Long.parseLong(path)); } }, true);
             server.route("/t/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return thumb(Long.parseLong(path), q); } }, true);
+            server.route("/a/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return song(Long.parseLong(path)); } }, true);   // v14d songs from the phone
+            server.route("/c/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return cover(Long.parseLong(path)); } }, true);   // their cover art
             server.route("/f/", new LocalServer.Source() { public LocalServer.Resource get(String path, Map<String, String> q) throws IOException { return film(path); } }, true);
             server.route("/p/", new Proxy(), true);   // v9: a film from the web, passed through so the page can use its picture and sound
             server.start(PORT, 10);
         } catch (Exception e) { startError = String.valueOf(e); server = null; }
     }
 
-    @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
-    @Override protected void onPause() { js("window.__lumiereLifecycle && window.__lumiereLifecycle('pause')"); web.onPause(); try { if (ap != null && ap.isPlaying()) ap.pause(); } catch (Exception e) { /* not ready */ } super.onPause(); }
-    @Override protected void onResume() { super.onResume(); web.onResume(); immersive(); js("window.__lumiereLifecycle && window.__lumiereLifecycle('resume')"); }
+    @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); if (web != null) web.saveState(out); }
+    @Override protected void onPause() { js("window.__lumiereLifecycle && window.__lumiereLifecycle('pause')"); if (web != null) web.onPause(); try { if (ap != null && ap.isPlaying()) ap.pause(); } catch (Exception e) { /* not ready */ } super.onPause(); }
+    @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); immersive(); js("window.__lumiereLifecycle && window.__lumiereLifecycle('resume')"); }
     @Override protected void onDestroy() {
         stopAudio();
         if (web != null) { web.destroy(); web = null; }
@@ -203,18 +213,21 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(req, perms, res);
         if (req == MIC) { final android.webkit.PermissionRequest r = micReq; micReq = null; if (r != null) { if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) r.grant(new String[] { android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE }); else r.deny(); } return; }
         if (req != PERM) return;
-        boolean ok = res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED;
+        boolean ok = false; for (int r : res) if (r == PackageManager.PERMISSION_GRANTED) ok = true;   // v14d videos and songs are asked together
         js("window.__lumiereMediaPermission && window.__lumiereMediaPermission(" + ok + ")");
     }
 
     static String permission() { return Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_VIDEO : Manifest.permission.READ_EXTERNAL_STORAGE; }
+    static String audioPermission() { return Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_AUDIO : Manifest.permission.READ_EXTERNAL_STORAGE; }
+    boolean grantedAudio() { return checkSelfPermission(audioPermission()) == PackageManager.PERMISSION_GRANTED; }
 
     // ---------------------------------------------------------------- window.LumiereMedia
     class Media {
         @JavascriptInterface public boolean hasPermission(String k) { if (!key(k)) return false; return checkSelfPermission(permission()) == PackageManager.PERMISSION_GRANTED; }
         @JavascriptInterface public void requestPermission(String k) { if (!key(k)) return;
             runOnUiThread(new Runnable() { public void run() {
-                if (granted()) js("window.__lumiereMediaPermission && window.__lumiereMediaPermission(true)");
+                if (granted() && grantedAudio()) js("window.__lumiereMediaPermission && window.__lumiereMediaPermission(true)");
+                else if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[] { permission(), audioPermission() }, PERM);
                 else requestPermissions(new String[] { permission() }, PERM);
             } });
         }
@@ -240,6 +253,27 @@ public class MainActivity extends Activity {
                     out.put(o);
                 }
             } catch (Exception e) { /* an empty list: the tablet says there are no videos */ }
+            finally { if (c != null) c.close(); }
+            return out.toString();
+        }
+        @JavascriptInterface public boolean hasAudio(String k) { if (!key(k)) return false; return grantedAudio(); }
+        /** v14d every song on the phone (music, 30 s or longer), newest first: [{ id, name, title, artist, album, dur (ms), size, date (s), mime, url, art }] */
+        @JavascriptInterface public String listAudio(String k) { if (!key(k)) return "";
+            JSONArray out = new JSONArray();
+            if (!grantedAudio() || server == null) return out.toString();
+            String[] cols = { MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DISPLAY_NAME, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.DURATION, MediaStore.Audio.Media.SIZE, MediaStore.Audio.Media.DATE_ADDED, MediaStore.Audio.Media.MIME_TYPE };
+            Cursor c = null;
+            try {
+                c = getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, cols, MediaStore.Audio.Media.DURATION + " >= 30000", null, MediaStore.Audio.Media.DATE_ADDED + " DESC");
+                while (c != null && c.moveToNext() && out.length() < 3000) {
+                    JSONObject o = new JSONObject(); long id = c.getLong(0);
+                    o.put("id", id); o.put("name", c.isNull(1) ? "Song" : c.getString(1)); o.put("title", c.isNull(2) ? "" : c.getString(2)); o.put("artist", c.isNull(3) ? "" : c.getString(3));
+                    o.put("album", c.isNull(4) ? "" : c.getString(4)); o.put("dur", c.getLong(5)); o.put("size", c.getLong(6)); o.put("date", c.getLong(7)); o.put("mime", c.isNull(8) ? "" : c.getString(8));
+                    o.put("url", server.base() + "/a/" + server.token + "/" + id); o.put("art", server.base() + "/c/" + server.token + "/" + id);
+                    out.put(o);
+                }
+            } catch (Exception e) { /* an empty list */ }
             finally { if (c != null) c.close(); }
             return out.toString();
         }
@@ -411,6 +445,41 @@ public class MainActivity extends Activity {
         };
     }
 
+    // v14d a song from the phone, streamed with byte ranges like a video
+    LocalServer.Resource song(long id) throws IOException {
+        final Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
+        String t = getContentResolver().getType(uri); if (t == null) t = "audio/mpeg"; final String type = t;
+        AssetFileDescriptor fd = getContentResolver().openAssetFileDescriptor(uri, "r"); if (fd == null) throw new IOException("no file");
+        long len = fd.getLength(); if (len < 0) len = fd.getParcelFileDescriptor().getStatSize(); fd.close(); final long L = len;
+        return new LocalServer.Resource() {
+            public long length() { return L; } public String type() { return type; }
+            public InputStream open(long off) throws IOException {
+                android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r"); if (pfd == null) throw new IOException("no file");
+                FileInputStream in = new android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd);
+                try { in.getChannel().position(off); } catch (IOException e) { skip(in, off); }
+                return in;
+            }
+        };
+    }
+    // v14d the song's own picture: the cover embedded in the file, else the album art Android keeps; none = 404 (the game draws its own)
+    LocalServer.Resource cover(long id) throws IOException {
+        final String key = "c:" + id; byte[] img; synchronized (thumbs) { img = thumbs.get(key); }
+        if (img == null) {
+            Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
+            MediaMetadataRetriever r = new MediaMetadataRetriever();
+            try { r.setDataSource(this, uri); img = r.getEmbeddedPicture(); } catch (Exception e) { img = null; } finally { try { r.release(); } catch (Exception e) { /* released */ } }
+            if (img != null && img.length > 1500000) img = null;
+            if (img == null && Build.VERSION.SDK_INT >= 29) { try { Bitmap bm = getContentResolver().loadThumbnail(uri, new Size(512, 512), null); if (bm != null) { ByteArrayOutputStream o = new ByteArrayOutputStream(); bm.compress(Bitmap.CompressFormat.JPEG, 85, o); img = o.toByteArray(); } } catch (Exception e) { img = null; } }
+            if (img == null) throw new IOException("no cover");
+            synchronized (thumbs) { thumbs.put(key, img); }
+        }
+        final byte[] data = img; final String type = data.length > 3 && (data[0] & 0xff) == 0x89 && data[1] == 'P' ? "image/png" : "image/jpeg";
+        return new LocalServer.Resource() {
+            public long length() { return data.length; } public String type() { return type; }
+            public InputStream open(long off) { return new ByteArrayInputStream(data, (int) off, data.length - (int) off); }
+        };
+    }
+
     LocalServer.Resource film(String name) throws IOException {
         if (!name.matches("[A-Za-z0-9._-]{1,80}")) throw new IOException("bad name");
         final File f = new File(filmsDir(), name); if (!f.isFile()) throw new IOException("missing");
@@ -451,6 +520,15 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- navigation, chrome: file chooser, full-screen video
     class Client extends WebViewClient {
+        // v14d (the user, 11-27: "when I open Z Archiver ... the whole app closes, it starts from the very start"): Android may kill the
+        // page's renderer while another app is in front. Without this the whole app died with it; now a new WebView loads the game with
+        // resume=1, and the game puts you back where you were (main.js snapshot)
+        @Override public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
+            stopAudio();
+            if (v == web) { root.removeView(v); try { v.destroy(); } catch (Exception e) { /* gone */ } web = null; makeWeb(); immersive();
+                if (server != null) web.loadUrl(server.base() + "/index.html?app=1&resume=1#k=" + bridgeKey); }
+            return true;
+        }
         @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
             Uri u = req.getUrl(); String sc = u.getScheme() == null ? "" : u.getScheme().toLowerCase(java.util.Locale.ROOT);
             if ("http".equals(sc) && "127.0.0.1".equals(u.getHost()) && server != null && u.getPort() == server.port) return false;

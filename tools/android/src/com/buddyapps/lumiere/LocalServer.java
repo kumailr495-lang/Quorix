@@ -118,7 +118,7 @@ public class LocalServer {
                 }
                 r = e.getValue().get(rest, query); break;
             }
-            if (r == null && assets != null && !path.startsWith("/m/") && !path.startsWith("/t/") && !path.startsWith("/f/")) r = assets.get(path.equals("/") ? "/index.html" : path, query);
+            if (r == null && assets != null && !path.startsWith("/m/") && !path.startsWith("/t/") && !path.startsWith("/f/") && !path.startsWith("/a/") && !path.startsWith("/c/")) r = assets.get(path.equals("/") ? "/index.html" : path, query);
         } catch (IOException e) { r = null; }
         if (r == null) { status(out, 404, "Not Found", keep); return keep; }
         long len = r.length(); String range = h.get("range"); long a = 0, b = len - 1; boolean part = false;
