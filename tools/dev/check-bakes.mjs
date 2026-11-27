@@ -4,7 +4,7 @@
 // usage: node tools/dev/check-bakes.mjs [www]
 import fs from 'node:fs'; import path from 'node:path';
 const WWW = path.resolve(process.argv[2] || 'www'), B = path.join(WWW, 'bake'), idx = JSON.parse(fs.readFileSync(path.join(B, 'index.json'), 'utf8'));
-const ROOMS = ['street', 'lobby', 'wc', 'corridor', 'spine', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'];
+const ROOMS = ['street', 'lobby', 'wc', 'corridor', 'spine', 'hallMax', 'hallCurve', 'hallClassic', 'hall270', 'home'];
 let bad = 0;
 for (const k of ROOMS) {
   const m = idx.rooms && idx.rooms[k], xf = path.join(B, k + '_x.json');

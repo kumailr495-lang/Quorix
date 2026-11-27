@@ -7,6 +7,7 @@ from geo import Acc, Glow, Lights, MAT, lin, mix, cross, sub
 import street12
 import front12
 import lobby12
+from home14 import build_home   # v14d the LUMIÈRE Suite (home14.py; the v14 flat)
 
 def build(key, S):
     fn = globals().get('build_' + key)
@@ -299,22 +300,23 @@ def build_lobby(S):
     acc.box(x0 + 0.02, H, z0 + 0.02, x1 - 0.02, H + 0.4, z1 - 0.02, lobby12.PAINT, lobby12.CEIL, skip='ny', top=MAT['paint'], topcol=P['charcoal'])   # inside the walls
     acc.wall((x0 + 0.2, z0), (x0 + 0.2, z1), -0.3, H + 0.4, 0.4, MAT['fluted'], lin('#4a3226'))                     # west: v12 dark walnut flutes
     acc.wall((x1 - 0.2, z1), (x1 - 0.2, z0), -0.3, H + 0.4, 0.4, MAT['paint'], mix(P['charcoal'], P['stone'], 0.25),     # east: restroom door
-             openings=[(z1 - (-1.0) - 1.1, z1 - (-1.0) + 1.1, 2.6, -0.3)])
+             openings=[(z1 - (-1.0) - 1.1, z1 - (-1.0) + 1.1, 2.6, -0.3), (z1 - (-7.0) - 0.8, z1 - (-7.0) + 0.8, 2.6, -0.3)])   # v14d the women's door and the men's
     # v9.1: the east wall was one flat colour (the user: "empty", "one colour pasted everywhere"): honed travertine panels 1.2 x 2.0 m with
     # 12 mm shadow reveals to 6 m, a black marble base, a brass line at 6 m; the restroom door gets a travertine portal with a brass frame
-    xe = x1 - 0.4; zw0, zw1 = -1.0 - 1.1, -1.0 + 1.1
-    acc.box(xe - 0.03, 0.0, z0 + 0.4, xe, 0.15, zw0 - 0.03, MAT['neroGold'], lin('#ffffff')); acc.box(xe - 0.03, 0.0, zw1 + 0.03, xe, 0.15, z1 - 0.4, MAT['neroGold'], lin('#ffffff'))   # into the jambs
+    xe = x1 - 0.4; zw0, zw1 = -1.0 - 1.1, -1.0 + 1.1; zm0, zm1 = -7.0 - 0.8, -7.0 + 0.8   # v14d two doors: the women's (zw) and the men's (zm)
+    for za_, zb_ in ((z0 + 0.4, zm0 - 0.03), (zm1 + 0.03, zw0 - 0.03), (zw1 + 0.03, z1 - 0.4)): acc.box(xe - 0.03, 0.0, za_, xe, 0.15, zb_, MAT['neroGold'], lin('#ffffff'))   # into the jambs
     zz = z0 + 0.4
     while zz < z1 - 0.5:
         zb_ = min(zz + 1.2, z1 - 0.4)
         for yy, hh in ((0.15, 2.51), (2.66, 1.75), (4.41, 1.74)):
-            if yy < 2.6 and zb_ > zw0 - 0.25 and zz < zw1 + 0.25: continue   # the door
+            if yy < 2.6 and ((zb_ > zw0 - 0.25 and zz < zw1 + 0.25) or (zb_ > zm0 - 0.25 and zz < zm1 + 0.25)): continue   # the doors
             acc.box(xe - 0.04, yy + 0.006, zz + 0.006, xe, yy + hh - 0.006, zb_ - 0.006, MAT['travertine'], lin('#8c7c6e'))   # v12 a darker stone
         zz = zb_
     acc.box(xe - 0.05, 6.15, z0 + 0.4, xe, 6.2, z1 - 0.4, MAT['brass'], P['champagne'])
-    for zf in (zw0 - 0.06, zw1):
-        acc.box(xe - 0.07, 0.0, zf, xe, 2.6, zf + 0.06, MAT['brass'], P['champagne'])   # v11: under the lintel (overlapping it, they shared faces)
-    acc.box(xe - 0.07, 2.6, zw0 - 0.06, xe, 2.66, zw1 + 0.06, MAT['brass'], P['champagne'])
+    for d0_, d1_ in ((zw0, zw1), (zm0, zm1)):
+        for zf in (d0_ - 0.06, d1_):
+            acc.box(xe - 0.07, 0.0, zf, xe, 2.6, zf + 0.06, MAT['brass'], P['champagne'])   # v11: under the lintel (overlapping it, they shared faces)
+        acc.box(xe - 0.07, 2.6, d0_ - 0.06, xe, 2.66, d1_ + 0.06, MAT['brass'], P['champagne'])
     # back wall (z0): the spine's exit door at G; the portal to the bridge at L1 (x 7.4 .. 13.0); the lift shaft opening at L1 is inside
     acc.wall((x1, z0 + 0.2), (x0, z0 + 0.2), -0.3, H + 0.4, 0.4, MAT['paint'], P['charcoal'],
              openings=[(x1 - 1.6, x1 + 1.6, 3.0, -0.3), (x1 - 13.0, x1 - 7.4, L1 + 3.4, L1 - 0.32)], trim=(0.4, 0.4))   # door and portal: no sill in the floor's plane
@@ -521,7 +523,8 @@ def build_lobby(S):
     acc.box(x0 + 0.75, 0.0, co['z0'] - 0.12, co['x1'] - 0.9, 0.95, co['z0'] - 0.05, MAT['lacquer'], mix(P['velvet'], P['charcoal'], 0.4))
     acc.box(x0 + 0.75, 0.95, co['z0'] - 0.14, co['x1'] - 0.9, 0.99, co['z0'] - 0.05, MAT['calacatta'], lin('#e8e2da'))
     acc.box(xe - 0.075, 2.84, -2.25, xe - 0.04, 3.3, 0.25, MAT['powder'], lin('#16171a'))
-    signs.append({'id': 'wayfind_wc', 'x': xe - 0.081, 'y': 3.07, 'z': -1.0, 'yaw': -math.pi / 2, 'w': 2.4, 'h': 0.42, 'emit': 1})
+    signs.append({'id': 'wayfind_wcf', 'x': xe - 0.081, 'y': 3.07, 'z': -1.0, 'yaw': -math.pi / 2, 'w': 2.4, 'h': 0.42, 'emit': 1})   # v14d one sign over each door
+    signs.append({'id': 'wayfind_wcm', 'x': xe - 0.081, 'y': 3.07, 'z': -7.0, 'yaw': -math.pi / 2, 'w': 2.0, 'h': 0.42, 'emit': 1})
     signs += sign_tickets + [sign_food]   # v12b on the zones' canopies (lobby12)
     # v13 (the user, 11-20: "make the reception and the areas separated and much more defined"): Nero Marquina fins with lit brass noses
     # between the zones, out 1.4 m past the counters: the ticket bay (the desk and the kiosks) from the front fin to the popcorn's, the
@@ -975,7 +978,7 @@ def build_wc(S):
     tile, floor_c, stone, part = lin('#e9e5df'), lin('#cfc8be'), lin('#e8e2da'), lin('#3a3530')
     # v9.1: dark porcelain in large tiles (scan)
     slab(acc, x0, z0, x1, z1, 0.0, 0.3, MAT['wcFloor'], lin('#f4f4f4')); slab(acc, x0, z0, x1, z1, H + 0.2, 0.2, MAT['paint'], lin('#f2efe9'))
-    acc.wall((x0 + 0.1, z0), (x0 + 0.1, z1), -0.3, H + 0.2, 0.2, MAT['wcWall'], lin('#fbfaf7'), openings=[(-1.0 - z0 - 1.1, -1.0 - z0 + 1.1, 2.6, -0.3)])
+    acc.wall((x0 + 0.1, z0), (x0 + 0.1, z1), -0.3, H + 0.2, 0.2, MAT['wcWall'], lin('#fbfaf7'), openings=[(-1.0 - z0 - 1.1, -1.0 - z0 + 1.1, 2.6, -0.3), (-7.0 - z0 - 0.8, -7.0 - z0 + 0.8, 2.6, -0.3)])   # v14d the women's door, the men's
     acc.wall((x1 - 0.1, z1), (x1 - 0.1, z0), -0.3, H + 0.2, 0.2, MAT['wcWall'], lin('#fbfaf7'))
     acc.wall((x1, z0 + 0.1), (x0, z0 + 0.1), -0.3, H + 0.2, 0.2, MAT['wcWall'], lin('#fbfaf7'))
     acc.wall((x0, z1 - 0.1), (x1, z1 - 0.1), -0.3, H + 0.2, 0.2, MAT['wcWall'], lin('#fbfaf7'))
@@ -983,6 +986,9 @@ def build_wc(S):
     zm = -4.0; vx = x0 + 2.6
     acc.wall((vx, z0 + 0.2), (vx, z1 - 0.2), 0.0, H, 0.15, MAT['wcWall'], lin('#fbfaf7'), openings=[(zm - 2.6 - z0 - 0.2, zm - 1.2 - z0 - 0.2, 2.5, 0.0), (zm + 1.2 - z0 - 0.2, zm + 2.6 - z0 - 0.2, 2.5, 0.0)])
     acc.wall((vx, zm), (x1 - 0.2, zm), 0.0, H, 0.2, MAT['wcWall'], lin('#fbfaf7'))
+    # v14d (the user, 11-26: "washrooms not separated"): the vestibule is split too, so the men's and the women's are two rooms from the
+    # lobby on: each its own door, its own half of the vestibule, its own way in
+    acc.wall((x0 + 0.1, zm), (vx, zm), 0.0, H, 0.2, MAT['wcWall'], lin('#fbfaf7'))
     rooms = (('M', z0 + 0.2, zm), ('F', zm, z1 - 0.2))
     fx = []
     for tag, za, zb in rooms:

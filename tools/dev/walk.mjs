@@ -49,6 +49,7 @@ const walks = await p.evaluate(async () => {
   const L = window.__lumiere, B = L.B, HM = await import('/js/hallmath.js'), W = L.world, out = [], pt = (o) => [+o.x.toFixed(3), +o.z.toFixed(3)];
   out.push({ label: 'street to lobby (main doors)', start: [0.6, 0, 25.2], pts: [[0.6, 22], [0, 19], [0, 15.5]], room: 'lobby', y: 0 });
   out.push({ label: 'lobby to restrooms and back', start: [18.6, 0, 3.0], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
+  out.push({ label: 'lobby to the men\'s restroom and back (v14d its own door)', start: [18.6, 0, 3.0], pts: [[19.8, -4.0], [20.6, -7.0], [23.3, -7.0], [24.6, -5.9], [27, -9], [24.6, -5.9], [23.3, -7.0], [20.0, -7.0], [19.6, -4.0]], room: 'lobby', y: 0 });
   out.push({ label: 'up escalator to the bridge', start: [9.7, 0, 6.8], pts: [[9.7, 5.2], [9.7, 2.6], [9.7, 0.6], [9.7, -1], [9.7, -6], [9.7, -10.6], [9.7, -12.3], [10.2, -15.5], [0, -18]], room: 'corridor', y: B.L1 });
   // v11 the core: the lift's door is on the landing behind the gate; the car opens at its other end onto the first-floor gallery (v11: its
   // doors open on a call, so the walk calls it first, as the player presses the button)

@@ -57,7 +57,8 @@ export const ZONE = { x0: CORE.xi0, x1: CORE.xi1, z0: -1.7, z1: GATE.z };   // t
 // doors. oneWay: the side you can pass from. kind: slide (auto glass), pair (heavy double doors), push (exit doors with push bars)
 export const DOORS = [
   { id: 'main', rooms: ['street', 'lobby'], kind: 'slide', axis: 'x', x: 0, z: FACADE, w: 4.0, h: 3.0, y: 0 },
-  { id: 'wc', rooms: ['lobby', 'wc'], kind: 'open', axis: 'z', x: 22, z: -1.0, w: 2.2, h: 2.6, y: 0 },
+  { id: 'wc', rooms: ['lobby', 'wc'], kind: 'open', axis: 'z', x: 22, z: -1.0, w: 2.2, h: 2.6, y: 0 },   // v14d the women's (the user, 11-26: "washrooms not separated")
+  { id: 'wcM', rooms: ['lobby', 'wc'], kind: 'open', axis: 'z', x: 22, z: -7.0, w: 1.6, h: 2.6, y: 0 },   // v14d the men's: its own door, its own half of the vestibule
   { id: 'spineOut', rooms: ['spine', 'lobby'], kind: 'pair', axis: 'x', x: 0, z: -14, w: 3.2, h: 3.0, y: 0, oneWay: 'spine' },
   { id: 'mezzPortal', rooms: ['lobby', 'corridor'], kind: 'open', axis: 'x', x: 10.2, z: -14, w: 5.6, h: 3.4, y: L1 },
 ];
@@ -101,11 +102,17 @@ for (const side of [-1, 1]) {
       ceil: Math.round(Math.min(under ? L1 - 0.45 : 99, Math.max(3.2, top + 2.9)) * 100) / 100, flights });
   }
 }
+// v14d the LUMIÈRE Suite (the user, 11-26: private theatres, "house (fake home illusion, bed + TV/projector) ... an actual 3D modelled
+// remote ... no tablet in room ones"): the flat built in v14 (tools/blender/arch/home14.py) as the cinema's private suite, set apart from the
+// building like a top floor; you go up from the lobby by its own lift (a fade) and come down the same way. The east room is the home cinema.
+export const HOME = { x0: 300, x1: 322, z0: 0, z1: 11, ceil: 3.2, split: 316, door: { x: 309, z: 11, w: 1.0 }, cinemaDoor: { x: 316, z: 9.6, w: 1.0 },
+  inside: { x: 309, z: 10.2, yaw: 0 }, out: { x: 14.5, z: 4.4, yaw: Math.PI }, riser: { z0: 6.3, z1: 8.9, y: 0.25 } };
 // rooms: kind drives the Blender builder; level = the lowest floor in it; vis = rooms drawn when you are in it (portal culling)
 export const ROOMS = {
   street: { kind: 'street', level: 0, rect: [STREET.x0, STREET.z0, STREET.x1, STREET.z1], outdoor: true, vis: ['lobby'] },
   lobby: { kind: 'lobby', level: 0, rect: [LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], ceil: LOBBY.ceil, vis: ['street', 'wc', 'corridor', 'spine'] },
   wc: { kind: 'wc', level: 0, rect: [WC.x0, WC.z0, WC.x1, WC.z1], ceil: WC.ceil, vis: ['lobby'] },
+  home: { kind: 'home', level: 0, rect: [HOME.x0, HOME.z0, HOME.x1, HOME.z1], ceil: HOME.ceil, vis: [] },
   corridor: { kind: 'corridor', level: L1, rect: [BRIDGE.x0, LINK_W.z0, BRIDGE.x1, BRIDGE.z1], ceil: L1 + 4.2, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
   spine: { kind: 'spine', level: 0, rect: [SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], ceil: SPINE.ceil, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
 };
@@ -138,7 +145,7 @@ export const NAV = {
     // v9.1: four nodes round the middle of the lobby (v11: the lounge moved to the front-east corner; the middle is open floor, so the
     // nodes are also joined straight across it)
     lounge: [-7.0, 0, 1.0], loungeN: [-1.0, 0, 7.0], lounge2: [5.0, 0, 1.0], loungeS: [-1.0, 0, -5.0],
-    wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0], wcMa: [23.3, 0, -5.9], wcMg: [24.6, 0, -5.9], wcFg: [24.6, 0, -2.1],
+    wcDoor: [20.6, 0, -1.0], wcIn: [23.6, 0, -1.0], wcM: [27.0, 0, -9.0], wcF: [27.0, 0, 1.0], wcMid: [19.8, 0, -4.0], wcDoorM: [20.6, 0, -7.0], wcInM: [23.3, 0, -7.0], wcMg: [24.6, 0, -5.9], wcFg: [24.6, 0, -2.1],
     // v11: walkers cross the lobby in front of the gate line (z 4.0), not through it. Inside the zone: the ticket leaf, the landing, the
     // escalators' feet and the lift's door (liftG); the exit leaves are in front of the down escalator (exitIn). On the first floor the
     // lift opens onto the gallery (liftL1), which meets the mezzanine at galS; galB rounds the escalator void's corner
@@ -151,7 +158,7 @@ export const NAV = {
   },
   edges: [['kerb', 'plaza'], ['plaza', 'doorOut'], ['doorOut', 'doorIn'], ['doorIn', 'greet'], ['doorIn', 'foyer'], ['greet', 'foyer'], ['foyer', 'boxQ2'], ['boxQ2', 'boxQ'],
     ['foyer', 'foyerW'], ['foyerW', 'loungeN'], ['foyer', 'foyerE'], ['foyerE', 'lounge2'], ['loungeN', 'lounge'], ['loungeN', 'lounge2'], ['lounge', 'loungeS'], ['loungeS', 'lounge2'], ['loungeN', 'loungeS'], ['lounge', 'lounge2'], ['lounge', 'conQ2'], ['conQ2', 'conQ'],
-    ['east', 'eastC'], ['eastC', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcIn', 'wcMa'], ['wcMa', 'wcMg'], ['wcMg', 'wcM'], ['wcIn', 'wcFg'], ['wcFg', 'wcF'],
+    ['east', 'eastC'], ['eastC', 'wcDoor'], ['wcDoor', 'wcIn'], ['wcDoor', 'wcMid'], ['wcMid', 'wcDoorM'], ['wcDoorM', 'wcInM'], ['wcInM', 'wcMg'], ['wcMg', 'wcM'], ['wcIn', 'wcFg'], ['wcFg', 'wcF'],
     ['lounge2', 'gateW'], ['gateW', 'gate'], ['foyer', 'gate'], ['gate', 'gateIn'], ['gateIn', 'escBot'], ['escBot', 'escTop'], ['escTop', 'mezz'], ['mezz', 'portal'], ['mezz', 'downTop'],
     ['downTop', 'downBot'], ['downBot', 'downOut'], ['downOut', 'gate'], ['downOut', 'east'], ['gate', 'east'], ['gateIn', 'exitIn'], ['exitIn', 'liftLob'], ['liftLob', 'liftG'], ['exitIn', 'downOut'], ['liftG', 'liftL1'],
     ['liftL1', 'galS'], ['galS', 'galB'], ['galB', 'mezz'], ['galB', 'portal'], ['portal', 'bridgeC'], ['portal', 'bridgeE'],

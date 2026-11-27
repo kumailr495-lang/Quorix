@@ -27,6 +27,7 @@ import { Together } from './mpui.js';
 import { Wayfinder } from './wayfind.js';
 import { Guide } from './guide.js';
 import { Phone } from './phone.js';
+import { Home } from './home.js';
 import { LobbyLife } from './anim12.js';
 import { Credits } from './credits.js';
 import { Career, Jobs } from './career.js';
@@ -161,7 +162,7 @@ async function boot() {
   const way = new Wayfinder(world, crowd); let wayT = 0; const guide = new Guide(engine.scene, world);   // v12b the way on the floor and a light at the goal
   // v13 the phone (phone.js): your ticket, the map, your tab, a camera, your photos and stubs, friends, settings; it never stops the game
   const theatres = new Theatres(world); theatres.applyAll();   // v14 My Theatre: each hall's saved look
-  const phone = new Phone({ ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, theatres: () => theatres, halls: () => world.halls.map((h) => ({ id: h.id, name: h.name.replace('LUMIERE ', '') })), stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
+  const phone = new Phone({ home: () => home, room: () => room, goSuite: () => goSuite(), suitePrice: () => (game === 'quick' ? t('suite.free') : credits.fmt(SUITE_PRICE)), ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, theatres: () => theatres, halls: () => world.halls.map((h) => ({ id: h.id, name: h.name.replace('LUMIERE ', '') })), stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
     guide: () => { settings.goal = true; saveSettings(settings); }, showTicket: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'),
     together: () => together.open(), settings: () => ui.openSettings(), sound, toast: (m, ms, k) => ui.toast(m, ms, k), native: !!window.LumiereMedia,
    
@@ -188,6 +189,15 @@ async function boot() {
     tablet.open = (tab, o = {}) => { const s = player.seated && ticket ? seatOf(ticket) : null, h = s && world.hallById(ticket.hall);
       if (s && h && room === h.key && !o.server && !armTab.group.visible) { sound.tablet && sound.tablet(true); armTab.show(h, s, () => open0(tab, o)); return; } open0(tab, o); };
     tablet.close = () => { close0(); armTab.hide(); }; }
+  // v14d the LUMIÈRE Suite (home.js, the v14 flat): a private apartment with its own screening room, up its own lift from the lobby (a fade)
+  const SUITE_PRICE = 300, travel = (x, z, yaw, cb) => { ui.fade(1, 0.35); setTimeout(() => { if (sitRelease) sitRelease(); player.place(x, z, yaw, 0, 0); if (cb) cb(); ui.fade(0, 0.6); }, 380); };
+  const home = new Home(world, mats, credits, sound, { travel, engine, player: () => player, toast: (m, ms) => ui.toast(m, ms), event: (n) => career.event(n),
+    openApp: (app, tab) => { phone.homeTab = tab; phone.open(app); }, wardrobe: () => together.open({ look: true }), coffee: () => { if (held) { ui.toast(t('toast9.handsFull'), 2200); return; } if (sound.espresso) sound.espresso(); takeItem('espresso'); career.event('coffee'); },
+    tvInfo: () => ({ shows: world.halls.map((h) => `${h.name.replace('LUMIERE ', '')}  ·  ${shows.title(h.id) || t('show.none')}`), ticket: ticket && ticket.seat ? `${t('home.tvYour')}  ${ticket.title || ''}  ·  ${(ticket.hallName || '').replace('LUMIERE ', '')}  ·  ${ticket.seat}` : null }) });
+  async function goSuite() {
+    if (mode !== 'play' || intro.active || room === 'home') return; if (together.active) { ui.toast(t('suite.solo'), 2600); return; }
+    if (game !== 'quick' && !credits.spend(SUITE_PRICE, 'suite')) { ui.toast(t('suite.short'), 2600, 'error'); return; }
+    ui.toast(t('suite.loading'), 1800); await home.prepare(); travel(BLD.HOME.inside.x, BLD.HOME.inside.z - 1.2, 0, () => { sound.door && sound.door(); setTimeout(() => ui.toast(t('suite.ready'), 3600), 700); career.event && career.event('suite'); }); }
   bill.onChange = () => ui.setWallet(game === 'flow' ? credits.fmt(credits.bal) : null); credits.onChange(() => bill.onChange());   // v14 the wallet chip: your Lumiere Credits
   function applySettings(gfx) {
     saveSettings(settings); engine.applySettings(settings); { const lo = settings.graphics === 'low'; mats.setQuality({ normalMaps: !lo, macro: settings.graphics === 'high', detile: settings.graphics === 'high', texSize: lo ? 256 : 512 }); }   // v14b macro tone only on High   // v13 the preset at once, as at boot
@@ -207,6 +217,7 @@ async function boot() {
   // ---------- conversations ----------
   function action(a, npc, tk) {
     const [verb, arg] = a.split(':');
+    if (verb === 'suite') { setTimeout(() => goSuite(), 300); return false; }   // v14d the host's offer: the private lift up to the Suite
     if (verb === 'book' || verb === 'bookOwn') { setTimeout(() => { booking.open({ quick: game === 'quick', own: verb === 'bookOwn' }); if (verb === 'bookOwn') pickOwn(); }, 60); return false; }
     if (verb === 'buy') { if (held) { tk.line(pick('bar.bye') || t('ven.full'), [['opt.thanks', 'end']]); ui.toast(t('toast9.handsFull'), 2400); return true; }
       if (!bill.pay(bill.itemPrice(arg), arg)) { ui.toast(t('lc.short', { price: bill.fmt(bill.itemPrice(arg)) }), 2800, 'error'); sound.liftDeny && sound.liftDeny(); return true; } if (game === 'flow') sound.pay();
@@ -361,7 +372,7 @@ async function boot() {
     world.lift.press(b.id); together.sendLift(b.id); sound.liftBeep ? sound.liftBeep() : sound.click(); if (b.id === 'alarm') setTimeout(() => sound.bell(), 160); if (/^car/.test(b.id)) career.event('lift');
   }
   player.onVRTap = () => { if (mode === 'play' && !modal && !talk.open && !intro.active && ui.promptFn) ui.promptFn(); };   // v14b phone VR: the viewer's button presses what the reticle is on
-  player.onTap = (x, y, locked) => { if (mode !== 'play' || modal || talk.open || intro.active || input.vr || player.seated) return;
+  player.onTap = (x, y, locked) => { if (mode === 'play' && !modal && !talk.open && home.remote && home.remote.held && home.remote.tap(x, y)) return; if (mode !== 'play' || modal || talk.open || intro.active || input.vr || player.seated) return;
     const b = locked ? aimBtn : (world.roomAt(player.x, player.y, player.z) === 'lobby' ? world.lift.pick(engine.camera, player.y, x, y, innerWidth, innerHeight, 44) : null); if (b) pressLift(b); };
   addEventListener('pointerdown', () => sound.unlock(), { capture: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } });
@@ -436,7 +447,7 @@ async function boot() {
     if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
     else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); traffic.bodiesNear(player.x, player.z, 2.5, player.dyn); intro.bodiesNear(player.x, player.z, 2.5, player.dyn); player.update(dt); }
     input.update(dt);
-    intro.update(dt, player); armTab.update(dt);
+    intro.update(dt, player); armTab.update(dt); home.update(dt, now, player); if (home.remote) home.remote.update(dt);
     { const hear = world.vis.has('street') ? (world.roomAt(player.x, 1, player.z) === 'street' ? 1 : 0.35) : 0; intro.hear = hear; traffic.hear = hear;
       traffic.paused = intro.active && intro.t < intro.SHOT_B; traffic.update(dt, player, intro.carOn && !intro.inCar ? [intro.car] : []); }
     const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } room = r;
@@ -517,8 +528,12 @@ async function boot() {
     // v11 (the user: "wasn't the exit supposed to be faster"): once your film is over, the plate says Leave and takes you straight to the
     // lobby (seated or standing anywhere in the hall), instead of walking down to the exit doors by the screen
     const over = !!(hk && ticket && ticket.watched && ticket.hallKey === hk);
+    if (player.seated && r === 'home' && !player.busy && home.remote && !home.remote.held && home.rm) { const R = home.rm.find((q) => q.id === (player.x > BLD.HOME.split ? 'cine' : 'flat'));   // v14d the remote by your seat
+      if (R && R.m.visible && Math.hypot(R.x - player.x, R.z - player.z) < 4.6) { ui.setPrompt(t('suite.remote'), () => { home.remote.pickUp(); home.remote.from = R.id; R.m.visible = false; }); return; } }
     if (player.seated) { ui.setPrompt(player.busy ? null : t(over ? 'hud.leave' : 'hud.stand'), () => (over ? leaveHall() : stand())); return; }
     if (player.busy) { ui.setPrompt(null); return; }
+    if (r === 'home') { engine.camera.getWorldDirection(fwd); const fl0 = Math.hypot(fwd.x, fwd.z) || 1, ah = (x, z, k = 0.3) => { const dx = x - player.x, dz = z - player.z, d = Math.hypot(dx, dz) || 1; return (dx * fwd.x + dz * fwd.z) / fl0 / d > k; };
+      const hp = home.prompt(r, player, ah, lookAt); if (hp) { ui.setPrompt(hp.label, hp.fn); return; } }   // v14d the Suite: its door, lights, TV, wardrobe, coffee, remotes (home.js)
     { const jp = jobs.prompt(r, player, hk, lookAt); if (jp) { ui.setPrompt(jp.label, jp.fn); return; } }   // v14 a shift's next step (career.js)
     { let best = null, bd = 1.7; for (const sp of world.sitSpots) { if (sp.taken || sp.room !== r || Math.abs(sp.y - 0.5 - player.y) > 1.0) continue; const d = Math.hypot(sp.x - player.x, sp.z - player.z); if (d < bd && lookAt(sp.x, sp.y + 0.25, sp.z, 0.45, 2.4)) { bd = d; best = sp; } }
       if (best) { ui.setPrompt(t('hud.sitDown'), () => sitSpot(best)); return; } }   // v14 sofas, armchairs, benches and stools outside the halls
@@ -545,7 +560,7 @@ async function boot() {
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); clearInterval(ldTimer); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 1300); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
   else { const sn = snapLoad(); if (sn && settings.lang) setTimeout(() => resumeSnap(sn), 900 + hold); }
-  window.__lumiere = { THREE, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
+  window.__lumiere = { THREE, home, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, recliner, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles

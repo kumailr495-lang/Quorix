@@ -6,7 +6,7 @@ const FOOD = (line, back) => ({ hot: [line, buy(['nachos', 'hotdog', 'burger', '
   cold: [line, buy(['cola', 'lemonade', 'icedtea', 'shake', 'slush', 'water'], back)], combo: [line, buy(['combo', 'date', 'sweettooth'], back)] });
 export const TREES = {
   host: { start: 'hello', nodes: {
-    hello: ['host.hello', [['opt9.tickets', 'tickets'], ['opt9.food', 'food'], ['opt9.wc', 'wc'], ['opt9.gate', 'gate'], ['opt.bye', 'end']]],
+    hello: ['host.hello', [['opt9.tickets', 'tickets'], ['opt9.food', 'food'], ['opt9.wc', 'wc'], ['opt9.gate', 'gate'], ['opt.suite', 'act:suite'], ['opt.bye', 'end']]],   // v14d the Suite: the host takes you up
     back: ['host.back', [['opt9.tickets', 'tickets'], ['opt9.food', 'food'], ['opt9.wc', 'wc'], ['opt.bye', 'end']]],
     tickets: ['host.tickets', [['opt.thanks', 'end'], ['opt.back', 'hello']]], food: ['host.food', [['opt.thanks', 'end'], ['opt.back', 'hello']]],
     wc: ['host.wc', [['opt.thanks', 'end'], ['opt.back', 'hello']]], gate: ['host.gate', [['opt.thanks', 'end'], ['opt.back', 'hello']]] } },

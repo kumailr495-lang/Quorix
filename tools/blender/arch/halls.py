@@ -116,9 +116,20 @@ def build_hall(h, L1):
         nu_, nd_ = (B[1] - A[1]) * (D[2] - A[2]) - (B[2] - A[2]) * (D[1] - A[1]), (B[0] - A[0]) * (D[1] - A[1]) - (B[1] - A[1]) * (D[0] - A[0])
         if nu_ * ndu + nd_ * ndd < 0: acc.quad(A, D, C, B, mat, col)
         else: acc.quad(A, B, C, D, mat, col)
+    BRASS = lin('#b08d57')
     def nosing(sg, e, y):
-        p, q = P(sg * (a0w + 0.12), e), P(sg * (aW - 0.12), e)
-        up_quad(glow, p, q, 0.012, 0.042, y + 0.004, th['step'], 1.6)
+        """v14d (the user, 11-27: "the lights on aisles aren't even placed properly ... as if you used no geometry"): every aisle step gets a
+        brass nosing along its edge with the light strip set in its top, and a second strip at the top of the riser under it, facing the
+        screen: the steps read as steps from the rear and from the front, on every step, along the step's own edge (an arc chord in CURVE)"""
+        n0, n1, n2, n3 = P(sg * (a0w + 0.06), e - 0.012), P(sg * (aW - 0.06), e - 0.012), P(sg * (aW - 0.06), e + 0.028), P(sg * (a0w + 0.06), e + 0.028)
+        acc.prism([n0, n1, n2, n3], y - 0.006, y + 0.012, MAT['metal'], BRASS)
+        p, q = P(sg * (a0w + 0.1), e), P(sg * (aW - 0.1), e)
+        up_quad(glow, p, q, -0.004, 0.02, y + 0.017, th['step'], 1.9)
+        if y > 0.06:
+            pa, pb = P(sg * (a0w + 0.12), e - 0.005), P(sg * (aW - 0.12), e - 0.005)
+            A, B, C, D = (pa[0], y - 0.045, pa[1]), (pb[0], y - 0.045, pb[1]), (pb[0], y - 0.028, pb[1]), (pa[0], y - 0.028, pa[1])
+            nz = cross(sub(B, A), sub(C, A))[2]   # facing the screen (-d), whatever the corner order
+            glow.quad(*((A, B, C, D) if nz <= 0 else (D, C, B, A)), th['step'], 1.2)
     nC = 18 if k else 1
     carpet, rcol = th['carpet'], th['riser']
     # ---------------------------------------------------------------- structure (closed solids)

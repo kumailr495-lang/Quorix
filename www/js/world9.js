@@ -9,7 +9,7 @@ import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
-import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS } from './building.js';
+import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS, HOME } from './building.js';
 import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named, LEAF_IDS } from './library.js';
@@ -49,6 +49,7 @@ export function roomAt(x, y, z) {
   for (const p of EXIT_PASSAGES) if (IN(p, x, z, WALL + 0.05) && y < p.ceil) return 'spine';   // v12b the exit passages (and their doors' thresholds in the halls' walls) belong to the spine (before the corridor's ground-floor fallback: two run under the bridge)
   if (IN(LOBBY, x, z)) return 'lobby';
   if (IN(WC, x, z)) return 'wc';
+  if (IN(HOME, x, z, 0.05)) return 'home';   // v14d the Suite, set apart from the building
   if (IN(STREET, x, z, 0.5)) return 'street';
   if (x > STREET.x0 - 6.5 && x < STREET.x1 + 6.5 && z > STREET.z0 - 0.5 && z < STREET.far + 0.5) return 'street';   // v12: the street's ends, up to the blocks across them
   for (const r of CORR) if (IN(r, x, z)) return 'corridor';
@@ -268,6 +269,17 @@ function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.
   g.font = `600 ${lab}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('LIFT', x + h * 0.68, h * 0.5); ls('0px');
   g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.3, h * 0.48); }
 export const PANEL_DRAW = {
+  // v14 the flat's window (home14.py: 28 m out, 97 x 40 m): the street from the Astor's third floor, the cinema across the road. The picture
+  // is the engine's own render (tools/dev/homeview.mjs); till it loads, a night sky over dark roofs with lit windows
+  homeview: (g, w, h) => { const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#05070d'); sky.addColorStop(0.55, '#0c1220'); sky.addColorStop(1, '#151018'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+    let r = 7; const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647); g.fillStyle = '#07080c';
+    for (let x = 0; x < w;) { const bw = 40 + rnd() * 120, bh = h * (0.18 + rnd() * 0.3); g.fillRect(x, h * 0.62 - bh, bw, bh + h); for (let k = 0; k < 14; k++) { if (rnd() < 0.45) continue; g.fillStyle = rnd() < 0.7 ? '#ffcf8a' : '#9fc1ff'; g.globalAlpha = 0.35 + rnd() * 0.5; g.fillRect(x + 4 + rnd() * (bw - 10), h * 0.62 - bh + 6 + rnd() * bh * 0.9, 4, 6); g.globalAlpha = 1; g.fillStyle = '#07080c'; } x += bw + 4; }
+    const im = new Image(); im.onload = () => { g.drawImage(im, 0, 0, w, h); if (g.canvas.__tex) g.canvas.__tex.needsUpdate = true; }; /* v14d the Suite looks out over the city: the drawn skyline only (the old render showed the cinema from across the road) */ void im; },
+  // v14 the home cinema's screen while nothing plays (home.js puts a film's video on it)
+  homescreen: (g, w, h) => { const gr = g.createRadialGradient(w / 2, h * 0.45, 10, w / 2, h / 2, w * 0.7); gr.addColorStop(0, '#1d1828'); gr.addColorStop(1, '#060608'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#e8c27a'; g.font = `500 ${h * 0.14}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.03}px`; g.fillText('LUMIÈRE', w / 2, h * 0.42); if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.fillStyle = '#b9ab95'; g.font = `500 ${h * 0.055}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.012}px`; g.fillText('HOME CINEMA', w / 2, h * 0.58); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
+  // v12c the cabinet poppers' headers (zones12.py popcorn_kettle): POPCORN in red on cream, a red rule above and below
   kettlehead: (g, w, h) => { g.fillStyle = '#efe4c8'; g.fillRect(0, 0, w, h); g.fillStyle = '#a3141e'; g.fillRect(0, h * 0.06, w, h * 0.07); g.fillRect(0, h * 0.87, w, h * 0.07);
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 ${h * 0.62}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.12}px`; g.fillText('POPCORN', w / 2, h * 0.53); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   // v12 the heritage corner's two posters: original 1950s-style cinema bills (no real film, no real studio)
@@ -349,9 +361,11 @@ export const PANEL_DRAW = {
     g.font = `700 ${h * 0.5}px ${SANS}`; g.textAlign = 'center'; g.textBaseline = 'middle'; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.04}px`;
     const xa = x0 + s * 1.1; g.fillText('EXIT', xa + (w - xa) / 2, h * 0.54); if ('letterSpacing' in g) g.letterSpacing = '0px'; },
   // v9.1 wayfinding: ink ground, gold rule, white caps, an arrow; RESTROOMS gets the two figures
-  wayfind: (g, w, h, id) => { const k = id.split('_')[1]; if (k === 'zone') { zoneSign(g, w, h); return; } const T = { screens: ['SCREENS 1 – 4', '↑', 'MAX  ·  CURVE  ·  CLASSIC  ·  X·270'], wc: ['RESTROOMS', '', ''], tickets: ['TICKETS', '', 'BOX OFFICE'], food: ['FOOD & DRINKS', '', 'POPCORN  ·  NACHOS  ·  COFFEE'], out: ['WAY OUT', '↓', 'LOBBY  ·  RESTROOMS  ·  CAFÉ'] }[k] || [k.toUpperCase(), '', ''];
+  wayfind: (g, w, h, id) => { const k = id.split('_')[1]; if (k === 'zone') { zoneSign(g, w, h); return; } const T = { screens: ['SCREENS 1 – 4', '↑', 'MAX  ·  CURVE  ·  CLASSIC  ·  X·270'], wc: ['RESTROOMS', '', ''], wcf: ['WOMEN', '', ''], wcm: ['MEN', '', ''], tickets: ['TICKETS', '', 'BOX OFFICE'], food: ['FOOD & DRINKS', '', 'POPCORN  ·  NACHOS  ·  COFFEE'], out: ['WAY OUT', '↓', 'LOBBY  ·  RESTROOMS  ·  CAFÉ'] }[k] || [k.toUpperCase(), '', ''];
     g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.fillStyle = '#e3b25f'; g.fillRect(0, h * 0.92, w, h * 0.08); g.fillStyle = '#f4efe6'; g.textBaseline = 'middle';
-    let x = h * 0.35; if (k === 'wc') { const fig = (cx, dress) => { g.beginPath(); g.arc(cx, h * 0.24, h * 0.09, 0, Math.PI * 2); g.fill(); if (dress) { g.beginPath(); g.moveTo(cx - h * 0.15, h * 0.72); g.lineTo(cx + h * 0.15, h * 0.72); g.lineTo(cx, h * 0.36); g.fill(); g.fillRect(cx - h * 0.06, h * 0.7, h * 0.04, h * 0.14); g.fillRect(cx + h * 0.02, h * 0.7, h * 0.04, h * 0.14); } else { g.fillRect(cx - h * 0.09, h * 0.36, h * 0.18, h * 0.3); g.fillRect(cx - h * 0.09, h * 0.62, h * 0.07, h * 0.24); g.fillRect(cx + h * 0.02, h * 0.62, h * 0.07, h * 0.24); } };
+    let x = h * 0.35; if (k === 'wcf' || k === 'wcm') { const dress = k === 'wcf', cx = x + h * 0.12; g.beginPath(); g.arc(cx, h * 0.24, h * 0.09, 0, Math.PI * 2); g.fill();
+      if (dress) { g.beginPath(); g.moveTo(cx - h * 0.15, h * 0.72); g.lineTo(cx + h * 0.15, h * 0.72); g.lineTo(cx, h * 0.36); g.fill(); g.fillRect(cx - h * 0.06, h * 0.7, h * 0.04, h * 0.14); g.fillRect(cx + h * 0.02, h * 0.7, h * 0.04, h * 0.14); } else { g.fillRect(cx - h * 0.08, h * 0.36, h * 0.16, h * 0.34); g.fillRect(cx - h * 0.08, h * 0.68, h * 0.06, h * 0.18); g.fillRect(cx + h * 0.02, h * 0.68, h * 0.06, h * 0.18); }
+      x += h * 0.55; } else if (k === 'wc') { const fig = (cx, dress) => { g.beginPath(); g.arc(cx, h * 0.24, h * 0.09, 0, Math.PI * 2); g.fill(); if (dress) { g.beginPath(); g.moveTo(cx - h * 0.15, h * 0.72); g.lineTo(cx + h * 0.15, h * 0.72); g.lineTo(cx, h * 0.36); g.fill(); g.fillRect(cx - h * 0.06, h * 0.7, h * 0.04, h * 0.14); g.fillRect(cx + h * 0.02, h * 0.7, h * 0.04, h * 0.14); } else { g.fillRect(cx - h * 0.09, h * 0.36, h * 0.18, h * 0.3); g.fillRect(cx - h * 0.09, h * 0.62, h * 0.07, h * 0.24); g.fillRect(cx + h * 0.02, h * 0.62, h * 0.07, h * 0.24); } };
       fig(x + h * 0.1, false); fig(x + h * 0.55, true); g.fillRect(x + h * 0.32, h * 0.2, h * 0.02, h * 0.62); x += h * 0.95; }
     g.textAlign = 'left'; g.font = `600 ${h * (T[2] ? 0.36 : 0.46)}px ${SANS}`; if ('letterSpacing' in g) g.letterSpacing = `${h * 0.06}px`; g.fillText(T[0], x, h * (T[2] ? 0.36 : 0.48));
     if (T[2]) { g.font = `400 ${h * 0.17}px ${SANS}`; g.fillStyle = 'rgba(244,239,230,.75)'; g.fillText(T[2], x, h * 0.72); } if ('letterSpacing' in g) g.letterSpacing = '0px';
@@ -451,7 +465,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // v14 (the user: "bins are not placed on random places"; cinemas and food courts put them where people leave with something to throw
   // away: the ends of the counters, the exits, the restroom doors): each stands against a wall or a fin, out of every walking line
   for (const [x, z] of [[-15.9, 0.66], [-8.4, -13.72], [CORE.x0 - 0.25, 1.0], [-2.75, -13.72], [2.75, -13.72]]) add('lobby', 'bin_brass', x, 0, z);
-  add('lobby', 'bench_velvet', 21.25, 0, 5.0, Math.PI / 2); add('lobby', 'bench_velvet', 21.25, 0, -6.5, Math.PI / 2);
+  add('lobby', 'bench_velvet', 21.25, 0, 5.0, Math.PI / 2);   /* v14d the second bench stood where the men's restroom door is now */
   // v9.1 (the user: "eliminate empty spaces ... waiting areas, furniture, plants"): waiting areas by the facade, two east of the doors and one
   // west: deco tub chairs in pairs across a marble side table, a torchere beside them; the ribbon chandelier in the ceiling rings over the
   // lounge; the brand in lit gold letters over the box office and the concessions; planters by the poster wall's benches
@@ -649,13 +663,13 @@ const FRAMED = [
   PIC({ id: 'plaque_muse', x: 0, y: 0.86, z: 10.0 + 1.082 * Math.cos(Math.PI / 8) + 0.034, yaw: 0, w: 0.62, h: 0.19, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the fountain plinth's front flat (statue12.py PA)
   PIC({ id: 'plaque_proj', x: CORE.x0 - 1.2 - 0.5 - 0.034, y: 0.62, z: -3.0, yaw: -Math.PI / 2, w: 0.42, h: 0.12, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the projector's plinth (world9.js DRESS)
   ...[['a', -5.6], ['b', -0.4]].map(([v, z]) => PIC({ id: 'vintage_' + v, x: CORE.x0 - 0.034, y: 1.75, z, yaw: -Math.PI / 2, w: 1.0, h: 1.45, emit: 0.45 })),   // v12 either side of the reel wall
-  PIC({ id: 'picto_m', x: 21.56 - 0.034, y: 1.35, z: -3.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
+  PIC({ id: 'picto_m', x: 21.56 - 0.034, y: 1.35, z: -5.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),   // v14d beside the men's own door
   PIC({ id: 'picto_f', x: 21.56 - 0.034, y: 1.35, z: 1.05, yaw: -Math.PI / 2, w: 0.9, h: 2.0, emit: 1, frame: 'thin' }),
   ...[-7.7, 1.8, 11.3].map((z, i) => PIC({ id: 'mural_' + i, x: 21.6 - 0.034, y: 7.5, z, yaw: -Math.PI / 2, w: 9.2, h: 2.2, emit: 0.25, frame: 'thin' })),   // v12 under the cove band (rooms.py lobby12: its underside at 8.85)
   ...[[-15.4, 1], [-12.8, 2], [-10.2, 3]].map(([x, n]) => PIC({ ...ART, id: 'art_' + n, x, y: 2.25, z: ART.z + 0.014, ...fitArt('art_' + n, 0.8, 1.1), emit: 0.12 })),   // on the cafe's walnut (14 mm)
   PIC({ ...ART, id: 'art_4', x: -4.6, y: 2.0, z: ART.z + 0.014, ...fitArt('art_4', 1.6, 1.1), emit: 0.12, frameCol: '#c9a35e', frameMat: MAT.brass }), PIC({ ...ART, id: 'art_5', x: 4.6, y: 2.0, z: ART.z + 0.014, ...fitArt('art_5', 1.6, 1.1), emit: 0.12, frameCol: '#c9a35e', frameMat: MAT.brass }),   // on the rear wall's walnut (14 mm)
   // v12 a gallery wall: two more over the east wall's velvet benches, on its stone panels (the pictograms' depth)
-  ...[['art_6', 5.0, 2.0, 1.4], ['art_7', -6.5, 1.7, 1.4]].map(([id, z, mw, mh]) => PIC({ id, x: 21.56 - 0.034, y: 2.35, z, yaw: -Math.PI / 2, ...fitArt(id, mw, mh), emit: 0.24, frameCol: '#c9a35e', frameMat: MAT.brass })),
+  ...[['art_6', 5.0, 2.0, 1.4]].map(([id, z, mw, mh]) => PIC({ id, x: 21.56 - 0.034, y: 2.35, z, yaw: -Math.PI / 2, ...fitArt(id, mw, mh), emit: 0.24, frameCol: '#c9a35e', frameMat: MAT.brass })),
   ...[[-6.6, 0.885, 'cosmos'], [6.6, -0.885, 'agent327']].map(([x, yaw, f]) => PIC({ id: `poster_${f}_s`, x: x + Math.sin(yaw) * 0.018, y: 0.98, z: 12.6 + Math.cos(yaw) * 0.018, yaw, w: 1.1, h: 1.7, emit: 0.6 })),
   ...[[9.85, 'bunny'], [11.55, 'llamigos']].map(([x, f]) => PIC({ id: `poster_${f}_s`, x, y: 1.12, z: ESC_BOX_Z - 0.034, yaw: Math.PI, w: 0.9, h: 1.4, emit: 0.6 })),   // v11 on the walnut under the escalators
   ...[[6.0, 'hero'], [14.5, 'wingit']].map(([x, f]) => PIC({ room: 'corridor', id: `poster_${f}_s`, x, y: L1 + 0.98, z: BRIDGE.z0 + 0.8 + 0.018, yaw: 0, w: 1.1, h: 1.7, emit: 0.6 })),
@@ -960,6 +974,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
       if (IN(CAB, x, z)) return world.lift.y; return y > L1 - 1.2 && onMezz(x, z) ? L1 : 0; }
     if (r === 'spine') { const sy = stairY(x, z, y); if (sy !== null) return sy; return world.travelator.contains(x, z) ? 0.12 : 0; }
     if (r === 'street') return z > STREET.kerb && z < STREET.road[1] ? -0.15 : 0;
+    if (r === 'home') { const R = HOME.riser; return x > HOME.split + 0.1 && z > R.z0 && z < R.z1 ? R.y : 0; }   // the Suite cinema's riser
     return 0;
   };
   // what moves you: escalators and the travelator carry whoever stands on them
