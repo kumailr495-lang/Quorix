@@ -72,9 +72,9 @@ h3{margin:0;font:600 20px/1.1 var(--display)}
    progress along the bottom; on the way out the art fades to black first, then the black lifts off the menu (no art dissolving into the lobby) */
 #loader{position:fixed;inset:0;z-index:60;background:#000;overflow:hidden;transition:opacity .6s var(--ease) .5s}
 .ld-art{position:absolute;inset:0;transition:opacity .5s var(--ease)}
-.ld-art i{position:absolute;inset:-5%;background:#000 center/cover no-repeat;opacity:0;transition:opacity 1.8s var(--ease);animation:kb 18s ease-in-out infinite alternate;will-change:transform,opacity}
+.ld-art i{position:absolute;inset:-2%;background:#000 center/cover no-repeat;opacity:0;transition:opacity 1.8s var(--ease);animation:kb 18s ease-in-out infinite alternate;will-change:transform,opacity}
 .ld-art i.on{opacity:1}.ld-art i:nth-child(2n){animation-direction:alternate-reverse}
-@keyframes kb{from{transform:scale(1.02) translate3d(-1.2%,0,0)}to{transform:scale(1.1) translate3d(1.2%,-1%,0)}}
+@keyframes kb{from{transform:scale(1.0) translate3d(-0.6%,0,0)}to{transform:scale(1.045) translate3d(0.6%,-0.4%,0)}}   /* gentle: the paintings' edges (signs near them) stay in view */
 .ld-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 52%,rgba(0,0,0,.78) 88%,rgba(0,0,0,.9) 100%),radial-gradient(120% 90% at 50% 45%,rgba(0,0,0,0) 55%,rgba(0,0,0,.45) 100%);transition:opacity .5s var(--ease)}
 .ld-brand{position:absolute;left:calc(26px + var(--sal));bottom:calc(40px + var(--sab));display:flex;flex-direction:column;gap:6px;text-shadow:0 2px 14px rgba(0,0,0,.8);transition:opacity .5s var(--ease)}
 [dir=rtl] .ld-brand{left:auto;right:calc(26px + var(--sar))}
