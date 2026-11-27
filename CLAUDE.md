@@ -148,6 +148,10 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - **Lessons**: since props above 0.5 m collide (solidProp floorY), a test path that crossed a prop now sticks: walk.mjs walked through the
   bin beside each hall door on the old baffle detour (removed); a lobby guest spot stood on the way to the men's door (moved to 18.0, -0.6).
   Before blaming walls, `world.collide(p, r, y)` along the leg and `crowd.millNet().spots` say what blocks a walker.
+  A model placed but missing from ASSET_LIST is skipped silently (world9 `if (!A) continue`): borne_round never showed and its planters
+  floated from v14b to v14d. Models loaded later (home.js SUITE_ASSETS) must be staged too: stage-www.py reads that list and fails on a
+  missing model. The Suite is reached by travel, so seethru's walked eye points never enter it: zcheck.sh runs tools/dev/homez.mjs for it.
+  Play together: a peer that drops for a moment must not trigger an election at once (mp.js waits 5 s); mp-sync.mjs checks such a blip.
 
 ## v14b/v14c (2026-11-26: the user's phone test; "scrap the city: an indie game where people watch movies together"; APK 14.1, docs/V14-RELEASE-NOTES.md)
 - **Scrapped**: the flat, the vehicles, the phone's Order app (orders come from the armrest tablet and the counters). Story starts with the taxi.
