@@ -82,14 +82,14 @@ export class Jobs {
     return null;
   }
   // what the action button offers here (main.js prompts): { label, fn } or null
-  prompt(room, p, hallKey) {
+  prompt(room, p, hallKey, look = () => true) {
     const j = this.job; if (!j) return null;
-    if (j.kind === 'counter' && !j.started && room === 'lobby' && p.y < 1 && Math.hypot(p.x + 12.8, p.z + 4.0) < 2.4) return { label: t('job.start.counter'), fn: () => this.counter() };
-    if (j.kind === 'gate' && !j.started && room === 'lobby' && p.y < 1 && Math.hypot(p.x - 6.6, p.z - 5.6) < 2.2) return { label: t('job.start.gate'), fn: () => this.gate() };
+    if (j.kind === 'counter' && !j.started && room === 'lobby' && p.y < 1 && Math.hypot(p.x + 12.8, p.z + 4.0) < 2.4 && look(-12.8, 1.0, -4.0, 1.1, 3.4)) return { label: t('job.start.counter'), fn: () => this.counter() };
+    if (j.kind === 'gate' && !j.started && room === 'lobby' && p.y < 1 && Math.hypot(p.x - 6.6, p.z - 5.6) < 2.2 && look(6.6, 1.0, 5.6, 0.9, 3.2)) return { label: t('job.start.gate'), fn: () => this.gate() };
     if (j.kind === 'clean') {
       if (!j.spawned && hallKey === j.hall.key) this.spawnLitter(j.hall);
       if (j.spawned) {
-        let best = null, bd = 1.1; for (const l of this.litter) { if (l.got) continue; const d = Math.hypot(l.x - p.x, l.z - p.z); if (d < bd && Math.abs(l.y - p.y) < 1.2) { bd = d; best = l; } }   // v14b p.y is your feet (it was taken as your eyes: nothing could be picked)
+        let best = null, bd = 2.2; for (const l of this.litter) { if (l.got) continue; const d = Math.hypot(l.x - p.x, l.z - p.z); if (d < bd && Math.abs(l.y - p.y) < 1.2 && look(l.x, l.y + 0.05, l.z, 0.2, 2.6)) { bd = d; best = l; } }   // v14d only the piece the crosshair is on (v14b p.y is your feet)
         if (best && this.bag < 8) return { label: t('job.pick'), fn: () => this.pick(best) };
         if (this.bag && this.h.nearBin()) return { label: t('job.empty', { n: this.bag }), fn: () => this.empty() };
       }

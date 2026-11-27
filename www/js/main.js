@@ -259,7 +259,13 @@ async function boot() {
   }
   function useItem() { if (!held || itemAnim > 0) return; if (held.left <= 0) { ui.toast(t('toast.findBin'), 2400); return; } itemAnim = 1; held.left--; if (held.kind === 'eat' || held.kind === 'popcorn') sound.crunch(); else sound.sip(held.left === 0); itemMesh.userData.setLevel(held.left / held.max); ui.setItem(held.kind, held.left, held.max); }
   function binItem() { if (!held) return; sound.bin(); engine.vm.remove(itemMesh); itemMesh = null; held = null; ui.setItem(null); ui.toast(t('toast.binned'), 1800); tut.event('binned'); }
-  const nearBin = () => world.bins.find((b) => Math.hypot(b.x - player.x, b.z - player.z) < 1.3 && Math.abs((b.y || 0) - player.y) < 1);
+  // v14d (the user, 11-27: "the trash pick up option should only come when I look at it ... and so for everything else"): every action is
+  // offered only for the thing the crosshair is on: the ray from your eyes has to pass within the thing's own size (r, metres) of its middle,
+  // within reach; standing close is not enough
+  const _lk = new THREE.Vector3();
+  function lookAt(x, y, z, r, reach = 2.2) { const c = engine.camera, p = c.position; c.getWorldDirection(_lk); const dx = x - p.x, dy = y - p.y, dz = z - p.z, d = Math.hypot(dx, dy, dz); if (d > reach || d < 0.05) return false;
+    return Math.acos(Math.min(1, (dx * _lk.x + dy * _lk.y + dz * _lk.z) / d)) < Math.atan2(r, d) + 0.05; }
+  const nearBin = () => world.bins.find((b) => Math.abs((b.y || 0) - player.y) < 1 && lookAt(b.x, (b.y || 0) + 0.5, b.z, 0.4, 2.4));
   // ---------- restrooms ----------
   let washed = false;
   function useFixture(u) {
@@ -513,20 +519,20 @@ async function boot() {
     const over = !!(hk && ticket && ticket.watched && ticket.hallKey === hk);
     if (player.seated) { ui.setPrompt(player.busy ? null : t(over ? 'hud.leave' : 'hud.stand'), () => (over ? leaveHall() : stand())); return; }
     if (player.busy) { ui.setPrompt(null); return; }
-    { const jp = jobs.prompt(r, player, hk); if (jp) { ui.setPrompt(jp.label, jp.fn); return; } }   // v14 a shift's next step (career.js)
-    { let best = null, bd = 1.05; for (const sp of world.sitSpots) { if (sp.taken || sp.room !== r || Math.abs(sp.y - 0.5 - player.y) > 1.0) continue; const d = Math.hypot(sp.x - player.x, sp.z - player.z); if (d < bd) { bd = d; best = sp; } }
+    { const jp = jobs.prompt(r, player, hk, lookAt); if (jp) { ui.setPrompt(jp.label, jp.fn); return; } }   // v14 a shift's next step (career.js)
+    { let best = null, bd = 1.7; for (const sp of world.sitSpots) { if (sp.taken || sp.room !== r || Math.abs(sp.y - 0.5 - player.y) > 1.0) continue; const d = Math.hypot(sp.x - player.x, sp.z - player.z); if (d < bd && lookAt(sp.x, sp.y + 0.25, sp.z, 0.45, 2.4)) { bd = d; best = sp; } }
       if (best) { ui.setPrompt(t('hud.sitDown'), () => sitSpot(best)); return; } }   // v14 sofas, armchairs, benches and stools outside the halls
     engine.camera.getWorldDirection(fwd); const fl = Math.hypot(fwd.x, fwd.z) || 1, fx = fwd.x / fl, fz = fwd.z / fl, ahead = (x, z, k = 0.3) => { const dx = x - player.x, dz = z - player.z, d = Math.hypot(dx, dz) || 1; return (dx * fx + dz * fz) / d > k; };
     // v11: nothing is offered through a wall (world9.js Walls.sees): people at eye height (over counters and their glass), seats and
     // fittings at chest height
     const sees = (x, z, lo, hi) => world.walls.sees(player.x, player.z, x, z, player.y + lo, player.y + hi);
-    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t(npc.role === 'bar' || npc.role === 'cafe' ? 'hud.order' : npc.role === 'box' ? 'hud.buy' : npc.name ? 'hud.talk' : 'hud.hello', { name: npc.nameKey && t(npc.nameKey) !== npc.nameKey ? t(npc.nameKey) : npc.name }), () => startTalk(npc)); return; }
+    const npc = crowd.talkTarget(player.x, player.y, player.z, fx, fz, (a) => lookAt(a.x, a.y + 1.25, a.z, 0.42, 2.8)); if (npc && dist(npc) < 2.6 && sees(npc.x, npc.z, 1.62, 1.78)) { ui.setPrompt(t(npc.role === 'bar' || npc.role === 'cafe' ? 'hud.order' : npc.role === 'box' ? 'hud.buy' : npc.name ? 'hud.talk' : 'hud.hello', { name: npc.nameKey && t(npc.nameKey) !== npc.nameKey ? t(npc.nameKey) : npc.name }), () => startTalk(npc)); return; }
     if (held && held.left <= 0 && nearBin()) { ui.setPrompt(t('hud.bin'), () => binItem()); return; }
-    if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.0 && ahead(q.x, q.z, 0.2) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
+    if (r === 'wc') { const u = world.uses.find((q) => Math.hypot(q.x - player.x, q.z - player.z) < 1.6 && lookAt(q.x, (q.y || 0) + 0.85, q.z, 0.42, 2.0) && sees(q.x, q.z, 1.2, 1.6)); if (u) { ui.setPrompt(t('hud.' + u.kind), () => useFixture(u)); return; } }
     // v11 the ticket machines between the box office and the concessions: the box office sheet without the queue
-    if (r === 'lobby' && player.y < 1 && Math.hypot(player.x - (COUNTERS.boxOffice.x1 + 0.5), player.z - (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2) < 1.6 && ahead(COUNTERS.boxOffice.x1, (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2, 0.35)) { ui.setPrompt(t('goal.ticket'), () => { sound.click(); booking.open({ quick: game === 'quick' }); }); return; }
+    if (r === 'lobby' && player.y < 1 && Math.hypot(player.x - (COUNTERS.boxOffice.x1 + 0.5), player.z - (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2) < 1.6 && lookAt(COUNTERS.boxOffice.x1 + 0.1, 1.25, (COUNTERS.concessions.z1 + COUNTERS.boxOffice.z0) / 2, 0.75, 2.6)) { ui.setPrompt(t('goal.ticket'), () => { sound.click(); booking.open({ quick: game === 'quick' }); }); return; }
     if (hk) { const h = world.hallByKey(hk); let best = null, bd = 1.5;
-      for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.45 || !ahead(s.x, s.z, 0.2) || !sees(s.x, s.z, 1.2, 1.6)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
+      for (const s of h.seats) { const d = Math.hypot(s.x - player.x, s.z - player.z); if (d > bd || Math.abs(s.y - player.y) > 0.45 || !lookAt(s.x, s.y + 0.42, s.z, 0.36, 2.2) || !sees(s.x, s.z, 1.2, 1.6)) continue; const mine = ticket && ticket.seat === s.id && ticket.hall === h.id; if (game === 'flow' && !mine) continue; if (s.npc && s.npc !== 'player') continue; best = s; bd = d; }
       if (best) { const mine = ticket && ticket.seat === best.id && ticket.hall === h.id; ui.setPrompt(mine ? t('hud.yourSeat', { seat: best.id }) : t('hud9.sitHere', { seat: best.id }), () => { if (!mine) { const tk = { hall: h.id, hallKey: hk, hallName: h.name, seat: best.id, row: best.id.replace(/\d+/, ''), col: best.col, src: ticket && ticket.src, title: ticket ? ticket.title : '', delay: 0, shown: true, checked: true, tablet: true, quick: true }; const prev = seatOf(ticket); if (prev) { prev.player = false; prev.taken = false; } ticket = tk; best.player = true; best.taken = true; } sitSeat(best); }); return; } }
     if (over) { ui.setPrompt(t('hud.leave'), () => leaveHall()); return; }
     ui.setPrompt(null);

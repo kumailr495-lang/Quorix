@@ -336,9 +336,9 @@ export class Crowd {
     if (m.userData.setLevel) m.userData.setLevel(1); ch.attach('prop', m, 'handR'); a._propCh = ch; a._propHas = a._propWhat;
   }
   // v14b the server serves seats in the halls (the bell, the tablet), not people in his pantry
-  talkTarget(px, py, pz, fx, fz) {
+  talkTarget(px, py, pz, fx, fz, looked) {
     let best = null, bs = 0;
-    for (const a of this.agents) { if (!a.talkable || !a.alive || a.state === 'guiding' || (a.role === 'server' && a.state === 'post') || Math.abs(a.y - py) > 1.2) continue; const dx = a.x - px, dz = a.z - pz, d = Math.hypot(dx, dz); if (d > 3.2 || d < 0.2) continue;
+    for (const a of this.agents) { if (!a.talkable || !a.alive || a.state === 'guiding' || (a.role === 'server' && a.state === 'post') || Math.abs(a.y - py) > 1.2) continue; const dx = a.x - px, dz = a.z - pz, d = Math.hypot(dx, dz); if (d > 3.2 || d < 0.2 || (looked && !looked(a))) continue;
       const c = (dx * fx + dz * fz) / d; if (c < 0.55) continue; const sc = c / (0.5 + d); if (sc > bs) { bs = sc; best = a; } }
     return best;
   }
