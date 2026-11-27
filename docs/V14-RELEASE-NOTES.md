@@ -1,6 +1,6 @@
 # LUMIÈRE 14.1 (2026-11-26)
 
-APK: `Lumiere-14.1.apk`, 52.99 MB, SHA-256 `1e4e611f910726636efa1667acff5b8f02b97f3b75a90fa0dc9c83e09ba1bfb6`.
+APK: `Lumiere-14.1.apk`, 52.99 MB, SHA-256 `6c8f972e6a7b4f84ab824add0ea607adf0d9fe5ae1b8037957e547f5d92f90a4`.
 Package `com.buddyapps.lumiere`, versionCode 1410, versionName 14.1, v2 signature with the same certificate as 8.x, 9.x and 13.0
 (SHA-256 `df8f000f...ba8595a`), target SDK 35, landscape. It installs over 13.0 and keeps your saved data.
 
@@ -34,7 +34,8 @@ checks. None of it was run on the phone: frame rate, sound, the microphone, the 
 
 ### Music Night (the surprise)
 - Pick a song instead of a film as your own show. The big screen becomes a light show drawn from the music, the room glows in its
-  colours, the audience claps and cheers on the beat and throws popcorn and confetti into the air.
+  colours, the audience claps and cheers on the beat and throws popcorn and confetti into the air. In the app: tablet, My videos,
+  "Pick a song" (the phone's file picker), then "Play"; in a browser: "Your video or song" in the booking.
 
 ### Phone, tablet, money
 - The phone's home screen fits every phone height (no cut-off rows); the gold status bar is fixed; the Noir & Brass look throughout.
@@ -57,13 +58,15 @@ checks. None of it was run on the phone: frame rate, sound, the microphone, the 
   CSP, comment lint: all pass.
 - `node tools/dev/walk.mjs`: 30/30 walks (street, lobby, escalator, lift, ticket zone, every hall's entrance to a seat and both exits).
 - `node tools/dev/npc-clear.mjs 120`: 53 people, nobody inside a wall, a prop or another person, nobody stuck.
-- `sh tools/dev/zcheck.sh`: all nine rooms 0 visible coplanar, 0 close (CURVE included after its rebuild). See "Limits" for the engine pass.
+- `sh tools/dev/zcheck.sh`: all nine rooms 0 visible coplanar, 0 close (CURVE included after its rebuild). The engine's own meshes:
+  28 coplanar and 42 close pairs, all of 5 cm² or less (before the plant swap: 3,698).
 - glb_check: the four new food models clean (0 floating, 0 coplanar, 0 folds); `?assetcheck=1`: no open-part warnings.
 - The staged APK content boots headless with no missing files and no errors; UI screens reviewed at 806 x 360.
 
 ## Limits
 - Not phone-tested: performance on the itel P65, sound (including the native fallback), microphone, the song picker.
-- The z-check's engine pass still lists small pairs inside the Rocketbox avatars' own meshes and a few sub-1 cm² faces on one lobby prop.
+- The z-check's engine pass still lists small pairs (5 cm² at most) inside two Rocketbox avatars' own meshes (clothing over body) and
+  sub-1 cm² faces on one lobby prop.
 - Not in this build: private theatres (custom, home with a 3D remote, jungle, drive-in, panorama, space), separate washrooms, a lobby and
   corridor rebuild, room QR codes, passing the host role.
 - Netflix or Prime films cannot be streamed legally; the app plays public-domain and CC films, your own videos and songs, and links.
