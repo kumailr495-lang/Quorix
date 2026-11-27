@@ -129,13 +129,13 @@ async function boot() {
     closed: (npc) => { crowd.endTalk(npc); if (npc && npc.role === 'server' && npc.state === 'serving' && !tablet.isOpen()) crowd.serverLeave(); onModal(); } }, settings);
   function onModal(m) { modal = !!m || talk.open || ui.modalOpen(); player.locked = modal || mode !== 'play' || intro.active; }
   const ui = new UI(world, shows, sound, settings, {
-    onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(),
+    onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(), inRoom: () => together.active, leaveRoom: () => together.leave(),
     onSettings: (gfx) => applySettings(gfx), onPreset: (g) => Object.assign(settings, presetFor(g)),
     onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), stubs: () => stubs.get(), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
     openRemote: () => tablet.open('home'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
   // v9.3 playing together (mp.js, mpui.js): a room code, your look, the other players in the cinema, the host's shows on every phone
-  const together = new Together({ liftPress: (b) => world.lift.press(b), tabOpen: () => tablet.isOpen(), ArmTablet, mySpot: () => world.sitSpots.findIndex((q) => q.taken === 'player'), held: () => (held ? held.id || held.kind || null : null), heldMat: () => itemMat, world, crowd, shows, player, engine, settings, sound, save: () => saveSettings(settings), toast: (m, ms) => ui.toast(m, ms), onModal: (m) => onModal(m),
+  const together = new Together({ liftPress: (b) => world.lift.press(b), tabOpen: () => tablet.isOpen(), ArmTablet, Recliner, reclinable: (s) => recliner.can(s), reclined: () => recliner.reclined, mySpot: () => world.sitSpots.findIndex((q) => q.taken === 'player'), held: () => (held ? held.id || held.kind || null : null), heldMat: () => itemMat, world, crowd, shows, player, engine, settings, sound, save: () => saveSettings(settings), toast: (m, ms) => ui.toast(m, ms), onModal: (m) => onModal(m),
     enterPlay: () => enterPlay('quick'), room: () => room, ev: (n) => career.event(n), owns: (id) => credits.owns(id), mySeat: () => (player.seated && room && room.startsWith('hall') ? world.hallByKey(room).seats.find((q) => q.npc === 'player') : null),
     order: (seat) => crowd.callServer(seat, (npc) => { npc.gesture('give', 1.2); npc.say(pick('srv.hand')); setTimeout(() => crowd.serverLeave(), 2600); }) });
   // the film's controls (tablet remote, keys): the host's in a room, and the host's reach every phone
@@ -380,7 +380,7 @@ async function boot() {
     if (mode === 'play') return; ui.fade(1, 0.35);
     setTimeout(() => { if (m || !game) newGame(m || 'flow'); mode = 'play'; ui.showMenu(false); onModal(); bill.onChange(); ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } if (!intro.active) maybeAskTutorial(); }, 380);
   }
-  function toMenu() { snapClear(); if (intro.active) intro.finish(); if (together.active) together.leave(); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); phone.close(); }
+  function toMenu() { snapClear(); if (intro.active) intro.finish(); if (together.active) together.leave(true); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); phone.close(); }
   function maybeAskTutorial() { if (mode === 'play' && game === 'flow' && !settings.tutorialAsked && !settings.tutorialDone && settings.lang) setTimeout(() => ui.askTutorial(), 1400); }
   function startTutorial(fromAsk) { settings.tutorialAsked = true; saveSettings(settings); if (mode !== 'play' || game !== 'flow') enterPlay('flow'); setTimeout(() => tut.start(), fromAsk ? 200 : 900); }
   addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (booking.isOpen()) booking.close(); else if (tablet.isOpen()) tablet.close(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } } });
@@ -444,7 +444,7 @@ async function boot() {
     const cam = engine.camera; world.setVisibility(r, cam.position.x, cam.position.y, cam.position.z);
     const watching = mode === 'play' && !!player.seated && r.startsWith('hall') && shows.isOn(world.hallByKey(r).id);
     engine.setZoom(watching ? fitZoom(r) : 1, dt); document.body.classList.toggle('watching', watching); engine.showMode && engine.showMode(watching); nowPlaying(now, r); snapSave(now);
-    actors.length = 0; actors.push(player); for (const a of crowd.agents) if (a.path) actors.push(a);
+    actors.length = 0; actors.push(player); for (const a of crowd.agents) if (a.path) actors.push(a); for (const b of together.bodies()) actors.push(b);   // v14d the other players too (the lift's safety edge)
     world.update(dt, actors, now);
     for (const h of world.halls) if (h.room.group.visible) h.updateLOD(cam, false, engine.preset.seatLod * (engine.lodK || 1));
     together.frame(dt); crowd.update(dt, now, player, world.vis); shows.update(dt, now, r, world.vis);
@@ -547,7 +547,7 @@ async function boot() {
   else { const sn = snapLoad(); if (sn && settings.lang) setTimeout(() => resumeSnap(sn), 900 + hold); }
   window.__lumiere = { THREE, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
-    B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
+    B: BLD, recliner, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles
   if (Q.get('bench')) import('./bench.js').then((m) => setTimeout(() => m.runBench(window.__lumiere), 2600)).catch((e) => console.error('[bench]', e));
 }

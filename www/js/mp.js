@@ -42,7 +42,7 @@ export class Multi {
     // when they change (and every 30th packet). Each arrival is kept with its time, so mpui.js draws the others 110 ms in the past,
     // between two real positions, instead of chasing the last one (no jitter when packets bunch up). The old object form is still read.
     const sState = act('st', (s, id) => { const p = this.peers.get(id); if (!p || !s || typeof s !== 'object') return; let st;
-      if (Array.isArray(s)) { if (s.length < 5) return; const f = Math.round(num(s[4])); st = { x: clip(num(s[0]) / 100, -900, 900), y: clip(num(s[1]) / 100, -60, 60), z: clip(num(s[2]) / 100, -900, 900), yaw: clip(num(s[3]) / 1000, -100, 100), sit: f & 1, v: clip((f >> 1) / 10, 0, 6) }; }
+      if (Array.isArray(s)) { if (s.length < 5) return; const f = Math.round(num(s[4])); st = { x: clip(num(s[0]) / 100, -900, 900), y: clip(num(s[1]) / 100, -60, 60), z: clip(num(s[2]) / 100, -900, 900), yaw: clip(num(s[3]) / 1000, -100, 100), sit: f & 1, v: clip(((f >> 1) & 63) / 10, 0, 6), rec: (f >> 7) & 1 }; }
       else st = { x: clip(num(s.x), -900, 900), y: clip(num(s.y), -60, 60), z: clip(num(s.z), -900, 900), yaw: num(s.yaw), sit: clip(num(s.sit), 0, 1), v: clip(num(s.v), 0, 6), seat: s.seat ? String(s.seat).slice(0, 24) : null, room: String(s.room || '').slice(0, 16) };
       if (p.meta && Array.isArray(s)) { st.seat = p.meta.seat; st.room = p.meta.room; }
       const now = performance.now(), S = p.snaps || (p.snaps = []); S.push({ t: now, x: st.x, y: st.y, z: st.z, yaw: st.yaw }); if (S.length > 8) S.shift();
@@ -56,6 +56,9 @@ export class Multi {
     // v14b (the user, 11-26: "i click button in multiplayer, the I player go up, but the other player in same elevator is down"): a lift button
     // pressed on any phone is pressed on every phone, so the one car moves for everyone and whoever stands in it rides it
     const sLift = act('lift', (b, id) => { if (this.peers.get(id) && typeof b === 'string' && /^(hall|car)[01]$|^(open|close|alarm)$/.test(b) && this.hooks.onLift) this.hooks.onLift(b); });
+    // v14d (the user, 11-27: "the elevator glitch is still there in multiplayer ... it goes up for the person who clicks it"): the host's
+    // phone runs the one lift and sends its state (lift9.js snapshot) five times a second while anything moves; the others show that state
+    const sLiftSt = act('lfs', (a, id) => { const p = this.peers.get(id); if (!p || !p.host || !Array.isArray(a) || a.length < 9 || !this.hooks.onLiftState) return; this.hooks.onLiftState(a.slice(0, 9).map((v) => num(v))); });
     const sShow = act('show', (s, id) => { if (!s || typeof s !== 'object') return; const p = this.peers.get(id); if (!p) { this.early = { s, id }; return; } this.takeShow(s, p); });
     const sChat = act('chat', (m, id) => { const p = this.peers.get(id); if (p && this.hooks.onChat) this.hooks.onChat(p, String(m || '').slice(0, 140)); });
     // the host hands the role to another player: the new term, and the current show's start as time from now (each phone's own clock)
@@ -72,7 +75,7 @@ export class Multi {
     // unmute"): your microphone as an audio stream to every phone in the room (peer to peer, like the rest), voice notes as small Opus files
     room.onPeerStream = (stream, id) => { if (this.peers.has(id) && this.hooks.onVoice) this.hooks.onVoice(id, stream); };
     const sNote = act('vn', (d, id) => { const p = this.peers.get(id); if (!p || !d || typeof d !== 'object' || typeof d.b !== 'string' || d.b.length > 600000 || !/^[A-Za-z0-9+/=]+$/.test(d.b)) return; if (this.hooks.onNote) this.hooks.onNote(p, d.b, Math.max(1, Math.min(60, Math.round(+d.s || 1)))); });
-    Object.assign(this, { sHello, sState, sMeta, sShow, sChat, sEmote, sHost, sCtl, sOrder, sCrowd, sRoster, sLift, sNote });
+    Object.assign(this, { sHello, sState, sMeta, sShow, sChat, sEmote, sHost, sCtl, sOrder, sCrowd, sRoster, sLift, sLiftSt, sNote });
     room.onPeerJoin = (id) => { sHello(this.hello(), id); if (this.mic) { try { room.addStream(this.mic, { target: id }); } catch (e) { /* the peer went */ } } if (this._metaObj) sMeta(this._metaObj, id); this._q = null; this._roster = null; this.hooks.onCount && this.hooks.onCount(this.count); };
     room.onPeerLeave = (id) => { const p = this.peers.get(id); this.peers.delete(id); if (p && this.hooks.onLeave) this.hooks.onLeave(p); this.elect(); this.hooks.onCount && this.hooks.onCount(this.count); };
     this.hooks.onCount && this.hooks.onCount(this.count);
@@ -88,7 +91,7 @@ export class Multi {
   // per frame: my player, at most ten times a second (each phone sends only its own: the load is shared by everyone in the room)
   tick(dt, s) {
     if (!this.room) return; this.t += dt; this.hb = (this.hb || 0) + dt;
-    const q = [Math.round(s.x * 100), Math.round(s.y * 100), Math.round(s.z * 100), Math.round(s.yaw * 1000), ((s.sit || 0) > 0.5 ? 1 : 0) + 2 * Math.round(clip(s.v || 0, 0, 6) * 10)], L = this._q;
+    const q = [Math.round(s.x * 100), Math.round(s.y * 100), Math.round(s.z * 100), Math.round(s.yaw * 1000), ((s.sit || 0) > 0.5 ? 1 : 0) + 2 * Math.round(clip(s.v || 0, 0, 6) * 10) + (s.rec ? 128 : 0)]   /* v14d bit 7: reclined */, L = this._q;
     const moved = !L || Math.abs(q[0] - L[0]) > 2 || Math.abs(q[1] - L[1]) > 2 || Math.abs(q[2] - L[2]) > 2 || Math.abs(q[3] - L[3]) > 15 || q[4] !== L[4];
     const mkNow = (s.seat || '') + '|' + (s.room || '') + '|' + (s.held || '') + '|' + (s.tab ? 1 : 0); if (this.t < 0.08 || (!moved && this.hb < 1 && mkNow === this._meta)) return;
     this.t = 0; this.hb = 0; this._q = q; this.sState(q); this.sent = (this.sent || 0) + 1;
@@ -117,6 +120,7 @@ export class Multi {
   control(c) { if (this.room && this.host) { this.sCtl(c); if (this.lastShow && c && Number.isFinite(c.startAt)) this.lastShow = { ...this.lastShow, startAt: c.startAt }; if (c && c.cmd === 'stop') this.lastShow = null; } }
   order(seatKey) { if (this.room) this.sOrder({ seat: seatKey }); }
   lift(b) { if (this.room) this.sLift(b); }
+  liftState(a) { if (this.room && this.host && this.sLiftSt) this.sLiftSt(a); }
   micOn(stream) { this.micOff(); this.mic = stream; if (this.room) { try { this.room.addStream(stream, {}); } catch (e) { console.warn('[mp] voice', e); } } }
   micOff() { const s = this.mic; this.mic = null; if (!s) return; try { if (this.room) this.room.removeStream(s); } catch (e) { /* the room went */ } for (const tr of s.getTracks()) tr.stop(); }
   note(b64, sec) { if (this.room) this.sNote({ b: b64, s: sec }); }

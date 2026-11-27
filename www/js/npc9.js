@@ -453,7 +453,7 @@ export class Crowd {
   }
   draw(a, dt, d, player) {
     const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < (ch.lod === 0 ? 6.5 : 5.5) ? 0 : d < (ch.lod === 2 ? 13.5 : 14.5) ? 1 : 2);   /* v14d nearer LOD steps (skinned people were a third of the lobby's triangles), with 1 m of hysteresis */ ch.talking = a.talking || (this.now >= (a.talkFrom || 0) && this.now < a.talkUntil);
-    if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; }
+    if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline + (a.reclineAmt || 0) * 0.6; }   // v14d another player's recline (mpui.js)
     else if (a.perch) { ch.s.sit = a.sit; ch.s.drop = a.perch.h - sitHeight(a.rec); ch.s.recline = 0.12; }   // v14 another player on a sofa or a bench (mpui.js)
     else ch.s.sit = 0;
     this._prop(a, ch); ch.gestT = this.now < a.gestUntil ? a.gest : a.item ? 'hold' : null;

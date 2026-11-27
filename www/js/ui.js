@@ -60,7 +60,7 @@ export class UI {
   langList() { this.langButtons($('#langList'), (code) => { this.chooseLang(code); $('#langPick').hidden = true; this.hooks.onModal(this.modalOpen()); this.hooks.onLangPicked && this.hooks.onLangPicked(); }); }
   openLang() { this.langList(); $('#langPick').hidden = false; this.hooks.onModal(true); }
   openInfo(kind) { $('#infoTitle').textContent = t(kind === 'help' ? 'menu.help' : 'menu.credits'); $('#infoBody').textContent = kind === 'help' ? t('help.body') : t('credits.body') + '\n\n' + t('credits.films') + '\n' + CATALOG.map((f) => `• ${f.title} (${f.year}), ${f.by}, ${f.lic}`).join('\n') + '\n\n' + t('credits.people'); $('#info').hidden = false; this.hooks.onModal(true); }
-  openPause() { $('#pause').hidden = false; this.hooks.onModal(true); this.hooks.onPause && this.hooks.onPause(true); }
+  openPause() { $('#pause').hidden = false; const lm = $('#psLeaveMp'); if (lm) lm.hidden = !(this.hooks.inRoom && this.hooks.inRoom()); this.hooks.onModal(true); this.hooks.onPause && this.hooks.onPause(true); }
   closeModal(sel) { $(sel).hidden = true; this.hooks.onModal(this.modalOpen()); }
   askTutorial() { $('#tutAsk').hidden = false; this.hooks.onModal(true); }
   bind() {
@@ -71,7 +71,7 @@ export class UI {
     tap('#tkOk', () => { this.closeModal('#ticket'); }); tap('#tkJump', () => { $('#ticket').hidden = true; this.hooks.onModal(this.modalOpen()); this.hooks.jumpToSeat(); });
     tap('#ticketChip', () => this.hooks.ticketInfo());
     tap('#psHide', () => { this.closeModal('#pause'); this.hooks.onPause && this.hooks.onPause(false); this.setHidden(true); }); tap('#bShow', () => { this.sound.click(); this.setHidden(false); });
-    tap('#bMenu', () => { this.sound.click(); this.openPause(); }); tap('#bRemote', () => { this.sound.click(); this.hooks.openRemote(); }); tap('#bBell', () => { this.hooks.ringBell(); });
+    tap('#bMenu', () => { this.sound.click(); this.openPause(); }); tap('#psLeaveMp', () => { this.sound.click(); this.closeModal('#pause'); this.hooks.leaveRoom && this.hooks.leaveRoom(); }); tap('#bRemote', () => { this.sound.click(); this.hooks.openRemote(); }); tap('#bBell', () => { this.hooks.ringBell(); });
     tap('#psResume', () => { this.closeModal('#pause'); this.hooks.onPause && this.hooks.onPause(false); }); tap('#psSettings', () => { $('#pause').hidden = true; this.openSettings(); this._fromPause = true; }); tap('#psQuit', () => { this.closeModal('#pause'); this.hooks.onQuit(); });
     tap('#setX', () => { this.closeModal('#settings'); if (this._fromPause) { this._fromPause = false; $('#pause').hidden = false; this.hooks.onModal(true); } });
     tap('#infoX', () => this.closeModal('#info'));

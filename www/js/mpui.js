@@ -28,7 +28,7 @@ export class Together {
     this.mp = new Multi({ onJoin: (p) => this.join_(p), onLeave: (p) => this.leave_(p), onState: () => {}, onShow: (s, p) => this.applyShow(s, p), onChat: (p, m) => this.chat_(p, m),
       onEmote: (p, e) => { const a = this.remotes.get(p.id); if (a && ['wave', 'clap', 'cheer'].includes(e)) a.gesture(e, 2.6); if (a && e === 'dance') a.danceUntil = performance.now() + 6000; }, onCount: () => this.badge(), live: (sh) => { const s = this.c.shows.get(sh.hall); return !!s && !!s.booked && s.state !== 'idle' && s.state !== 'ended'; }, onHost: (on) => { if (on) this.note(t('mp.newHost')); this.badge(); },
       onCtl: (c, p) => this.applyCtl(c, p), onOrder: (p, key) => { const f = this.seatByKey(key); if (f && this.c.order) this.c.order(f.s, p.name); },
-      onRoster: (r) => this.c.crowd.applyRoster(r), onCrowd: (c) => this.c.crowd.applyGuests(c), onLift: (b) => this.c.liftPress && this.c.liftPress(b),
+      onRoster: (r) => this.c.crowd.applyRoster(r), onCrowd: (c) => this.c.crowd.applyGuests(c), onLift: (b) => this.c.liftPress && this.c.liftPress(b), onLiftState: (a) => { const L = this.c.world.lift; if (L && L.slave) L.applyState(a, this.c.world.onLift); },
       onVoice: (id, st) => this.voiceIn(id, st), onNote: (p, b, s) => this.noteIn(p, b, s) });
     this.voices = new Map();
     this.log = []; this.unread = 0;
@@ -116,7 +116,12 @@ export class Together {
     if (!asHost) setTimeout(() => { if (this.active && this.mp.peers.size === 0 && this.panel) status.textContent = t('mp.failed'); }, 20000);
     setTimeout(() => { this.close(); this.c.enterPlay(); }, asHost ? 2200 : 900);
   }
-  leave() { this.mp.leave(); for (const id of [...this.voices.keys()]) this.voiceOut(id); this.c.crowd.mirrorGuests(false); this.badge(); }
+  // v14d (the user, 11-27: "I quit and try to join flow mode ... it does that in the multiplayer still, there should be a quit option"): leaving
+  // takes everything of the room with it: the others, their voices, the host's guests and lift, a show you were watching with them
+  leave(quiet) { const was = this.active; this.mp.leave(); for (const id of [...this.voices.keys()]) this.voiceOut(id); this.c.crowd.mirrorGuests(false);
+    const LF = this.c.world.lift; if (LF) { LF.slave = false; LF.doorsWant = null; }
+    const S = this.c.shows; if (S && S.s) for (const id in S.s) { const sh = S.s[id]; if (sh && sh.sync) { sh.sync = false; if (S._abort && sh.state !== 'idle') S._abort(id); } }
+    if (this.mp.lastShow) this.mp.lastShow = null; this.badge(); if (was && !quiet) this.c.toast(t('mp.youLeft'), 2800); }
   // ---------------------------------------------------------------- voice: live (by distance, quieter through walls) and voice notes
   toggleMic() { const S = this.c.sound; S && S.click && S.click();
     if (this.mp.mic) { this.mp.micOff(); this.badge(); return; }
@@ -154,7 +159,8 @@ export class Together {
       const chatB = this.chatB = btn('chat', t('mp.chatB')); chatB.appendChild(el('i', { cls: 'dot' })); chatB.addEventListener('click', () => this.chatBox());
       const namesB = this.namesB = btn('tag', t('mp.names')); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
       const micB = this.micB = btn('mic', t('mp.mic')); micB.addEventListener('click', () => this.toggleMic());
-      this.bar = el('div', { id: 'mpBar' }, [micB, chatB, namesB]);
+      const outB = btn('close', t('mp.leave')); outB.classList.add('mp-out'); outB.addEventListener('click', () => { this.c.sound && this.c.sound.click(); this.leave(); });
+      this.bar = el('div', { id: 'mpBar' }, [micB, chatB, namesB, outB]);
       // v14 the dance is bought in the shop (career.js SHOP emote_dance): it plays the avatars' own Dance_Loop clip on every phone
       for (const [e, ic] of [['wave', 'wave'], ['clap', 'clap'], ['cheer', 'party'], ['dance', 'party']]) { if (e === 'dance' && !(this.c.owns && this.c.owns('emote_dance'))) continue; const b = btn(ic, t('mp.emote.' + e)); b.addEventListener('click', () => { this.mp.emote(e); this.c.ev && this.c.ev('emote'); this.c.sound && this.c.sound.click(); b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300); }); this.bar.appendChild(b); }
       const hud = document.querySelector('#hudTL') || document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
@@ -187,14 +193,18 @@ export class Together {
     const tag = el('b', { text: p.name }); this.tagLayer.appendChild(tag); this.tags.set(p.id, tag);
   }
   leave_(p) { this.voiceOut(p.id); const a = this.remotes.get(p.id); if (a) { if (a.armTab) { a.armTab.hide(); a.armTab.group.removeFromParent(); a.armTab = null; } this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); if (a.ring) { a.ring.removeFromParent(); a.ring.geometry.dispose(); a.ring.material.dispose(); a.ring = null; } } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }
-  freeSeat(a) { if (a.viewer && a.viewer.seat && a.viewer.seat.npc === 'remote') { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.viewer = null; }
+  freeSeat(a) { if (a.recl) { a.recl.detach(false); a.recl = null; a.reclineAmt = 0; } if (a.viewer && a.viewer.seat && a.viewer.seat.npc === 'remote') { a.viewer.seat.npc = null; a.viewer.seat.taken = false; } a.viewer = null; }
   seatByKey(key) { if (!key) return null; const [hk, id] = key.split(':'); const h = this.c.world.hallByKey(hk); if (!h) return null; const s = h.seats.find((q) => q.id === id); return s ? { s, h } : null; }
   // per frame: send me, move them, place their names
   frame(dt) {
+    const LF = this.c.world.lift; if (LF) LF.slave = !!(this.active && !this.mp.host);
     if (!this.active) { if (this.tags.size) for (const tg of this.tags.values()) tg.style.display = 'none'; if (this.c.crowd.mirror) this.c.crowd.mirrorGuests(false); return; }
+    // v14d the host sends the lift's state: five times a second while it moves or its doors or calls change, once in two seconds otherwise
+    if (this.mp.host && LF) { const snap = LF.snapshot(), key = snap.join(','), busy = LF.state !== 'idle' || snap[5] % 1000 !== 0 || snap[6] % 1000 !== 0 || snap[8];
+      this._lfT = (this._lfT || 0) + dt; if ((key !== this._lfK && this._lfT > 0.2) || this._lfT > (busy ? 0.2 : 2)) { this._lfT = 0; this._lfK = key; this.mp.liftState(snap); } }
     const P = this.c.player, d = Math.hypot(P.x - this.last.x, P.z - this.last.z); this.speed += ((dt > 0 ? d / dt : 0) - this.speed) * Math.min(1, dt * 6); this.last.x = P.x; this.last.z = P.z;
     const seat = this.c.mySeat(), spot = !seat && P.seated && this.c.mySpot ? this.c.mySpot() : -1, held = this.c.held ? this.c.held() : null;
-    this.mp.tick(dt, { x: P.x, y: P.y, z: P.z, yaw: P.yaw, sit: P.seated ? 1 : 0, seat: seat ? `${seat.hallKey}:${seat.id}` : spot >= 0 ? `spot:${spot}` : null, room: this.c.room(), v: Math.min(5, this.speed), held, tab: !!(this.c.tabOpen && this.c.tabOpen()) });
+    this.mp.tick(dt, { x: P.x, y: P.y, z: P.z, yaw: P.yaw, sit: P.seated ? 1 : 0, rec: !!(P.seated && this.c.reclined && this.c.reclined()), seat: seat ? `${seat.hallKey}:${seat.id}` : spot >= 0 ? `spot:${spot}` : null, room: this.c.room(), v: Math.min(5, this.speed), held, tab: !!(this.c.tabOpen && this.c.tabOpen()) });
     // v14 one set of lobby guests for everyone: the host sends them, the others show them (npc9.js mirrorGuests)
     const C = this.c.crowd; if (this.mp.host) { if (C.mirror) C.mirrorGuests(false); this.mp.crowd(C.guestRoster(), C.guestState(), dt); }
     const cam = this.c.engine.camera, W = innerWidth, H = innerHeight, k = Math.min(1, dt * 10);
@@ -208,7 +218,10 @@ export class Together {
       if (sp0 && !sp0.home) { if (a.viewer) this.freeSeat(a); a.x = sp0.x; a.z = sp0.z; a.y = sp0.fy ?? sp0.y - 0.45; a.yaw = sp0.face; a.perch = { h: sp0.y - a.y }; a.sit = Math.min(1, (a.sit || 0) + dt * 1.5); a.remoteWalk = 0; }   // v14 on a sofa: sitting, not standing on it
       else if (st.sit > 0.5 && st.seat && !st.seat.startsWith('spot:')) { a.perch = null; const f = this.seatByKey(st.seat);
         if (f && (!a.viewer || a.viewer.seat !== f.s)) { this.freeSeat(a); if (f.s.npc && f.s.npc !== 'player' && f.s.npc !== 'remote' && this.c.crowd.dropViewer) this.c.crowd.dropViewer(f.s.npc); f.s.npc = 'remote'; f.s.taken = true; a.viewer = { seat: f.s, hall: f.h }; }
-        if (a.viewer) { const s = a.viewer.seat; a.x = s.x; a.y = s.y; a.z = s.z; a.yaw = s.yaw + Math.PI; a.sit = Math.min(1, (a.sit || 0) + dt * 1.5); a.remoteWalk = 0; } }
+        if (a.viewer) { const s = a.viewer.seat; a.x = s.x; a.y = s.y; a.z = s.z; a.yaw = s.yaw + Math.PI; a.sit = Math.min(1, (a.sit || 0) + dt * 1.5); a.remoteWalk = 0;
+          // v14d (the user, 11-27: "the recline only shows to the client side and not others"): their seat reclines here too, and they lean back with it
+          if (!a.recl && st.rec && this.c.Recliner && this.c.reclinable && this.c.reclinable(s)) { a.recl = new this.c.Recliner(this.c.world, null, null); if (!a.recl.attach(a.viewer.hall, s)) a.recl = null; }
+          if (a.recl) { a.recl.target = st.rec ? 1 : 0; const o = {}; a.recl.update(dt, o); a.reclineAmt = o.recline || 0; } } }
       else { if (a.viewer) { this.freeSeat(a); a.sit = 0; } if (a.perch) { a.perch = null; a.sit = 0; }
         // their camera yaw faces -z at 0; a person faces +z at 0
         const sp = this.mp.sample(p), jump = Math.hypot(sp.x - a.x, sp.z - a.z) > 6;   // v14 interpolated (mp.js sample); a long jump (a lift, a fast exit) snaps
@@ -253,6 +266,8 @@ export class Together {
   // the server: one for the whole cinema; an order from any phone joins his queue on every phone
   sendOrder(seat, hallKey) { if (this.active && seat && hallKey) this.mp.order(`${hallKey}:${seat.id}`); }
   sendLift(b) { if (this.active) this.mp.lift(b); }
+  // the other players' bodies (the host's lift doors wait for them as for anyone)
+  bodies() { const out = []; if (this.active) for (const a of this.remotes.values()) out.push({ x: a.x, y: a.y || 0, z: a.z }); return out; }
   // ---------------------------------------------------------------- shows: the host books, every phone starts it at the same moment
   onBooked(id) {
     if (!this.active || !this.mp.host) return; const s = this.c.shows.get(id); if (!s || !s.src) return; const src = s.src;

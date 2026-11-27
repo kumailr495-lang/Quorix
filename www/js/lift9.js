@@ -180,7 +180,25 @@ export class Lift {
     }
     return best;
   }
+  // v14d one lift for everyone in Play together: the host's state as numbers, and the other phones' copy of it (slave: no decisions here,
+  // the doors follow the host's, a trip runs the same timed curve from the host's start so the car stays smooth between messages)
+  snapshot() { const c = (this.hallCall[0] ? 1 : 0) | (this.hallCall[1] ? 2 : 0) | (this.carCall[0] ? 4 : 0) | (this.carCall[1] ? 8 : 0);
+    return [this.level, ['idle', 'closing', 'moving'].indexOf(this.state), this.target ?? this.level, Math.round((this.from ?? this.y) * 1000), Math.round((this.t || 0) * 1000), Math.round(this.doors[0] * 1000), Math.round(this.doors[1] * 1000), Math.round(Math.max(0, this.hold) * 100), c]; }
+  applyState(a, onEvent) { const st = ['idle', 'closing', 'moving'][a[1] | 0] || 'idle', was = this.state, lo = Math.min(...this.L.stops) - 1, hi = Math.max(...this.L.stops) + 1;
+    this.level = a[0] ? 1 : 0; this.target = a[2] ? 1 : 0; this.hold = Math.max(0, a[7] / 100); const f = a[8] | 0; this.hallCall = [!!(f & 1), !!(f & 2)]; this.carCall = [!!(f & 4), !!(f & 8)];
+    this.doorsWant = [Math.max(0, Math.min(1, a[5] / 1000)), Math.max(0, Math.min(1, a[6] / 1000))];
+    if (st === 'moving') { const from = Math.max(lo, Math.min(hi, a[3] / 1000)), t = Math.max(0, a[4] / 1000); if (was !== 'moving' || Math.abs(this.t - t) > 0.25) { this.from = from; this.t = t; } }
+    else this.y = this.L.stops[this.level];
+    if (onEvent && st !== was) { if (st === 'moving') onEvent('move'); else if (was === 'moving' && st === 'idle') onEvent('ding'); }
+    this.state = st; }
   update(dt, actors, onEvent) {
+    if (this.slave) { const sp = dt * 0.6;
+      if (this.doorsWant) for (let k = 0; k < 2; k++) { const w = this.doorsWant[k], d0 = this.doors[k]; this.doors[k] = w > d0 ? Math.min(w, d0 + sp) : Math.max(w, d0 - sp); if (onEvent && k === this.level) { if (d0 === 0 && this.doors[k] > 0) onEvent('open'); if (d0 === 1 && this.doors[k] < 1) onEvent('close'); } }
+      if (this.state === 'moving') { const d = this.L.stops[this.target] - this.from, T = Math.abs(d) / this.L.speed + 1.2; this.t += dt; const u = Math.min(1, this.t / T), e = u * u * (3 - 2 * u); this.y = this.from + d * e; }
+      this.cab.position.y = this.y; this.placeLeaves(0); this.placeLeaves(1);
+      for (const k in this.flash) { this.flash[k] -= dt; if (this.flash[k] <= 0) delete this.flash[k]; }
+      for (const b of this.buttons) { const t = this.push[b.id]; if (t === undefined) continue; const nt = t - dt; this.placeCap(b, nt > 0 ? 0.0035 * Math.min(1, nt / 0.07) : 0); if (nt > 0) this.push[b.id] = nt; else delete this.push[b.id]; }
+      this.redraw(false); return; }
     const lv = this.level, zd = this.zDoor[lv], ly = this.L.stops[lv];
     const inDoor = this.doors[lv] > 0.05 && actors.some((a) => Math.abs((a.y || 0) - ly) < 1.2 && Math.abs(a.x - this.cx) < this.dw / 2 + 0.1 && Math.abs(a.z - zd) < 0.35);   // the safety edge
     if (this.state === 'idle') {
