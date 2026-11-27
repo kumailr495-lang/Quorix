@@ -2,6 +2,19 @@
 // stencil:true makes the browser allocate a packed 24-bit depth + 8-bit stencil buffer: phones often give only 16-bit depth without it (z-fighting).
 import * as THREE from 'three';
 import { G } from './materials.js';
+// v14e (the user's 14.2 test: "the app flickers like almost everywhere"): Android Chromium corrupts an MSAA frame when a texture uploads
+// between its draws (three.js #33458: video and canvas textures marked dirty every frame, uploaded lazily as their material binds).
+// Every texture marked dirty is remembered here and uploaded before the frame's first draw (Engine.render -> initTexture), never mid-pass.
+export const DIRTY = new Set();
+{ const T = THREE.Texture.prototype, d = Object.getOwnPropertyDescriptor(T, 'needsUpdate');
+  if (d && d.set && d.configurable) Object.defineProperty(T, 'needsUpdate', { configurable: true, get: d.get, set(v) { d.set.call(this, v); if (v === true) DIRTY.add(this); } });
+  const dispose = T.dispose; T.dispose = function () { DIRTY.delete(this); return dispose.call(this); }; }   // a disposed texture is never uploaded again
+// people: three.js poses a skinned mesh's bones while it draws the frame and marks the bone texture dirty there, so every visible person
+// uploaded mid-pass (14 uploads a frame in a full lobby). The pose's upload waits for the next frame's start (one frame of animation lag);
+// a skeleton gets its bone texture when it binds, so even the first upload happens before a pass
+const LATE = new Set();
+{ const S = THREE.Skeleton.prototype, up = S.update; S.update = function () { const bt = this.boneTexture; if (!bt) return up.call(this); this.boneTexture = null; try { up.call(this); } finally { this.boneTexture = bt; } LATE.add(bt); };
+  const M = THREE.SkinnedMesh.prototype, bind = M.bind; M.bind = function (sk, bm) { const r = bind.call(this, sk, bm); if (sk && sk.boneTexture === null && sk.bones.length) sk.computeBoneTexture(); return r; }; }
 export const PRESETS = {
   // v12 (the user: "cheap and blocky"): scale is canvas pixels per CSS pixel. A 720 x 1600 phone has 2 device pixels per CSS pixel, so the
   // old ceilings (0.75 / 1.0 / 1.3) drew a quarter to a half of the screen's pixels and the browser stretched them. The ceiling is now the
@@ -14,7 +27,7 @@ const LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0];
 export class Engine {
   constructor(canvas, settings) {
     this.canvas = canvas; this.settings = settings; const P = PRESETS[settings.graphics] || PRESETS.medium; this.preset = P;
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: P.aa, stencil: true, depth: true, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });   // alpha: the film's video layer shows through the screen (videolayer.js)
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: P.aa && settings.msaa !== false, stencil: true, depth: true, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });   // alpha: the film's video layer shows through the screen (videolayer.js)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.setClearColor(0x0b0b0e, 1); this.renderer.sortObjects = true;
     const gl = this.renderer.getContext(); try { this.depthBits = gl.getParameter(gl.DEPTH_BITS); this.samples = gl.getParameter(gl.SAMPLES); } catch (e) { this.depthBits = 0; this.samples = 0; }
     this.scene = new THREE.Scene(); this.scene.matrixWorldAutoUpdate = true;
@@ -82,10 +95,13 @@ export class Engine {
   setZoom(z, dt) { const k = this.zoom || 1, n = k + (z - k) * (1 - Math.exp(-dt * 2.5)); if (Math.abs(n - k) < 1e-4) return; this.zoom = n; this.camera.fov = this.baseFov * n; this.camera.updateProjectionMatrix(); }
   render() {
     const r = this.renderer; r.info.autoReset = false; r.info.reset();   // one info count for both passes (the HUD's draw calls)
+    this.flushTextures();
     if (this.stereo) { this.renderStereo(r); return; }
     r.render(this.scene, this.camera);
     if (this.vm.children.length) { r.autoClear = false; r.clearDepth(); r.render(this.vm, this.vmCam); r.autoClear = true; }
   }
+  // every texture that changed since the last frame uploads now, before any draw of this frame (see DIRTY above)
+  flushTextures() { if (LATE.size) { for (const t of LATE) t.needsUpdate = true; LATE.clear(); } if (!DIRTY.size) return; const r = this.renderer; for (const t of DIRTY) { if (t.isRenderTargetTexture || !t.image) continue; try { r.initTexture(t); } catch (e) { /* a source that is not ready: it uploads as it binds */ } } DIRTY.clear(); }
   // v10 phone VR (a Cardboard-style viewer): each eye in its half, 64 mm apart, focused at the screen's distance
   renderStereo(r) {
     const sc = this._sc || (this._sc = new THREE.StereoCamera()), cam = this.camera, s = r.getSize(this._sz || (this._sz = new THREE.Vector2())); sc.aspect = 0.5; sc.eyeSep = 0.064; cam.updateMatrixWorld(); sc.update(cam);

@@ -130,7 +130,7 @@ async function boot() {
     closed: (npc) => { crowd.endTalk(npc); if (npc && npc.role === 'server' && npc.state === 'serving' && !tablet.isOpen()) crowd.serverLeave(); onModal(); } }, settings);
   function onModal(m) { modal = !!m || talk.open || ui.modalOpen(); player.locked = modal || mode !== 'play' || intro.active; }
   const ui = new UI(world, shows, sound, settings, {
-    onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(), inRoom: () => together.active, leaveRoom: () => together.leave(),
+    onModal, ticketInfo: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'), jumpToSeat: () => jumpToSeat(), useItem: () => useItem(), inRoom: () => together.active, leaveRoom: () => together.leave(), reload: () => { try { snapSave(0); } catch (e) { /* not in play */ } location.reload(); },
     onSettings: (gfx) => applySettings(gfx), onPreset: (g) => Object.assign(settings, presetFor(g)),
     onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), stubs: () => stubs.get(), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
     openRemote: () => tablet.open('home'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),

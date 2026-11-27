@@ -10,7 +10,7 @@ export const EN = {
   'credits.body': 'LUMIÈRE v5. Everything you see and hear is generated in code: the building, the people, the films and the sound. Made for phones.',
   // ---- settings ----
   'set.title': 'Settings', 'set.controls': 'Controls', 'set.sens': 'Look sensitivity', 'set.invert': 'Invert look', 'set.graphics': 'Graphics', 'set.quality': 'Quality', 'set.low': 'Low', 'set.medium': 'Medium', 'set.high': 'High',
-  'set.autores': 'Auto resolution', 'set.bright': 'Brightness', 'set.sound': 'Sound', 'set.master': 'Master volume', 'set.film': 'Film volume', 'set.crowd': 'Crowd volume', 'set.lang': 'Language', 'set.fps': 'Show FPS', 'set.bubbles': 'Speech bubbles',
+  'set.autores': 'Auto resolution', 'set.msaa': "Smooth edges", 'set.msaaReload': "Restarting the picture...", 'set.bright': 'Brightness', 'set.sound': 'Sound', 'set.master': 'Master volume', 'set.film': 'Film volume', 'set.crowd': 'Crowd volume', 'set.lang': 'Language', 'set.fps': 'Show FPS', 'set.bubbles': 'Speech bubbles',
   'set.restart': 'Some changes apply after you reopen the app.', 'set.done': 'Done', 'on': 'On', 'off': 'Off',
   // ---- HUD ----
   'hud.order': 'Order · {name}', 'hud.buy': 'Tickets · {name}', 'hud.liftCall': 'Call the lift', 'hud.liftUp': 'Up to the screens', 'hud.liftDown': 'Down to the lobby', 'hud.liftPress': 'Press', 'hud.sitDown': 'Sit down', 'hud.talk': 'Talk to {name}', 'hud.sit': 'Sit down', 'hud.sitSeat': 'Sit · {seat}', 'hud.yourSeat': 'Sit · {seat} (yours)', 'hud.stand': 'Stand up', 'hud.eat': 'Eat', 'hud.sip': 'Sip', 'hud.findSeat': 'Find my seat', 'hud.hide': 'Hide controls', 'hud.show': 'Show controls', 'hud.menu': 'Menu', 'hud.sprint': 'Sprint',
