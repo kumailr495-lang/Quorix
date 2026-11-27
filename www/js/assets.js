@@ -133,7 +133,7 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
     return pts; };
   if (o.round && room.ring) room.ring((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2, typeof o.round === 'number' ? o.round : (b.max.x - b.min.x) / 2, b.min.y, b.max.y);   // v10: round things (the fountain) get a round collider
   else if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; if (turned) room.poly(foot(-pad), b.min.y, b.max.y); else room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
-  else if (o.collide !== false && !o.round && solidProp(name, b)) { if (turned) room.poly(foot(0.03), b.min.y, b.max.y); else room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y); }
+  else if (o.collide !== false && !o.round && solidProp(name, b, o.floorY ?? 0)) { if (turned) room.poly(foot(0.03), b.min.y, b.max.y); else room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y); }
   if (name.startsWith('bin')) (room.bins || (room.bins = [])).push({ x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2 });   // bins you can drop empty cups into
   return b;
 }
@@ -141,7 +141,9 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
 // wall-mounted, flat and walk-through things don't. Footprints over 14 m2 (counters with walk-in gaps, facades) keep their own colliders.
 // v12b (the user, 11-19: "don't give collision to random stuff like grass"): soft and low decor (hedges, grass, leaves, rugs) is walk-through too
 const NO_COLLIDE = /^(letters|chandelier|pendant|downlight|sconce|speaker|rug|door|seat|arm_|stair|facade|shopfront|torchere|restroom_set|poster|frame|sign|led|light|tap|mirror|basin|urinal|lamp_post|hedge|grass|leaves|flowers)/;
-function solidProp(name, b) { const h = b.max.y - b.min.y, w = b.max.x - b.min.x, d = b.max.z - b.min.z; return !NO_COLLIDE.test(name) && b.min.y < 0.35 && h > 0.35 && w > 0.12 && d > 0.12 && w * d < 14; }
+// v14d (the user, 11-27: "most of the objects on the upper area like seats, sofas ... I am going through them"): standing on the floor means
+// within 35 cm of the floor the prop stands on (floorY), not of the ground floor: nothing on the mezzanine or the corridor collided
+function solidProp(name, b, floorY = 0) { const h = b.max.y - b.min.y, w = b.max.x - b.min.x, d = b.max.z - b.min.z; return !NO_COLLIDE.test(name) && b.min.y - floorY < 0.35 && h > 0.35 && w > 0.12 && d > 0.12 && w * d < 14; }
 // one merged geometry (per material groups, 'occ' attribute) for instancing, e.g. hall seats. extra: matrix applied after the Kiln->engine turn
 // over = per-hall material swaps keyed by mesh name or material name, each with an optional library id and tint
 export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null, pick = null) {

@@ -610,7 +610,7 @@ function dressRooms(world) {
     const deep = key === 'lobby' ? { ...host, pacc: new Acc(), gacc: new Acc(), facc: new Acc() } : null;
     for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y;
       const sz = A.box.getSize(new THREE.Vector3()), small = Math.max(sz.x, sz.z) * (typeof p.o.scale === 'number' ? p.o.scale : 1) < 1.6;
-      const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.o);
+      (world.placed || (world.placed = [])).push({ room: key, name: p.name, x: p.x, y: p.y, z: p.z });   /* what stands where (tests) */ const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.y > 0.5 ? { ...p.o, floorY: p.y } : p.o);
       // v14 (the user, 11-20: "I can't sit on most of the sofas outside"): seating props give sit spots (local +z is their front)
       const sd = SIT_ON[p.name]; if (sd && sd.ring) for (let i = 0; i < sd.ring; i++) { const t = p.yaw + (i + 0.5) / sd.ring * Math.PI * 2, sx = Math.sin(t), sz = Math.cos(t), x = p.x + sx * sd.r, z = p.z + sz * sd.r;   // v14 round seats: facing out
         world.sitSpots.push({ x, y: p.y + sd.h, fy: p.y, z, face: t + Math.PI, stand: { x: x + sx * 0.62, z: z + sz * 0.62 }, room: key, taken: null, ring: true }); }

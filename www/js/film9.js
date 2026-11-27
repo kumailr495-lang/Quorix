@@ -15,7 +15,7 @@ import { t } from './i18n.js';
 import { media } from './bridge.js';
 import { G } from './materials.js';
 import { MusicScreen, Confetti } from './party.js';
-const LIGHT = { idle: 1, pending: 1, countdown: 0.06, playing: 0.02, credits: 0.3, ended: 0.85 };
+const LIGHT = { idle: 1, pending: 1, countdown: 0.05, playing: 0.015, credits: 0.25, ended: 0.85 };
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), ss = (u) => u * u * u * (u * (u * 6 - 15) + 10);
 export function youtubeId(u) { const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; }
 // where a film is played from: a download, the app's server (proxy), or the web
@@ -221,8 +221,14 @@ export class Shows {
       if (want !== s.lightWant) { s.lightWant = want; s.lightFrom = s.light; s.lightAt = now; }
       const dur = s.state === 'countdown' ? 9500 : s.state === 'playing' ? 2000 : 5000, u = clamp((now - s.lightAt) / dur); s.light = s.lightFrom + (want - s.lightFrom) * ss(u);
       h.room.U.uHouse.value = s.light; h.room.U.uGlow.value = 0.35 + 0.65 * Math.min(1, s.light * 2.5);
+      // v14d (the user, 11-27: "why aren't the lights going dim ... it's so bright after the movie starts"): the fixed layer (the cross aisle's
+      // warm line, the door light, the light under the screen) goes down with the house lights to a third; the step lights and the exit
+      // signs keep their own glow
+      if (h.room.U.uFix) h.room.U.uFix.value = 0.32 + 0.68 * Math.min(1, s.light * 1.6);
       // screen light gain: the picture's own colour comes from the spill copy
-      const g = s.state === 'playing' && s.pic ? 3.6 : s.state === 'countdown' ? 2.2 : s.state === 'pending' || s.state === 'ended' ? 1.2 : 0.5, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 6);
+      // v14d (the user, 11-27: "why is the light bounce so shit and so strong"): the picture lights the room as a real screen does, a soft
+      // spill (it was 3.6, the hall lit up like a lamp with every bright scene); it eases over a third of a second, no flashes on cuts
+      const g = s.state === 'playing' && s.pic ? 1.1 : s.state === 'countdown' ? 0.75 : s.state === 'pending' || s.state === 'ended' ? 0.6 : 0.35, sc = h.room.U.uScreen.value, k = 1 - Math.exp(-dt * 3);
       sc.r += (g - sc.r) * k; sc.g = sc.r; sc.b = sc.r;
       if (this.walls && h.id === 'X270') { const on = s.state === 'playing' && s.pic && !this._yt && (s.split || s.wrap) ? 1 : 0;   // as bright as the front at the corner (the edge extension dims itself with distance)
       for (const m of this.walls) { const U = m.material.uniforms.uAmt; U.value += (on - U.value) * k; m.visible = U.value > 0.004; } }
