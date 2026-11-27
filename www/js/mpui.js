@@ -8,6 +8,7 @@ import { Multi, newCode, cleanCode } from './mp.js';
 import { RB, Person, LOOK, LOOK_SHOP, cleanLook, applyLook } from './people.js';
 import { filmById } from './films.js';
 import { t } from './i18n.js';
+import qrcode from '../vendor/qrcode.mjs';
 
 const el = (tag, attrs = {}, kids = []) => { const e = document.createElement(tag); for (const k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'cls') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); } for (const c of kids) e.appendChild(c); return e; };
 // a show another phone sends is checked here before it reaches the screen: a house film by id, a YouTube video by its 11-character id,
@@ -66,7 +67,11 @@ export class Together {
     // v11: the panel is your name, Host, or a code and Join; how you look waits behind one line (your last look is kept)
     const lookB = el('button', { cls: 'adv-toggle', text: t('mp.look') }), lookBox = el('div', { cls: 'adv' }, [grid, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'), el('label', { text: t('mp.bottom') }), swatches('mpBottom', LOOK.bottom, 'b'), el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size]);
     lookBox.hidden = !o.look; lookB.classList.toggle('on', !!o.look); lookB.addEventListener('click', () => { lookBox.hidden = !lookBox.hidden; lookB.classList.toggle('on', !lookBox.hidden); });
-    const side = el('div', { cls: 'mpEdit' }, [name, el('div', { cls: 'row' }, [hostB, code, joinB]), status, list, lookB, lookBox, leaveB]);
+    // v14d (the user, 11-26: "room code ... QR"): the room's code as a QR to show a friend, and a scan button that reads one with the camera
+    const qrBox = el('div', { cls: 'mpQR' }); qrBox.hidden = !this.active; if (this.active) this.drawQR(qrBox, this.mp.code);
+    const canScan = typeof window.BarcodeDetector === 'function' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), scanB = el('button', { cls: 'btn ghost sm', text: t('mp.scan') }); scanB.hidden = !canScan || this.active;
+    scanB.addEventListener('click', () => this.scan(code, (k) => { code.value = k; this.go(k, profile(), false, status); }, status));
+    const side = el('div', { cls: 'mpEdit' }, [name, el('div', { cls: 'row' }, [hostB, code, joinB, scanB]), status, qrBox, list, lookB, lookBox, leaveB]);
     const d = el('div', { cls: 'dialog' }, [el('div', { cls: 'mpHead' }, [el('h2', { text: t('mp.title') }), close]), el('div', { cls: 'mpTop' }, [prev, side]), el('div', { cls: 'note', text: t('mp.privacy') })]);
     this.panel = el('div', { id: 'mpPanel', cls: 'scrim center' }, [d]); document.body.appendChild(this.panel); this.c.onModal(true); this.list();
     this.pv = { canvas: prev, ctx: prev.getContext('2d'), scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(30, 120 / 170, 0.1, 20), p: null, av: null, yaw: 0.5,
@@ -79,6 +84,16 @@ export class Together {
     leaveB.addEventListener('click', () => { this.leave(); this.close(); });
     close.addEventListener('click', () => this.close());
   }
+  drawQR(box, code) { box.textContent = ''; if (!code) return; try { const q = qrcode(0, 'M'); q.addData('LUMIERE:' + code); q.make(); const n = q.getModuleCount(), px = 4, m = 2, c = document.createElement('canvas'); c.width = c.height = (n + m * 2) * px;
+      const g = c.getContext('2d'); g.fillStyle = '#f6ecd8'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#0a080b'; for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) g.fillRect((k + m) * px, (r + m) * px, px, px);
+      box.append(c, el('small', { text: t('mp.qr', { code }) })); } catch (e) { /* no QR: the code is in the line above */ } }
+  // the camera reads a LUMIERE:<code> QR (BarcodeDetector); the first code found joins that room
+  async scan(input, onCode, status) {
+    let st = null; const wrap = el('div', { cls: 'mpScan' }), v = document.createElement('video'), stop = el('button', { cls: 'btn ghost sm', text: t('book.back') }); v.playsInline = true; v.muted = true; wrap.append(v, stop); this.panel.appendChild(wrap);
+    const end = () => { if (st) st.getTracks().forEach((x) => x.stop()); wrap.remove(); clearInterval(this._scanT); }; stop.addEventListener('click', end);
+    try { st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); v.srcObject = st; await v.play(); const det = new window.BarcodeDetector({ formats: ['qr_code'] });
+      this._scanT = setInterval(async () => { try { const r = await det.detect(v); const m = r.length && /LUMIERE:([A-Z0-9]{6})/.exec(r[0].rawValue || ''); if (m) { end(); onCode(cleanCode(m[1])); } } catch (e) { /* the next frame */ } }, 300);
+    } catch (e) { end(); status.textContent = t('mp.noCam'); } }
   close() { if (this.panel) { this.panel.remove(); this.panel = null; } if (this.pv) { if (this.pv.p) this.pv.p.dispose(); this.pv = null; } this.c.onModal(false); }
   // the preview: the chosen person with the chosen look, turning slowly; drawn by the game's own renderer (no second GPU context) into the
   // part of the screen under the panel's preview box, then copied into that box in the same frame
@@ -112,9 +127,10 @@ export class Together {
     try { this.mp.start(code, profile, asHost); } catch (e) { console.warn('[mp]', e); status.textContent = t('mp.failed'); return; }
     this.c.ev && this.c.ev('mpJoin');
     status.textContent = asHost ? t('mp.waiting', { code }) : t('mp.badge', { code, n: this.mp.count });
+    { const qb = this.panel && this.panel.querySelector('.mpQR'); if (qb && asHost) { qb.hidden = false; this.drawQR(qb, code); } }   // v14d the code as a QR to show a friend
     this.badge(); this.list();
     if (!asHost) setTimeout(() => { if (this.active && this.mp.peers.size === 0 && this.panel) status.textContent = t('mp.failed'); }, 20000);
-    setTimeout(() => { this.close(); this.c.enterPlay(); }, asHost ? 2200 : 900);
+    setTimeout(() => { this.close(); this.c.enterPlay(); }, asHost ? 4500 : 900);   // v14d a little longer for the host: time to show the QR
   }
   // v14d (the user, 11-27: "I quit and try to join flow mode ... it does that in the multiplayer still, there should be a quit option"): leaving
   // takes everything of the room with it: the others, their voices, the host's guests and lift, a show you were watching with them

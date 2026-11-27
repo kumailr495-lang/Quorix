@@ -64,7 +64,7 @@ import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     static final int PICK = 1, PERM = 2, MIC = 3, PORT = 47821;
-    android.webkit.PermissionRequest micReq;
+    android.webkit.PermissionRequest micReq; String[] micRes;
     WebView web;
     FrameLayout root;
     View custom;
@@ -211,7 +211,7 @@ public class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
         super.onRequestPermissionsResult(req, perms, res);
-        if (req == MIC) { final android.webkit.PermissionRequest r = micReq; micReq = null; if (r != null) { if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) r.grant(new String[] { android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE }); else r.deny(); } return; }
+        if (req == MIC) { final android.webkit.PermissionRequest r = micReq; final String[] want = micRes; micReq = null; micRes = null; if (r != null) { boolean all = true; for (int g : res) if (g != PackageManager.PERMISSION_GRANTED) all = false; if (all && want != null) r.grant(want); else r.deny(); } return; }
         if (req != PERM) return;
         boolean ok = false; for (int r : res) if (r == PackageManager.PERMISSION_GRANTED) ok = true;   // v14d videos and songs are asked together
         js("window.__lumiereMediaPermission && window.__lumiereMediaPermission(" + ok + ")");
@@ -560,11 +560,15 @@ public class MainActivity extends Activity {
         // (only the app's own page asks; the Android permission is asked the first time)
         @Override public void onPermissionRequest(final android.webkit.PermissionRequest r) {
             runOnUiThread(new Runnable() { public void run() {
-                boolean ours = r.getOrigin() != null && "127.0.0.1".equals(r.getOrigin().getHost()); boolean mic = false;
-                for (String x : r.getResources()) if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x)) mic = true;
-                if (!ours || !mic) { r.deny(); return; }
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) { r.grant(new String[] { android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE }); return; }
-                micReq = r; requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, MIC);
+                // v14d the camera too (Play together: scan a friend's room code), and only for the app's own page
+                boolean ours = r.getOrigin() != null && "127.0.0.1".equals(r.getOrigin().getHost()); java.util.ArrayList<String> res = new java.util.ArrayList<>(), need = new java.util.ArrayList<>();
+                for (String x : r.getResources()) {
+                    if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x)) { res.add(x); if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) need.add(Manifest.permission.RECORD_AUDIO); }
+                    else if (android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(x)) { res.add(x); if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) need.add(Manifest.permission.CAMERA); }
+                }
+                if (!ours || res.isEmpty()) { r.deny(); return; }
+                if (need.isEmpty()) { r.grant(res.toArray(new String[0])); return; }
+                micReq = r; micRes = res.toArray(new String[0]); requestPermissions(need.toArray(new String[0]), MIC);
             } });
         }
     }

@@ -726,3 +726,6 @@ body.ph-open #where,body.ph-open #goal{opacity:0;pointer-events:none;transition:
 #nowPlaying .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.14);margin-top:4px;overflow:hidden}
 #nowPlaying .bar u{display:block;height:100%;width:0;background:var(--brass);text-decoration:none}
 .rm-art.song{aspect-ratio:1/1;width:30%;align-self:center}.rm-art.song img{width:100%;height:100%;object-fit:cover}
+/* v14d the room's code as a QR in the Play together panel; the camera view while scanning one */
+.mpQR{display:flex;align-items:center;gap:10px;margin:6px 0}.mpQR canvas{width:96px;height:96px;border-radius:8px;image-rendering:pixelated;box-shadow:0 0 0 1px var(--line)}.mpQR small{font-size:11px;color:var(--mute);max-width:160px}
+.mpScan{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(10,8,11,.92)}.mpScan video{width:min(70vw,360px);max-height:62vh;border-radius:12px;object-fit:cover;box-shadow:0 0 0 2px var(--brass)}
