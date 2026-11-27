@@ -5,6 +5,34 @@ I stopped you, and change everything". This file is that reading. Every ask from
 where it stands. **Done** means built and checked in the engine (headless Chromium, software GPU: not the phone). **Partly** means
 something exists but not what was asked. **Open** means not built. Nothing here has been seen on the phone since v8.
 
+## 11-27: the 14.1 phone test (17 points) and the 11-26 lists repeated (14.2)
+
+| Ask (the user's words, shortened) | Status in 14.2 |
+|---|---|
+| "The whole app flickers, the buildings, the road, everywhere" | Done as far as the headless engine can show: MSAA on every preset, no mid-game resolution changes after the first 45 s, the neon flicker removed, fine window patterns filtered, a deeper near plane on 16-bit depth phones; the FPS line now shows AA and depth bits. Needs the phone to confirm |
+| Trash pick-up (and everything) only when I look at it | Done: every prompt follows the crosshair (litter, bins, seats, sofas, people, fixtures, kiosks, shifts, the Suite) |
+| Songs: custom UI with their own pictures | Done: the cover (embedded or Android's album art), title, artist, progress on the big screen and a Now Playing card |
+| Z-Archiver / a late song: the app closes and starts from the beginning | Done: songs listed in the app (no outside picker needed), the WebView rebuilt if Android kills it, a snapshot puts you back where you were |
+| The car interior / the whole taxi intro | Done: filmed from outside (crane, tracking shot, the kerb), no cabin |
+| The app lags a lot | Done in part: lobby 899k -> 495k triangles, halls 1M -> 235-413k, street draws 291 -> about 210; not measured on the phone |
+| The song glitches and duplicates itself | Done: a song never starts the native player; the page's copy is muted while the native player plays |
+| The theatres are not premium | Partly: brass nosings and lit strips on every aisle step, lights that really go down in the film, a soft screen spill |
+| Upstairs seats, sofas: I go through them | Done: everything on the mezzanine and the corridor collides |
+| NPCs hold items wrongly; they just sit | Done: gripped by the side; seated people eat, drink, read their tickets, check phones |
+| Music Night: they dance at the stage, throw popcorn and money | Done: a party walks down and dances in front of the screen, throws popcorn and bank notes on the big beats, goes back |
+| Lift in multiplayer goes up only for the one who clicks | Done: the host's phone runs the one lift, everyone else follows its state |
+| Multiplayer quit glitch, a quit option | Done: Leave on the room bar and in the pause menu; leaving ends the room's show and lift |
+| Recline only on my side | Done: the seat reclines on every phone and the player leans back with it |
+| Light bounce too strong; lights not dimming in the film | Done: spill 1.1 (was 3.6), the fixed lights go down to a third |
+| Aisle lights not placed properly | Done: on every step's edge, built from the step geometry (halls re-baked) |
+| "Not a single new thing" | New: the LUMIÈRE Suite with a 3D remote, separate restrooms, room QR codes, Music Night with covers, the new arrival |
+| 11-26: private theatres (custom, home with remote, jungle, drive-in, panorama, space) | Partly: My Theatre (custom), the Suite (home, TV and projector, 3D remote), X-270 (panorama); jungle, drive-in and space are not built |
+| 11-26: washrooms not separated | Done: two doors, two vestibules, MEN and WOMEN signs |
+| 11-26: room code, QR | Done: the code as a QR in the room panel; a scan button where the phone allows it |
+| 11-26: host transfer | There since v10: Make host in the host's room list; if the host leaves, the longest-present player takes over |
+| Netflix-style streaming | Not possible legally; public-domain films, your own videos and songs, links |
+| IMAX name | Stays MAX (trademark) |
+
 ## Why the user kept stopping me (the pattern)
 
 1. Asks ignored or done by a fraction ("you ignored 75 %", 2026-11-01, and again on 11-06, 11-13, 11-14).

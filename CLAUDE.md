@@ -117,6 +117,38 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v14d (2026-11-27: the user's 14.1 phone test, 17 complaints; APK 14.2, docs/V14-RELEASE-NOTES.md)
+- **Flicker**: MSAA on every preset (low too), the resolution governor searches only in the first 45 s then steps down at most twice
+  (20 s apart), no intentional neon flicker (street12 ATLAS_FRAG fx 1 gone, chases smoothed), window blinds/curtains filtered by fwidth,
+  near plane 0.2 when the phone reports < 24 depth bits; the FPS line shows `AA<samples> · Z<depth bits>` (the next phone screenshot says
+  which). Meter: `$S/t/flicker.js` (second temporal difference under a 0.3 px/frame pan); SwiftShader showed no shader flicker.
+- **Perf**: halls draw the rooms behind a door only near that door (world9 setVisibility doorNear: 7 m from inside a hall, 25/15 m into
+  one); props in cells (lobby 2 x 2, street and corridor 3) so the camera culls them; heavy props simplified (tools/optimize-models.sh,
+  glb_check clean); the trolley one draw; people LOD 6.5/14.5 m with hysteresis; seat LOD0 3.5/4.5/6 m.
+- **Look to interact**: main.js `lookAt(x, y, z, r, reach)`: the crosshair ray within the thing's radius; every prompt uses it
+  (career.js prompt takes it, npc9 talkTarget takes a filter). Upstairs furniture collides (assets.js solidProp floorY).
+- **Music**: wrapper `listAudio`, routes /a/ (songs) and /c/ (covers), READ_MEDIA_AUDIO; tablet Songs tab; tags.js (ID3/MP4/FLAC
+  covers); party.js MusicScreen draws the cover, a turning record, title, artist, progress; #nowPlaying card. No native audio for
+  songs, and the page's copy is muted while the native player plays (sound.nativeMute). Renderer death: MainActivity
+  onRenderProcessGone rebuilds the WebView (resume=1); main.js snapshot (lumiere.snap.v1, 30 min) puts you back.
+- **People**: npc9 `stage(hallId, on)`: Music Night dancers walk down to the front floor (exitRoute minus the door), dance (Dance_Loop),
+  go back; a dancer held up 1.2 s dances where it is; pastimes (eat, drink, read, phone); held things gripped by their side (people.js
+  attach measures the item).
+- **Play together**: the host owns the lift (lift9 snapshot/applyState, mp 'lfs' 5 Hz while busy); Leave on the room bar and in pause;
+  leave() ends synced shows and the slave lift; recline as bit 7 of the state packet, a Recliner per remote seat; room QR
+  (www/vendor/qrcode.mjs, MIT) and a BarcodeDetector scan (wrapper grants the camera to our origin only).
+- **Halls**: brass nosing + top strip on every aisle step and a strip at the top of each riser (halls.py nosing; re-baked); fixed layer
+  dims to a third in the film; screen spill gain 1.1 playing (was 3.6), eased.
+- **Restrooms**: two doors (women's z -1, men's z -7), the vestibule split at z -4 (rooms.py, re-baked lobby + wc), MEN/WOMEN signs,
+  NAV wcDoorM/wcInM/wcMid, walk.mjs men's walk.
+- **The LUMIÈRE Suite**: the v14 flat restored as a private apartment (home.js, home14.py, bake home); phone app "Suite" and the host's
+  option go up (300 LC, free in Quick); models load on the first visit (SUITE_ASSETS); remote.js: a 3D remote in the vm scene, keys
+  tapped by raycast (player.onTap first), REMOTES on the coffee table and the cinema console.
+- **Intro**: the taxi filmed from outside (crane, tracking, kerb), no cabin; then the old step-out POV.
+- **Lessons**: since props above 0.5 m collide (solidProp floorY), a test path that crossed a prop now sticks: walk.mjs walked through the
+  bin beside each hall door on the old baffle detour (removed); a lobby guest spot stood on the way to the men's door (moved to 18.0, -0.6).
+  Before blaming walls, `world.collide(p, r, y)` along the leg and `crowd.millNet().spots` say what blocks a walker.
+
 ## v14b/v14c (2026-11-26: the user's phone test; "scrap the city: an indie game where people watch movies together"; APK 14.1, docs/V14-RELEASE-NOTES.md)
 - **Scrapped**: the flat, the vehicles, the phone's Order app (orders come from the armrest tablet and the counters). Story starts with the taxi.
 - **Seat yaw**: hallmath `yawOf(t) = (f > 0 ? -PI/2 : PI/2) + t` (the old `- f * t` turned the west halls' seats away from the screen). test-logic

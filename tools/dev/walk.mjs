@@ -68,9 +68,10 @@ const walks = await p.evaluate(async () => {
     const rows = [...new Set(wh.seats.map((s) => s.row))].sort((a, b) => a - b);
     for (const r of [rows[rows.length >> 1], rows[0]]) {   // a middle row, the front row: the seat nearest the middle
       const seat = wh.seats.filter((s) => s.row === r).reduce((a, s) => (Math.abs(s.a) < Math.abs(a.a) ? s : a));
-      const route = HM.seatRoute(h, seat).map((q) => pt(h.toWorld(q.u, q.d))), sg = Math.sign(h.entryU) || 1;
-      // round the light-lock baffle 1.25 m inside the door (it hides the hall from the corridor): along the rear wall, then in
-      const lock = [pt(h.toWorld(h.entryU, h.depthIn - 0.62)), pt(h.toWorld(h.entryU - sg * 2.0, h.depthIn - 0.62)), pt(h.toWorld(h.entryU - sg * 2.0, h.depthIn - 1.9))];
+      const route = HM.seatRoute(h, seat).map((q) => pt(h.toWorld(q.u, q.d)));
+      // v14d: in through the door, then the seat route (the light-lock baffle went in v14: the old detour along the rear wall walked
+      // through the bin beside the door, which collides since the upstairs fix)
+      const lock = [pt(h.toWorld(h.entryU, h.depthIn - 0.62))];
       out.push({ label: `${h.id}: corridor, entrance, aisle steps, row ${seat.id.replace(/\d+$/, '')} to seat ${seat.id}`, start: [din.x + side * 2.2, B.L1, din.z], pts: [[din.x + side * 0.9, din.z], ...lock, ...route], room: h.key, y: h.y0 + h.rows[r].y });
     }
     // out (v12b): from the front of the hall to the side exit, through its door onto the passage, down its flight, out of its mouth into the

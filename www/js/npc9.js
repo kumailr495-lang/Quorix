@@ -530,7 +530,7 @@ function makeCart(mats, scene) {
 }
 function nearestOn(pts, a) { let bi = 0, bd = 1e9; pts.forEach((p, i) => { const d = Math.hypot(p.x - a.x, (p.y - a.y) * 2, p.z - a.z); if (d < bd) { bd = d; bi = i; } }); return bi; }
 const HALL_ID = Object.fromEntries(Object.values(HALL).map((h) => [h.key, h.id]));
-// where lobby guests stand, sit or queue (x, z)
+// where lobby guests stand, sit or queue (x, z); v14d: the one outside the restrooms moved west to [18.0, -0.6], off the way to the men's door
 const LOBBY_SPOTS = [[-12.6, 9.0], [-11.0, 9.4], [-12.8, -4.0], [-11.2, -3.6], [-4.6, 3.5], [2.2, -1.8], [-3.4, -2.6], [1.8, 4.0], [-6.5, 11.0], [6.6, 10.5], [4.5, 13.2], [-8.8, 1.2], [16.5, 3.0], [16.0, -4.5], [-8.0, -9.5], [3.0, -9.0], [11.0, 9.0], [-1.0, 8.5],
-  [-13.8, 7.6], [-14.2, -5.2], [19.0, 6.5], [19.2, -0.5], [6.2, -2.8], [-7.0, -4.6], [5.4, 7.0], [-2.6, 12.6], [13.6, 5.2], [-16.0, 12.0], [7.8, -9.6], [-5.2, 15.0]];   // v9.3: queues, poster wall, windows
+  [-13.8, 7.6], [-14.2, -5.2], [19.0, 6.5], [18.0, -0.6], [6.2, -2.8], [-7.0, -4.6], [5.4, 7.0], [-2.6, 12.6], [13.6, 5.2], [-16.0, 12.0], [7.8, -9.6], [-5.2, 15.0]];   // v9.3: queues, poster wall, windows
 const IDLES = ['Idle_Loop', 'Idle_Loop', 'Idle_TalkingPhone_Loop', 'Idle_FoldArms_Loop', 'Idle_Talking_Loop'];   // what a waiting guest does with their hands
