@@ -134,7 +134,7 @@ export function placeAsset(room, name, x, y, z, yaw = 0, o = {}) {
   if (o.round && room.ring) room.ring((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2, typeof o.round === 'number' ? o.round : (b.max.x - b.min.x) / 2, b.min.y, b.max.y);   // v10: round things (the fountain) get a round collider
   else if (o.collide) { const pad = typeof o.collide === 'number' ? o.collide : 0; if (turned) room.poly(foot(-pad), b.min.y, b.max.y); else room.col(b.min.x - pad, b.min.z - pad, b.max.x + pad, b.max.z + pad, b.min.y, b.max.y); }
   else if (o.collide !== false && !o.round && solidProp(name, b, o.floorY ?? 0)) { if (turned) room.poly(foot(0.03), b.min.y, b.max.y); else room.col(b.min.x + 0.03, b.min.z + 0.03, b.max.x - 0.03, b.max.z - 0.03, b.min.y, b.max.y); }
-  if (name.startsWith('bin')) (room.bins || (room.bins = [])).push({ x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2 });   // bins you can drop empty cups into
+  if (name.startsWith('bin')) (room.bins || (room.bins = [])).push({ x: (b.min.x + b.max.x) / 2, y: b.min.y, z: (b.min.z + b.max.z) / 2 });   // bins you can drop empty cups into (v14d: with their floor's height)
   return b;
 }
 // v8 (phone feedback: "I am able to go through or in between them"): furniture standing on the floor blocks you and the people; hanging,

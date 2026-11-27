@@ -593,8 +593,10 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   // south side, a snake plant on each; people sit round them, stroll and talk up here between the shows (npc9.js corridorFolk)
   for (const x of BORNES) { add('corridor', 'borne_round', x, L1, BORNE_Z, 0, { collide: false, round: 0.82, swap: { velvet_teal: [MAT.velvet, [0.21, 0.012, 0.03]] } });
     add('corridor', 'planter_tall', x, L1 + 0.842, BORNE_Z, 0.4, { collide: false }); }
-  // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup)
-  for (const h of Object.values(HALL)) { const w = h.toWorld(h.entryU - Math.sign(h.entryU) * 1.4, h.depthIn - 0.5); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z); }
+  // a bin inside every hall, at the top of the rear aisle beside the entrance (you leave with your empty cup). v14d: in a hall with curved
+  // rows the way in runs from the door along the rear wall (hallmath seatRoute), so its bin stands against the side wall in front of the door
+  for (const h of Object.values(HALL)) { const sg = Math.sign(h.entryU) || 1, u = h.rowK ? sg * (h.width / 2 - 0.3) : h.entryU - sg * 1.4, d = h.rowK ? h.depthIn - 1.6 : h.depthIn - 0.5;
+    const w = h.toWorld(u, d), q = h.toWorld(u - sg, d); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z, h.rowK ? Math.atan2(q.x - w.x, q.z - w.z) : 0); }
   // v12b Dolby Atmos: the overhead speakers, hung from each hall's ceiling in two rows, each turned to face across the seats
   return L;
 })();
@@ -648,7 +650,7 @@ function dressRooms(world) {
       if (h_.facc.count) {   // v12 leaf cards (foliage.js)
         const g = toGeometry(h_.facc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.foliageMat(room.U, world.leafTex || (world.leafTex = leafAtlas(world.mats.texSize < 512 ? 256 : 512))));
         m.matrixAutoUpdate = false; m.name = key + '-foliage' + sfx; room.group.add(m); } }
-    for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });
+    for (const b of host.bins) world.bins.push({ ...b, room: key, y: b.y != null ? b.y : room.def.level || 0 });   // v14d its own floor (a hall's bin is at the top, not on the hall's lowest floor)
     for (const f of framed) addPanel(world, room, f);
     for (const t of TOTEM_POSTERS) if (t.room === key) addPanel(world, room, t);
   }
