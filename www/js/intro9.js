@@ -204,8 +204,10 @@ export class Intro {
   start(o = {}) {
     if (!this.mesh) { this.hooks.done && this.hooks.done(); return false; }
     this.active = true; this.t = 0; this.skippable = !!o.skippable; this.carOn = true; this._door = 0; this._said = 0; this._cut = false; this.car.route = null; this.car.v = 0; if (this.snd) { this.snd.stop(); this.snd = null; }
-    this._mkDriver(); this._ride(true); document.body.classList.add('cutscene');
-    this._inside(true);
+    // v14d (the user, 11-27: "the interior of the car looks shit, the whole car / taxi intro is fucked up"): no cabin any more. The arrival
+    // is filmed from outside, as a film opens: a high wide shot of the street in the rain with the cinema lit up, the taxi tracked from
+    // the road side, then waiting on the pavement as it pulls into the bay; the door opens and you step out (your own eye from there)
+    this._ride(false); document.body.classList.add('cutscene'); if (!this.snd && this.sound.vehicle) this.snd = this.sound.vehicle();
     const b = document.querySelector('#skipCut'); if (b) { b.hidden = !this.skippable; b.onclick = () => this.finish(); }
     this.hooks.fade && this.hooks.fade(0, 0.9); return true;
   }
@@ -233,7 +235,7 @@ export class Intro {
     // outside the cabin its engine and tyres are heard from where it is (sound9.js vehicle); inside, the cabin recording carries it
     if (this.snd) this.snd.set(cx, cz, this.car.route === this.R.taxiOut ? this.car.v : 0, this.hear ?? 1);
     const say = (k) => this.hooks.driver && this.hooks.driver(k, cx, cz);
-    if (t > 2.2 && this._said < 1 && this.active) { this._said = 1; say('drv.ride'); }
+    if (t > 2.2 && this._said < 1 && this.active) this._said = 1;
     if (t > this.ARRIVE + 0.1 && this._said < 2 && this.active) { this._said = 2; say('drv.arrive'); }
     if (t > this.SHOT_B && this._door < 1) { this._door = 1; this._inside(false); if (!this.snd && this.sound.vehicle) this.snd = this.sound.vehicle(); if (this.sound.carDoor) this.sound.carDoor(true); else this.sound.door(true, 0.9); }
     if (t > this.SHOT_B + 1.75 && this._door < 2) { this._door = 2; if (this.sound.carDoor) this.sound.carDoor(false); else { this.sound.door(false, 1.2); this.sound.thud && this.sound.thud(); } say('drv.bye'); }
@@ -244,13 +246,14 @@ export class Intro {
     if (t < SHOT_B) {
       // the ride: your eye in the back seat (the road's small shudder, a nod as the car brakes); you look ahead between the front seats,
       // then, as the cinema comes up on the kerb side, at its doors through your own window
-      const sp = t < ARRIVE ? this.R.taxiIn.vAt(t) / 9 : 0, brake = t < ARRIVE ? Math.sin(Math.PI * clamp((t - ARRIVE + 2.4) / 2.4)) : 0;
-      this._eye.set(SEAT_EYE[0], SEAT_EYE[1] + Math.sin(t * 9.1) * 0.004 * sp + Math.sin(t * 2.3) * 0.006 * sp, SEAT_EYE[2] + brake * 0.035).applyMatrix4(this._m); cam.position.copy(this._eye);
-      const k = ease((t - (ARRIVE - 4.0)) / 3.2), ax = this._look.set(0.0, 1.16, 9).applyMatrix4(this._m);
-      cam.lookAt(lerp(ax.x, 0.6, k), lerp(ax.y, 1.95, k), lerp(ax.z, 18.5, k));
-      const w = Math.sin(t * 4.2) * 0.5 + 0.5; this.wipers[0].rotation.z = -0.15 - w * 1.25; this.wipers[1].rotation.z = -0.15 - w * 1.25;
-      const spd = t < ARRIVE ? this.R.taxiIn.vAt(t) : 0, S = this._sw;
-      for (const g of this.glass) { const u = g.material.uniforms; u.uT.value = t; u.uSpeed.value = spd; u.uLit.value.copy(S.c).multiplyScalar(Math.min(1.2, 0.3 + S.k)); }
+      // three shots, each a slow move (no cut inside a move): 1) crane over the far pavement, the whole lit front of the cinema and the
+      // taxi coming along the street; 2) tracking beside the taxi on the road side, a three-quarter view with the cinema behind it;
+      // 3) on the pavement east of the bay as it pulls in and stops
+      const c = this.car, fx = Math.sin(c.h), fz = Math.cos(c.h), T1 = Math.min(6, ARRIVE * 0.36), T2 = Math.max(T1 + 2, ARRIVE * 0.74);
+      if (t < T1) { const k = ease(t / T1); cam.position.set(lerp(-21, -7, k), lerp(8.6, 6.4, k), 38.2); cam.lookAt(lerp(-9, 3, k), lerp(3.9, 3.3, k), 18.5); }
+      else if (t < T2) { const k = ease((t - T1) / (T2 - T1)); this._eye.set(c.x + fx * lerp(3.2, 1.6, k), lerp(1.25, 0.95, k), c.z + fz * lerp(3.2, 1.6, k) + lerp(3.6, 3.1, k)); cam.position.copy(this._eye);
+        cam.lookAt(c.x - fx * 0.6, 0.85, c.z - fz * 0.6); }
+      else { const k = ease((t - T2) / Math.max(1, SHOT_B - T2)); cam.position.set(STOP_X + lerp(6.8, 6.2, k), lerp(1.4, 1.32, k), 26.35); cam.lookAt(lerp(c.x, STOP_X - 1, 0.4 * k), lerp(1.0, 1.2, k), lerp(c.z, 26, 0.5)); }
       if (t > SHOT_B - 0.3 && !this._cut) { this._cut = true; this.hooks.fade && this.hooks.fade(1, 0.26); }
     } else {
       if (this._cut) { this._cut = false; this._ride(false); this.hooks.fade && this.hooks.fade(0, 0.5); }
