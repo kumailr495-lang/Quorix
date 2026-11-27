@@ -464,7 +464,7 @@ async function boot() {
       const S = (id) => shows.get(id), status = (id) => { const s = S(id); return s.state === 'pending' ? t('show.pending', { time: fmtTime(shows.countdown(id) - 10) }) : s.state === 'countdown' ? t('show9.countdown') : s.state === 'playing' ? (shows.buffering ? t('show.buffering') : t('show.playing')) : s.state === 'ended' ? t('show.ended') : t('show.idle'); };
       if (hk) { const h = world.hallByKey(hk); ui.setWhere(h.name.replace('LUMIERE ', ''), S(h.id).state === 'idle' ? t('show.none') : `${shows.title(h.id)} · ${status(h.id)}`); } else ui.setWhere(t('room9.' + r), '');
       if (ticket && ticket.title) { const s = S(ticket.hall); ui.setTicketChip(t('ticket9.chip', { screen: ticket.hallName.replace('LUMIERE ', ''), seat: ticket.seat }) + (s.state === 'pending' ? ' · ' + fmtTime(shows.countdown(ticket.hall) - 10) : '')); } else ui.setTicketChip(null);
-      ui.setFps(`${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc`); }
+      ui.setFps(`${engine.stats.fps.toFixed(0)} fps · ${engine.stats.scale.toFixed(2)}x · ${engine.renderer.info.render.calls} dc · ${Math.round(engine.renderer.info.render.triangles / 1000)}k tri · AA${engine.samples || 0} · Z${engine.depthBits || 0}`); }
   }
   // v14 Lumiere Credits for watching (the master prompt: "watching eligible licensed Lumiere films"; never YouTube, never your own videos):
   // 6 LC a minute while you sit in the hall of a house film that is playing, the app in front, the picture moving (paused or hidden: nothing),
@@ -509,7 +509,7 @@ async function boot() {
   prog(1); const hold = Math.max(0, 2600 - (performance.now() - t0));
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); clearInterval(ldTimer); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 1300); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
-  window.__lumiere = { engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
+  window.__lumiere = { THREE, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles

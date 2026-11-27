@@ -4,7 +4,7 @@
 //   halos  soft glows round lamps and neon
 // Here: one picture atlas drawn on a canvas (original artwork, no photographs, no brands) and one mesh for every quad (one draw), the
 // halos as one mesh of camera-facing quads (one draw), a night sky with a moon, stars, cloud and a skyline (one draw), and what moves:
-// the neon's flicker, the chase of bulbs round the cinema's blade sign.
+// the chase of bulbs round the cinema's blade sign (v14d: smooth, and no neon flicker: the user read it as the app flickering).
 import * as THREE from 'three';
 import { G, COMMON_FRAG } from './materials.js';
 
@@ -182,9 +182,9 @@ vec3 interior(vec3 d, vec2 S, out float face) {
   return textureGrad(map, vR.xy + clamp(uv, 0.01, 0.99) * vR.zw, gx, gy).rgb * k;
 }
 vec3 nearLayer(vec3 col, float v, float e) {
-  vec2 q = vL; float fold = 0.72 + 0.28 * sin(q.x * 70.0 + sin(q.y * 9.0) * 0.6);
+  vec2 q = vL; float fold = 0.72 + 0.28 * sin(q.x * 70.0 + sin(q.y * 9.0) * 0.6) * (1.0 - clamp(fwidth(q.x * 70.0) * 0.6, 0.0, 1.0));
   if (v < 0.5 || abs(v - 6.0) < 0.5) { float cw = mix(0.1, 0.3, q.y); if (q.x < cw || q.x > 1.0 - cw) col = (v < 0.5 ? vec3(0.32, 0.05, 0.05) : vec3(0.06, 0.09, 0.2)) * fold * (0.35 + 0.65 * e); }
-  else if (abs(v - 1.0) < 0.5) { if (fract(q.y * 16.0) < 0.45) col = mix(col, vec3(0.16, 0.09, 0.04) * (0.4 + 0.6 * e), 0.8); }
+  else if (abs(v - 1.0) < 0.5) { float sl = q.y * 16.0, bl = mix(step(fract(sl), 0.45), 0.45, clamp(fwidth(sl) * 1.5, 0.0, 1.0)); col = mix(col, vec3(0.16, 0.09, 0.04) * (0.4 + 0.6 * e), 0.8 * bl); }
   else if (abs(v - 5.0) < 0.5) col = mix(col, vec3(0.55, 0.32, 0.15) * fold * (0.3 + 0.7 * e), 0.55);
   return col;
 }`;
@@ -197,9 +197,8 @@ void main() {
     #include <colorspace_fragment>
     return; }
   vec4 t = texture2D(map, vUv); if (t.a < 0.5 && vE.y < 2.5) discard; float e = vE.x;
-  if (vE.y > 0.5 && vE.y < 1.5) { float n = sin(uTime * 11.0 + vE.z * 40.0) * sin(uTime * 6.3 + vE.z * 17.0); e *= n > 0.93 ? 0.55 : 1.0; }
-  if (vE.y > 2.5) { float b = floor(vL.x * 8.0) + vE.z * 8.0; e *= mod(b - floor(uTime * 7.0), 3.0) < 0.5 ? 1.3 : 0.42; }
-  if (vE.y > 1.5 && vE.y < 2.5) { float edge = min(min(vL.x, 1.0 - vL.x) * 5.0, min(vL.y, 1.0 - vL.y) * 24.0); float wave = 0.6 + 0.8 * step(0.5, fract(vL.y * 9.0 - uTime * 1.3)); e *= edge < 0.62 ? wave : 1.0; }
+  if (vE.y > 2.5) { float b = floor(vL.x * 8.0) + vE.z * 8.0; e *= 0.74 + 0.42 * pow(0.5 + 0.5 * cos(6.2832 * (b - uTime * 2.4) / 3.0), 2.0); }
+  if (vE.y > 1.5 && vE.y < 2.5) { float edge = min(min(vL.x, 1.0 - vL.x) * 5.0, min(vL.y, 1.0 - vL.y) * 24.0); float f = vL.y * 9.0 - uTime * 1.3, wave = mix(0.8 + 0.4 * (0.5 + 0.5 * sin(6.2832 * f)), 1.0, clamp(fwidth(f) * 1.5, 0.0, 1.0)); e *= edge < 0.62 ? wave : 1.0; }
   vec3 col = t.rgb * vT * e; gl_FragColor = vec4(lumFog(lumTone(col), vDist), 1.0);
   #include <colorspace_fragment>
 }`;

@@ -42,5 +42,17 @@ table_lounge 0.5 0.004
 taxi_cabin 0.6 0.0015
 planter_hedge 0.3 0.004
 hedge_block 0.5 0.004
+bench_velvet 0.5 0.002
+bin_brass 0.3 0.006
+fountain_muse 0.35 0.003
+popcorn_kettle 0.5 0.006
+popcorn_cart 0.5 0.005
+reel_wall 0.35 0.003
+scan_armchair 0.4 0.003
+scan_chesterfield 0.45 0.003
+scan_cine_camera 0.4 0.003
+scan_bust 0.45 0.003
+pendant_cloud 0.5 0.006
+planter_tall 0.5 0.006
 LIST
 rm -rf "$TMP"

@@ -990,8 +990,15 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
     if (!all) world._visArgs = [room, x, y, z];   // what the reflections' capture puts back
     // two links deep: from the street you see through the lobby's glass and on through its open portal into the corridor and through
     // the restroom door; from the spine through the lobby to the street (one link left those rooms undrawn: you saw the void there)
-    const v = new Set([room || 'lobby']); let front = [...v];
-    for (let hop = 0; hop < (all ? 1 : 2); hop++) { const next = []; for (const r of front) { const def = ROOMS[r]; if (def) for (const k of def.vis) if (!v.has(k) && (all || linkOpen(r, k))) { v.add(k); next.push(k); } } front = next; }
+    // v14d (the user, 11-27: "the app lags a lot"): a hall is a big draw (its seats, its audience). Through a door you see into the room
+    // behind it only from near the door: from a seat the hall drew the corridor, the spine, the lobby and the other halls (1M triangles).
+    // A hall is drawn from outside while its door is within 25 m (15 m two rooms away); from inside a hall the rooms beyond the corridor
+    // and the spine are drawn only within 7 m of the door you would look through
+    const here0 = room || 'lobby', inHall = ROOMS[here0] && ROOMS[here0].kind === 'hall';
+    const doorNear = (a, b, lim) => { for (const d of world.doors) if (d.rooms.includes(a) && d.rooms.includes(b)) { const w = d._wp || (d._wp = d.group.getWorldPosition(new THREE.Vector3())); if (Math.hypot(w.x - x, w.z - z) < lim) return true; } return false; };
+    const v = new Set([here0]); let front = [...v];
+    for (let hop = 0; hop < (all ? 1 : 2); hop++) { const next = []; for (const r of front) { const def = ROOMS[r]; if (!def) continue; if (!all && hop === 1 && inHall && !doorNear(here0, r, 7)) continue;
+      for (const k of def.vis) if (!v.has(k) && (all || linkOpen(r, k)) && (all || ROOMS[k].kind !== 'hall' || doorNear(r, k, hop ? 15 : 25))) { v.add(k); next.push(k); } } front = next; }
     world.vis = v; for (const k in world.rooms) world.rooms[k].group.visible = v.has(k); for (const d of world.doors) d.group.visible = d.rooms.some((k) => v.has(k));
     // v11 a neighbouring room's furniture is drawn only from the rooms it can be made out from: the corridor's, the restrooms' and the
     // street's from the lobby (and their own room), the lobby's wherever the lobby itself is drawn. It switches only when you pass from

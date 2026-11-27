@@ -452,7 +452,7 @@ export class Crowd {
     if (a.role === 'guest' && a.state === 'mill' && !a.talking && now > a.next) this.mill(a, now);   // lobby life: another spot now and then
   }
   draw(a, dt, d, player) {
-    const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < 9 ? 0 : d < 20 ? 1 : 2); ch.talking = a.talking || (this.now >= (a.talkFrom || 0) && this.now < a.talkUntil);
+    const ch = a.ch; ch.group.position.set(a.x, a.y, a.z); ch.group.rotation.y = a.yaw; ch.walkT = a.walkT || 0; ch.setLOD(d < (ch.lod === 0 ? 6.5 : 5.5) ? 0 : d < (ch.lod === 2 ? 13.5 : 14.5) ? 1 : 2);   /* v14d nearer LOD steps (skinned people were a third of the lobby's triangles), with 1 m of hysteresis */ ch.talking = a.talking || (this.now >= (a.talkFrom || 0) && this.now < a.talkUntil);
     if (a.viewer) { ch.s.sit = a.sit; const sp = this.seatPose(a.viewer.seat, a.rec); ch.s.drop = sp.drop; ch.s.recline = sp.recline; }
     else if (a.perch) { ch.s.sit = a.sit; ch.s.drop = a.perch.h - sitHeight(a.rec); ch.s.recline = 0.12; }   // v14 another player on a sofa or a bench (mpui.js)
     else ch.s.sit = 0;
@@ -487,8 +487,12 @@ function ticketMesh() {
 }
 function makeCart(mats, scene) {
   const U = { uAmb: { value: new THREE.Color(0.4, 0.4, 0.4) }, uKey: { value: new THREE.Color(0.3, 0.3, 0.3) }, uKeyDir: { value: new THREE.Vector3(0.2, 1, 0.3).normalize() }, uScreenL: { value: new THREE.Color(0, 0, 0) } }, mat = mats.propMat(U), grp = new THREE.Group(), A = ASSETS.service_cart;
-  if (A) for (const p of A.parts) { if (p.lod !== 0 || p.leaf) continue; const g = p.geo.clone(), n = g.attributes.position.count, c = new Float32Array(n * 3), col = p.glow ? p.glowColor : p.tint;
-    for (let i = 0; i < n; i++) c.set(col, i * 3); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); grp.add(new THREE.Mesh(g, mat)); }
+  // v14d one draw for the whole trolley (it was one per part: 87 draws wherever the server walked)
+  const geos = []; if (A) for (const p of A.parts) { if (p.lod !== 0 || p.leaf) continue; const g = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone(), n = g.attributes.position.count, c = new Float32Array(n * 3), col = p.glow ? p.glowColor : p.tint;
+    for (let i = 0; i < n; i++) c.set(col, i * 3); const o = new THREE.BufferGeometry(); o.setAttribute('position', g.attributes.position); o.setAttribute('normal', g.attributes.normal || g.computeVertexNormals() || g.attributes.normal); o.setAttribute('color', new THREE.BufferAttribute(c, 3)); geos.push(o); }
+  if (geos.length) { let n = 0; for (const g of geos) n += g.attributes.position.count; const P = new Float32Array(n * 3), N = new Float32Array(n * 3), C = new Float32Array(n * 3); let k = 0;
+    for (const g of geos) { const m = g.attributes.position.count; for (let i = 0; i < m; i++) { const j = (k + i) * 3; P[j] = g.attributes.position.getX(i); P[j + 1] = g.attributes.position.getY(i); P[j + 2] = g.attributes.position.getZ(i); N[j] = g.attributes.normal.getX(i); N[j + 1] = g.attributes.normal.getY(i); N[j + 2] = g.attributes.normal.getZ(i); C[j] = g.attributes.color.getX(i); C[j + 1] = g.attributes.color.getY(i); C[j + 2] = g.attributes.color.getZ(i); } k += m; }
+    const all = new THREE.BufferGeometry(); all.setAttribute('position', new THREE.BufferAttribute(P, 3)); all.setAttribute('normal', new THREE.BufferAttribute(N, 3)); all.setAttribute('color', new THREE.BufferAttribute(C, 3)); all.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2)); grp.add(new THREE.Mesh(all, mat)); }
   grp.visible = false; scene.add(grp); const light = { amb: U.uAmb.value, key: U.uKey.value, dir: U.uKeyDir.value, screen: U.uScreenL.value };
   return { group: grp, t: 0, light };
 }

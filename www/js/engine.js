@@ -6,9 +6,9 @@ export const PRESETS = {
   // v12 (the user: "cheap and blocky"): scale is canvas pixels per CSS pixel. A 720 x 1600 phone has 2 device pixels per CSS pixel, so the
   // old ceilings (0.75 / 1.0 / 1.3) drew a quarter to a half of the screen's pixels and the browser stretched them. The ceiling is now the
   // screen's own pixels on High and three quarters of them on Medium; `start` is where the governor begins, `floor` where it stops
-  low: { scale: 1.0, start: 0.8, floor: 0.6, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 5, aa: false },
-  medium: { scale: 1.3, start: 1.0, floor: 0.75, people: 8, crowd: 120, peopleFar: 10, detail: 1, seatLod: 7, aa: true },   // v14b (the user, 11-26: "it lags"): a lower ceiling, fewer skinned people
-  high: { scale: 2.0, start: 1.3, floor: 0.8, people: 10, crowd: 180, peopleFar: 14, detail: 1, seatLod: 9, aa: true },   // v14 the user's itel held 21 fps on High at its 1.0 floor: lower floor, fewer skinned people
+  low: { scale: 1.0, start: 0.8, floor: 0.6, people: 6, crowd: 70, peopleFar: 9, detail: 0, seatLod: 3.5, aa: true },   // v14d MSAA on every preset (tile-based phone GPUs resolve it on chip; without it edges crawl)
+  medium: { scale: 1.3, start: 1.0, floor: 0.75, people: 8, crowd: 120, peopleFar: 10, detail: 1, seatLod: 4.5, aa: true },   // v14b (the user, 11-26: "it lags"): a lower ceiling, fewer skinned people
+  high: { scale: 2.0, start: 1.3, floor: 0.8, people: 10, crowd: 180, peopleFar: 14, detail: 1, seatLod: 6, aa: true },   // v14 the user's itel held 21 fps on High at its 1.0 floor: lower floor, fewer skinned people
 };
 const LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0];
 export class Engine {
@@ -16,12 +16,14 @@ export class Engine {
     this.canvas = canvas; this.settings = settings; const P = PRESETS[settings.graphics] || PRESETS.medium; this.preset = P;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: P.aa, stencil: true, depth: true, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });   // alpha: the film's video layer shows through the screen (videolayer.js)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.setClearColor(0x0b0b0e, 1); this.renderer.sortObjects = true;
-    const gl = this.renderer.getContext(); try { this.depthBits = gl.getParameter(gl.DEPTH_BITS); } catch (e) { this.depthBits = 0; }
+    const gl = this.renderer.getContext(); try { this.depthBits = gl.getParameter(gl.DEPTH_BITS); this.samples = gl.getParameter(gl.SAMPLES); } catch (e) { this.depthBits = 0; this.samples = 0; }
     this.scene = new THREE.Scene(); this.scene.matrixWorldAutoUpdate = true;
     // held items (popcorn, drink, the tablet) are drawn in a second pass over a cleared depth buffer, so they never sink into a wall or a seat
     // (phone feedback: "items I hold go through walls when I go close")
     this.vm = new THREE.Scene(); this.vmCam = new THREE.PerspectiveCamera(60, 1, 0.02, 5);
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 160); this.camera.rotation.order = 'YXZ'; this.scene.add(this.camera);
+    // v14d a phone that gives a 16-bit depth buffer anyway: a near plane twice as far doubles the depth precision everywhere
+    if (this.depthBits > 0 && this.depthBits < 24) this.camera.near = 0.2;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2); this.maxScale = Math.min(P.scale, this.dpr); this.minScale = Math.min(P.floor, this.maxScale); this.scale = Math.min(P.start, this.maxScale);
     const fs = +new URLSearchParams(location.search).get('fixscale'); this.fixed = fs > 0; if (this.fixed) this.scale = this.maxScale = this.minScale = fs;
     this.ema = 16.7; this._tAdj = 0; this._calm = 0; this._born = performance.now(); this._ceil = 0; this._ceilUntil = 0; this._trial = false; this.stats = { scale: this.scale, ms: 16.7, cpu: 0, fps: 60 };
@@ -56,16 +58,20 @@ export class Engine {
     // v12: a step up is a trial. If the new level cannot hold about 50 frames a second for 2.5 s it goes back, and that level is not
     // tried again for five minutes (v5.10 hopped between levels for ever). In the first minute the search is quick (4 s of fast frames
     // per step, mostly behind the menu), afterwards slow (12 s), so the picture settles at the sharpest level the phone holds smoothly
+    // v14d (the user, 11-27: "the whole app flickers ... very visible"): every resize reallocates the canvas, which can blink on Android.
+    // The search for the sharpest smooth level runs in the first 45 s (loader and menu); after that the level only steps down, after 4 s
+    // of slow frames, at most once in 20 s and twice in all
     if (this._trial && !this._show) { if (now - this._tAdj > 9000) this._trial = false; else { this._lag = this.ema > 21.5 ? (this._lag || now) : 0;
       if (this._lag && now - this._lag > 2500 && i > 0) { this._ceil = lv[i - 1]; this._ceilUntil = now + 300000; this.scale = lv[i - 1]; this._tAdj = now; this._trial = false; this._lag = 0; this._fast = 0; this.resize(); } return; } }
-    // v10 (the user: glitches and stutters during the film): every resize reallocates the canvas, a visible hitch. In show mode the scale
-    // settles in its first 12 s (the countdown, lights going down: steps down after 1.5 s of slowness, 2.5 s apart) and is then frozen
-    // until you leave your seat; it never climbs back mid-film
+    // seated for a film: the scale settles in the show's first 12 s (the countdown, lights going down) and then stays until you stand
     if (this._show) { if (now - this._showAt > 12000 || now - this._tAdj < 2500) return; if (this._slow && now - this._slow > 1500 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); } return; }
-    const early = now - (this._born || 0) < 60000, capped = this._ceil && now < this._ceilUntil && i < lv.length - 1 && lv[i + 1] > this._ceil + 1e-6;
-    if (now - this._tAdj < (early ? 3000 : 6000)) return;
-    if (this._slow && now - this._slow > 2000 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); }
-    else if (early && !this.cap30 && this._fast && now - this._fast > 4000 && i < lv.length - 1 && !capped) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this._trial = true; this._lag = 0; this.resize(); }
+    const early = now - (this._born || 0) < 45000, capped = this._ceil && now < this._ceilUntil && i < lv.length - 1 && lv[i + 1] > this._ceil + 1e-6;
+    if (early) { if (now - this._tAdj < 3000) return;
+      if (this._slow && now - this._slow > 2000 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this.resize(); }
+      else if (!this.cap30 && this._fast && now - this._fast > 4000 && i < lv.length - 1 && !capped) { this.scale = lv[i + 1]; this._tAdj = now; this._fast = 0; this._trial = true; this._lag = 0; this.resize(); }
+      return; }
+    if ((this._late || 0) >= 2 || now - this._tAdj < 20000) return;
+    if (this._slow && now - this._slow > 4000 && i > 0) { this.scale = lv[i - 1]; this._tAdj = now; this._slow = 0; this._late = (this._late || 0) + 1; this.resize(); }
   }
   // v9 show mode: watching the film you get the screen's full resolution (up to the device's pixels); the governor still steps down
   // if the phone can't keep up, and leaving your seat returns to the preset
