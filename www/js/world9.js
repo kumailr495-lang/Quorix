@@ -622,9 +622,14 @@ function dressRooms(world) {
     // than 14 m behind the glass, a few pixels from the pavement) drawn only from inside. The review: the lobby's props were 147k of the
     // street's 339k triangles, and the inside is about to get fuller
     const deep = key === 'lobby' ? { ...host, pacc: new Acc(), gacc: new Acc(), facc: new Acc() } : null;
+    // v14d (the user, 11-27: "the app lags a lot"): the big rooms' furniture in cells (lobby 2 x 2, street and corridor 3 along their length),
+    // each its own mesh, so what is behind you or out to the side is not drawn (one mesh per room drew all of it from anywhere)
+    const NC = { lobby: [2, 2], street: [3, 1], corridor: [3, 1] }[key] || [1, 1], RR = room.def.rect || [0, 0, 1, 1], cells = new Map([[host, host], ...(deep ? [[deep, deep]] : [])]), cellKeys = new Map();
+    const cellOf = (base, x, z) => { if (NC[0] * NC[1] === 1) return base; const i = Math.max(0, Math.min(NC[0] - 1, Math.floor((x - RR[0]) / (RR[2] - RR[0]) * NC[0]))), j = Math.max(0, Math.min(NC[1] - 1, Math.floor((z - RR[1]) / (RR[3] - RR[1]) * NC[1])));
+      const k = (base === deep ? 'd' : 'h') + i + '_' + j; let c = cellKeys.get(k); if (!c) { c = { ...base, pacc: new Acc(), gacc: new Acc(), facc: new Acc(), deepCell: base === deep }; cellKeys.set(k, c); cells.set(c, c); } return c; };
     for (const p of byRoom[key]) { const A = ASSETS[p.name]; if (!A || (p.o.detail || 0) > det) continue; const lift = p.o.ground === false ? 0 : -A.box.min.y;
       const sz = A.box.getSize(new THREE.Vector3()), small = Math.max(sz.x, sz.z) * (typeof p.o.scale === 'number' ? p.o.scale : 1) < 1.6;
-      (world.placed || (world.placed = [])).push({ room: key, name: p.name, x: p.x, y: p.y, z: p.z });   /* what stands where (tests) */ const tgt = deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host; placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.y > 0.5 ? { ...p.o, floorY: p.y } : p.o);
+      (world.placed || (world.placed = [])).push({ room: key, name: p.name, x: p.x, y: p.y, z: p.z });   /* what stands where (tests) */ const tgt = cellOf(deep && (p.y > L1 - 1 || (small && p.z < 4) || p.o.deep) ? deep : host, p.x, p.z); placeAsset(tgt, p.name, p.x, p.y + lift, p.z, p.yaw, p.y > 0.5 ? { ...p.o, floorY: p.y } : p.o);
       // v14 (the user, 11-20: "I can't sit on most of the sofas outside"): seating props give sit spots (local +z is their front)
       const sd = SIT_ON[p.name]; if (sd && sd.ring) for (let i = 0; i < sd.ring; i++) { const t = p.yaw + (i + 0.5) / sd.ring * Math.PI * 2, sx = Math.sin(t), sz = Math.cos(t), x = p.x + sx * sd.r, z = p.z + sz * sd.r;   // v14 round seats: facing out
         world.sitSpots.push({ x, y: p.y + sd.h, fy: p.y, z, face: t + Math.PI, stand: { x: x + sx * 0.62, z: z + sz * 0.62 }, room: key, taken: null, ring: true }); }
@@ -637,13 +642,12 @@ function dressRooms(world) {
     const propGlass = (g, nm) => {
       const lf = splitIds(g, LEAF_IDS); if (lf) { const lm = new THREE.Mesh(lf, world.mats.leafRoom(room.U)); lm.matrixAutoUpdate = false; lm.name = nm.replace('glass', 'leaves'); room.group.add(lm); }
       if (key !== 'lobby') return; const gl = splitGlass(g); if (!gl) return; const gm = new THREE.Mesh(gl, world.mats.glassMat()); gm.renderOrder = 3; gm.matrixAutoUpdate = false; gm.name = nm; room.group.add(gm); };
-    if (host.pacc.count) { const g = toGeometry(host.pacc); room.lights.bake(g); propGlass(g, key + '-propglass'); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-props'; room.group.add(m); }
-    if (host.gacc.count) { const g = toGeometry(host.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow'; room.group.add(m); }
-    if (deep && deep.pacc.count) { const g = toGeometry(deep.pacc); room.lights.bake(g); propGlass(g, key + '-propglassdeep'); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + '-propsdeep'; room.group.add(m); }
-    if (deep && deep.gacc.count) { const g = toGeometry(deep.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglowdeep'; room.group.add(m); }
-    for (const [h_, nm] of [[host, key + '-foliage'], [deep, key + '-foliagedeep']]) if (h_ && h_.facc.count) {   // v12 leaf cards (foliage.js)
-      const g = toGeometry(h_.facc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.foliageMat(room.U, world.leafTex || (world.leafTex = leafAtlas(world.mats.texSize < 512 ? 256 : 512))));
-      m.matrixAutoUpdate = false; m.name = nm; room.group.add(m); }
+    for (const h_ of cells.values()) { const dp = h_ === deep || h_.deepCell, sfx = dp ? 'deep' : '';
+      if (h_.pacc.count) { const g = toGeometry(h_.pacc); room.lights.bake(g); propGlass(g, key + '-propglass' + sfx); const m = new THREE.Mesh(g, world.mats.litFor(room.U, g)); m.matrixAutoUpdate = false; m.name = key + (dp ? '-propsdeep' : '-props'); room.group.add(m); }
+      if (h_.gacc.count) { const g = toGeometry(h_.gacc, false); const m = new THREE.Mesh(g, world.mats.glowMat(room.U)); m.matrixAutoUpdate = false; m.name = key + '-propglow' + sfx; room.group.add(m); }
+      if (h_.facc.count) {   // v12 leaf cards (foliage.js)
+        const g = toGeometry(h_.facc); room.lights.bake(g); const m = new THREE.Mesh(g, world.mats.foliageMat(room.U, world.leafTex || (world.leafTex = leafAtlas(world.mats.texSize < 512 ? 256 : 512))));
+        m.matrixAutoUpdate = false; m.name = key + '-foliage' + sfx; room.group.add(m); } }
     for (const b of host.bins) world.bins.push({ ...b, room: key, y: room.def.level || 0 });
     for (const f of framed) addPanel(world, room, f);
     for (const t of TOTEM_POSTERS) if (t.room === key) addPanel(world, room, t);
