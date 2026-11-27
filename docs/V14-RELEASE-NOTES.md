@@ -1,6 +1,6 @@
 # LUMIÈRE 14.2 (2026-11-27)
 
-APK: `Lumiere-14.2.apk`, 54.06 MB, SHA-256 `fdfe9391512cebb1ab12f56833ffd2b03c023ce941017e303a7d1091434d2e17`.
+APK: `Lumiere-14.2.apk`, 54.06 MB, SHA-256 `2e98be1e7f8191af2f287f5b29caa55b7a6459ff64a52a27fa1c74f0925e15a2`.
 Package `com.buddyapps.lumiere`, versionCode 1420, versionName 14.2, v2 signature with the same certificate as 14.1
 (SHA-256 `df8f000f...ba8595a`), target SDK 35, landscape. It installs over 14.1 and keeps your saved data.
 
@@ -19,10 +19,11 @@ Blender checks, not on the phone. Flicker, frame rate, sound, the song library, 
    plays with its cover, title and artist on the big screen, a turning record and a progress bar; a Now Playing card shows the same.
    Songs picked as files show their own embedded cover (MP3, M4A, FLAC).
 4. **The app closing when you pick a song.** Songs come from the in-app list, so Android no longer has to open another app. If Android
-   still closes the game's page in the background, the app rebuilds it and a snapshot (kept 30 minutes) puts you back where you were.
+   still closes the game in the background, the app rebuilds it and a snapshot (kept 30 minutes) puts you back where you were, in the
+   Suite too (its furniture loads first).
 5. **The taxi ride.** Filmed from outside now: a crane over the lit street, the taxi tracked from the road side, the kerb as it pulls in,
    then your own eyes as you step out. No car interior.
-6. **Lag.** Measured in fixed views against 14.1: the lobby 495k triangles (14.1: 899k), the corridor 467k (855k), a hall 235-413k
+6. **Lag.** Measured in fixed views against 14.1: the lobby 495k triangles (14.1: 899k), the corridor 467k (855k; the banquettes that now load add about 28k), a hall 235-413k
    (about 1M), the street about 219 draws (291). Rooms behind a hall's door are drawn only near that door; furniture is grouped so the camera skips what is behind you;
    heavy props were simplified; people and seats switch to their lighter models sooner.
 7. **The song glitching and playing twice.** A song never starts the phone's own player. When a film uses it, the page's copy is silent.
@@ -70,7 +71,7 @@ Blender checks, not on the phone. Flicker, frame rate, sound, the song library, 
 - `node tools/dev/mp-sync.mjs` (three players on one machine over the public relays): shows start 1 ms apart, drift under 0.02 s, a
   connection blip keeps the host, the host leaving hands the room on, a late joiner plays in step (0.01 s).
 - The staged APK content boots with no missing files and no errors. On it: the Suite (travel, remote, projector film), a song from the
-  Songs tab (plays with its title, artist and cover), the room QR, and a cold start after the whole app was closed (back where you were).
+  Songs tab (plays with its title, artist and cover), the room QR, and a cold start after the whole app was closed (back where you were, in the lobby and in the furnished Suite).
 
 ## Limits
 - Not phone-tested: flicker, frame rate on the itel P65, sound, the song library and its permission, the camera scan, touch.

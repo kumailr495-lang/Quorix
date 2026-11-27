@@ -405,10 +405,14 @@ async function boot() {
       localStorage.setItem(SNAP, JSON.stringify({ t: Date.now(), game, pos: [player.x, player.y, player.z, player.yaw], own })); } catch (e) { /* storage full or off */ } }
   function snapClear() { try { localStorage.removeItem(SNAP); } catch (e) { /* none */ } }
   function snapLoad() { try { const o = JSON.parse(localStorage.getItem(SNAP) || 'null'); if (!o || !(Date.now() - o.t < 30 * 60000) || !['flow', 'quick'].includes(o.game) || !Array.isArray(o.pos) || !o.pos.every(Number.isFinite)) return null; return o; } catch (e) { return null; } }
-  function resumeSnap(sn) {
-    if (mode === 'play') return; mode = 'play'; ui.showMenu(false); onModal(); if (settings.seen) settings.seen.intro = true;
+  async function resumeSnap(sn) {
+    if (mode === 'play') return;
+    // the Suite's furniture, seats and remotes exist only once it is prepared (goSuite does it): prepare it first, or come back at its door
+    let [x, y, z, yaw] = sn.pos; if (world.roomAt(x, y, z) === 'home') { try { await home.prepare(); } catch (e) { console.warn('[lumiere] suite', e); } if (mode === 'play') return;
+      if (!home._ready) { const o = BLD.HOME.out; [x, y, z, yaw] = [o.x, 0, o.z, o.yaw]; } }
+    mode = 'play'; ui.showMenu(false); onModal(); if (settings.seen) settings.seen.intro = true;
     game = sn.game; bill.unlimited = game === 'quick'; world.gate.always = game !== 'flow'; ui.setButton('#bRemote', game === 'quick'); visits++;
-    const [x, y, z, yaw] = sn.pos; player.place(x, z, yaw, 0, y); bill.onChange(); ui.fade(0, 0.6); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ }
+    player.place(x, z, yaw, 0, y); bill.onChange(); ui.fade(0, 0.6); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ }
     let msg = t('toast.resumed');
     if (sn.own && media) { try { const list = JSON.parse((sn.own.song ? media.listAudio && media.listAudio() : media.list && media.list()) || '[]'), it = list.find((q) => q.id === sn.own.id);
       if (it) { shows.loadLocal(it.url, sn.own.title || cleanTitle(it.name), { song: sn.own.song, title: sn.own.title, artist: sn.own.artist, album: sn.own.album, art: it.art || null, id: it.id }); shows.own.resumeAt = sn.own.t || 0; msg = t('toast.resumedSong', { title: sn.own.title || cleanTitle(it.name) }); } } catch (e) { /* the library changed */ } }
