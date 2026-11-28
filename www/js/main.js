@@ -7,7 +7,8 @@
 import * as THREE from 'three';
 import { Engine } from './engine.js';
 import { Materials, G } from './materials.js';
-import { buildWorld } from './world9.js';
+import { buildWorld, pictureMat } from './world9.js';
+import { Privates } from './private.js';
 import { texturesReady } from './library.js';
 import { loadAssets, ASSET_LIST } from './assets.js';
 import { loadBakes } from './lightmap.js';
@@ -27,7 +28,8 @@ import { Together } from './mpui.js';
 import { Wayfinder } from './wayfind.js';
 import { Guide } from './guide.js';
 import { Phone } from './phone.js';
-import { Home } from './home.js';
+import { VIP, boxAt } from './vip.js';
+import { Remote } from './remote.js';
 import { LobbyLife } from './anim12.js';
 import { Credits } from './credits.js';
 import { Career, Jobs } from './career.js';
@@ -98,6 +100,9 @@ async function boot() {
   const t0 = performance.now(); let done = 0; const tick = () => prog(0.05 + 0.4 * (++done / 3));
   await Promise.all([loadAssets(ASSET_LIST).then(tick), loadBakes().then(tick), loadPeople().then(tick).catch((e) => console.warn('[lumiere] people models failed', e))]);
   const world = await buildWorld(engine, mats, (p, key) => prog(0.45 + 0.5 * p, key)); await texturesReady(); prog(0.97);
+  // v14e the private floor (private.js): its lift, its five themed screens as halls of their own, rented at their doors
+  const privates = new Privates(world, engine, mats, { pictureMat, onRide: () => privates.startRide(player, sound), onArrive: (q) => player.place(q.x, q.z, q.yaw, player.pitch, 0),
+    onRent: (id) => rentPrivate(id), onRemote: (R) => takeRemotePv(R) });
   const sound = new Sound9(); sound.surround = !!settings.surround; sound.setVolumes({ master: settings.master, film: settings.film, crowd: settings.crowd });
   const credits = new Credits(), bill = new Bill(credits);
   let ticket = null, room = 'street', mode = 'menu', game = null, modal = false, held = null, visits = 0, sitRelease = null, fading = false;
@@ -135,6 +140,7 @@ async function boot() {
     onPlay: (m) => enterPlay(m === 'story' ? 'flow' : m), stubs: () => stubs.get(), onQuit: () => toMenu(), onPause: () => {}, onHide: () => {}, onLangPicked: () => voice.prepare(), onLangChanged: () => { voice.stopAll(); voice.prepare(); together.text(); },
     openRemote: () => tablet.open('home'), ringBell: () => ringBell(), onTutorial: (fromAsk) => startTutorial(fromAsk), editLayout: () => layoutEd.open(),
   });
+  for (const h of privates.halls) shows.addHall(h);
   // v9.3 playing together (mp.js, mpui.js): a room code, your look, the other players in the cinema, the host's shows on every phone
   const together = new Together({ liftPress: (b) => world.lift.press(b), tabOpen: () => tablet.isOpen(), ArmTablet, Recliner, reclinable: (s) => recliner.can(s), reclined: () => recliner.reclined, mySpot: () => world.sitSpots.findIndex((q) => q.taken === 'player'), held: () => (held ? held.id || held.kind || null : null), heldMat: () => itemMat, world, crowd, shows, player, engine, settings, sound, save: () => saveSettings(settings), toast: (m, ms) => ui.toast(m, ms), onModal: (m) => onModal(m),
     enterPlay: () => enterPlay('quick'), room: () => room, ev: (n) => career.event(n), owns: (id) => credits.owns(id), mySeat: () => (player.seated && room && room.startsWith('hall') ? world.hallByKey(room).seats.find((q) => q.npc === 'player') : null),
@@ -156,17 +162,17 @@ async function boot() {
   let snapCb = null;   // v13 a photo for the phone's camera: the frame after the next render
   const stubs = { get() { try { return JSON.parse(localStorage.getItem('lumiere.stubs') || '[]'); } catch (e) { return []; } }, add(x) { try { const a = this.get(); a.unshift(x); localStorage.setItem('lumiere.stubs', JSON.stringify(a.slice(0, 20))); } catch (e) { /* private mode */ } } };
   const led = ledWall(world.panels.ledwall, shows, t, fmtTime), board = showtimes(world.panels.showtimes, shows, t, fmtTime); menuBoard(world.panels.menu, t, (n) => n + ' LC', PRICES);
-  const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet),
+  const tablet = new Tablet(shows, sound, bill, settings, { onModal, toast: (m, ms, k) => ui.toast(m, ms, k), pickOwn: () => pickOwn(), playFilm: (o) => remotePlay(o), halls: () => { const pv = privates.mine(room); return [...(pv ? [{ key: pv.key, name: t('vip.' + pv.p.theme) }] : []), ...world.halls.map((h) => ({ key: h.key, name: h.name.replace('LUMIERE ', '') }))]; }, here: () => (room && (room.startsWith('hall') || privates.mine(room)) ? room : ticket ? ticket.hallKey : null), handBack: () => handBack(), quick: () => game === 'quick' || (ticket && ticket.tablet) || !!privates.mine(room) || !!vip.mine(room, player.x, player.y, player.z),   // v14e in your private screen or VIP box a video you pick plays at once
     order: (k) => orderToSeat(k), canBin: () => !!held, bin: () => binItem() });
   tablet.onLocal = (url, name, meta) => { shows.loadLocal(url, meta && meta.title ? meta.title : cleanTitle(name), meta); ui.toast(t('toast.ownReady'), 2400); if (booking.isOpen()) booking.build(); };
   const way = new Wayfinder(world, crowd); let wayT = 0; const guide = new Guide(engine.scene, world);   // v12b the way on the floor and a light at the goal
   // v13 the phone (phone.js): your ticket, the map, your tab, a camera, your photos and stubs, friends, settings; it never stops the game
   const theatres = new Theatres(world); theatres.applyAll();   // v14 My Theatre: each hall's saved look
-  const phone = new Phone({ home: () => home, room: () => room, goSuite: () => goSuite(), suitePrice: () => (game === 'quick' ? t('suite.free') : credits.fmt(SUITE_PRICE)), ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, theatres: () => theatres, halls: () => world.halls.map((h) => ({ id: h.id, name: h.name.replace('LUMIERE ', '') })), stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
+  const phone = new Phone({ vip: () => vip, vipGo: (box) => vipGo(box), pv: () => privates, pvGo: (h) => pvGo(h), quick: () => game === 'quick', ticket: () => ticket, bill, credits, career: () => career, jobs: () => jobs, theatres: () => theatres, halls: () => world.halls.map((h) => ({ id: h.id, name: h.name.replace('LUMIERE ', '') })), stubs: () => stubs.get(), player, room: () => room, snap: (cb) => { snapCb = (u) => { cb(u); if (u) career.event('photo'); }; },
     guide: () => { settings.goal = true; saveSettings(settings); }, showTicket: () => ticket && ui.showTicket(ticketView(ticket), game === 'quick'),
     together: () => together.open(), settings: () => ui.openSettings(), sound, toast: (m, ms, k) => ui.toast(m, ms, k), native: !!window.LumiereMedia,
    
-    jump: () => (game === 'quick' && mode === 'play' ? { halls: world.halls.map((h) => ({ key: h.key, name: h.name.replace('LUMIERE ', '') })), go: (k) => { const h = world.hallByKey(k), best = Math.round(h.cfg.rows.length * 0.58), s = h.seats.filter((q) => !q.taken && !q.npc).sort((p, q) => (Math.abs(p.row - best) * 2 + Math.abs(p.a) * 0.8) - (Math.abs(q.row - best) * 2 + Math.abs(q.a) * 0.8))[0]; if (s) { if (player.seated) stand(); setTimeout(() => jumpToSeat(s), 350); } } } : null),
+    jump: () => (mode === 'play' && game ? { halls: world.halls.map((h) => ({ key: h.key, name: h.name.replace('LUMIERE ', '') })), go: (k) => { if (game === 'flow' && !pastGate()) { ui.toast(t('jump.gate'), 2600); return; } dropRemote(); const h = world.hallByKey(k), best = Math.round(h.cfg.rows.length * 0.58), s = h.seats.filter((q) => !q.taken && !q.npc).sort((p, q) => (Math.abs(p.row - best) * 2 + Math.abs(p.a) * 0.8) - (Math.abs(q.row - best) * 2 + Math.abs(q.a) * 0.8))[0]; if (s) { if (player.seated) stand(); setTimeout(() => jumpToSeat(s), 350); } } } : null),
     upgrades: () => (game === 'flow' && ticket && ticket.seat ? upgrades() : null), renderer: engine.renderer });   // inside the Android app a photo cannot be saved as a file (no picture bridge yet)
   $('#bPhone').addEventListener('click', (e) => { e.stopPropagation(); if (mode === 'play') phone.toggle(); });
   addEventListener('keydown', (e) => { const tag = (e.target && e.target.tagName) || ''; if (e.code === 'KeyF' && mode === 'play' && tag !== 'INPUT' && tag !== 'TEXTAREA') phone.toggle(); });
@@ -186,18 +192,41 @@ async function boot() {
   // v14 (the user, 11-21: "the armrest tablet ... appears out of seat"): in your seat the tablet rises out of the armrest on its arm first
   const armTab = new ArmTablet(world);
   { const open0 = tablet.open.bind(tablet), close0 = tablet.close.bind(tablet);
-    tablet.open = (tab, o = {}) => { const s = player.seated && ticket ? seatOf(ticket) : null, h = s && world.hallById(ticket.hall);
+    tablet.open = (tab, o = {}) => { const s = player.seated && ticket ? seatOf(ticket) : null, h = s && s.npc === 'player' && world.hallById(ticket.hall);   // v14e only from the seat you sit in (not from a VIP box's sofa)
       if (s && h && room === h.key && !o.server && !armTab.group.visible) { sound.tablet && sound.tablet(true); armTab.show(h, s, () => open0(tab, o)); return; } open0(tab, o); };
     tablet.close = () => { close0(); armTab.hide(); }; }
-  // v14d the LUMIÈRE Suite (home.js, the v14 flat): a private apartment with its own screening room, up its own lift from the lobby (a fade)
-  const SUITE_PRICE = 300, travel = (x, z, yaw, cb) => { ui.fade(1, 0.35); setTimeout(() => { if (sitRelease) sitRelease(); player.place(x, z, yaw, 0, 0); if (cb) cb(); ui.fade(0, 0.6); }, 380); };
-  const home = new Home(world, mats, credits, sound, { travel, engine, player: () => player, toast: (m, ms) => ui.toast(m, ms), event: (n) => career.event(n),
-    openApp: (app, tab) => { phone.homeTab = tab; phone.open(app); }, wardrobe: () => together.open({ look: true }), coffee: () => { if (held) { ui.toast(t('toast9.handsFull'), 2200); return; } if (sound.espresso) sound.espresso(); takeItem('espresso'); career.event('coffee'); },
-    tvInfo: () => ({ shows: world.halls.map((h) => `${h.name.replace('LUMIERE ', '')}  ·  ${shows.title(h.id) || t('show.none')}`), ticket: ticket && ticket.seat ? `${t('home.tvYour')}  ${ticket.title || ''}  ·  ${(ticket.hallName || '').replace('LUMIERE ', '')}  ·  ${ticket.seat}` : null }) });
-  async function goSuite() {
-    if (mode !== 'play' || intro.active || room === 'home') return; if (together.active) { ui.toast(t('suite.solo'), 2600); return; }
-    if (game !== 'quick' && !credits.spend(SUITE_PRICE, 'suite')) { ui.toast(t('suite.short'), 2600, 'error'); return; }
-    ui.toast(t('suite.loading'), 1800); await home.prepare(); travel(BLD.HOME.inside.x, BLD.HOME.inside.z - 1.2, 0, () => { sound.door && sound.door(); setTimeout(() => ui.toast(t('suite.ready'), 3600), 700); career.event && career.event('suite'); }); }
+  // v14e (the user, 11-27: "the home should be in theatre as you can rent it"; Dubai's IMAX VIP boxes, "for every one of the halls"): the
+  // VIP boxes on each hall's rear wall (vip.js); the v14d apartment Suite is retired. travel: a quick fade to a place (the theatre list)
+  const travel = (x, z, yaw, cb, y = 0) => { ui.fade(1, 0.35); setTimeout(() => { if (sitRelease) sitRelease(); player.place(x, z, yaw, 0, y); if (cb) cb(); ui.fade(0, 0.6); }, 380); };
+  const vip = new VIP(world, { name: (box) => t('vip.box', { n: box.b.n }), onRent: (box) => rentBox(box), onRemote: (box) => takeRemote(box) });
+  const remote = new Remote(engine, sound); let remoteBox = null;
+  function rentBox(box) {
+    const nm = vip.label(box), price = vip.price(box), ok = vip.rent(box, (p) => game === 'quick' || credits.spend(p, 'vip:' + box.b.n), game === 'flow');
+    if (!ok) { ui.toast(t('vip.short', { name: nm, price: credits.fmt(price) }), 2800, 'error'); return; }
+    sound.click(); ui.toast(t('vip.yours', { name: nm }), 4600); career.event && career.event('vip');
+  }
+  function takeRemote(box) { if (remote.held) return; box.remote.m.visible = false; remoteBox = box; remote.pickUp(); ui.toast(t('vip.remoteHint'), 3600); }
+  function dropRemote() { if (!remote.held) return; remote.putDown(); if (remoteBox) remoteBox.remote.m.visible = true; remoteBox = null; }
+  // v14e the private screens: rent at the door (Quick play opens them free), the remote on the table, the phone's Go (rent, then a fade in)
+  function rentPrivate(id) { const p = BLD.PRIVATE.find((q) => q.id === id), nm = t('vip.' + p.theme), ok = privates.rent(id, (pr) => game === 'quick' || credits.spend(pr, 'pv:' + p.theme), game === 'flow');
+    if (!ok) { ui.toast(t('vip.short', { name: nm, price: credits.fmt(p.price) }), 2800, 'error'); sound.liftDeny && sound.liftDeny(); return; }
+    sound.click(); ui.toast(t('pv.yours', { name: nm }), 4200); career.event && career.event('vip'); }
+  function takeRemotePv(R) { if (remote.held) return; R.m.visible = false; remoteBox = { remote: R, pv: R.h }; remote.pickUp(); ui.toast(t('vip.remoteHint'), 3600); }
+  function pvGo(h) { const id = h.p.id; if (!privates.isRented(id)) { rentPrivate(id); if (!privates.isRented(id)) return; } const e = privates.entry(h); dropRemote(); if (player.seated) stand(); travel(e.x, e.z, e.yaw, null, 0); }
+  // the phone's VIP app: rent (if not yet yours), then a quick fade into the box, facing the picture
+  // v14e (the user, 11-27: "an option to teleport to other theatres quickly"): the phone's screens row works in Story too, once you are past the
+  // ticket gate (upstairs, the corridor, the halls and their exit way)
+  function pastGate() { return !!room && room !== 'street' && room !== 'wc' && (room !== 'lobby' || player.y > 2.5); }
+  function vipGo(box) { if (!vip.isRented(box)) { rentBox(box); if (!vip.isRented(box)) return; } const p = vip.entry(box); if (player.seated) stand(); travel(p.x, p.z, p.yaw, null, p.y); }
+  // the remote's keys: the hall's show (a box plays it on the big screen)
+  remote.onKey = (id) => { const hk = room, h = hk ? world.hallByKey(hk) : null; if (!h) return; /* a hall or a private screen (private.js adds those to hallByKey) */ const st = shows.get(h.id), playing = st && (st.state === 'playing' || st.state === 'countdown');
+    const nextFilm = (k) => { const L = CATALOG, i = Math.max(0, L.findIndex((f) => st && st.src && f.id === st.src.filmId)); return L[(i + k + L.length) % L.length].id; };
+    if (id === 'play') { if (!playing) remotePlay({ film: nextFilm(0) }); else shows.control(shows.video.paused ? 'play' : 'pause'); }
+    else if (id === 'power') { if (playing) shows.control('stop'); else remotePlay({ film: nextFilm(0) }); }
+    else if (id === 'next' || id === 'prev') remotePlay({ film: nextFilm(id === 'next' ? 1 : -1) });
+    else if (id === 'volup' || id === 'voldown') { settings.film = Math.max(0, Math.min(1, (settings.film ?? 1) + (id === 'volup' ? 0.1 : -0.1))); applySettings(); ui.toast(t('vip.vol', { n: Math.round(settings.film * 100) }), 1200); }
+    else if (id === 'cine') { tablet.open('mine'); }
+    else if (id === 'lights') { const L_ = st && (st.lightWant ?? 1); if (st) st.lightWant = L_ > 0.5 ? 0.15 : 1; } };
   bill.onChange = () => ui.setWallet(game === 'flow' ? credits.fmt(credits.bal) : null); credits.onChange(() => bill.onChange());   // v14 the wallet chip: your Lumiere Credits
   function applySettings(gfx) {
     saveSettings(settings); engine.applySettings(settings); { const lo = settings.graphics === 'low'; mats.setQuality({ normalMaps: !lo, macro: settings.graphics === 'high', detile: settings.graphics === 'high', texSize: lo ? 256 : 512 }); }   // v14b macro tone only on High   // v13 the preset at once, as at boot
@@ -217,7 +246,6 @@ async function boot() {
   // ---------- conversations ----------
   function action(a, npc, tk) {
     const [verb, arg] = a.split(':');
-    if (verb === 'suite') { setTimeout(() => goSuite(), 300); return false; }   // v14d the host's offer: the private lift up to the Suite
     if (verb === 'book' || verb === 'bookOwn') { setTimeout(() => { booking.open({ quick: game === 'quick', own: verb === 'bookOwn' }); if (verb === 'bookOwn') pickOwn(); }, 60); return false; }
     if (verb === 'buy') { if (held) { tk.line(pick('bar.bye') || t('ven.full'), [['opt.thanks', 'end']]); ui.toast(t('toast9.handsFull'), 2400); return true; }
       if (!bill.pay(bill.itemPrice(arg), arg)) { ui.toast(t('lc.short', { price: bill.fmt(bill.itemPrice(arg)) }), 2800, 'error'); sound.liftDeny && sound.liftDeny(); return true; } if (game === 'flow') sound.pay();
@@ -226,6 +254,7 @@ async function boot() {
       setTimeout(() => { npc.gesture('give', 1.2); crowd.handProp(npc, mi.id); npc.say(pick(cafe ? 'cafe.ready' : 'bar.ready')); }, cafe ? 4300 : 2300); setTimeout(() => { crowd.handProp(npc, null); takeItem(arg); }, (cafe ? 4300 : 2300) + 900); return false; }
     if (verb === 'ticket') { if (!ticket) { tk.line(pick('ush.noTicket'), [['opt.thanks', 'end']]); return true; } checkTicket(npc); return false; }
     if (verb === 'escort') { escort(npc); return false; }
+    if (verb === 'vip') { setTimeout(() => phone.open('vip'), 80); return false; }   // v14e the host: the VIP boxes on your phone
     if (verb === 'ownWay') { world.gate.pass(); npc.say(pick('ush.enjoy')); highlightSeat(); return false; }
     if (verb === 'tablet') { npc.gesture('give', 1.2); npc.say(pick('srv.tablet')); setTimeout(() => tablet.open('remote', { server: true }), 700); return false; }
     if (verb === 'trash') { if (held && held.left <= 0) { binItem(); npc.say(pick('srv.trash')); } else npc.say(pick('srv.bye')); return false; }
@@ -332,14 +361,18 @@ async function boot() {
   // Quick play: the tablet plays in the hall you are in (or your ticket's), on the seat you sit in
   function remotePlay(o) {
     if (!together.canControl()) { ui.toast(t('mp.hostOnly'), 2600); return false; }
-    const hk = room && room.startsWith('hall') ? room : ticket ? ticket.hallKey : 'hallMax', h = world.hallByKey(hk);
+    const hk = o.hall || (room && room.startsWith('hall') ? room : ticket ? ticket.hallKey : null), h = hk && world.hallByKey(hk); if (!h) { ui.toast(t('tab.pickHall'), 2400); return false; }   // v14e never a hall you did not pick (it fell back to the MAX)
+    if (h.private) { if (!privates.isRented(h.p.id)) { ui.toast(t('pv.rentFirst'), 2400); return false; } const src = o.own ? shows.own : { kind: 'film', filmId: o.film }; if (!src) return false;
+      const st = shows.get(h.id); if (st.state === 'ended' && st.src && !o.own && st.src.filmId === o.film) shows.replay(h.id); else shows.book(h.id, src, 0, null, { replay: st.state === 'playing' || st.state === 'ended', minDelay: 2000 });   // your own screen: no 12 s pre-show
+      if (room !== hk) { const e = privates.entry(h); ui.toast(t('tab.goingTo', { name: t('vip.' + h.p.theme) }), 2400); setTimeout(() => { tablet.close(); phone.close(); dropRemote(); if (player.seated) stand(); travel(e.x, e.z, e.yaw, null, 0); }, 400); }
+      return true; }
     const best = Math.round(h.cfg.rows.length * 0.58), s = (player.seated && h.seats.find((q) => q.npc === 'player')) || (ticket && ticket.hallKey === hk && seatOf(ticket)) || h.seats.filter((q) => !q.taken && !q.npc).sort((p, q) => (Math.abs(p.row - best) * 2 + Math.abs(p.a) * 0.8) - (Math.abs(q.row - best) * 2 + Math.abs(q.a) * 0.8))[0] || h.seats[0];
     const src = o.own ? shows.own : { kind: 'film', filmId: o.film }; if (!src) return false;
     const prev = seatOf(ticket); if (prev && prev !== s) { prev.player = false; prev.taken = false; }
     ticket = { hall: h.id, hallKey: hk, hallName: h.name, seat: s.id, row: s.id.replace(/\d+/, ''), col: s.col, src, title: src.title || '', delay: 0, shown: true, checked: true, tablet: true, quick: game === 'quick' };
     s.player = true; s.taken = true; const st = shows.get(h.id); if (st.state === 'ended' && st.src && !o.own && st.src.filmId === o.film) shows.replay(h.id); else shows.book(h.id, src, 0, s.id, { replay: st.state === 'playing' || st.state === 'ended' }); together.onBooked(h.id);
     // picked outside the hall: straight to your seat
-    if (room !== hk) setTimeout(() => { tablet.close(); jumpToSeat(s); }, 400);
+    if (room !== hk) { ui.toast(t('tab.goingTo', { name: h.name.replace('LUMIERE ', '') }), 2400); setTimeout(() => { tablet.close(); phone.close(); dropRemote(); jumpToSeat(s); }, 400); }
     return true;
   }
   // the seat bell: the server comes with his cart (Flow mode, when you didn't buy the armrest tablet)
@@ -372,7 +405,7 @@ async function boot() {
     world.lift.press(b.id); together.sendLift(b.id); sound.liftBeep ? sound.liftBeep() : sound.click(); if (b.id === 'alarm') setTimeout(() => sound.bell(), 160); if (/^car/.test(b.id)) career.event('lift');
   }
   player.onVRTap = () => { if (mode === 'play' && !modal && !talk.open && !intro.active && ui.promptFn) ui.promptFn(); };   // v14b phone VR: the viewer's button presses what the reticle is on
-  player.onTap = (x, y, locked) => { if (mode === 'play' && !modal && !talk.open && home.remote && home.remote.held && home.remote.tap(x, y)) return; if (mode !== 'play' || modal || talk.open || intro.active || input.vr || player.seated) return;
+  player.onTap = (x, y, locked) => { if (mode === 'play' && !modal && !talk.open && remote.held && remote.tap(x, y)) return; if (mode !== 'play' || modal || talk.open || intro.active || input.vr || player.seated) return;
     const b = locked ? aimBtn : (world.roomAt(player.x, player.y, player.z) === 'lobby' ? world.lift.pick(engine.camera, player.y, x, y, innerWidth, innerHeight, 44) : null); if (b) pressLift(b); };
   addEventListener('pointerdown', () => sound.unlock(), { capture: true });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { sound.suspend(); shows.pause(true); } else { sound.resume(); shows.pause(false); } });
@@ -380,7 +413,7 @@ async function boot() {
   window.__lumiereInsets = (l, r, tp, b) => { const s = document.documentElement.style; s.setProperty('--safe-l', l + 'px'); s.setProperty('--safe-r', r + 'px'); s.setProperty('--safe-t', tp + 'px'); s.setProperty('--safe-b', b + 'px'); };
   // ---------- modes ----------
   function newGame(m) {
-    game = m; bill.unlimited = m === 'quick'; bill.reset(); if (ticket) { const s = seatOf(ticket); if (s) { s.player = false; s.taken = false; } } ticket = null; if (held) binItem(); if (sitRelease) sitRelease();
+    game = m; bill.unlimited = m === 'quick'; bill.reset(); dropRemote(); vip.setMode(m === 'flow'); privates.setMode(m === 'flow'); for (const h of privates.halls) if (shows.get(h.id).state !== 'idle') shows._abort(h.id); if (ticket) { const s = seatOf(ticket); if (s) { s.player = false; s.taken = false; } } ticket = null; if (held) binItem(); if (sitRelease) sitRelease();
     for (const h of world.halls) if (shows.get(h.id).state !== 'idle') shows._abort(h.id); visits++;
     ui.setButton('#bRemote', m === 'quick');
     world.gate.always = m !== 'flow'; world.gate.passUntil = 0; if (m === 'flow') { player.place(ARRIVAL.x, ARRIVAL.z, ARRIVAL.yaw, ARRIVAL.pitch, 0); if (!intro.start({ skippable: !!(settings.seen && settings.seen.intro) })) arrived(); }   // Story starts with the taxi ride to the doors
@@ -391,7 +424,7 @@ async function boot() {
     if (mode === 'play') return; ui.fade(1, 0.35);
     setTimeout(() => { if (m || !game) newGame(m || 'flow'); mode = 'play'; ui.showMenu(false); onModal(); bill.onChange(); ui.fade(0, 0.8); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } if (!intro.active) maybeAskTutorial(); }, 380);
   }
-  function toMenu() { snapClear(); if (intro.active) intro.finish(); if (together.active) together.leave(true); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); phone.close(); }
+  function toMenu() { dropRemote(); snapClear(); if (intro.active) intro.finish(); if (together.active) together.leave(true); mode = 'menu'; onModal(); ui.showMenu(true, !!game); talk.close(); tut.stop(); phone.close(); }
   function maybeAskTutorial() { if (mode === 'play' && game === 'flow' && !settings.tutorialAsked && !settings.tutorialDone && settings.lang) setTimeout(() => ui.askTutorial(), 1400); }
   function startTutorial(fromAsk) { settings.tutorialAsked = true; saveSettings(settings); if (mode !== 'play' || game !== 'flow') enterPlay('flow'); setTimeout(() => tut.start(), fromAsk ? 200 : 900); }
   addEventListener('popstate', () => { if (mode === 'play') { if (talk.open) talk.close(); else if (booking.isOpen()) booking.close(); else if (tablet.isOpen()) tablet.close(); else if ($('#pause').hidden) ui.openPause(); else ui.closeModal('#pause'); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ } } });
@@ -407,11 +440,10 @@ async function boot() {
   function snapLoad() { try { const o = JSON.parse(localStorage.getItem(SNAP) || 'null'); if (!o || !(Date.now() - o.t < 30 * 60000) || !['flow', 'quick'].includes(o.game) || !Array.isArray(o.pos) || !o.pos.every(Number.isFinite)) return null; return o; } catch (e) { return null; } }
   async function resumeSnap(sn) {
     if (mode === 'play') return;
-    // the Suite's furniture, seats and remotes exist only once it is prepared (goSuite does it): prepare it first, or come back at its door
-    let [x, y, z, yaw] = sn.pos; if (world.roomAt(x, y, z) === 'home') { try { await home.prepare(); } catch (e) { console.warn('[lumiere] suite', e); } if (mode === 'play') return;
-      if (!home._ready) { const o = BLD.HOME.out; [x, y, z, yaw] = [o.x, 0, o.z, o.yaw]; } }
+    // a place that no longer exists (the v14d Suite, retired in v14e): back in the lobby by the doors
+    let [x, y, z, yaw] = sn.pos; if (!world.roomAt(x, y, z)) [x, y, z, yaw] = [14.5, 0, 4.4, Math.PI];
     mode = 'play'; ui.showMenu(false); onModal(); if (settings.seen) settings.seen.intro = true;
-    game = sn.game; bill.unlimited = game === 'quick'; world.gate.always = game !== 'flow'; ui.setButton('#bRemote', game === 'quick'); visits++;
+    game = sn.game; vip.setMode(game === 'flow'); privates.setMode(game === 'flow'); { const r0 = world.roomAt(x, y, z); if (r0 && r0.startsWith('pv') && !privates.mine(r0)) [x, y, z, yaw] = [212, 0, -8, Math.PI]; } /* a private screen that is no longer yours: back in its lounge */ bill.unlimited = game === 'quick'; world.gate.always = game !== 'flow'; ui.setButton('#bRemote', game === 'quick'); visits++;
     player.place(x, z, yaw, 0, y); bill.onChange(); ui.fade(0, 0.6); try { history.pushState({ lum: 1 }, ''); } catch (e) { /* no history */ }
     let msg = t('toast.resumed');
     if (sn.own && media) { try { const list = JSON.parse((sn.own.song ? media.listAudio && media.listAudio() : media.list && media.list()) || '[]'), it = list.find((q) => q.id === sn.own.id);
@@ -451,7 +483,9 @@ async function boot() {
     if (dbg) { const c = engine.camera; c.position.set(dbg[0], dbg[1], dbg[2]); c.rotation.set(dbg[4] || 0, dbg[3] || 0, 0); player.x = dbg[0]; player.z = dbg[2]; player.y = dbg[1] - 1.62; }
     else if (mode === 'menu') menuCam(now); else if (!intro.active) { player.dyn = crowd.bodiesNear(player.x, player.z, 2.5); traffic.bodiesNear(player.x, player.z, 2.5, player.dyn); intro.bodiesNear(player.x, player.z, 2.5, player.dyn); player.update(dt); }
     input.update(dt);
-    intro.update(dt, player); armTab.update(dt); home.update(dt, now, player); if (home.remote) home.remote.update(dt);
+    intro.update(dt, player); armTab.update(dt); remote.update(dt);
+    privates.update(dt, player, sound);
+    if (remote.held && !(remoteBox && (remoteBox.pv ? world.roomAt(player.x, player.y, player.z) === remoteBox.pv.key : remoteBox.b === boxAt(remoteBox.h, player.x, player.y, player.z)))) dropRemote();   // v14e out of the box or room, the remote goes back
     { const hear = world.vis.has('street') ? (world.roomAt(player.x, 1, player.z) === 'street' ? 1 : 0.35) : 0; intro.hear = hear; traffic.hear = hear;
       traffic.paused = intro.active && intro.t < intro.SHOT_B; traffic.update(dt, player, intro.carOn && !intro.inCar ? [intro.car] : []); }
     const r = (mode === 'menu' && !dbg) ? 'lobby' : world.roomAt(player.x, player.y, player.z) || room; if (r !== room && r === 'lobby' && room === 'street' && game === 'flow') { const h = crowd.staff.host; if (h) setTimeout(() => h.say(pick(visits > 1 ? 'host.back' : 'host.hello')), 600); } room = r;
@@ -503,7 +537,7 @@ async function boot() {
     ui.setButton('#bBell', mode === 'play' && !modal && !!player.seated && game === 'flow' && !!hk && !(ticket && ticket.tablet));
     recliner.update(dt, player); const seatCtl = mode === 'play' && !!player.seated && !player.busy && !!recliner.cur && !modal;
     ui.setButton('#bRecline', seatCtl); ui.setButton('#bCup', seatCtl && (held ? !!recliner.freeHolder() : recliner.hasItem()));
-    ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet)) && together.canControl());
+    ui.setButton('#bRemote', mode === 'play' && (game === 'quick' || (!!player.seated && !!ticket && ticket.tablet) || !!privates.mine(room) || !!(hk && vip.mine(hk, player.x, player.y, player.z))) && together.canControl());
     // v14 (the user, 11-21: "the armrest tablet button is colliding with the recline button"): the round side buttons share one row, each
     // visible one in the next slot from the action button outward, so two never stand on one spot
     { const vis = SIDE_BTNS.filter((el) => el && !el.hidden), key = vis.map((el) => el.id).join(',') + (document.body.classList.contains('lefty') ? 'L' : 'R');
@@ -532,12 +566,13 @@ async function boot() {
     // v11 (the user: "wasn't the exit supposed to be faster"): once your film is over, the plate says Leave and takes you straight to the
     // lobby (seated or standing anywhere in the hall), instead of walking down to the exit doors by the screen
     const over = !!(hk && ticket && ticket.watched && ticket.hallKey === hk);
-    if (player.seated && r === 'home' && !player.busy && home.remote && !home.remote.held && home.rm) { const R = home.rm.find((q) => q.id === (player.x > BLD.HOME.split ? 'cine' : 'flat'));   // v14d the remote by your seat
-      if (R && R.m.visible && Math.hypot(R.x - player.x, R.z - player.z) < 4.6) { ui.setPrompt(t('suite.remote'), () => { home.remote.pickUp(); home.remote.from = R.id; R.m.visible = false; }); return; } }
+    if (remote.held && remoteBox && !player.busy) { const at = remoteBox.remote.at; if (lookAt(at.x, at.y, at.z, 0.35, 2.6)) { ui.setPrompt(t('vip.putDown'), () => dropRemote()); return; } }   // v14e put it back where it lay
+    if (player.seated && !player.busy && hk && !remote.held) { const bx = vip.mine(hk, player.x, player.y, player.z); if (bx && bx.remote.m.visible) { ui.setPrompt(t('vip.remote'), () => takeRemote(bx)); return; } }   // v14e seated in your box: the remote first
+    if (player.seated && !player.busy && !remote.held) { const pv = privates.mine(r), R = pv && privates.remotes[pv.p.id]; if (R && R.m.visible) { ui.setPrompt(t('vip.remote'), () => takeRemotePv(R)); return; } }   // and in your private screen
     if (player.seated) { ui.setPrompt(player.busy ? null : t(over ? 'hud.leave' : 'hud.stand'), () => (over ? leaveHall() : stand())); return; }
     if (player.busy) { ui.setPrompt(null); return; }
-    if (r === 'home') { engine.camera.getWorldDirection(fwd); const fl0 = Math.hypot(fwd.x, fwd.z) || 1, ah = (x, z, k = 0.3) => { const dx = x - player.x, dz = z - player.z, d = Math.hypot(dx, dz) || 1; return (dx * fwd.x + dz * fwd.z) / fl0 / d > k; };
-      const hp = home.prompt(r, player, ah, lookAt); if (hp) { ui.setPrompt(hp.label, hp.fn); return; } }   // v14d the Suite: its door, lights, TV, wardrobe, coffee, remotes (home.js)
+    { const pp = privates.prompt(r, player, lookAt, t, game === 'quick', (p) => t('vip.' + p.theme)); if (pp) { ui.setPrompt(pp.label, pp.fn); return; } }   // v14e the private lift, the screens' doors, their remotes
+    { const vp = vip.prompt(r, player, lookAt, t, game === 'quick'); if (vp) { ui.setPrompt(vp.label, vp.fn); return; } }   // v14e a VIP box's rope (rent it) and its remote (vip.js)
     { const jp = jobs.prompt(r, player, hk, lookAt); if (jp) { ui.setPrompt(jp.label, jp.fn); return; } }   // v14 a shift's next step (career.js)
     { let best = null, bd = 1.7; for (const sp of world.sitSpots) { if (sp.taken || sp.room !== r || Math.abs(sp.y - 0.5 - player.y) > 1.0) continue; const d = Math.hypot(sp.x - player.x, sp.z - player.z); if (d < bd && lookAt(sp.x, sp.y + 0.25, sp.z, 0.45, 2.4)) { bd = d; best = sp; } }
       if (best) { ui.setPrompt(t('hud.sitDown'), () => sitSpot(best)); return; } }   // v14 sofas, armchairs, benches and stools outside the halls
@@ -564,7 +599,7 @@ async function boot() {
   requestAnimationFrame((tt) => { last = tt; frame(tt); setTimeout(() => { const ld = $('#loader'); if (ld) ld.classList.add('gone'); clearInterval(ldTimer); ui.fade(0, 0.9); if (mode !== 'play') { ui.showMenu(true, false); onModal(); } if (!settings.lang) ui.openLang(); setTimeout(() => $('#loader') && $('#loader').remove(), 1300); }, 120 + hold); });
   if (Q.get('play')) setTimeout(() => enterPlay(Q.get('play') === 'quick' ? 'quick' : 'flow'), 300);
   else { const sn = snapLoad(); if (sn && settings.lang) setTimeout(() => resumeSnap(sn), 900 + hold); }
-  window.__lumiere = { THREE, home, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
+  window.__lumiere = { THREE, vip, remote, privates, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
     B: BLD, recliner, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles

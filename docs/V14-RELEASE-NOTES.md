@@ -1,3 +1,44 @@
+# LUMIÈRE 14.3 (2026-11-28)
+
+APK: `Lumiere-14.3.apk` (size and SHA-256 at the end of this section). Package `com.buddyapps.lumiere`, versionCode 1430, versionName 14.3,
+v2 signature with the same certificate as 14.2, target SDK 35, landscape. It installs over 14.2 and keeps your saved data.
+
+As before, everything below was checked in the real engine running headless (Chromium + SwiftShader, a software GPU) and with Node and
+Blender checks, not on the phone. Flicker, frame rate, sound, the camera and touch need your phone to confirm.
+
+## Your points from the 14.2 test
+1. **Flicker.** Textures and the people's bone data are uploaded before each frame is drawn instead of in the middle of it (three.js
+   uploads them mid-pass; under MSAA that is Android Chromium's known flicker). Settings > Graphics has a Smooth edges switch to turn
+   MSAA off if your phone still flickers.
+2. **The Home that teleported you to an apartment.** The apartment is gone. The private screens are part of the cinema now: a round
+   private lift stands in the lobby's front corner on the east side, by the glass. Step in, choose Ride up: the doors close, it hums
+   for a few seconds and opens on the private floor's lounge. Its five screens are rented at their doors and cannot be edited.
+3. **Home, Jungle, Winter, Drive-in, Space.** Five themed screening rooms, each with its own picture and lights:
+   Home (a curved sofa, coffee table, a bed on the back riser, shelves, tower speakers, lamps), Jungle (timber beams, lounge chairs,
+   olive trees and planters, green uplights, fireflies), Winter (a log cabin with a stone fireplace, white velvet armchairs, a
+   leather sofa, falling snow), Space (ribbed walls with violet light, silver loungers, stars and a turning planet), Drive-in (an 11 m
+   night sky with stars and a moon, parked cars in marked bays, deck chairs, string lights, lamp posts, a 17 m screen).
+4. **The remote.** Its face and keys floated 3 and 5 mm over the body and its keys' touch areas overlapped, so a tap often pressed the
+   neighbour; now the face lies on the body, each key sits in it, and a tap presses the key nearest to where you touched. Its film key
+   opens your videos and in your own screen (or VIP box) a video you pick plays at once. Leaving the room or box puts it back.
+5. **VIP areas like Dubai's.** Every hall has a VIP gallery over its back rows, a stair up to it just past the entrance, and five
+   walnut boxes with lit edges, each with leather club recliners, crimson carpet and a velvet rope until you rent it (at the rope, or
+   from the phone's VIP app, which can also take you there). Its remote plays the hall's film.
+6. **The tablet sending you to the MAX.** It never picks a hall for you now. Films, streams and your videos show a Play in row: the hall
+   you are in is chosen; elsewhere you choose. The phone's screens row (one tap to any hall) now works in Story too once you are past
+   the ticket gate.
+7. **Lag.** The halls' far rows use a third, lighter seat model (about 30 % of the second); the VIP boxes use the light armrests.
+8. **The escalators' start.** Each step's tread reaches 38 cm ahead of its edge, so when it dropped under the comb plate it was still
+   in sight: a 6 cm jump at the bottom and the top. The steps now slide under the plates level.
+9. **The intro's sound delay and the taxi's tyres.** The sounds are decoded while the game loads (they waited for your first tap, then
+   all decoded at once). The taxi's wheels roll with its speed and its front wheels steer with its turns.
+10. **The multiplayer screens.** Host a room and Join a friend are two cards; once you are in a room you see its code large with Copy and
+    Share, its QR, who is in it and the connection's state (Try again when it fails). A friend joining goes in as soon as your room
+    answers. The room bar is Chat, Mic and Emote (wave, clap, cheer, dance). The console errors came from relays in Trystero's default
+    list that no longer exist (404, 502): the game now uses six large public relays that answered from here.
+11. **Layout and emptiness.** Every hero view (lobby, street, mezzanine, corridor, halls, restrooms, the private floor) was rendered and
+    reviewed; see the changes listed below.
+
 # LUMIÈRE 14.2 (2026-11-27)
 
 APK: `Lumiere-14.2.apk`, 54.06 MB, SHA-256 `2e98be1e7f8191af2f287f5b29caa55b7a6459ff64a52a27fa1c74f0925e15a2`.

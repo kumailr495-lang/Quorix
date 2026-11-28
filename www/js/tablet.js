@@ -34,7 +34,7 @@ export class Tablet {
     this.pv = document.createElement('video'); this.pv.muted = true; this.pv.playsInline = true; this.pv.preload = 'metadata'; this.pv.setAttribute('playsinline', '');
   }
   isOpen() { return !$('#tablet').hidden; }
-  open(tab = 'home', o = {}) { this.server = !!o.server; $('#tablet').hidden = false; clearInterval(this._clk); const ck = () => { const d = new Date(); $('#tbClock').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }; ck(); this._clk = setInterval(ck, 15000); $('#tbClose').textContent = t(this.server ? 'tab.handBack' : 'tab.close'); this.sound.tablet && this.sound.tablet(true); this.show(tab); this.hooks.onModal(true); }
+  open(tab = 'home', o = {}) { this.server = !!o.server; this.hallSel = null; $('#tablet').hidden = false; clearInterval(this._clk); const ck = () => { const d = new Date(); $('#tbClock').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }; ck(); this._clk = setInterval(ck, 15000); $('#tbClose').textContent = t(this.server ? 'tab.handBack' : 'tab.close'); this.sound.tablet && this.sound.tablet(true); this.show(tab); this.hooks.onModal(true); }
   close() { if (!this.isOpen()) return; clearInterval(this._clk); $('#tablet').hidden = true; cancelAnimationFrame(this._raf); this.pv.removeAttribute('src'); this.pv.load(); this.sound.tablet && this.sound.tablet(false); if (this.server) { this.server = false; this.hooks.handBack(); } this.hooks.onModal(false); }
   refresh() { if (this.isOpen()) this.show(this.tab); }
   show(tab) {
@@ -81,13 +81,27 @@ export class Tablet {
       const icon = v.paused ? '#i-play' : '#i-pause', u = pp.querySelector('use'); if (u.getAttribute('href') !== icon) u.setAttribute('href', icon); this._raf = requestAnimationFrame(tick); };
     this._raf = requestAnimationFrame(tick);
   }
+  // ---------------- v14e (the user, 11-27: "the tablet ... so you can select the theatre we want to play it in"; it used to fall back to the
+  // MAX and take you there): which screen a film plays on, chosen here. Inside a hall it starts on that hall; elsewhere on your ticket's
+  // hall, or on nothing: then a film waits until you pick a screen
+  hallRow(B) {
+    const H = this.hooks.halls ? this.hooks.halls() : null; if (!H || !H.length) return;
+    if (!H.some((h) => h.key === this.hallSel)) this.hallSel = this.hooks.here ? this.hooks.here() : null;
+    const row = el('div', 'tb-halls'); row.appendChild(el('small', null, t('tab.playIn')));
+    for (const h of H) { const b = el('button', 'tb-hall' + (h.key === this.hallSel ? ' on' : ''), h.name); b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); this.hallSel = h.key; for (const q of row.querySelectorAll('.tb-hall')) q.classList.toggle('on', q === b); row.classList.remove('want'); }); row.appendChild(b); }
+    B.appendChild(row); this._hallRow = row;
+  }
+  play(o) {
+    if (!this.hallSel && this.hooks.halls) { this.hooks.toast(t('tab.pickHall'), 2400); const r = this._hallRow; if (r) { r.classList.remove('want'); void r.offsetWidth; r.classList.add('want'); r.scrollIntoView({ block: 'nearest' }); } return false; }
+    return this.hooks.playFilm({ ...o, hall: this.hallSel });
+  }
   // ---------------- films ----------------
   films(B) {
-    $('#tbTitle').textContent = t('tab.films'); const grid = el('div', 'tb-grid'); const story = !this.hooks.quick();
+    $('#tbTitle').textContent = t('tab.films'); this.hallRow(B); const grid = el('div', 'tb-grid'); const story = !this.hooks.quick();
     // v9: each open film can be saved to the phone (the app downloads it; it then plays offline, with no Wi-Fi stutter)
     const M = media, saved = (() => { try { return M ? JSON.parse(M.downloaded() || '[]') : []; } catch (e) { return []; } })();
     for (const f of CATALOG) { const c = el('button', 'tb-film'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); c.appendChild(img); c.appendChild(el('b', null, f.short || f.title)); c.appendChild(el('small', null, `${t('genre.' + f.genre)} · ${t('book.mins', { n: f.mins })}` + (story && this.wallet.P.replay ? ` · ${this.wallet.fmt(this.wallet.P.replay)}` : '')));
-      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.playFilm({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } });
+      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.play({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } });
       if (M && M.download) { const have = saved.find((d) => d.name === f.id + '.mp4' && d.done), dl = el('span', 'tb-dl' + (have ? ' done' : ''), have ? t('tab9.saved') : t('tab9.save'));
         dl.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (have) return; dl.textContent = '0 %'; this._dl = this._dl || {}; this._dl[f.id + '.mp4'] = dl; M.download(f.url, f.id + '.mp4'); });
         c.appendChild(dl); }
@@ -107,7 +121,7 @@ export class Tablet {
   // link (film9.js loadURL). Only legal sources: public-domain collections (each item's own page says its rights) and the Blender films.
   stream(B) {
     $('#tbTitle').textContent = t('str.title'); const bar = el('div', 'tb-bar'), box = el('div', 'inp'); box.innerHTML = '<svg class="ic"><use href="#i-search"/></svg>';
-    const q = el('input'); q.placeholder = t('str.search'); q.value = this.sq || ''; q.enterKeyHint = 'search'; box.appendChild(q); bar.appendChild(box); B.appendChild(bar);
+    const q = el('input'); q.placeholder = t('str.search'); q.value = this.sq || ''; q.enterKeyHint = 'search'; box.appendChild(q); bar.appendChild(box); B.appendChild(bar); this.hallRow(B);
     const rows = el('div', 'st-rows'); B.appendChild(rows);
     const go = () => { this.sq = q.value.trim(); rows.innerHTML = ''; if (this.sq) this.stRow(rows, t('str.results', { q: this.sq }), this.sq, true); else this.stHome(rows); };
     q.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { q.blur(); go(); } }); go();
@@ -115,7 +129,7 @@ export class Tablet {
   stHome(rows) {
     const own = el('section', 'st-row'); own.appendChild(el('h4', null, t('str.originals'))); const strip = el('div', 'st-strip');
     for (const f of CATALOG) { const c = el('button', 'st-card'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.src = posterURL(f.id); c.append(img, el('b', null, f.short || f.title), el('small', null, `${f.year} · ${f.mins} min`));
-      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.hooks.playFilm({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } }); strip.appendChild(c); }
+      c.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); if (this.play({ film: f.id, title: f.title })) { this.hooks.toast(t('tab.starting', { title: f.title }), 2600); this.show('remote'); } }); strip.appendChild(c); }
     own.appendChild(strip); rows.appendChild(own);
     for (const [k, col] of [['classics', 'feature_films'], ['animation', 'animationandcartoons'], ['scifi', 'SciFi_Horror'], ['noir', 'subject:"film noir"'], ['silent', 'silent_films'], ['comedy', 'Comedy_Films']]) this.stRow(rows, t('str.row.' + k), col.includes(':') ? col : `collection:${col}`, false);
   }
@@ -148,18 +162,18 @@ export class Tablet {
     } catch (e) { meta.textContent = t('str.offline'); return; }
     if (!file) { meta.textContent = t('str.noVideo'); return; }
     play.disabled = false; play.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); const url = `https://archive.org/download/${encodeURIComponent(id)}/${encodeURIComponent(file.name)}`;
-      this.shows.loadURL(url, name); if (this.hooks.playFilm({ own: true })) { this.hooks.toast(t('tab.starting', { title: name }), 2600); this.show('remote'); } });
+      this.shows.loadURL(url, name); if (this.play({ own: true })) { this.hooks.toast(t('tab.starting', { title: name }), 2600); this.show('remote'); } });
   }
   // ---------------- my videos ----------------
   mine(B) {
-    $('#tbTitle').textContent = t('tab.mine'); const M = media;
+    $('#tbTitle').textContent = t('tab.mine'); const M = media; this.hallRow(B);
     if (!M) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.noBridge'))); e.appendChild(el('p', 'note', t('tab.noBridgeHint'))); const pick = el('button', 'btn primary', t('book.gallery')); pick.addEventListener('click', (ev) => { ev.stopPropagation(); this.hooks.pickOwn(); }); e.appendChild(pick);
-      if (this.shows.own) { const play = el('button', 'btn secondary', t('tab.playOwn', { name: this.shows.own.label })); play.addEventListener('click', (ev) => { ev.stopPropagation(); if (this.hooks.playFilm({ own: true })) this.show('remote'); }); e.appendChild(play); } B.appendChild(e); return; }
+      if (this.shows.own) { const play = el('button', 'btn secondary', t('tab.playOwn', { name: this.shows.own.label })); play.addEventListener('click', (ev) => { ev.stopPropagation(); if (this.play({ own: true })) this.show('remote'); }); e.appendChild(play); } B.appendChild(e); return; }
     // v14d (the user, 11-27: the file picker app took over and Android closed the game): the phone's songs are listed here like its videos,
     // with their covers; the system picker stays as a second way in
     { const row = el('div', 'tb-songs'), seg = el('div', 'seg'); for (const [k, lab] of [['videos', t('tab.videos')], ['songs', '♪ ' + t('tab.songs')]]) { const b = el('button', (this.lib || 'videos') === k ? 'on' : '', lab); b.addEventListener('click', (ev) => { ev.stopPropagation(); this.sound.click(); this.lib = k; this.show('mine'); }); seg.appendChild(b); } row.appendChild(seg);
       const song = el('button', 'btn ghost sm', '⋯ ' + t('tab.pickSong')); song.addEventListener('click', (ev) => { ev.stopPropagation(); this.sound.click(); const f = document.getElementById('file'); if (f) f.click(); }); row.appendChild(song);
-      if (this.shows.own) { const play = el('button', 'btn primary sm', t('tab.playOwn', { name: this.shows.own.label })); play.addEventListener('click', (ev) => { ev.stopPropagation(); if (this.hooks.playFilm({ own: true })) this.show('remote'); }); row.appendChild(play); }
+      if (this.shows.own) { const play = el('button', 'btn primary sm', t('tab.playOwn', { name: this.shows.own.label })); play.addEventListener('click', (ev) => { ev.stopPropagation(); if (this.play({ own: true })) this.show('remote'); }); row.appendChild(play); }
       B.appendChild(row); }
     if (this.lib === 'songs') { $('#tbTitle').textContent = t('tab.songs'); this.songs(B, M); return; }
     if (!M.hasPermission()) { const e = el('div', 'tb-empty'); e.appendChild(el('b', null, t('tab.permTitle'))); e.appendChild(el('p', 'note', t('tab.permBody'))); const ask = el('button', 'btn primary', t('tab.permAsk')); ask.addEventListener('click', (ev) => { ev.stopPropagation(); window.__lumiereMediaPermission = (ok) => { if (ok) { this.items = null; this.show('mine'); } else this.hooks.toast(t('tab.permDenied'), 3200, 'error'); }; M.requestPermission(); }); e.appendChild(ask); B.appendChild(e); return; }
@@ -182,7 +196,7 @@ export class Tablet {
       const heart = el('button', 'heart' + (this.fav.has(it.id) ? ' on' : '')); heart.innerHTML = '<svg class="ic"><use href="#i-heart"/></svg>'; heart.addEventListener('click', (e) => { e.stopPropagation(); if (this.fav.has(it.id)) this.fav.delete(it.id); else this.fav.add(it.id); store.set('fav', [...this.fav]); heart.classList.toggle('on'); this.sound.click(); }); c.appendChild(heart);
       if (this.view.startsWith('col:')) { const rm = el('button', 'colrm', '−'); rm.addEventListener('click', (e) => { e.stopPropagation(); const k = this.view.slice(4); this.cols[k] = this.cols[k].filter((x) => x !== it.id); store.set('cols', this.cols); this.show('mine'); }); c.appendChild(rm); }
       else if (Object.keys(this.cols).length) { const add = el('button', 'coladd', '+'); add.addEventListener('click', (e) => { e.stopPropagation(); const names = Object.keys(this.cols), n = names.length === 1 ? names[0] : prompt(t('tab.addTo') + '\n' + names.join(', ')); if (n && this.cols[n] && !this.cols[n].includes(it.id)) { this.cols[n].push(it.id); store.set('cols', this.cols); this.hooks.toast(t('tab.added', { col: n }), 1600); } }); c.appendChild(add); }
-      c.addEventListener('click', () => { this.sound.click(); this.onLocal && this.onLocal((it.url || (M.videoUrl && M.videoUrl(it.id))), it.name); if (this.hooks.quick() || this.server) { if (this.hooks.playFilm({ own: true })) this.show('remote'); } else this.close(); });
+      c.addEventListener('click', () => { this.sound.click(); this.onLocal && this.onLocal((it.url || (M.videoUrl && M.videoUrl(it.id))), it.name); if (this.hooks.quick() || this.server) { if (this.play({ own: true })) this.show('remote'); } else this.close(); });
       grid.appendChild(c); }
     B.appendChild(grid);
     q.addEventListener('input', () => { this.q = q.value; clearTimeout(this._qt); this._qt = setTimeout(() => { const pos = q.selectionStart; this.show('mine'); const nq = document.querySelector('#tbBody .tb-bar input'); if (nq) { nq.focus(); nq.setSelectionRange(pos, pos); } }, 250); });
@@ -199,7 +213,7 @@ export class Tablet {
     for (const it of list.slice(0, 300)) { const c = el('button', 'tb-song'), art = el('div', 'art'), img = new Image(); img.alt = ''; img.loading = 'lazy'; img.onerror = () => { img.remove(); art.classList.add('none'); }; img.src = it.art; art.appendChild(img);
       const title = it.title || cleanTitle(it.name); c.append(art, el('b', null, title), el('small', null, [it.artist && it.artist !== '<unknown>' ? it.artist : '', fmt((it.dur || 0) / 1000)].filter(Boolean).join(' · ')));
       c.addEventListener('click', (ev) => { ev.stopPropagation(); this.sound.click(); this.onLocal && this.onLocal(it.url, title, { song: true, title, artist: it.artist && it.artist !== '<unknown>' ? it.artist : '', album: it.album || '', art: it.art, id: it.id });
-        if (this.hooks.quick() || this.server) { if (this.hooks.playFilm({ own: true })) this.show('remote'); } else this.close(); });
+        if (this.hooks.quick() || this.server) { if (this.play({ own: true })) this.show('remote'); } else this.close(); });
       grid.appendChild(c); }
     B.appendChild(grid);
     q.addEventListener('input', () => { this.sq = q.value; clearTimeout(this._qt); this._qt = setTimeout(() => { const pos = q.selectionStart; this.show('mine'); const nq = document.querySelector('#tbBody .tb-bar input'); if (nq) { nq.focus(); nq.setSelectionRange(pos, pos); } }, 250); });

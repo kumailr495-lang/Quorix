@@ -1,0 +1,20 @@
+{
+ "room": "pvDrive",
+ "res": 2048,
+ "hall": true,
+ "hash": "v9.cf9001af1715",
+ "maps": [
+  "pvDrive_h.png",
+  "pvDrive_f.png",
+  "pvDrive_s.png"
+ ],
+ "scale": [
+  0.02766817606985564,
+  0.03134318399254562,
+  1.0021512508392334
+ ],
+ "avg": 0.006199069775081166,
+ "glb": "pvDrive.glb",
+ "verts": 1260,
+ "tris": 420
+}

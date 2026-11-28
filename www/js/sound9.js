@@ -12,7 +12,12 @@ import { Sound } from './sound.js';
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), rnd = (a, b) => a + Math.random() * (b - a);
 const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_rain', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge', 'cafe', 'fountain', 'espresso', 'cup'];
 export class Sound9 extends Sound {
-  constructor() { super(); this.buf = {}; this.loops = {}; this.sphere = null; this.boost = 1; }
+  constructor() { super(); this.buf = {}; this.loops = {}; this.sphere = null; this.boost = 1; this._pre = this._predecode(); this._pre.then((o) => { this._preBuf = o; }); }
+  // v14e (the user, 11-27: "the intro is a bit glitched in terms of sounds, there's a huge delay"): the recordings were fetched and decoded
+  // only after the first tap, so the taxi's rain, doors and street came in seconds late. They decode while the game loads now (an offline
+  // context needs no tap); the live context takes the buffers as it starts
+  _predecode() { let oc = null; try { const O = window.OfflineAudioContext || window.webkitOfflineAudioContext; oc = new O(2, 2, 48000); } catch (e) { return Promise.resolve({}); }
+    const out = {}; return Promise.all(FILES.map(async (n) => { try { const r = await fetch(`snd/${n}.ogg`); if (!r.ok) return; out[n] = await oc.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* decoded again later, or the synth stands in */ } })).then(() => out); }
   _build() {
     // v14 (the user, 11-21: "most of the sounds are distorted and glitched"): 'playback' buffers again. The low-latency buffers of v9 ran
     // dry on a busy low-end phone (crackles); the film plays its own sound in step with its picture, so only taps wait a little longer
@@ -25,10 +30,12 @@ export class Sound9 extends Sound {
     const trim = c.createGain(); trim.gain.value = 0.71; this.master.connect(trim); trim.connect(pre); pre.connect(lim); lim.connect(c.destination);
     // the synth murmur and lounge tones give way to the recordings
     for (const g of [this.murA, this.murB]) g.disconnect();
+    if (this._preBuf) Object.assign(this.buf, this._preBuf);   // already decoded: the first sounds (the taxi's) play at once
     this._loadAll();
   }
   async _loadAll() {
-    await Promise.all(FILES.map(async (n) => { try { const r = await fetch(`snd/${n}.ogg`); if (!r.ok) return; this.buf[n] = await this.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* the synth stands in */ } }));
+    const pre = await this._pre.catch(() => ({}));
+    await Promise.all(FILES.map(async (n) => { if (pre[n]) { this.buf[n] = pre[n]; return; } try { const r = await fetch(`snd/${n}.ogg`); if (!r.ok) return; this.buf[n] = await this.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* the synth stands in */ } }));
     for (const [n, dest] of [['murmur', this.master], ['lounge', this.master], ['street', this.master], ['escalator', this.master], ['popcorn', this.master], ['cafe', this.master], ['fountain', this.master]]) this._loop(n, dest);
   }
   _loop(n, dest) { const b = this.buf[n]; if (!b || this.loops[n]) return; const c = this.ctx, s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(dest); s.start(0, Math.random() * b.duration); this.loops[n] = g; }

@@ -63,7 +63,7 @@ if __name__ == '__main__':
     import sys, os, json
     HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
     import rooms, halls
-    S = json.load(open(os.path.join(HERE, 'spec.json'))); want = sys.argv[1:] or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'home']; total = 0
+    S = json.load(open(os.path.join(HERE, 'spec.json'))); want = sys.argv[1:] or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'vip', 'pvHome', 'pvJungle', 'pvWinter', 'pvSpace', 'pvDrive']; total = 0
     for key in want:
         hall = next((h for h in S['halls'] if h['key'] == key), None)
         acc = halls.build_hall(hall, S['L1'])[0] if hall else rooms.build(key, S)[0]; hits = report(key, acc.boxes, skip_mats=(10,), fill=acc.fill); total += len(hits)

@@ -16,12 +16,11 @@ import { DAILY_CAP, LOAN } from './credits.js';
 import { THEMES, SWATCH } from './theatres.js';
 import { BRIDGE, FLANK_W, LINK_W, FLANK_E, LINK_E, PANTRY, HALL, LOBBY, MEZZ, WC, SPINE, STREET, CORE, COUNTERS } from './building.js';
 import { itemById } from './menu.js';
-import { SLOTS, PAINT } from './home.js';
 const $ = (s) => document.querySelector(s), el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const icon = (id) => `<svg class="ic"><use href="#${id}"/></svg>`;
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('lumiere.' + k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('lumiere.' + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
 // v14 Wallet (Lumiere Credits, credits.js), Jobs, Tasks and Shop (career.js) join the apps; the old Tab is the wallet's history now
-const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['home', 'i-home'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
+const APPS = [['ticket', 'i-ticket'], ['map', 'i-pin'], ['vip', 'i-home'], ['wallet', 'i-cash'], ['jobs', 'i-bolt'], ['tasks', 'i-check'], ['shop', 'i-star'], ['theatre', 'i-seat'], ['stubs', 'i-film'], ['camera', 'i-camera'], ['photos', 'i-image'], ['friends', 'i-people'], ['settings', 'i-gear']];
 const two = (n) => String(n).padStart(2, '0');
 const LINE = { loan: 'loan.got', ticket: 'phone.line.ticket', tablet: 'phone.line.tablet', salted: 'opt9.salted', caramel: 'opt9.caramel', cheese: 'opt9.cheese', nachos: 'opt9.nachos', cola: 'opt9.drink', coffee: 'opt9.coffee', water: 'item.water', combo: 'opt9.combo' };
 export class Phone {
@@ -74,38 +73,23 @@ export class Phone {
   }
   empty(C, title, note) { const e = el('div', 'ph-empty'); e.appendChild(el('b', null, title)); if (note) e.appendChild(el('p', 'note', note)); C.appendChild(e); return e; }
   btn(C, label, cls, fn) { const b = el('button', 'btn ' + cls + ' sm', label); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); fn(); }); C.appendChild(b); return b; }
-  app_home(C) {
-    const H = this.h.home(), W = this.h.credits; if (!H || !H.room) { this.empty(C, t('home.none')); return; }
-    // v14d the LUMIÈRE Suite: going up (a visit costs SUITE_PRICE; free in Quick play) or coming down, then furnishing and colours
-    { const here = this.h.room && this.h.room() === 'home', c = el('div', 'ph-shop own'); c.append(el('b', null, t('suite.title')), el('small', null, t('suite.desc'))); const r = el('div', 'ph-row');
-      this.btn(r, here ? t('suite.back') : t('suite.go', { price: this.h.suitePrice ? this.h.suitePrice() : '' }), 'primary', () => { this.close(); if (here) H.goOut(); else if (this.h.goSuite) this.h.goSuite(); }); c.appendChild(r); C.appendChild(c); }
-    const tabs = ['furnish', 'colours']; if (!tabs.includes(this.homeTab)) this.homeTab = 'furnish';
-    const chips = el('div', 'ph-chips'); for (const k of tabs) { const b = el('button', 'ph-chip' + (k === this.homeTab ? ' on' : ''), t('home.tab.' + k)); b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.homeTab = k; this.show('home'); }); chips.appendChild(b); }
-    C.appendChild(chips); C.appendChild(el('p', 'ph-shopbal', W.fmt(W.bal)));
-    const short = () => this.h.toast(t('home.short'), 2200, 'error');
-    if (this.homeTab === 'furnish') {
-      for (const sl of SLOTS) { C.appendChild(el('h4', 'ph-sub', t('home.slot.' + sl.id))); const row = el('div', 'ph-opts');
-        for (const o of sl.opts) { const cur = H.pick(sl.id) === o.id, own = H.owns(sl.id, o.id), b = el('button', 'ph-opt' + (cur ? ' on' : '') + (own ? '' : ' buy')), nm = t('home.opt.' + sl.id + '.' + o.id);
-          b.append(el('b', null, nm), el('small', null, cur ? t('home.inUse') : own ? t('home.owned') : W.fmt(o.price)));
-          b.addEventListener('click', (e) => { e.stopPropagation(); if (cur) return; if (!H.choose(sl.id, o.id)) { short(); return; } this.h.toast(t(own ? 'home.placed' : 'home.bought', { name: nm }), 1800); this.show('home'); }); row.appendChild(b); }
-        C.appendChild(row); }
-      C.appendChild(el('p', 'note', t('home.furnishNote')));
-    } else if (this.homeTab === 'colours') {
-      for (const part of Object.keys(PAINT)) { C.appendChild(el('h4', 'ph-sub', t('home.paint.' + part) + '  ·  ' + W.fmt(H.paintPrice(part)))); const row = el('div', 'ph-swrow');
-        for (const hex of PAINT[part]) { const cur = H.colour(part) === hex, b = el('button', 'ph-sw' + (cur ? ' on' : '') + (H.ownsColour(part, hex) ? '' : ' buy')); b.style.background = hex; b.setAttribute('aria-label', hex);
-          b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); if (cur) return; if (!H.paint(part, hex)) { short(); return; } this.show('home'); }); row.appendChild(b); }
-        C.appendChild(row); }
-      C.appendChild(el('p', 'note', t('home.paintNote')));
-    } else {
-      const own = H.cinemaOwned, c = el('div', 'ph-shop' + (own ? ' own' : '')); c.append(el('b', null, t('home.cinema')), el('small', null, t('home.cinemaD'))); const r = el('div', 'ph-row');
-      if (own) c.appendChild(el('small', 'ph-owned', t('home.owned'))); else this.btn(r, t('home.buyFor', { price: W.fmt(CINEMA_PRICE) }), 'primary', () => { if (!H.buyCinema()) { short(); return; } this.h.toast(t('home.cinemaBought'), 2800); this.show('home'); });
-      c.appendChild(r); C.appendChild(c);
-      if (own) { C.appendChild(el('h4', 'ph-sub', t('home.films'))); const seated = this.h.homeSeat();
-        if (H.film) { const rr = el('div', 'ph-row'); rr.appendChild(el('small', null, t('home.nowPlaying', { title: H.film.src.title }))); this.btn(rr, t('home.stopFilm'), 'secondary', () => { H.stopFilm(); this.show('home'); }); C.appendChild(rr); }
-        for (const f of H.films()) { const li = el('div', 'ph-film'); li.append(el('b', null, f.title), el('small', null, t('home.mins', { n: f.mins })));
-          this.btn(li, t('home.play'), seated ? 'primary' : 'ghost', () => { if (!this.h.homeSeat()) { this.h.toast(t('home.sitFirst'), 2400); return; } if (H.playFilm(f)) this.close(); }); C.appendChild(li); }
-        C.appendChild(el('p', 'note', t(seated ? 'home.filmsNote' : 'home.sitFirst'))); }
-    }
+  // v14e VIP boxes (the user, 11-27: rentable private boxes in every hall, not editable): each hall's five boxes, their price, and a way there
+  // (rent & go: a quick fade into the box; renting at the box's rope works too). Replaces the v14d Suite app.
+  app_vip(C) {
+    const V = this.h.vip && this.h.vip(), W = this.h.credits; if (!V) { this.empty(C, t('vip.none')); return; }
+    C.appendChild(el('p', 'ph-shopbal', W.fmt(W.bal)));
+    // v14e the private screens first: five themed rooms on the private floor (the lift by the east waiting area, or Go from here)
+    const P = this.h.pv && this.h.pv(); if (P && P.halls.length) { C.appendChild(el('h4', 'ph-sub', t('pv.title'))); C.appendChild(el('p', 'note', t('pv.note'))); const row = el('div', 'ph-opts');
+      for (const h of P.halls) { const own = P.isRented(h.p.id), b = el('button', 'ph-opt' + (own ? ' own' : '')); b.append(el('b', null, t('vip.' + h.p.theme)), el('small', null, own ? t('vip.yoursShort') : this.h.quick() ? t('vip.free') : W.fmt(P.price(h.p.id))));
+        b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.close(); this.h.pvGo(h); }); row.appendChild(b); }
+      C.appendChild(row); }
+    C.appendChild(el('h4', 'ph-sub', t('vip.boxesTitle'))); C.appendChild(el('p', 'note', t('vip.appNote')));
+    const byHall = new Map(); for (const box of V.boxes) { const k = box.hall.id; if (!byHall.has(k)) byHall.set(k, []); byHall.get(k).push(box); }
+    for (const [, list] of byHall) { C.appendChild(el('h4', 'ph-sub', list[0].hall.name.replace('LUMIERE ', ''))); const row = el('div', 'ph-opts');
+      for (const box of list.slice().sort((a, b) => a.b.n - b.b.n)) { const own = V.isRented(box), b = el('button', 'ph-opt' + (own ? ' own' : ''));
+        b.append(el('b', null, V.label(box)), el('small', null, own ? t('vip.yoursShort') : this.h.quick() ? t('vip.free') : W.fmt(V.price(box))));
+        b.addEventListener('click', (e) => { e.stopPropagation(); this.h.sound.click(); this.close(); this.h.vipGo(box); }); row.appendChild(b); }
+      C.appendChild(row); }
   }
   app_ticket(C) {
     const tk = this.h.ticket(); if (!tk) { this.empty(C, t('phone.noShow'), t('phone.bookHint')); return; }
@@ -162,7 +146,7 @@ export class Phone {
     const list = el('div', 'ph-list'); for (const h of W.history().slice(0, 40)) { const r = el('div', 'ph-li ' + (h.n >= 0 ? 'in' : 'out')); const a = el('div'); a.append(el('span', null, this.why(h.why)), el('small', null, new Date(h.t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))); r.append(a, el('b', null, (h.n >= 0 ? '+' : '−') + W.fmt(Math.abs(h.n)))); list.appendChild(r); }
     C.appendChild(list);
   }
-  why(w) { const [k, a] = String(w).split(':'); if (k === 'loan') return t(a === 'back' ? 'loan.paid' : 'loan.got'); if (itemById(k)) return t('food.' + k); if (LINE[k]) return t(LINE[k]); if (k === 'film' || k === 'filmEnd') return t('wallet.why.' + k); if (k === 'job') return t('wallet.why.job', { job: t('job.title.' + a) }); if (k === 'shop') return t('shop.' + a); if (['mission', 'task', 'welcome', 'tablet', 'ticket'].includes(k)) return t('wallet.why.' + k); return String(w); }
+  why(w) { const [k, a] = String(w).split(':'); if (k === 'loan') return t(a === 'back' ? 'loan.paid' : 'loan.got'); if (itemById(k)) return t('food.' + k); if (LINE[k]) return t(LINE[k]); if (k === 'film' || k === 'filmEnd') return t('wallet.why.' + k); if (k === 'job') return t('wallet.why.job', { job: t('job.title.' + a) }); if (k === 'shop') return t('shop.' + a); if (k === 'vip') return t('wallet.why.vip', { name: t('vip.box', { n: a }) }); if (k === 'pv') return t('vip.' + a); if (['mission', 'task', 'welcome', 'tablet', 'ticket'].includes(k)) return t('wallet.why.' + k); return String(w); }
   // jobs: three shifts; taking one shows the way there (career.js Jobs)
   app_jobs(C) {
     const J = this.h.jobs(); if (J.active) { const k = J.job.kind, card = el('div', 'ph-job on'); card.append(el('b', null, t('job.title.' + k)), el('small', null, t('job.active'))); C.appendChild(card); const r = el('div', 'ph-row'); this.btn(r, t('job.cancel'), 'ghost', () => { J.cancel(); this.show('jobs'); }); C.appendChild(r); return; }

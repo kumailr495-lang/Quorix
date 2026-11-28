@@ -13,12 +13,6 @@ node tools/dev/seethru.mjs "$OUT" --no-static --step 1.0 --dump-points "$OUT/eye
 node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi kerb --dump-tris "$OUT/engine.json"
 "$B" --background --factory-startup --python tools/blender/arch/zcheck.py -- --eyes "$OUT/eyes.json" --engine "$OUT/engine.json" --json "$OUT/z.json" \
   2>&1 | grep -vE '^(Blender|Read |$)'
-# v14d the LUMIÈRE Suite: reached by travel, so it has its own eye points (standing on a 0.5 m grid, seated at every sit spot) and its
-# furniture is dumped while you are in it
-node tools/dev/homez.mjs "$OUT"
-echo "== the Suite"
-"$B" --background --factory-startup --python tools/blender/arch/zcheck.py -- --eyes "$OUT/home_eyes.json" --engine "$OUT/home_engine.json" \
-  --json "$OUT/zhome.json" home 2>&1 | grep -vE '^(Blender|Read |$)'
 # v11 W5: the taxi's cabin, seen from the back seat during the Story arrival (never drawn with the taxi's outside)
 node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi cabin --dump-points "$OUT/cabin_eyes.json"
 node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi cabin --dump-tris "$OUT/cabin.json"

@@ -142,6 +142,9 @@ export class Shows {
   }
   replay(id) { const s = this.s[id]; if (!s || !s.src) return false; this.book(id, s.src, 0, null, { replay: true }); return true; }
   _abort(id) { const s = this.s[id]; this._stopPicture(s); if (this.active === id) this.active = null; this.director.stop(id); this.sound.stopFilm(s.hall.key); s.state = 'idle'; s.booked = false; this._idle(s); this.crowd.clearAudience(id); }
+  // v14e the private screens (private.js) join after the world is built: a show state each, their rooms lit by their pictures
+  addHall(h) { if (this.s[h.id]) return; this.s[h.id] = { id: h.id, hall: h, state: 'idle', src: null, startAt: 0, phaseAt: 0, light: 1, lightFrom: 1, lightAt: 0, lightWant: 1, track: null, credits: false, slides: slides(h.cfg.aspect), curtainKeep: false };
+    if (h.room.U.uSpill) h.room.U.uSpill.value = this.spillRT.texture; if (h.room.U.uScreen) h.room.U.uScreen.value.setRGB(0.25, 0.25, 0.25); this._idle(this.s[h.id]); }
   _idle(s) { const u = s.hall.picMat.uniforms; u.map.value = s.hall.slate; u.uGain.value = 0.55; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; if (u.uExtOn) u.uExtOn.value = 0; if (s.hall.curtains) s.hall.curtains.target = 1; s.pic = false; }
   _slideWaiting(s) { const u = s.hall.picMat.uniforms; u.map.value = s.slides.tex; u.uGain.value = 0.8; u.uBox.value.set(0, 0, 1, 1); if (u.uSrc) u.uSrc.value.set(0, 0, 1, 1); s.split = false; s.wrap = false; s.pic = false; }
   _stopPicture(s) { try { this.video.pause(); } catch (e) { /* none */ } this._ytStop(); if (s) { s.pic = false; if (s.music) { s.music.dispose(); s.music = null; this.confetti && this.confetti.clear(); } if (s.staged) { s.staged = false; this.crowd.stage && this.crowd.stage(s.id, false); } } }

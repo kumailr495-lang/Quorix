@@ -24,10 +24,10 @@ argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 opt = lambda k, d=None: argv[argv.index(k) + 1] if k in argv else d
 EYES = json.load(open(opt('--eyes')))
 skip = {opt('--eyes'), opt('--json'), opt('--engine')}
-want = [a for a in argv if not a.startswith('--') and a not in skip] or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'home']
+want = [a for a in argv if not a.startswith('--') and a not in skip] or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'vip', 'pvHome', 'pvJungle', 'pvWinter', 'pvSpace', 'pvDrive']
 if '--engine-only' in argv: want = []   # only the engine's meshes (the rooms are still built: they occlude and pair with them)
 S = json.load(open(os.path.join(HERE, 'spec.json')))
-ALL = ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'home']
+ALL = ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'vip', 'pvHome', 'pvJungle', 'pvWinter', 'pvSpace', 'pvDrive']
 GLASS = 10
 
 built = {}

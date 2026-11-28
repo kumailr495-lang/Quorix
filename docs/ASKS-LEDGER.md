@@ -5,6 +5,22 @@ I stopped you, and change everything". This file is that reading. Every ask from
 where it stands. **Done** means built and checked in the engine (headless Chromium, software GPU: not the phone). **Partly** means
 something exists but not what was asked. **Open** means not built. Nothing here has been seen on the phone since v8.
 
+## 11-27/28: the 14.2 phone test (one long message), the Dubai VIP photos, "premium seats in every theatre" (14.3)
+
+| Ask (the user's words, shortened) | Status in 14.3 |
+|---|---|
+| "The app flickers like almost everywhere" | Done in the engine: textures and skinned-mesh bones uploaded before the frame instead of in the middle of it (three.js uploads them mid-pass under MSAA, Android Chromium's known flicker), and a Smooth edges switch in Settings. Needs the phone to confirm |
+| "The home teleports you to an apartment ... the home should be in the theatre, rentable, not editable" | Done: the apartment Suite is gone. The private floor is in the cinema: a lift by the lobby's east waiting area rides (doors shut, about 4 s) up to a lounge with five themed screens, rented at their doors, not editable |
+| "Where are the jungle and the others? Home, jungle, winter, drive-in, space" | Done: five private screens: Home (sofa, a bed on the riser, shelves, speakers), Jungle (timber beams, plants, fireflies), Winter (log cabin, fireplace, snow), Space (ribbed walls, violet light, stars, a planet), Drive-in (an 11 m night sky, parked cars in bays, string lights, a moon) |
+| "The remote's buttons are glitched", "can't play videos in the home", "the remote stays in your hand after you leave" | Done: the face and keys no longer float (they sat 3 and 5 mm over the body), a tap picks the nearest key (overlapping hit areas pressed the neighbour), its Films key opens your videos and they play at once in your own screen or box; leaving the box or room puts it back |
+| "VIP areas should be actual VIP seats in the same theatre" (Dubai photos), "somewhat premium seats in every theatre" | Done: every hall has a VIP gallery over its back rows, a stair up past the entrance, and five walnut boxes with LED edges, leather club recliners and crimson carpet, rented at their velvet rope or from the phone |
+| "The tablet teleports me to the MAX", "choose which theatre to play in", "teleport to other theatres quickly" | Done: the tablet's films, streams and your videos have a Play in row (your hall is picked when you are in one; elsewhere you pick); nothing ever falls back to the MAX. The phone's screens row works in Story too once you are past the ticket gate |
+| "The app is laggy" | Partly: far seat rows use a third, lighter model (about 30 % of the second); the VIP boxes' arms use their light model. Frame rate needs the phone |
+| "The escalators' starting point is glitched" | Done: the steps dropped 6 cm at each comb plate while still in sight; they now slide under the plates at the landing's height |
+| "The intro's sounds have a huge delay", "the tyres don't move or turn" | Done: the sounds decode while the game loads (they waited for the first tap); the taxi's wheels roll with its speed and the front pair steers with its turning |
+| "The multiplayer host/join UI is bad, 1000 errors" | Done: Host and Join as two cards, a room view with the code big (Copy, Share, QR), who is here and the connection's state with Try again; the room bar is Chat, Mic and Emote; six public relays that answer instead of Trystero's list (several were gone: 404/502 errors in the console) |
+| "Improve the layout, remove the emptiness", "you ignored the pics you took" | See the 14.3 release notes: every hero view was shot and reviewed |
+
 ## 11-27: the 14.1 phone test (17 points) and the 11-26 lists repeated (14.2)
 
 | Ask (the user's words, shortened) | Status in 14.2 |

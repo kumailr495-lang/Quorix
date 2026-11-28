@@ -6,7 +6,7 @@ set -eu
 cd "$(dirname "$0")/../.."
 B=${BLENDER:-blender}
 python3 tools/blender/arch/build.py "$@"
-ROOMS=${*:-hallMax hallCurve hallClassic hall270 lobby corridor spine wc street}
+ROOMS=${*:-hallMax hallCurve hallClassic hall270 lobby corridor spine wc street vip pvHome pvJungle pvWinter pvSpace pvDrive}
 for r in $ROOMS; do
   echo "== bake $r"
   "$B" --background --factory-startup -t "${THREADS:-0}" --python tools/bake/bake_room.py -- --room "tools/bake/.work/$r.json" --out www/bake \

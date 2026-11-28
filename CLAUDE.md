@@ -117,6 +117,30 @@ books a seat, and watches a house film or **their own video** (gallery file or l
   `tools/blender/arch/preview.py`); swept shapes cap their ends with explicit normals. Props: `assets.js` repairs winding at load and
   draws the parts listed in `TWO_SIDED` from both sides (`seethru.mjs --assets` says when the list is out of date).
 
+## v14e (2026-11-28: the user's 14.2 phone test, the Dubai VIP photos; APK 14.3, docs/V14-RELEASE-NOTES.md)
+- **The Suite is retired** (home.js, the 'home' room and its bake are gone). Its replacement is the **private floor**: building.js `VIP` (the
+  lounge, room 'vip', x 200..224) and `PRIVATE` (pvHome, pvJungle, pvWinter, pvSpace, pvDrive; each a frame like a hall's: toWorld(u, d),
+  screen.x, f), built by tools/blender/arch/vip14.py (shells, screens as light layers, panels pvsign/pvart/pvinfo), dressed and run by
+  www/js/private.js (privateDress -> world9 DRESS; `Privates`: the halls film9 plays in via `shows.addHall`, world.hallById/hallByKey
+  extended, the themes' particles sized in metres with uS = drawing-buffer px per metre, the rented doors (`Door.locked`), the remotes,
+  rentals kept for the day in Story, `lumiere.pv.v1`). The two lift cars (`_pod`): the lobby's at `VIP.lobbyPod` (the east glass corner;
+  KEEP_OUT keeps guests off it) and the lounge's; a ride shuts the doors, swaps you car to car and you step out facing the doors.
+- **VIP boxes in every hall** (hallmath `vipLayout`, halls.py `vip_level`/`vip_box`, www/js/vip.js): plain premium (the user: not themed):
+  two club recliners and three arms (LOD1) per box, side tables in the MAX, crimson carpet, a rope until rented, numbered plates. floorY
+  uses `vipFloor`; walls go up to L1 + 5.2 in halls.
+- **Tablet**: a Play in row (tablet.js `hallRow`, `play`); remotePlay never falls back to the MAX. The phone's screens row works in Story
+  past the gate (main.js `pastGate`). Private screens book with `minDelay: 2000` and no seat.
+- **Seats LOD2**: tools/lod2.mjs adds simplified `_LOD2` nodes (meshoptimizer, 30 %) to the six seat/arm GLBs; world9 `updateLOD` uses
+  them past far x 2.4 + 0.5 m. Re-run it after rebuilding a seat model.
+- **Taxi wheels**: intro9.js splits car_taxi's wheel parts by corner (the loader turns `Tyre_LOD0.001` into `Tyre_LOD0001`: match
+  `_LOD\d+`, and find the corner from the part's centre; assetGeometry's pick gets the part as its second argument).
+- **Sound**: sound9 decodes the recordings while the game loads (OfflineAudioContext) and hands them to the live context at the tap.
+- **Multiplayer**: mpui.js panel = two cards, then a room view (`stateLine`), the bar = Chat, Mic, Emote; mp.js `RELAYS` (six relays that
+  answered on 11-28; Trystero's default list had dead ones).
+- **Lessons**: editing a running shell script (bake9.sh) breaks the run at its end (the bakes were done; check with check-bakes); a `// `
+  comment pasted into a one-line statement swallows the rest of the line: run `node tools/dev/lint-comments.mjs www/js/*.js` after every
+  batch of edits (it caught three); point sprites sized in pixels at 1 m blew up into blobs (size them in metres).
+
 ## v14d (2026-11-27: the user's 14.1 phone test, 17 complaints; APK 14.2, docs/V14-RELEASE-NOTES.md)
 - **Flicker**: MSAA on every preset (low too), the resolution governor searches only in the first 45 s then steps down at most twice
   (20 s apart), no intentional neon flicker (street12 ATLAS_FRAG fx 1 gone, chases smoothed), window blinds/curtains filtered by fwidth,

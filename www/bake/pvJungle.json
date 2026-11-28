@@ -1,0 +1,20 @@
+{
+ "room": "pvJungle",
+ "res": 1024,
+ "hall": true,
+ "hash": "v9.2ccf42b191e5",
+ "maps": [
+  "pvJungle_h.png",
+  "pvJungle_f.png",
+  "pvJungle_s.png"
+ ],
+ "scale": [
+  1.0447594330310852,
+  0.19873014888167406,
+  1.001275897026062
+ ],
+ "avg": 0.017594200679898083,
+ "glb": "pvJungle.glb",
+ "verts": 2304,
+ "tris": 768
+}

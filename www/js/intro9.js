@@ -124,13 +124,23 @@ function wetGlass() {
 export class Intro {
   constructor(engine, world, mats, sound, hooks = {}) {
     this.engine = engine; this.world = world; this.sound = sound; this.hooks = hooks; this.active = false; this.inCar = false; this.t = 0; this.carOn = false; this.mesh = null;
-    const room = world.rooms.street, g = room && assetGeometry('car_taxi', 0, null, toGeometry, Acc); if (!g) return;
+    // v14e (the user, 11-27: "the tires aren't moving and don't turn when the car reaches"): the body without its wheels; each wheel apart
+    // (its tyre, rim and hub spin, its brake caliper and knuckle only steer), pivoting on its own centre (the model's node suffix is the corner)
+    // (the loader drops the nodes' .001 suffixes, so a part's corner comes from where its geometry is: the signs of its centre's x and z)
+    const SPIN = /^(Tyre|Spoke|Barrel|Lip|Cap|Hub|Disc)(_LOD\d+)?$/, STEERP = /^(Caliper|Knuckle)(_LOD\d+)?$/;   // the loader turns Tyre_LOD0.001 into Tyre_LOD0001
+    const corner = (p) => { if (p.__c == null) { p.geo.computeBoundingBox(); const c = p.geo.boundingBox.getCenter(new THREE.Vector3()); p.__c = (c.x > 0 ? 1 : 0) + (c.z > 0 ? 2 : 0); } return p.__c; };
+    const room = world.rooms.street, g = room && assetGeometry('car_taxi', 0, null, toGeometry, Acc, null, (n) => !SPIN.test(n) && !STEERP.test(n)); if (!g) return;
     // the ride's timing comes from the route (the door opens 0.9 s after it stops, control 4.3 s later, it leaves 0.9 s after that)
     const plan = (room.x && room.x.traffic) || { zt: 56, zc: 63, sw: [STREET.x0 - 6, STREET.x0 + 2], se: [STREET.x1 - 2, STREET.x1 + 6] };
     this.R = streetRoutes(plan, STOP_X); this.ARRIVE = this.R.taxiIn.dur; this.SHOT_B = this.ARRIVE + 0.9; this.END_T = this.SHOT_B + 4.3; this.LEAVE = this.SHOT_B + 5.2;
     this.car = { route: null, s: 0, v: 0, x: 0, z: 0, h: 0, r: 1.9 }; this.traffic = null; this.snd = null;   // the taxi as the other cars see it; main.js sets traffic
     const inst = (geo) => { for (const [n, k] of [['iLh', 3], ['iLf', 3], ['iLs', 1]]) geo.setAttribute(n, new THREE.InstancedBufferAttribute(new Float32Array(k), k)); return geo; };
     const m = new THREE.InstancedMesh(inst(g), mats.litFor(room.U, g, true), 1); m.frustumCulled = false; m.visible = false; room.group.add(m);
+    this.wheels = [];
+    for (const k of [0, 1, 2, 3]) { const tg = assetGeometry('car_taxi', 0, null, toGeometry, Acc, null, (n, p) => /^Tyre/.test(n) && corner(p) === k); if (!tg || !tg.attributes.position.count) continue; tg.computeBoundingBox(); const c = tg.boundingBox.getCenter(new THREE.Vector3()), off = new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z);
+      const mk = (re) => { const wg = assetGeometry('car_taxi', 0, off, toGeometry, Acc, null, (n, p) => re.test(n) && corner(p) === k); if (!wg || !wg.attributes.position.count) return null; const w = new THREE.InstancedMesh(inst(wg), mats.litFor(room.U, wg, true), 1); w.frustumCulled = false; m.add(w); return w; };
+      this.wheels.push({ c, front: c.z > 0, spin: mk(SPIN), fixed: mk(STEERP) }); }
+    this._spin = 0; this._steer = 0; this._wp = null; this._wM = new THREE.Matrix4(); this._wQ = new THREE.Quaternion(); this._wE = new THREE.Euler(0, 0, 0, 'YXZ');
     this.mesh = m; this.room = room; this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._up = new THREE.Vector3(0, 1, 0); this._H = [0, 0, 0]; this._F = [0, 0, 0];
     // the cabin (drawn only while you ride): its lit parts as one instance, its screens as a glow mesh, two wiper blades
     // v11: the modelled cabin (tools/blender/cabin.py, a real driver beside it); the box-built cabin only if that model failed to load
@@ -184,6 +194,12 @@ export class Intro {
     const P = this.pose(t), x = P.x, z = P.z, yaw = P.h; if (P !== this.car) { this.car.x = x; this.car.z = z; this.car.h = yaw; }   // the car's nose (+z) along its motion
     this._q.setFromAxisAngle(this._up, yaw); this._m.compose(new THREE.Vector3(x, ROAD_Y, z), this._q, new THREE.Vector3(1, 1, 1)); this.mesh.setMatrixAt(0, this._m); this.mesh.instanceMatrix.needsUpdate = true;
     const L = this.room.lights, G = this.mesh.geometry.attributes; L.at(x, 0.9, z, 0, 1, 0, this._H, this._F); carFloor(this._H); G.iLh.array.set(this._H); G.iLf.array.set(this._F); G.iLh.needsUpdate = G.iLf.needsUpdate = true;
+    // the wheels: rolled by the distance the car moved (r 0.335 m), the front pair steered by its turning (wheelbase 2.82 m), eased
+    { const w0 = this._wp, dist = w0 ? Math.hypot(x - w0.x, z - w0.z) : 0, dh = w0 ? Math.atan2(Math.sin(yaw - w0.h), Math.cos(yaw - w0.h)) : 0; this._wp = { x, z, h: yaw };
+      if (dist < 2) { this._spin = (this._spin + dist / 0.335) % (Math.PI * 2); const want = dist > 1e-4 ? Math.max(-0.55, Math.min(0.55, Math.atan2(2.82 * dh, dist))) : this._steer; this._steer += (want - this._steer) * 0.25; }
+      for (const W of this.wheels) { const st = W.front ? this._steer : 0;
+        for (const [mesh, spin] of [[W.spin, this._spin], [W.fixed, 0]]) { if (!mesh) continue; this._wE.set(spin, st, 0); this._wQ.setFromEuler(this._wE); this._wM.compose(W.c, this._wQ, new THREE.Vector3(1, 1, 1)).premultiply(this._m); mesh.setMatrixAt(0, this._wM); mesh.instanceMatrix.needsUpdate = true;
+          const A = mesh.geometry.attributes; A.iLh.array.set(this._H); A.iLf.array.set(this._F); A.iLh.needsUpdate = A.iLf.needsUpdate = true; } } }
     if (this.inCar) { this.cab.setMatrixAt(0, this._m); this.cab.instanceMatrix.needsUpdate = true; this.rig.matrix.copy(this._m); this.rig.matrixWorldNeedsUpdate = true;
       { const dt = this._dt || 0.016, dh = this._hPrev == null ? 0 : Math.atan2(Math.sin(yaw - this._hPrev), Math.cos(yaw - this._hPrev)); this._hPrev = yaw;   // the wheel: about 2.4 turns of the heading's rate, eased
         const want = Math.max(-2.4, Math.min(2.4, (dh / Math.max(dt, 1e-3)) * 2.4)); STEER.v += (want - STEER.a) * Math.min(1, dt * 4) - STEER.v * Math.min(1, dt * 6); STEER.a += STEER.v * Math.min(1, dt * 10);

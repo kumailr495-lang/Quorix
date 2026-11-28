@@ -31,7 +31,7 @@ export const ASSET_LIST = ['seat_rocker', 'arm_rocker', 'seat_club', 'arm_club',
   // v14 the seat server's trolley (tools/blender/props14.py; npc9.js makeCart)
   'service_cart',
   // v14b the corridor's round velvet banquettes (world9.js BORNES): missing from this list until v14d, so only their planters showed, in the air
-  'borne_round'];
+  'borne_round', 'bed_modern', 'rug_rect', 'table_lamp', 'speaker_tower', 'shelf_unit'];   // v14e the private screens' home theme
 const PRE = new THREE.Matrix4().makeRotationY(-Math.PI / 2);   // Kiln +X -> engine +Z
 export async function loadAssets(names, base = './models/', onEach = () => {}) {
   const ld = new GLTFLoader(); let done = 0;
@@ -150,7 +150,7 @@ function solidProp(name, b, floorY = 0) { const h = b.max.y - b.min.y, w = b.max
 // over = per-hall material swaps keyed by mesh name or material name, each with an optional library id and tint
 export function assetGeometry(name, lod = 0, extra = null, toGeometry, Acc, over = null, pick = null) {
   const A = ASSETS[name]; if (!A) return null; const acc = new Acc(), m = extra || new THREE.Matrix4();
-  for (const p of A.parts) { if (p.lod !== lod || p.leaf || (pick && !pick(p.name))) continue;   // pick: only the parts it keeps (recline.js: the back, the footrest)
+  for (const p of A.parts) { if (p.lod !== lod || p.leaf || (pick && !pick(p.name, p))) continue;   // pick: only the parts it keeps (recline.js: the back, the footrest)
     if (p.glow) { const g = p.geo.clone(); g.setAttribute('occ', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(1), 1)); acc.add(g, m, p.glowColor, { mat: MAT.emit, uv: 'mesh' }); continue; }   // seat LEDs, cup-holder rings
     // cheap baked occlusion for an instanced prop: undersides and low parts darker
     const g = p.geo.clone(), P = g.attributes.position, N = g.attributes.normal, occ = new Float32Array(P.count);

@@ -42,11 +42,10 @@ export class Together {
   text() { if (this.menuBtn) this.menuBtn.textContent = t('menu.together'); }
   get active() { return this.mp.active; }
   // ---------------------------------------------------------------- the room panel
-  open(o = {}) {   // o.look (v14 the flat's wardrobe): the look editor open at once
+  open(o = {}) {   // o.look: the look editor open at once
     if (this.panel) this.panel.remove(); const S = this.c.settings, guests = RB.ready ? Object.keys(RB.avatars).filter((n) => !/^Business_/.test(n)) : [];
     if (!S.mpAvatar || !guests.includes(S.mpAvatar)) S.mpAvatar = guests[0] || '';
-    const name = el('input', { id: 'mpName', maxlength: '18', autocomplete: 'off', value: S.mpName || '' }), code = el('input', { id: 'mpCode', maxlength: '6', autocomplete: 'off', placeholder: 'ABC123' }), grid = el('div', { id: 'mpAv' });
-    S.mpLook = cleanLook(S.mpLook); const look = S.mpLook;
+    const grid = el('div', { id: 'mpAv' }); S.mpLook = cleanLook(S.mpLook); const look = S.mpLook;
     for (const n of guests) { const b = el('button', { cls: n === S.mpAvatar ? 'on' : '', 'aria-label': n.replace(/_/g, ' ') }, [el('img', { src: 'models/rb/portraits/' + n + '.webp', alt: '' })]);
       b.addEventListener('click', () => { S.mpAvatar = n; for (const x of grid.children) x.classList.toggle('on', x === b); this.previewSet(); this.c.save(); }); grid.appendChild(b); }
     // the look: outfit and hair colour swatches (the first keeps the photo's own colours) and a height slider, shown live on the preview
@@ -59,30 +58,50 @@ export class Together {
     const fill = () => size.style.setProperty('--p', (look.s / (LOOK.height.length - 1) * 100).toFixed(1) + '%'); fill();
     size.addEventListener('input', () => { look.s = +size.value; fill(); this.previewSet(); }); size.addEventListener('change', () => this.c.save());
     const prev = el('canvas', { id: 'mpPrev', width: '240', height: '340' });
-    name.setAttribute('placeholder', t('mp.name')); name.setAttribute('aria-label', t('mp.name')); code.setAttribute('aria-label', t('mp.code'));
-    const status = el('div', { id: 'mpStatus' }), hostB = el('button', { cls: 'btn primary', id: 'mpHost', text: t('mp.host') }), joinB = el('button', { cls: 'btn secondary', id: 'mpJoin', text: t('mp.join') }), close = el('button', { cls: 'icon x', id: 'mpClose', 'aria-label': t('book.back') });
-    close.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>';
-    const leaveB = el('button', { cls: 'btn ghost sm', id: 'mpLeave', text: t('mp.leave') }); leaveB.hidden = !this.active;
-    const list = el('div', { id: 'mpList' });
-    // v11: the panel is your name, Host, or a code and Join; how you look waits behind one line (your last look is kept)
+    const close = el('button', { cls: 'icon x', id: 'mpClose', 'aria-label': t('book.back') }); close.innerHTML = '<svg class="ic"><use href="#i-close"/></svg>';
     const lookB = el('button', { cls: 'adv-toggle', text: t('mp.look') }), lookBox = el('div', { cls: 'adv' }, [grid, el('label', { text: t('mp.outfit') }), swatches('mpOutfit', LOOK.outfit, 'o'), el('label', { text: t('mp.bottom') }), swatches('mpBottom', LOOK.bottom, 'b'), el('label', { text: t('mp.hair') }), swatches('mpHair', LOOK.hair, 'h'), el('label', { text: t('mp.height') }), size]);
     lookBox.hidden = !o.look; lookB.classList.toggle('on', !!o.look); lookB.addEventListener('click', () => { lookBox.hidden = !lookBox.hidden; lookB.classList.toggle('on', !lookBox.hidden); });
-    // v14d (the user, 11-26: "room code ... QR"): the room's code as a QR to show a friend, and a scan button that reads one with the camera
-    const qrBox = el('div', { cls: 'mpQR' }); qrBox.hidden = !this.active; if (this.active) this.drawQR(qrBox, this.mp.code);
-    const canScan = typeof window.BarcodeDetector === 'function' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), scanB = el('button', { cls: 'btn ghost sm', text: t('mp.scan') }); scanB.hidden = !canScan || this.active;
-    scanB.addEventListener('click', () => this.scan(code, (k) => { code.value = k; this.go(k, profile(), false, status); }, status));
-    const side = el('div', { cls: 'mpEdit' }, [name, el('div', { cls: 'row' }, [hostB, code, joinB, scanB]), status, qrBox, list, lookB, lookBox, leaveB]);
+    const status = el('div', { id: 'mpStatus' }); let side;
+    // v14e (the user, 11-27: "the multiplayer hosting / joining UI is so bad"): two clear cards before you are in a room (host: one tap for a
+    // code; join: the code and Join, or scan a friend's QR), and a room view once you are in one (the code big with Copy and Share, its QR,
+    // who is here, the connection's state with Try again, Go to the cinema, Leave)
+    if (!this.active) {
+      const name = el('input', { id: 'mpName', maxlength: '18', autocomplete: 'off', value: S.mpName || '' }), code = el('input', { id: 'mpCode', maxlength: '6', autocomplete: 'off', placeholder: 'ABC123', inputmode: 'text', autocapitalize: 'characters' });
+      name.setAttribute('placeholder', t('mp.name')); name.setAttribute('aria-label', t('mp.name')); code.setAttribute('aria-label', t('mp.code'));
+      const hostB = el('button', { cls: 'btn primary', id: 'mpHost', text: t('mp.host') }), joinB = el('button', { cls: 'btn secondary', id: 'mpJoin', text: t('mp.join') });
+      const canScan = typeof window.BarcodeDetector === 'function' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), scanB = el('button', { cls: 'btn ghost sm', text: t('mp.scan') }); scanB.hidden = !canScan;
+      const profile = () => { S.mpName = (name.value || '').trim().slice(0, 18) || 'Guest'; this.c.save(); return { name: S.mpName, avatar: S.mpAvatar, look: { ...S.mpLook } }; };
+      hostB.addEventListener('click', () => this.go(newCode(), profile(), true));
+      joinB.addEventListener('click', () => { const k = cleanCode(code.value); if (k.length !== 6) { status.textContent = t('mp.badCode'); status.className = 'bad'; code.focus(); return; } this.go(k, profile(), false); });
+      code.addEventListener('input', () => { code.value = cleanCode(code.value); status.textContent = ''; }); code.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinB.click(); });
+      scanB.addEventListener('click', () => this.scan(code, (k) => { code.value = k; this.go(k, profile(), false); }, status));
+      const hostCard = el('div', { cls: 'mpCard' }, [el('b', { text: t('mp.hostT') }), el('small', { text: t('mp.hostD') }), hostB]);
+      const joinCard = el('div', { cls: 'mpCard' }, [el('b', { text: t('mp.joinT') }), el('div', { cls: 'row' }, [code, joinB]), scanB]);
+      side = el('div', { cls: 'mpEdit' }, [name, el('div', { cls: 'mpCards' }, [hostCard, joinCard]), status, lookB, lookBox]);
+    } else {
+      const copyB = el('button', { cls: 'btn ghost sm', text: t('mp.copy') }), shareB = el('button', { cls: 'btn ghost sm', text: t('mp.share') }); shareB.hidden = !navigator.share;
+      copyB.addEventListener('click', async () => { try { await navigator.clipboard.writeText(this.mp.code); copyB.textContent = t('mp.copied'); } catch (e) { copyB.textContent = this.mp.code; } });
+      shareB.addEventListener('click', () => { try { navigator.share({ text: t('mp.shareText', { code: this.mp.code }) }); } catch (e) { /* no share sheet */ } });
+      const qrBox = el('div', { cls: 'mpQR' }); if (this.mp.host) this.drawQR(qrBox, this.mp.code); else qrBox.hidden = true;   // the QR is the host's to show
+      const codeBox = el('div', { cls: 'mpCodeBig' }, [el('small', { text: t('mp.roomCode') }), el('b', { text: this.mp.code }), el('div', { cls: 'row' }, [copyB, shareB])]);
+      const retry = el('button', { cls: 'btn secondary sm', id: 'mpRetry', text: t('mp.retry') }); retry.hidden = true; retry.addEventListener('click', () => { const me = this.mp.me; this.go(this.mp.code, me, this.mp.host); });
+      const goB = el('button', { cls: 'btn primary', text: t('mp.goCinema') }); goB.addEventListener('click', () => { this.close(); this.c.enterPlay(); });
+      const leaveB = el('button', { cls: 'btn ghost', id: 'mpLeave', text: t('mp.leave') }); leaveB.addEventListener('click', () => { this.leave(); this.close(); });
+      side = el('div', { cls: 'mpEdit' }, [el('div', { cls: 'mpRoomTop' }, [codeBox, qrBox]), el('div', { cls: 'mpStateRow' }, [status, retry]), el('div', { id: 'mpList' }), el('div', { cls: 'row' }, [goB, leaveB]), lookB, lookBox]);
+    }
     const d = el('div', { cls: 'dialog' }, [el('div', { cls: 'mpHead' }, [el('h2', { text: t('mp.title') }), close]), el('div', { cls: 'mpTop' }, [prev, side]), el('div', { cls: 'note', text: t('mp.privacy') })]);
-    this.panel = el('div', { id: 'mpPanel', cls: 'scrim center' }, [d]); document.body.appendChild(this.panel); this.c.onModal(true); this.list();
+    this.panel = el('div', { id: 'mpPanel', cls: 'scrim center' }, [d]); document.body.appendChild(this.panel); this.c.onModal(true); this.list(); this.stateLine();
     this.pv = { canvas: prev, ctx: prev.getContext('2d'), scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(30, 120 / 170, 0.1, 20), p: null, av: null, yaw: 0.5,
       light: { amb: new THREE.Color(0.62, 0.58, 0.55), key: new THREE.Color(0.7, 0.66, 0.6), dir: new THREE.Vector3(0.45, 0.75, 0.5).normalize(), screen: new THREE.Color(0, 0, 0) } };
     this.pv.cam.position.set(0, 1.05, 3.6); this.pv.cam.lookAt(0, 0.92, 0); this.previewSet();
-    const profile = () => { S.mpName = (name.value || '').trim().slice(0, 18) || 'Guest'; this.c.save(); return { name: S.mpName, avatar: S.mpAvatar, look: { ...S.mpLook } }; };
-    hostB.addEventListener('click', () => { const k = newCode(); this.go(k, profile(), true, status); });
-    joinB.addEventListener('click', () => { const k = cleanCode(code.value); if (k.length !== 6) { status.textContent = t('mp.badCode'); return; } this.go(k, profile(), false, status); });
-    code.addEventListener('input', () => { code.value = cleanCode(code.value); });
-    leaveB.addEventListener('click', () => { this.leave(); this.close(); });
     close.addEventListener('click', () => this.close());
+  }
+  // the room view's state line: connecting, connected with the count, alone (host), or failed with Try again (a joiner after 20 s)
+  stateLine() {
+    const st = this.panel && this.panel.querySelector('#mpStatus'), rt = this.panel && this.panel.querySelector('#mpRetry'); if (!st || !this.active) return;
+    const n = this.mp.peers.size, age = Date.now() - (this.mp.since || Date.now()), host = this.mp.host;
+    const k = n > 0 ? 'ok' : host ? 'wait' : age > 20000 ? 'bad' : 'wait';
+    st.className = k; st.textContent = n > 0 ? t('mp.connected', { n: n + 1 }) : host ? t('mp.alone') : age > 20000 ? t('mp.failed') : t('mp.connecting'); if (rt) rt.hidden = k !== 'bad';
   }
   drawQR(box, code) { box.textContent = ''; if (!code) return; try { const q = qrcode(0, 'M'); q.addData('LUMIERE:' + code); q.make(); const n = q.getModuleCount(), px = 4, m = 2, c = document.createElement('canvas'); c.width = c.height = (n + m * 2) * px;
       const g = c.getContext('2d'); g.fillStyle = '#f6ecd8'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#0a080b'; for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) g.fillRect((k + m) * px, (r + m) * px, px, px);
@@ -122,15 +141,10 @@ export class Together {
       L.appendChild(row); }
     const tg = (key, label) => { const S = this.c.settings, b = el('button', { cls: 'btn ghost mini' + (S[key] === false ? '' : ' on'), text: label }); b.addEventListener('click', () => { S[key] = S[key] === false; this.c.save(); this.list(); this.badge(); }); return b; };
     L.appendChild(el('div', { cls: 'mpRow' }, [tg('mpNames', t('mp.names')), tg('mpMsgs', t('mp.msgs'))])); }
-  go(code, profile, asHost, status) {
-    status.textContent = t('mp.connecting');
-    try { this.mp.start(code, profile, asHost); } catch (e) { console.warn('[mp]', e); status.textContent = t('mp.failed'); return; }
-    this.c.ev && this.c.ev('mpJoin');
-    status.textContent = asHost ? t('mp.waiting', { code }) : t('mp.badge', { code, n: this.mp.count });
-    { const qb = this.panel && this.panel.querySelector('.mpQR'); if (qb && asHost) { qb.hidden = false; this.drawQR(qb, code); } }   // v14d the code as a QR to show a friend
-    this.badge(); this.list();
-    if (!asHost) setTimeout(() => { if (this.active && this.mp.peers.size === 0 && this.panel) status.textContent = t('mp.failed'); }, 20000);
-    setTimeout(() => { this.close(); this.c.enterPlay(); }, asHost ? 4500 : 900);   // v14d a little longer for the host: time to show the QR
+  go(code, profile, asHost) {
+    try { this.mp.start(code, profile, asHost); } catch (e) { console.warn('[mp]', e); const st = this.panel && this.panel.querySelector('#mpStatus'); if (st) { st.textContent = t('mp.failed'); st.className = 'bad'; } return; }
+    this.c.ev && this.c.ev('mpJoin'); this._goIn = !asHost; this.badge(); this.open();   // the room view
+    clearInterval(this._stT); this._stT = setInterval(() => { if (!this.active) { clearInterval(this._stT); return; } this.stateLine(); }, 1000);
   }
   // v14d (the user, 11-27: "I quit and try to join flow mode ... it does that in the multiplayer still, there should be a quit option"): leaving
   // takes everything of the room with it: the others, their voices, the host's guests and lift, a show you were watching with them
@@ -173,16 +187,15 @@ export class Together {
       // icons, each with its word under it
       const btn = (iconId, label) => { const b = el('button', { 'aria-label': label }); b.innerHTML = `<svg class="ic"><use href="#i-${iconId}"/></svg><small>${label}</small>`; return b; };
       const chatB = this.chatB = btn('chat', t('mp.chatB')); chatB.appendChild(el('i', { cls: 'dot' })); chatB.addEventListener('click', () => this.chatBox());
-      const namesB = this.namesB = btn('tag', t('mp.names')); namesB.addEventListener('click', () => { const S = this.c.settings; S.mpNames = S.mpNames === false; this.c.save(); this.badge(); });
       const micB = this.micB = btn('mic', t('mp.mic')); micB.addEventListener('click', () => this.toggleMic());
-      const outB = btn('close', t('mp.leave')); outB.classList.add('mp-out'); outB.addEventListener('click', () => { this.c.sound && this.c.sound.click(); this.leave(); });
-      this.bar = el('div', { id: 'mpBar' }, [micB, chatB, namesB, outB]);
+      const emB = btn('party', t('mp.emote')), tray = this.tray = el('div', { id: 'mpTray' }); tray.hidden = true; emB.addEventListener('click', () => { tray.hidden = !tray.hidden; emB.classList.toggle('on', !tray.hidden); });
+      this.bar = el('div', { id: 'mpBar' }, [chatB, micB, emB, tray]);
       // v14 the dance is bought in the shop (career.js SHOP emote_dance): it plays the avatars' own Dance_Loop clip on every phone
-      for (const [e, ic] of [['wave', 'wave'], ['clap', 'clap'], ['cheer', 'party'], ['dance', 'party']]) { if (e === 'dance' && !(this.c.owns && this.c.owns('emote_dance'))) continue; const b = btn(ic, t('mp.emote.' + e)); b.addEventListener('click', () => { this.mp.emote(e); this.c.ev && this.c.ev('emote'); this.c.sound && this.c.sound.click(); b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 300); }); this.bar.appendChild(b); }
+      for (const [e, ic] of [['wave', 'wave'], ['clap', 'clap'], ['cheer', 'party'], ['dance', 'party']]) { if (e === 'dance' && !(this.c.owns && this.c.owns('emote_dance'))) continue; const b = btn(ic, t('mp.emote.' + e)); b.addEventListener('click', () => { this.mp.emote(e); this.c.ev && this.c.ev('emote'); this.c.sound && this.c.sound.click(); tray.hidden = true; emB.classList.remove('on'); }); tray.appendChild(b); }
       const hud = document.querySelector('#hudTL') || document.querySelector('#hud') || document.body; hud.appendChild(this.bdg); hud.appendChild(this.bar);
     }
     this.bdg.classList.toggle('host', this.mp.host); this.bdg.querySelector('span').textContent = t('mp.badge', { code: this.mp.code, n: this.mp.count }); this.list();
-    const S = this.c.settings; this.micB.classList.toggle('off', !this.mp.mic); this.namesB.classList.toggle('off', S.mpNames === false); this.chatB.classList.toggle('unread', this.unread > 0 && S.mpMsgs !== false); this.chatB.hidden = false;
+    const S = this.c.settings; this.micB.classList.toggle('off', !this.mp.mic); this.chatB.classList.toggle('unread', this.unread > 0 && S.mpMsgs !== false); this.chatB.hidden = false;
   }
   chatBox() {
     if (this.chatEl) { this.chatEl.remove(); this.chatEl = null; this.c.onModal(false); return; }
@@ -205,7 +218,8 @@ export class Together {
   join_(p) {
     const av = RB.avatars[p.avatar] ? p.avatar : null, kind = av ? RB.avatars[av].kind : 'm';
     const a = this.c.crowd.spawn({ id: 'mp_' + p.id, rec: { kind, seed: hashSeed(p.id), rb: av, height: 1, look: cleanLook(p.look) }, role: 'remote', name: p.name, x: 0, y: 0, z: 14, yaw: 0, state: 'remote' });
-    a.hidden = true; this.remotes.set(p.id, a); this.note(t('mp.joined', { name: p.name }));
+    a.hidden = true; this.remotes.set(p.id, a); this.note(t('mp.joined', { name: p.name })); this.list(); this.stateLine();
+    if (this._goIn) { this._goIn = false; setTimeout(() => { if (this.panel) this.close(); this.c.enterPlay(); }, 1200); }   // v14e a joiner goes in once the room answers
     const tag = el('b', { text: p.name }); this.tagLayer.appendChild(tag); this.tags.set(p.id, tag);
   }
   leave_(p) { this.voiceOut(p.id); const a = this.remotes.get(p.id); if (a) { if (a.armTab) { a.armTab.hide(); a.armTab.group.removeFromParent(); a.armTab = null; } this.freeSeat(a); this.c.crowd.remove(a); this.remotes.delete(p.id); if (a.ring) { a.ring.removeFromParent(); a.ring.geometry.dispose(); a.ring.material.dispose(); a.ring = null; } } const tg = this.tags.get(p.id); if (tg) { tg.remove(); this.tags.delete(p.id); } if (p.name) this.note(t('mp.left', { name: p.name })); }

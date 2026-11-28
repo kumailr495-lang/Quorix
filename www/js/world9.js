@@ -9,8 +9,10 @@ import { BAKES } from './lightmap.js';
 import { Lights } from './bake.js';
 import { roomUniforms, G } from './materials.js';
 import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
-import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS, HOME } from './building.js';
-import { hallSeats, hallFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
+import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS , PRIVATE, VIP as LOUNGE } from './building.js';
+import { hallSeats, hallFloor, vipFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
+import { vipDress } from './vip.js';
+import { privateDress, PV_PANELS } from './private.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named, LEAF_IDS } from './library.js';
 import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
@@ -36,11 +38,12 @@ export const LIFE = {
   espresso: [-21.12, 0.96, -12.3, Math.PI / 2],   // zones12.py espresso_lever, its back 3.4 cm under the bottle shelves' ends, 4.4 cm under their lips
   fountain: [0, 0, 10.0, 0],   // statue12.py fountain_muse
 };
-export const LEVEL = { hallMax: 0.4, hallCurve: 0.4, hallClassic: 0.44, hall270: 0.4, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
+export const LEVEL = { vip: 0.62, pvHome: 0.5, pvJungle: 0.42, pvWinter: 0.5, pvSpace: 0.4, pvDrive: 0.34, hallMax: 0.4, hallCurve: 0.4, hallClassic: 0.44, hall270: 0.4, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
 function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 14) { A[i + 3] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 4] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 5] *= A[i + 7] ? Math.min(k, 10) : k; }
   for (const ch of ['h', 'f']) for (const s of ['up', 'down']) L.amb[ch][s] = L.amb[ch][s].map((v) => v * (ch === 'h' ? k : Math.min(k, 10))); }   // a face lower than STEP_UP above your feet is a step you walk over; above HEAD it is overhead
 
 // ---------------------------------------------------------------- where am I: room, floor height (y = where your feet are now)
+const PV_BY_KEY = Object.fromEntries(PRIVATE.map((p) => [p.key, p]));
 export function roomAt(x, y, z) {
   // a hall owns its screen and rear walls' thickness too: the exit and entry doors stand in them (v9 route test: the floor dropped there)
   for (const h of HALLS) { const q = h.toLocal(x, z); if (Math.abs(q.u) <= h.width / 2 + 0.05 && q.d >= -SCREEN_GAP - WALL && q.d <= h.depthIn + WALL) return h.key; }
@@ -48,8 +51,8 @@ export function roomAt(x, y, z) {
   if (IN(SPINE, x, z) && z < SPINE.z1 - 0.02) return 'spine';
   for (const p of EXIT_PASSAGES) if (IN(p, x, z, WALL + 0.05) && y < p.ceil) return 'spine';   // v12b the exit passages (and their doors' thresholds in the halls' walls) belong to the spine (before the corridor's ground-floor fallback: two run under the bridge)
   if (IN(LOBBY, x, z)) return 'lobby';
+  if (x > 150) { if (IN(LOUNGE, x, z, 0.05)) return 'vip'; for (const p of PRIVATE) if (IN(p, x, z, 0.05)) return p.key; }   // v14e the private floor (private.js)
   if (IN(WC, x, z)) return 'wc';
-  if (IN(HOME, x, z, 0.05)) return 'home';   // v14d the Suite, set apart from the building
   if (IN(STREET, x, z, 0.5)) return 'street';
   if (x > STREET.x0 - 6.5 && x < STREET.x1 + 6.5 && z > STREET.z0 - 0.5 && z < STREET.far + 0.5) return 'street';   // v12: the street's ends, up to the blocks across them
   for (const r of CORR) if (IN(r, x, z)) return 'corridor';
@@ -156,6 +159,7 @@ class Door {
     for (const a of actors) { if (Math.abs((a.y || 0) - this.y) > 1.6) continue; const [t, n] = this.local(a); if (Math.abs(t) > this.w / 2 + 0.5) continue;
       if (Math.abs(n) < 0.5 && this.open > 0.25) { want = true; break; }
       if (Math.abs(n) < this.reach && (!this.from || Math.sign(n) === this.from)) { want = true; break; } }
+    if (this.locked) want = false;   // v14e a private screen's doors until you rent it
     const t = want ? 1 : 0; if (t !== this.target) { this.target = t; this.onToggle && this.onToggle(t, this); }
     this.open += (this.target - this.open) * (1 - Math.exp(-dt * (this.target ? (this.kind === 'slide' ? 5 : 4) : 2.4)));
     if (this.kind === 'slide') { const off = this.open * (this.w / 2 - 0.08); this.leaves[0].m.position.x = -this.w / 2 - off; this.leaves[1].m.position.x = this.w / 2 + off; this.glass[0].position.x = -this.w / 4 - off; this.glass[1].position.x = this.w / 4 + off; }
@@ -225,7 +229,9 @@ class Escalator {
   carry(out) { out.z = (this.up ? 1 : -1) * this.speed * this.e.dir; return out; }
   update(dt) {
     this.phase = (this.phase + (this.up ? 1 : -1) * this.speed * dt + 0.4 * 1000) % 0.4; const t = this.tmp, cx = (this.x0 + this.x1) / 2, L = this.n * 0.4;
-    for (let i = 0; i < this.n; i++) { const s = 0.8 + ((i * 0.4 + this.phase) % L), under = s < 1.2 || s + 0.4 > this.sTop, y = under ? this.e.y0 + (s < 1.2 ? -0.05 : this.rise - 0.05) : this.ramp(s + 0.4) + 0.012;
+    // v14e (the user, 11-27: "the escalators ... their starting point is glitched"): a step's tread runs 0.38 m ahead of its nose, so it was
+    // still in sight when it dropped 6 cm at each comb plate. The steps now keep the landing's height under the plates (the plate hides them)
+    for (let i = 0; i < this.n; i++) { const s = 0.8 + ((i * 0.4 + this.phase) % L), y = this.ramp(s + 0.4) + 0.012;
       t.position.set(cx, y, this.zOf(s)); t.rotation.set(0, this.e.dir > 0 ? Math.PI : 0, 0); t.scale.setScalar(s > this.sTop + 0.4 ? 0.0001 : 1); t.updateMatrix(); this.mesh.setMatrixAt(i, t.matrix); }
     this.mesh.instanceMatrix.needsUpdate = true;
   }
@@ -268,7 +274,7 @@ function zoneSign(g, w, h) { g.fillStyle = '#121427'; g.fillRect(0, 0, w, h); g.
   g.beginPath(); g.moveTo(x + h * 0.25, h * 0.72); g.lineTo(x + h * 0.38, h * 0.54); g.lineTo(x + h * 0.12, h * 0.54); g.closePath(); g.fill();
   g.font = `600 ${lab}px ${SANS}`; ls(`${h * 0.03}px`); g.fillText('LIFT', x + h * 0.68, h * 0.5); ls('0px');
   g.fillStyle = '#e3b25f'; g.font = `700 ${h * 0.6}px ${SANS}`; g.textAlign = 'right'; g.fillText('↑', w - h * 0.3, h * 0.48); }
-export const PANEL_DRAW = {
+export const PANEL_DRAW = { ...PV_PANELS,
   // v14 the flat's window (home14.py: 28 m out, 97 x 40 m): the street from the Astor's third floor, the cinema across the road. The picture
   // is the engine's own render (tools/dev/homeview.mjs); till it loads, a night sky over dark roofs with lit windows
   homeview: (g, w, h) => { const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#05070d'); sky.addColorStop(0.55, '#0c1220'); sky.addColorStop(1, '#151018'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
@@ -421,7 +427,7 @@ export const PANEL_DRAW = {
 };
 // ---------------------------------------------------------------- props: the furniture of each room (Kiln / Blender assets), lit per vertex
 // v12 where no guest stands: inside the heritage exhibit's rope, on the photo set (npc9.js millNet reads world.keepOut)
-const KEEP_OUT = [[CORE.x0 - 2.3, -4.2, CORE.x0, -1.8], [-8.9, -5.9, -5.1, -4.1]];
+const KEEP_OUT = [[CORE.x0 - 2.3, -4.2, CORE.x0, -1.8], [-8.9, -5.9, -5.1, -4.1], [LOUNGE.lobbyPod.x - 1.7, LOUNGE.lobbyPod.z - 1.7, LOUNGE.lobbyPod.x + 1.7, LOUNGE.lobbyPod.z + 1.7]];   // v14e the private lift
 // v13 the lobby's ceiling (tools/blender/arch/lobby12.py FIELD_DROP and STEP): the dropped field 0.75 m under the roof, the halo's dome two 0.32 m steps above it
 const LOBBY_FIELD = LOBBY.ceil - 0.75, LOBBY_DOME = LOBBY.ceil - 0.75 + 2 * 0.32;
 const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
@@ -446,7 +452,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.85, -13.55], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   // v12 (the user: "trees inside like a medieval tree"): an old olive tree in a travertine bowl in each front corner, by the glass (seen
   // from the street too); they replace the corner palms
-  for (const x of [-20.5, 20.5]) add('lobby', 'olive_tree', x, 0, 16.0, x < 0 ? 0.6 : 2.4, { collide: false, round: 0.8 });
+  for (const x of [-20.5, 16.2]) add('lobby', 'olive_tree', x, 0, 16.0, x < 0 ? 0.6 : 2.4, { collide: false, round: 0.8 });   // v14e the east one 4.3 m in: the private lift stands in that corner (private.js)
   for (const [x, yaw] of [[-6.0, 0.35], [6.0, -0.35]]) add('lobby', 'poster_totem', x, 0, 16.3, yaw);   // v10: out of the fountain court; v11 its posters: TOTEM_POSTERS
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
@@ -598,9 +604,10 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const h of Object.values(HALL)) { const sg = Math.sign(h.entryU) || 1, u = h.rowK ? sg * (h.width / 2 - 0.3) : h.entryU - sg * 1.4, d = h.rowK ? h.depthIn - 1.6 : h.depthIn - 0.5;
     const w = h.toWorld(u, d), q = h.toWorld(u - sg, d); add(h.key, 'bin_brass', w.x, h.y0 + h.total, w.z, h.rowK ? Math.atan2(q.x - w.x, q.z - w.z) : 0); }
   // v12b Dolby Atmos: the overhead speakers, hung from each hall's ceiling in two rows, each turned to face across the seats
+  L.push(...vipDress(), ...privateDress());   // v14e the VIP boxes' furniture and their ropes' posts (vip.js)
   return L;
 })();
-export const SIT_ON = { borne_round: { h: 0.45, ring: 6, r: 0.6 }, scan_chesterfield: { h: 0.46, w: 0.6 }, scan_armchair: { h: 0.45, n: 1 }, scan_lounge_chair: { h: 0.43, n: 1 }, sofa_curve: { h: 0.44, w: 0.7 }, armchair_deco: { h: 0.44, n: 1 }, bench_velvet: { h: 0.45, w: 0.62 }, bench_street: { h: 0.45, w: 0.62 }, bar_stool: { h: 0.76, n: 1 }, directors_chair: { h: 0.6, n: 1 } };
+export const SIT_ON = { seat_club: { h: 0.46, n: 1 }, bed_modern: { h: 0.52, w: 0.9 }, borne_round: { h: 0.45, ring: 6, r: 0.6 }, scan_chesterfield: { h: 0.46, w: 0.6 }, scan_armchair: { h: 0.45, n: 1 }, scan_lounge_chair: { h: 0.43, n: 1 }, sofa_curve: { h: 0.44, w: 0.7 }, armchair_deco: { h: 0.44, n: 1 }, bench_velvet: { h: 0.45, w: 0.62 }, bench_street: { h: 0.45, w: 0.62 }, bar_stool: { h: 0.76, n: 1 }, directors_chair: { h: 0.6, n: 1 } };
 function dressRooms(world) {
   const byRoom = {}; for (const p of DRESS) (byRoom[p.room] || (byRoom[p.room] = [])).push(p);
   // v9.1: the restrooms' fittings at their interaction points (tools/blender/arch/rooms.py fixtures; they were points with no mesh):
@@ -760,10 +767,10 @@ function buildHall(world, h, room) {
   else { if (room.bake) console.warn('bake ' + h.key + ': seat probes missing, analytic seat light'); seats.forEach((s, i) => { const sn = Math.sin(s.yaw), cs = Math.cos(s.yaw); L.at(s.x + sn * 0.2, s.y + 1.1, s.z + cs * 0.2, sn * 0.7, 0.7, cs * 0.7, H3, F3); lit.set([H3[0], H3[1], H3[2], F3[0], F3[1], F3[2], 0.5], i * 7); }); }
   const armLit = new Float32Array(arms.length * 7); arms.forEach((a, i) => { let best = 0, bd = 1e9; for (const s of seats) { if (s.row !== a.row) continue; const d = Math.abs(s.a - a.a); if (d < bd) { bd = d; best = s.i; } } armLit.set(lit.subarray(best * 7, best * 7 + 7), i * 7); });
   const groups = [];
-  const instanced = (geo, list, lt, sx) => { const ms = [0, 1].map((l) => { const g = geo[l] && geo[l].attributes.position.count ? geo[l] : l ? null : geo[0]; if (!g) return null; const m = new THREE.InstancedMesh(g, mats.litFor(U, g, true), list.length); m.name = 'seats-' + (list[0] && (list[0].an || list[0].kind)) + '-lod' + l; m.count = 0; m.frustumCulled = false;
+  const instanced = (geo, list, lt, sx) => { const ms = [0, 1, 2].map((l) => { const g = geo[l] && geo[l].attributes.position.count ? geo[l] : l ? null : geo[0]; if (!g) return null; const m = new THREE.InstancedMesh(g, mats.litFor(U, g, true), list.length); m.name = 'seats-' + (list[0] && (list[0].an || list[0].kind)) + '-lod' + l; m.count = 0; m.frustumCulled = false;
     for (const [k, w] of [['iLh', 3], ['iLf', 3], ['iLs', 1]]) g.setAttribute(k, new THREE.InstancedBufferAttribute(new Float32Array(list.length * w), w)); room.group.add(m); return m; }); groups.push({ list, ms, lt, sx, arm: !!(list[0] && list[0].an) }); };
   for (const F of Object.values(fams)) {
-    const geo = [0, 1].map((l) => assetGeometry(F.sn, l, flip, toGeometry, Acc, over)); if (!geo[0]) { console.warn('seat model missing: ' + F.sn); continue; }
+    const geo = [0, 1, 2].map((l) => assetGeometry(F.sn, l, flip, toGeometry, Acc, over)); if (!geo[0]) { console.warn('seat model missing: ' + F.sn); continue; }   // v14e LOD2 (tools/lod2.mjs) for the far rows
     geo[0].computeBoundingBox(); const bw = geo[0].boundingBox.max.x - geo[0].boundingBox.min.x, aw = ASSETS[F.an] ? ASSETS[F.an].box.max.x - ASSETS[F.an].box.min.x : 0.06;
     // v14c curved rows: neighbours turn towards each other, so the seats' fronts close up by fr x pitch / radius; the seat is that much
     // narrower (row A of CURVE: 3 cm) so its front corners stay clear of the arms
@@ -773,7 +780,7 @@ function buildHall(world, h, room) {
     for (const s of F.list) { s.sx = sx; s.fam = F.sn; }   // v12 recline.js copies your own seat at the same width
   }
   const armFam = {}; arms.forEach((a, i) => { (armFam[a.an] || (armFam[a.an] = [])).push(i); });
-  for (const an in armFam) { const geo = [0, 1].map((l) => assetGeometry(an, l, flip, toGeometry, Acc, over)); if (!geo[0]) continue; const ids = armFam[an], list = ids.map((i) => arms[i]), sub = new Float32Array(ids.length * 7); ids.forEach((i, k) => sub.set(armLit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, list, sub, 1); }
+  for (const an in armFam) { const geo = [0, 1, 2].map((l) => assetGeometry(an, l, flip, toGeometry, Acc, over)); if (!geo[0]) continue; const ids = armFam[an], list = ids.map((i) => arms[i]), sub = new Float32Array(ids.length * 7); ids.forEach((i, k) => sub.set(armLit.subarray(i * 7, i * 7 + 7), k * 7)); instanced(geo, list, sub, 1); }
   seatLabels(h, room, seats);   // v14 every seat named: a brass number on its back, the row's letter lit at each aisle end
   // colliders: each seat's footprint (its own frame: across the seat, from the seat front to the back of the backrest)
   for (const s of seats) { const sd = SEAT[s.kind], cs = Math.cos(s.yaw), sn = Math.sin(s.yaw), hw = sd.w / 2 - 0.02, c = [[-hw, -sd.fr], [hw, -sd.fr], [hw, sd.bk], [-hw, sd.bk]].map(([u, v]) => [s.x + u * cs + v * sn, s.z - u * sn + v * cs]);
@@ -807,9 +814,11 @@ function buildHall(world, h, room) {
     hideSeat(s, on) { s.hidden = !!on; this.updateLOD(null, true); },
     updateLOD(cam, force, far = 7) {
       const px = cam ? cam.position.x : last[0], pz = cam ? cam.position.z : last[1]; if (!force && Math.hypot(px - last[0], pz - last[1]) < 0.5) return; last = [px, pz]; const fin = (far - 0.8) ** 2, fout = (far + 0.8) ** 2;
-      for (const G_ of groups) { const cnt = [0, 0], { list, ms, lt, sx, arm } = G_;
+      const far2 = far * 2.4 + 0.5, f2in = (far2 - 1) ** 2, f2out = (far2 + 1) ** 2;   // v14e the third tier past about 11 m (medium)
+      for (const G_ of groups) { const cnt = [0, 0, 0], { list, ms, lt, sx, arm } = G_;
         for (let i = 0; i < list.length; i++) { const s = list[i], dx = s.x - px, dz = s.z - pz, d2 = dx * dx + dz * dz; if ((arm && d2 > 196) || s.hidden) continue;   // arms past 14 m hide behind the seat backs
-          const l = (s.lod = force ? (d2 < far * far ? 0 : 1) : s.lod === 1 ? (d2 < fin ? 0 : 1) : (d2 > fout ? 1 : 0)), m = ms[l] || ms[0], k = cnt[ms[l] ? l : 0]++;
+          let l = s.lod ?? 0; if (force) l = d2 < far * far ? 0 : d2 < far2 * far2 ? 1 : 2; else if (l === 0) { if (d2 > fout) l = 1; } else if (l === 1) { if (d2 < fin) l = 0; else if (d2 > f2out) l = 2; } else if (d2 < f2in) l = 1;
+          s.lod = l; const li = ms[l] ? l : ms[1] && l === 2 ? 1 : 0, m = ms[li], k = cnt[li]++;
           tmp.position.set(s.x, s.y, s.z); tmp.rotation.set(0, s.yaw, 0); tmp.scale.set(sx, 1, 1); tmp.updateMatrix(); m.setMatrixAt(k, tmp.matrix);
           const a = m.geometry.attributes; a.iLh.setXYZ(k, lt[i * 7], lt[i * 7 + 1], lt[i * 7 + 2]); a.iLf.setXYZ(k, lt[i * 7 + 3], lt[i * 7 + 4], lt[i * 7 + 5]); a.iLs.setX(k, lt[i * 7 + 6]); }
         ms.forEach((m, i) => { if (!m) return; m.count = cnt[i]; m.instanceMatrix.needsUpdate = true; for (const n of ['iLh', 'iLf', 'iLs']) m.geometry.attributes[n].needsUpdate = true; }); }
@@ -917,7 +926,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
       if (mats.lightMaps) { const mat = mats.litRoom(U, false, bk); mat.uniforms.uLmK.value.x *= gain; mat.uniforms.uLmK.value.y *= Math.min(gain, 10); m = new THREE.Mesh(geo, mat); room.bake = bk; U.uEnvK.value = (key.startsWith('hall') ? 0.4 : 1) / Math.max(0.05, bk.avg * gain); }   // v14 halls: dark, matte rooms; their reflections stay faint
       else { const g = geo.clone(); lights.bake(g); m = new THREE.Mesh(g, mats.litFor(U, g)); room.bake = { ...bk, maps: null }; }
       m.matrixAutoUpdate = false; m.name = key + '-shell'; group.add(m); room.solid = m;
-      if (!bk._walls) { world.walls.fromGeometry(geo, def.kind === 'street' ? 3 : L1 + 2.2); bk._walls = true;
+      if (!bk._walls) { world.walls.fromGeometry(geo, def.kind === 'street' ? 3 : def.kind === 'hall' ? L1 + 5.2 : L1 + 2.2); bk._walls = true;   // v14e a hall's walls up to its VIP level's head height
         // v12: the lanes north at the street's ends carry the traffic in and out; people stop at their mouths (street12.py side_street)
         if (def.kind === 'street') for (const [a, b] of [[STREET.x0 - 6, STREET.x0 + 2], [STREET.x1 - 2, STREET.x1 + 6]]) world.walls.add(a, STREET.far, b, STREET.far, -1, 3, 1); }
       // glass (balustrades, the facade, screens) is drawn see-through on its own: the shell keeps every other face
@@ -974,13 +983,13 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
   world.roomAt = roomAt;
   world.floorY = (x, z, y = 0) => {
     const r = roomAt(x, y, z);
-    if (r && r.startsWith('hall')) { const h = HALL_BY_KEY[r], q = h.toLocal(x, z); return h.y0 + hallFloor(h, q.u, q.d); }
+    if (r && r.startsWith('hall')) { const h = HALL_BY_KEY[r], q = h.toLocal(x, z), v = vipFloor(h, q.u, q.d, y - h.y0); return h.y0 + (v !== null ? v : hallFloor(h, q.u, q.d)); }   // v14e the VIP stair, gallery and boxes
     if (r === 'corridor') return L1;
     if (r === 'lobby') { for (const e of world.escalators) if (e.contains(x, z)) { const fy = e.floor(z); if (y > fy - 1.0) return fy; }
       if (IN(CAB, x, z)) return world.lift.y; return y > L1 - 1.2 && onMezz(x, z) ? L1 : 0; }
     if (r === 'spine') { const sy = stairY(x, z, y); if (sy !== null) return sy; return world.travelator.contains(x, z) ? 0.12 : 0; }
     if (r === 'street') return z > STREET.kerb && z < STREET.road[1] ? -0.15 : 0;
-    if (r === 'home') { const R = HOME.riser; return x > HOME.split + 0.1 && z > R.z0 && z < R.z1 ? R.y : 0; }   // the Suite cinema's riser
+    { const p = PV_BY_KEY[r]; if (p) { const q = p.toLocal(x, z); if (p.riser && q.d >= p.riser.d0 - 0.02 && q.d <= p.riser.d1 + 0.02) return p.riser.y; return p.theme !== 'drive' && q.d < 0.77 ? 0.18 : 0; } }   // v14e a private screen's riser and stage
     return 0;
   };
   // what moves you: escalators and the travelator carry whoever stands on them

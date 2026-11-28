@@ -730,3 +730,27 @@ body.ph-open #where,body.ph-open #goal{opacity:0;pointer-events:none;transition:
 /* v14d the room's code as a QR in the Play together panel; the camera view while scanning one */
 .mpQR{display:flex;align-items:center;gap:10px;margin:6px 0}.mpQR canvas{width:96px;height:96px;border-radius:8px;image-rendering:pixelated;box-shadow:0 0 0 1px var(--line)}.mpQR small{font-size:11px;color:var(--mute);max-width:160px}
 .mpScan{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(10,8,11,.92)}.mpScan video{width:min(70vw,360px);max-height:62vh;border-radius:12px;object-fit:cover;box-shadow:0 0 0 2px var(--brass)}
+
+/* v14e the tablet's screen picker: which hall a film plays in */
+.tb-halls{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.tb-halls small{font:600 10px/1 var(--font);color:var(--brass);letter-spacing:.1em;text-transform:uppercase;margin-inline-end:4px}
+.tb-hall{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--cream);font:600 12px/1 var(--font);min-height:32px}
+.tb-hall.on{background:var(--brass);color:var(--on-gold,#1b1408);border-color:transparent}
+.tb-halls.want{animation:tbWant .9s ease 2}
+@keyframes tbWant{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 2px var(--brass)}}
+
+/* v14e the room panel: two cards before a room, a room view after (the code big, its QR, who is here, the state) */
+#mpPanel .mpCards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#mpPanel .mpCard{display:flex;flex-direction:column;gap:7px;padding:12px;border-radius:14px;background:linear-gradient(160deg,rgba(224,178,90,.12),rgba(255,255,255,.03));border:1px solid var(--line-2)}
+#mpPanel .mpCard b{font:600 15px/1.2 var(--display);color:var(--cream)}#mpPanel .mpCard small{font:500 11.5px/1.35 var(--font);color:var(--mute)}
+#mpPanel .mpCard .btn{width:100%}#mpPanel .mpCard .row .btn{width:auto}
+#mpPanel .mpRoomTop{display:flex;gap:12px;align-items:center}
+#mpPanel .mpCodeBig{flex:1;display:flex;flex-direction:column;gap:6px}#mpPanel .mpCodeBig small{font:600 10.5px/1 var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+#mpPanel .mpCodeBig b{font:600 34px/1 var(--font);letter-spacing:.18em;color:var(--cream);direction:ltr}
+#mpPanel .mpStateRow{display:flex;align-items:center;gap:10px;justify-content:space-between}
+#mpStatus.ok::before,#mpStatus.wait::before,#mpStatus.bad::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:7px;vertical-align:middle}
+#mpStatus.ok::before{background:#3ecf8e}#mpStatus.wait::before{background:var(--brass);animation:mpPulse 1.2s ease-in-out infinite}#mpStatus.bad{color:#ff8a8a}#mpStatus.bad::before{background:#ff4d5a}
+@keyframes mpPulse{50%{opacity:.25}}
+#mpTray{display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--plate);border:1px solid var(--line)}#mpTray[hidden]{display:none}
+#mpBar button.on{background:rgba(224,178,90,.25)}
+@media (max-height:420px){#mpPanel .mpCodeBig b{font-size:28px}#mpPanel .mpCard{padding:9px}}

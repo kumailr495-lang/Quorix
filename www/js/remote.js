@@ -1,4 +1,4 @@
-// LUMIERE v14d - the Suite's remote control (the user, 11-26: "an actual 3d modelled remote controlling the TV / projector, no tablet in the
+// LUMIERE v14d - the VIP box's remote control (v14e: the boxes replaced the Suite) (the user, 11-26: "an actual 3d modelled remote controlling the TV / projector, no tablet in the
 // room ones"). A real object: it lies on the coffee table and on the cinema console; picked up, it is in your right hand at the bottom of
 // the view, and you press its keys by tapping them (or with the crosshair and the action key on a keyboard). The keys: power (the TV in the
 // living room, the projector in the cinema), play/pause, the previous and next film, volume down and up, the lights.
@@ -15,11 +15,14 @@ export const KEYS = [
   { id: 'volup', x: 0.013, z: 0.036, r: 0.009, col: '#2b2b30', icon: 'plus' },
   { id: 'cine', x: 0.016, z: -0.032, r: 0.0085, col: '#2b2b30', icon: 'film' },
 ];
-const W = 0.05, L = 0.17, T = 0.016;
+const W = 0.05, L = 0.17, T = 0.016, TOP = T - 0.002, KEY_Y = TOP + 0.0005 + 0.0012;   // the body's top cap; each key's 3 mm disc sits 0.3 mm into the face
+function outline(w, l, r) { const s = new THREE.Shape(); s.moveTo(-w + r, -l); s.lineTo(w - r, -l); s.quadraticCurveTo(w, -l, w, -l + r); s.lineTo(w, l - r); s.quadraticCurveTo(w, l, w - r, l); s.lineTo(-w + r, l); s.quadraticCurveTo(-w, l, -w, l - r); s.lineTo(-w, -l + r); s.quadraticCurveTo(-w, -l, -w + r, -l); return s; }
+// the printed face: the body's rounded outline 1.5 mm in, its UVs over the whole body so the canvas lines up with the keys
+function faceGeo() { const g = new THREE.ShapeGeometry(outline(W / 2 - 0.0015, L / 2 - 0.0015, 0.0105), 6), p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + W / 2) / W, (p.getY(i) + L / 2) / L); g.rotateX(-Math.PI / 2); return g; }
 
 function bodyGeo() {
-  const s = new THREE.Shape(), w = W / 2, l = L / 2, r = 0.012;
-  s.moveTo(-w + r, -l); s.lineTo(w - r, -l); s.quadraticCurveTo(w, -l, w, -l + r); s.lineTo(w, l - r); s.quadraticCurveTo(w, l, w - r, l); s.lineTo(-w + r, l); s.quadraticCurveTo(-w, l, -w, l - r); s.lineTo(-w, -l + r); s.quadraticCurveTo(-w, -l, -w + r, -l);
+  const s = outline(W / 2, L / 2, 0.012);
   const g = new THREE.ExtrudeGeometry(s, { depth: T - 0.004, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 2, curveSegments: 6 });
   g.rotateX(-Math.PI / 2); g.translate(0, 0, 0); return g;   // the face up (+y), its top at y = T - 0.002
 }
@@ -28,7 +31,7 @@ function faceTex() {
   const gr = g.createLinearGradient(0, 0, 0, c.height); gr.addColorStop(0, '#1c1c20'); gr.addColorStop(1, '#0f0f12'); g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
   g.strokeStyle = 'rgba(201,163,94,0.55)'; g.lineWidth = 2; g.beginPath(); g.arc(X(0), Z(0), 0.027 * sx, 0, Math.PI * 2); g.stroke();   // the brass ring round the middle keys
   g.fillStyle = '#c9a35e'; g.font = `600 ${Math.round(0.0075 * sz)}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('LUMIÈRE', X(0), Z(0.072));
-  g.fillStyle = 'rgba(240,226,196,0.7)'; g.font = `500 ${Math.round(0.0045 * sz)}px Inter, sans-serif`; g.fillText('VOL', X(0), Z(0.036)); g.fillText('SUITE', X(0), Z(0.081));
+  g.fillStyle = 'rgba(240,226,196,0.7)'; g.font = `500 ${Math.round(0.0045 * sz)}px Inter, sans-serif`; g.fillText('VOL', X(0), Z(0.036)); g.fillText('VIP', X(0), Z(0.081));
   return new THREE.CanvasTexture(c);
 }
 function keyTex(icon, col) {
@@ -45,13 +48,11 @@ function keyTex(icon, col) {
 // one remote model: body, its printed face, the keys (meshes named key:<id>)
 export function makeRemote() {
   const grp = new THREE.Group(), body = new THREE.Mesh(bodyGeo(), new THREE.MeshBasicMaterial({ color: 0x141417 })); grp.add(body);
-  const ft = faceTex(); ft.colorSpace = THREE.SRGBColorSpace; const face = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.004, L - 0.004), new THREE.MeshBasicMaterial({ map: ft }));
-  face.rotation.x = -Math.PI / 2; face.position.y = T + 0.0012; grp.add(face);
+  const ft = faceTex(); ft.colorSpace = THREE.SRGBColorSpace; const face = new THREE.Mesh(faceGeo(), new THREE.MeshBasicMaterial({ map: ft })); face.position.y = TOP + 0.0005; grp.add(face);
   const keys = [];
   for (const k of KEYS) { const m = new THREE.Mesh(new THREE.CylinderGeometry(k.r, k.r * 1.04, 0.003, 20), [new THREE.MeshBasicMaterial({ color: 0x2a2a2e }), new THREE.MeshBasicMaterial({ map: keyTex(k.icon, k.col) }), new THREE.MeshBasicMaterial({ color: 0x111111 })]);
-    m.position.set(k.x, T + 0.0012 + 0.0035, k.z); m.name = 'key:' + k.id; grp.add(m); keys.push(m);
-    const hit = new THREE.Mesh(new THREE.CylinderGeometry(k.r * 1.9, k.r * 1.9, 0.01, 12), new THREE.MeshBasicMaterial({ visible: false })); hit.position.copy(m.position); hit.name = 'hit:' + k.id; grp.add(hit); keys.push(hit); }
-  grp.userData.keys = keys; return grp;
+    m.position.set(k.x, KEY_Y, k.z); m.name = 'key:' + k.id; grp.add(m); keys.push(m); }
+  grp.userData.keys = keys; grp.userData.face = face; return grp;
 }
 
 export class Remote {
@@ -63,12 +64,16 @@ export class Remote {
   putDown() { if (!this.held) return; this.held = false; this.inHand.visible = false; if (this.inHand.parent) this.inHand.parent.remove(this.inHand); this.sound && this.sound.click && this.sound.click(); }
   // in the right hand at the bottom right of the view, tilted towards you so its face can be read and pressed
   update(dt) { if (!this.held) return; this.k = Math.min(1, this.k + dt * 3); const e = 1 - Math.pow(1 - this.k, 3), cam = this.engine.vmCam, a = cam.aspect || 1.6;
-    this.inHand.position.set(0.042 * Math.min(1.8, a), -0.06 - (1 - e) * 0.12, -0.2); this.inHand.rotation.set(0.86, -0.14, 0.05);   // in the lower middle-right, clear of the HUD's corner buttons
-    for (const id in this.pushT) { const m = this.inHand.userData.keys.find((q) => q.name === 'key:' + id); this.pushT[id] -= dt; if (m) m.position.y = 0.016 + 0.0012 + 0.0035 - (this.pushT[id] > 0 ? 0.0016 : 0); if (this.pushT[id] <= 0) delete this.pushT[id]; } }
+    this.inHand.position.set(0.05, -0.022 - (1 - e) * 0.12, -0.2); this.inHand.rotation.set(0.62, -0.14, 0.05);   // v14e higher and less tilted: at 0.86 rad its near end (the volume keys) fell off the bottom of a 62 degree view
+    for (const id in this.pushT) { const m = this.inHand.userData.keys.find((q) => q.name === 'key:' + id); this.pushT[id] -= dt; if (m) m.position.y = KEY_Y - (this.pushT[id] > 0 ? 0.0012 : 0); if (this.pushT[id] <= 0) delete this.pushT[id]; } }
   // a tap at (x, y) CSS pixels: the key under it, pressed; true if a key took the tap
   tap(x, y) {
     if (!this.held) return false; const cam = this.engine.vmCam; this._v.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); this._ray.setFromCamera(this._v, cam);
-    this.inHand.updateMatrixWorld(true); const hits = this._ray.intersectObjects(this.inHand.userData.keys, false); if (!hits.length) return false;
-    const id = hits[0].object.name.split(':')[1]; this.pushT[id] = 0.18; if (this.sound && this.sound.click) this.sound.click(); if (this.onKey) this.onKey(id); return true;
+    this.inHand.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(this.inHand.matrixWorld).invert(), r = this._ray.ray.clone().applyMatrix4(inv);
+    if (Math.abs(r.direction.y) < 1e-4) return false; const tt = (KEY_Y - r.origin.y) / r.direction.y; if (tt <= 0) return false; const hx = r.origin.x + r.direction.x * tt, hz = r.origin.z + r.direction.z * tt;
+    if (Math.abs(hx) > W / 2 + 0.006 || Math.abs(hz) > L / 2 + 0.006) return false;   // off the remote: the tap goes to the game
+    let best = null, bd = Infinity; for (const k of KEYS) { const d = Math.hypot(hx - k.x, hz - k.z) / k.r; if (d < bd) { bd = d; best = k; } }
+    if (!best || bd > 1.6) return true;   // on the remote but between keys: taken, nothing pressed
+    const id = best.id; this.pushT[id] = 0.18; if (this.sound && this.sound.click) this.sound.click(); if (this.onKey) this.onKey(id); return true;
   }
 }

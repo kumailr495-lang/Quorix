@@ -21,7 +21,6 @@
     if (T) return true;
     T = await import('/vendor/three.module.js'); GM = await import('/js/geom.js'); HM = await import('/js/hallmath.js'); BLD = await import('/js/building.js');
     const L = window.__lumiere, E = L.engine; Object.assign(st, { L, W: L.world, E, R: E.renderer, S: E.scene });
-    // v14 your flat with everything in it (home.js): the home cinema bought, so its seats, speakers and door are checked too
     if (!E._render0) { E._render0 = E.render.bind(E); E.render = () => {}; }
     st.MATN = Object.fromEntries(Object.entries(GM.MAT).map(([k, v]) => [v, k]));
     st.face = new T.MeshBasicMaterial({ side: T.DoubleSide, fog: false, toneMapped: false });

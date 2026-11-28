@@ -356,7 +356,7 @@ def build_hall(h, L1):
                 acc.box(pu - 0.03, ceil - 0.55, pd - 0.03, pu + 0.03, ceil, pd + 0.03, MAT['metal'], lin('#30333a'))
                 lx = pu - sg * 0.362; gq((lx, ceil - 0.83, pd - 0.07), (lx, ceil - 0.69, pd - 0.07), (lx, ceil - 0.69, pd + 0.07), (lx, ceil - 0.83, pd + 0.07), (-sg, 0, 0), lin('#bcd8ff'), 2.2)
     # ---------------------------------------------------------------- the projection port in the rear wall, over the rear aisle
-    py_ = min(top + 3.4, ceil - 0.6)
+    py_ = min(top + 5.9, ceil - 0.6)   # v14e above the VIP gallery and boxes (it sat 3.4 m over the rear aisle)
     acc.box(-0.7, py_ - 0.45, depth - 0.02, 0.7, py_ + 0.05, depth, MAT['glass'], lin('#0a0f16'))
     gq((-0.62, py_ - 0.38, depth - 0.025), (0.62, py_ - 0.38, depth - 0.025), (0.62, py_ - 0.02, depth - 0.025), (-0.62, py_ - 0.02, depth - 0.025), (0, 0, -1), lin('#9fc2ff'), 0.5)
     # ---------------------------------------------------------------- ceilings and house lights
@@ -415,6 +415,7 @@ def build_hall(h, L1):
     # v14 (the user, 11-20: "idk why you have this shit wall on entrance of the theatre"; UNIC 8.1.2: a dark vestibule or the door itself
     # keeps the light out): no baffle, the door opens straight onto the rear aisle and the whole hall; a soft light over the door
     lit.point((ent, top + 2.2, depth - 0.6), th['warm'], 0.25, 2.5, 'h')
+    vip_level(acc, glow, lit, h, th, gq, W2, depth, top, ceil)
     # ---------------------------------------------------------------- occluders (seats) and probes for the bake
     probes = []
     for s in h['seats']:
@@ -432,3 +433,88 @@ def build_hall(h, L1):
     c = [T((-W2, 0, Dw)), T((W2, 0, depth))]
     lit.rect = [min(c[0][0], c[1][0]), min(c[0][2], c[1][2]), max(c[0][0], c[1][0]), max(c[0][2], c[1][2])]
     return acc, glow, lit, occ, scr, probes, panels
+
+
+# ---------------------------------------------------------------- v14e VIP boxes (the user, 11-27: photos of Dubai's IMAX VIP boxes)
+# hallmath.js vipLayout: a gallery along the rear wall V['GY'] over the rear aisle, a stair up to it from just past the entrance door, five
+# boxes in front of the gallery. Each box is a walnut tub with a black cap and two LED strips round its curved front, open to the gallery
+# behind (vip.js: a velvet rope until you rent it); inside, a deep crimson carpet (the recliners are the engine's). Hall-local frame.
+VIP_FLOOR = ('carpet', '#5a1c22')
+def vip_level(acc, glow, lit, h, th, gq, W2, depth, top, ceil):
+    V = h.get('vip')
+    if not V: return
+    Y, S, G, s = V['y'], V['stair'], V['gallery'], V['s']
+    WAL, CAP, DARK, LED, AMB = lin('#56392a'), lin('#141317'), lin('#1b1a1f'), lin('#ffe2bd'), lin('#ffb060')
+    # ---- the stair: one stepped solid along the rear wall, its risers facing the door's side; 1 cm into the aisle floor, 2 mm into the wall
+    n, rise, tread, u0, u1 = S['n'], S['rise'], S['tread'], S['u0'], S['u1']
+    prof = [(u0, top - 0.01)]
+    for i in range(n - 1):
+        ua, ub, y = u0 - s * i * tread, u0 - s * (i + 1) * tread, top + (i + 1) * rise
+        prof += [(ua, y), (ub, y)]
+    prof.append((u1, top - 0.01))
+    acc.prism_z(prof, S['d0'], S['d1'] + 0.002, MAT['hallCarpet'], DARK)
+    for i in range(n - 1):   # brass nosings 6 mm proud of the riser and the tread, 1 cm into the step; a light strip under each
+        ua, y = u0 - s * i * tread, top + (i + 1) * rise; xa, xb = sorted((ua + s * 0.006, ua - s * 0.04))
+        acc.box(xa, y - 0.03, S['d0'] + 0.1, xb, y + 0.006, S['d1'] - 0.05, MAT['brass'], lin('#b58a4c'))
+        xg = ua + s * 0.012; gq((xg, y - 0.055, S['d0'] + 0.15), (xg, y - 0.035, S['d0'] + 0.15), (xg, y - 0.035, S['d1'] - 0.1), (xg, y - 0.055, S['d1'] - 0.1), (s, 0, 0), AMB, 1.6)
+    lit.line((u0 - s * 0.3, top + 0.15, S['d0'] + 0.6), (u1 + s * 0.3, top + (n - 1) * rise + 0.15, S['d0'] + 0.6), AMB, 0.05, 1.5, 'f', (s, -0.3, 0))
+    # its walnut cheek wall on the hall's side, 10 cm, 2 mm into the stair; the top runs 1 m over the nosings, a light strip under the top
+    yA, yB = top + rise + 1.0, Y + 1.0
+    acc.prism_z([(u0, top - 0.01), (u1, top - 0.01), (u1, yB), (u0, yA)], S['d0'] - 0.1, S['d0'] + 0.002, MAT['wood'], WAL)
+    zg = S['d0'] - 0.106; gq((u0, yA - 0.09, zg), (u1, yB - 0.09, zg), (u1, yB - 0.05, zg), (u0, yA - 0.05, zg), (0, 0, -1), LED, 1.8)
+    lit.line((u0, yA - 0.1, S['d0'] - 0.3), (u1, yB - 0.1, S['d0'] - 0.3), LED, 0.06, 2.0, 'f', (0, -0.3, -1))
+    # ---- the gallery: walnut slab, carpet on top, its soffit's downlights over the rear aisle
+    ga, gb = min(G['u0'], G['u1']), max(G['u0'], G['u1'])
+    acc.box(ga, Y - 0.27, G['d0'], gb, Y - 0.02, G['d1'] + 0.002, MAT['wood'], WAL)
+    acc.box(ga, Y - 0.02, G['d0'], gb, Y, G['d1'] + 0.002, MAT['hallCarpet'], DARK)
+    k = 0; u = ga + 1.2
+    while u < gb - 0.8:
+        dm = (G['d0'] + G['d1']) / 2; lit.spot((u, Y - 0.35, dm), th['warm'], 0.35, 4.0, 'h', (0, -1, 0), 25, 60)
+        gq((u - 0.05, Y - 0.276, dm - 0.05), (u + 0.05, Y - 0.276, dm - 0.05), (u + 0.05, Y - 0.276, dm + 0.05), (u - 0.05, Y - 0.276, dm + 0.05), (0, -1, 0), th['warm'], 2.0)
+        u += 2.6; k += 1
+    # ---- the boxes
+    bx = sorted(V['boxes'], key=lambda b: b['u0'])
+    for b in bx: vip_box(acc, gq, lit, b, Y, G['d0'], WAL, CAP, LED)
+    # the gallery's front between the boxes and at its ends: a walnut parapet 6 mm behind the slab's face, its top lit like the boxes'
+    spans, cur = [], ga
+    for b in bx: spans.append((cur, b['u0'] - 0.05 + 0.002)); cur = b['u1'] + 0.05 - 0.002
+    spans.append((cur, gb))
+    for a, c in spans:
+        if c - a < 0.05: continue
+        acc.box(a, Y - 0.1, G['d0'] + 0.006, c, Y + 0.85, G['d0'] + 0.1, MAT['wood'], WAL)   # the boxes' height: one line of caps and lights along the wall
+        acc.box(a, Y + 0.848, G['d0'] + 0.0, c, Y + 0.89, G['d0'] + 0.11, MAT['leather'], CAP)
+        gq((a + 0.02, Y + 0.76, G['d0']), (c - 0.02, Y + 0.76, G['d0']), (c - 0.02, Y + 0.8, G['d0']), (a + 0.02, Y + 0.8, G['d0']), (0, 0, -1), LED, 1.8)
+    # the gallery's far end (away from the stair): a parapet across it, behind the front one (2 mm into its back), 6 mm in from its end
+    ea, eb = (gb - 0.1, gb - 0.006) if s < 0 else (ga + 0.006, ga + 0.1)
+    acc.box(ea, Y - 0.1, G['d0'] + 0.098, eb, Y + 0.85, G['d1'] + 0.002, MAT['wood'], WAL)
+
+
+def vip_box(acc, gq, lit, b, Y, dback, WAL, CAP, LED):
+    ua, ub, d0, rc = b['u0'], b['u1'], b['d0'], b['rc']
+    db = dback + 0.02   # the tub's ends run 2 cm into the gallery slab
+    P = [(ua, db), (ua, d0 + rc)]
+    for k in range(1, 9): t = math.pi + (math.pi / 2) * k / 8; P.append((ua + rc + rc * math.cos(t), d0 + rc + rc * math.sin(t)))
+    L = ub - ua - 2 * rc
+    for k in range(1, 8): P.append((ua + rc + L * k / 8, d0 - 0.32 * math.sin(math.pi * k / 8)))   # the front bows out towards the screen
+    for k in range(0, 9): t = 1.5 * math.pi + (math.pi / 2) * k / 8; P.append((ub - rc + rc * math.cos(t), d0 + rc + rc * math.sin(t)))
+    P.append((ub, db))
+    # the tub: o is the offset to the left of the path (inside the box). Outer face down to the floor, the belly tucked under, back up inside
+    # the belly: a quarter ellipse 0.62 m in and 0.55 m down from the face's foot (seven points); the parapet 0.85 m: a seated guest's eye
+    # (1.15 m) clears it by the bottom of the picture (1.0 m hid the screen's lower half from the seats behind it)
+    belly = [(-0.05 + 0.65 * (1 - math.cos(math.pi / 2 * k / 7)), Y - 0.55 * math.sin(math.pi / 2 * k / 7)) for k in range(1, 8)]
+    prof = [(-0.05, Y + 0.85), (-0.05, Y)] + belly + [(0.6, Y - 0.02), (0.05, Y - 0.02), (0.05, Y + 0.85)]
+    acc.sweep(P, prof, MAT['wood'], WAL, closed=True, cap=True)
+    acc.sweep(P, [(-0.06, Y + 0.89), (-0.06, Y + 0.848), (0.06, Y + 0.848), (0.06, Y + 0.89)], MAT['leather'], CAP, closed=True, cap=True)   # the cap, 2 mm into the top
+    # the floor: the outline closed along the gallery's face (it abuts the gallery's floor), 2 mm under the parapet's inside edge
+    fm, fc = VIP_FLOOR
+    poly = [(ua, dback)] + P[1:-1] + [(ub, dback)]
+    acc.prism(poly, Y - 0.25, Y, MAT[fm], lin(fc))
+    # two light strips round the curved front, 6 mm outside the walnut: under the cap and at the foot of the face
+    for i in range(1, len(P) - 2):
+        (xa, za), (xb, zb) = P[i], P[i + 1]; tx, tz = xb - xa, zb - za; Ln = math.hypot(tx, tz) or 1; nx, nz = tz / Ln, -tx / Ln   # outward (right of travel)
+        for y0, y1 in ((Y + 0.76, Y + 0.8), (Y + 0.02, Y + 0.06)):
+            pa, pb = (xa + nx * 0.056, za + nz * 0.056), (xb + nx * 0.056, zb + nz * 0.056)
+            gq((pa[0], y0, pa[1]), (pb[0], y0, pb[1]), (pb[0], y1, pb[1]), (pa[0], y1, pa[1]), (nx, 0, nz), LED, 1.9)
+    uc = (ua + ub) / 2
+    lit.line((ua + rc, Y + 0.78, d0 - 0.3), (ub - rc, Y + 0.78, d0 - 0.3), LED, 0.07, 2.5, 'f', (0, -0.2, -1))
+    lit.point((uc, Y + 2.3, d0 + 1.4), lin('#ffd9b0'), 0.22, 3.5, 'h')

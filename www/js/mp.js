@@ -5,6 +5,7 @@
 // or the earliest one left if they go) keeps the shows in step. Privacy: as in any peer-to-peer game, the phones in a room can see each
 // other's IP address; the settings panel says so.
 import { joinRoom, selfId } from '../vendor/trystero.mjs';
+const RELAYS = ['wss://nos.lol', 'wss://relay.nostr.net', 'wss://offchain.pub', 'wss://relay.primal.net', 'wss://relay.snort.social', 'wss://nostr.oxtr.dev'];
 
 const APP = 'lumiere-cinema-9';
 const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O or 1/I: codes are read aloud and typed on phones
@@ -22,7 +23,9 @@ export class Multi {
   start(code, profile, asHost) {
     this.leave(); this.code = cleanCode(code); if (this.code.length < 4) throw new Error('bad code');
     this.host = !!asHost; this.me = { name: String(profile.name || 'Guest').slice(0, 18), avatar: String(profile.avatar || '').slice(0, 40), look: small(profile.look) }; this.since = Date.now();
-    const room = this.room = joinRoom({ appId: APP }, this.code);
+    // v14e (the user, 11-27: "I am pretty sure it has 1000 errors"): Trystero's default list holds relays that are gone (404, 502) or refuse
+    // its short-lived messages; six large public relays answered from here on 11-28, and their refusals are not logged
+    const room = this.room = joinRoom({ appId: APP, relayConfig: { urls: RELAYS, warnOnRelayFailure: false } }, this.code);
     // Trystero 0.26: makeAction gives an object with send and an onMessage callback that gets the peer id; peer join and leave are properties
     const act = (n, on) => { const a = room.makeAction(n, { onMessage: (d, c) => { try { on(d, c && c.peerId); } catch (e) { console.warn('[mp]', n, e); } } }); return (d, to) => a.send(d, to ? { target: to } : undefined).catch(() => {}); };
     const sHello = act('hello', (h, id) => {

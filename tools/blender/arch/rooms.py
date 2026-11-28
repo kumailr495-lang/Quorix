@@ -7,7 +7,7 @@ from geo import Acc, Glow, Lights, MAT, lin, mix, cross, sub
 import street12
 import front12
 import lobby12
-from home14 import build_home   # v14d the LUMIÈRE Suite (home14.py; the v14 flat)
+from vip14 import build_vip, build_pvHome, build_pvJungle, build_pvWinter, build_pvSpace, build_pvDrive   # v14e the private screens (vip14.py; the v14d apartment Suite is retired)
 
 def build(key, S):
     fn = globals().get('build_' + key)

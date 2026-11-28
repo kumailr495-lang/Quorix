@@ -12,11 +12,6 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 if os.path.exists(OUT): shutil.rmtree(OUT)
 src = open(os.path.join(WWW, 'js', 'assets.js'), encoding='utf8').read()
 lst = re.search(r"export const ASSET_LIST = \[(.*?)\];", src, re.S).group(1); keep_models = set(re.findall(r"'([a-z0-9_]+)'", lst)) | {'people_male', 'people_female', 'anims'}
-# v14d: models loaded later than the boot list (home.js SUITE_ASSETS, on the first visit to the Suite) go in too; a renamed list fails here
-for js, pat in (('home.js', r"const SUITE_ASSETS = \[(.*?)\];"),):
-    m = re.search(pat, open(os.path.join(WWW, 'js', js), encoding='utf8').read(), re.S)
-    if not m: sys.exit(f'stage-www: {pat} not found in {js}')
-    keep_models |= set(re.findall(r"'([a-z0-9_]+)'", m.group(1)))
 SMALL = re.compile(r"^(hall[A-Za-z0-9]+_(f|s)|spine_h|street_h)\.jpg$")
 n_files = n_bytes = 0; VOICE = {}
 for d, dirs, files in os.walk(WWW):

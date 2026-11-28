@@ -18,14 +18,14 @@ def main():
     if '--spec' in args: spec = args[args.index('--spec') + 1]; args = [a for a in args if a != spec]
     args = [a for a in args if not a.startswith('--')]
     S = json.load(open(spec))
-    want = args or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'home']
+    want = args or ['hallMax', 'hallCurve', 'hallClassic', 'hall270', 'lobby', 'corridor', 'spine', 'wc', 'street', 'vip', 'pvHome', 'pvJungle', 'pvWinter', 'pvSpace', 'pvDrive']
     work = os.path.join(ROOT, 'tools', 'bake', '.work'); outx = os.path.join(ROOT, 'www', 'bake')
     if check:
         idx = json.load(open(os.path.join(outx, 'index.json')))['rooms']; bad = []; miss = []
         for key in want:
             hall = next((h for h in S['halls'] if h['key'] == key), None)
             if hall: acc, glow, lit, occ, scr, probes, panels = halls.build_hall(hall, S['L1']); _, X, _ = export_room(key, acc, lit, None, is_hall=True)
-            else: acc, glow, lit, extra = rooms.build(key, S); _, X, _ = export_room(key, acc, lit, None)
+            else: acc, glow, lit, extra = rooms.build(key, S); _, X, _ = export_room(key, acc, lit, None, is_hall='screen' in (extra or {}))
             if X['hash'] != (idx.get(key) or {}).get('hash'): bad.append(f"{key} (spec builds {X['hash']}, baked {(idx.get(key) or {}).get('hash')})")
             nm = near_misses(acc.boxes, skip_mats=(10,), fill=acc.fill)   # v11 (the user's photo: parts that nearly met): tools/blender/arch/connect.py
             if nm: miss.append(f'{key}: {len(nm)} (python3 tools/blender/arch/connect.py {key})')
@@ -40,8 +40,8 @@ def main():
             D, X, n = export_room(key, acc, lit, os.path.join(work, key + '.json'), glow=glow, occ=occ, screen=scr, probes=probes, is_hall=True,
                                   extra={'hall': hall['id'], 'y0': hall['y0'], 'panels': panels})
         else:
-            acc, glow, lit, extra = rooms.build(key, S)
-            D, X, n = export_room(key, acc, lit, os.path.join(work, key + '.json'), glow=glow, extra=extra)
+            acc, glow, lit, extra = rooms.build(key, S); extra = dict(extra or {}); scr = extra.pop('screen', None)   # v14e a private screen's picture bakes as a light layer, as a hall's
+            D, X, n = export_room(key, acc, lit, os.path.join(work, key + '.json'), glow=glow, extra=extra, screen=scr, is_hall=scr is not None)
         json.dump(X, open(os.path.join(outx, key + '_x.json'), 'w'), separators=(',', ':'))
         print(f'{key}: {n // 3} triangles, {len(lit.L) // 14} lights, {len(glow.P) // 3} glow triangles ({time.time() - t0:.1f}s)', flush=True)
 

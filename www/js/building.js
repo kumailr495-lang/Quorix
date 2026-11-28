@@ -102,20 +102,35 @@ for (const side of [-1, 1]) {
       ceil: Math.round(Math.min(under ? L1 - 0.45 : 99, Math.max(3.2, top + 2.9)) * 100) / 100, flights });
   }
 }
-// v14d the LUMIÈRE Suite (the user, 11-26: private theatres, "house (fake home illusion, bed + TV/projector) ... an actual 3D modelled
-// remote ... no tablet in room ones"): the flat built in v14 (tools/blender/arch/home14.py) as the cinema's private suite, set apart from the
-// building like a top floor; you go up from the lobby by its own lift (a fade) and come down the same way. The east room is the home cinema.
-export const HOME = { x0: 300, x1: 322, z0: 0, z1: 11, ceil: 3.2, split: 316, door: { x: 309, z: 11, w: 1.0 }, cinemaDoor: { x: 316, z: 9.6, w: 1.0 },
-  inside: { x: 309, z: 10.2, yaw: 0 }, out: { x: 14.5, z: 4.4, yaw: Math.PI }, riser: { z0: 6.3, z1: 8.9, y: 0.25 } };
+// v14e the private screens (the user, 11-27: "the home should be in theatre as you can rent it and you should not be able to edit it ...
+// there should be home, jungle, winter, drive in, space"; "the home is not in the main theatre rather it teleports you there"). A wing
+// reached from the lobby by its own lift: two identical enclosed cars, the lobby's and the wing's; you ride one with its doors shut and
+// step out of the other (private.js), so the wing can stand apart from the building like the floor a real lift takes you to. Five
+// screening rooms open off its lounge, each a show hall of its own (film9: your videos, songs, links, house films), rented for your visit.
+// Each room's picture is a plane across z at screen.x, like the big halls' (f = +1: the room lies to -x of it, -1: to +x).
+export const VIP = { x0: 200, x1: 224, z0: -20, z1: 0, ceil: 4.2, pod: { x: 212, z: -2.3, yaw: 0, r: 1.25 }, lobbyPod: { x: 20.15, z: 15.6, yaw: -Math.PI / 2, r: 1.25 } };
+export const PRIVATE = [
+  { id: 'HOME', key: 'pvHome', theme: 'home', name: 'HOME', price: 400, x0: 185, x1: 200, z0: -10, z1: 0, ceil: 4.6, f: -1, screen: { x: 185.65, zc: -5, W: 7.2, H: 3.5, hB: 0.9 }, riser: { d0: 8.4, d1: 11.4, y: 0.28 }, door: { x: 200, z: -5, w: 1.8 } },
+  { id: 'JUNGLE', key: 'pvJungle', theme: 'jungle', name: 'JUNGLE', price: 450, x0: 185, x1: 200, z0: -20, z1: -10, ceil: 5.2, f: -1, screen: { x: 185.65, zc: -15, W: 7.2, H: 3.5, hB: 1.0 }, riser: { d0: 8.4, d1: 11.4, y: 0.28 }, door: { x: 200, z: -15, w: 1.8 } },
+  { id: 'WINTER', key: 'pvWinter', theme: 'winter', name: 'WINTER', price: 450, x0: 224, x1: 239, z0: -10, z1: 0, ceil: 4.8, f: 1, screen: { x: 238.35, zc: -5, W: 7.2, H: 3.5, hB: 0.9 }, riser: { d0: 8.4, d1: 11.4, y: 0.28 }, door: { x: 224, z: -5, w: 1.8 } },
+  { id: 'SPACE', key: 'pvSpace', theme: 'space', name: 'SPACE', price: 500, x0: 224, x1: 239, z0: -20, z1: -10, ceil: 5.0, f: 1, screen: { x: 238.35, zc: -15, W: 7.2, H: 3.5, hB: 1.0 }, riser: { d0: 8.4, d1: 11.4, y: 0.28 }, door: { x: 224, z: -15, w: 1.8 } },
+  { id: 'DRIVE', key: 'pvDrive', theme: 'drive', name: 'DRIVE-IN', price: 500, x0: 194, x1: 230, z0: -48, z1: -20, ceil: 11.0, f: -1, screen: { x: 195.4, zc: -34, W: 17.0, H: 7.6, hB: 1.8 }, riser: null, door: { x: 222, z: -20, w: 2.4 } },
+];
+export const PRIVATE_BY_ID = Object.fromEntries(PRIVATE.map((p) => [p.id, p]));
+// their doors on the lounge's walls: a pair of leaves each, locked until you rent the room (private.js opens them for you then)
+for (const p of PRIVATE) DOORS.push({ id: 'pv' + p.id, rooms: ['vip', p.key], kind: 'pair', axis: p.theme === 'drive' ? 'x' : 'z', x: p.door.x, z: p.door.z, w: p.door.w, h: 2.5, y: 0, priv: p.id });
+// a private room's own frame, as a hall's: u across the picture (to the viewer's right), d from the picture plane into the room
+for (const p of PRIVATE) { const f = p.f; p.toWorld = (u, d) => ({ x: p.screen.x - f * d, z: p.screen.zc + f * u }); p.toLocal = (x, z) => ({ u: (z - p.screen.zc) * f, d: (p.screen.x - x) * f }); p.depth = Math.abs((f > 0 ? p.x0 : p.x1) - p.screen.x); }
 // rooms: kind drives the Blender builder; level = the lowest floor in it; vis = rooms drawn when you are in it (portal culling)
 export const ROOMS = {
   street: { kind: 'street', level: 0, rect: [STREET.x0, STREET.z0, STREET.x1, STREET.z1], outdoor: true, vis: ['lobby'] },
   lobby: { kind: 'lobby', level: 0, rect: [LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], ceil: LOBBY.ceil, vis: ['street', 'wc', 'corridor', 'spine'] },
   wc: { kind: 'wc', level: 0, rect: [WC.x0, WC.z0, WC.x1, WC.z1], ceil: WC.ceil, vis: ['lobby'] },
-  home: { kind: 'home', level: 0, rect: [HOME.x0, HOME.z0, HOME.x1, HOME.z1], ceil: HOME.ceil, vis: [] },
   corridor: { kind: 'corridor', level: L1, rect: [BRIDGE.x0, LINK_W.z0, BRIDGE.x1, BRIDGE.z1], ceil: L1 + 4.2, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
+  vip: { kind: 'vip', level: 0, rect: [VIP.x0, VIP.z0, VIP.x1, VIP.z1], ceil: VIP.ceil, vis: PRIVATE.map((p) => p.key) },
   spine: { kind: 'spine', level: 0, rect: [SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], ceil: SPINE.ceil, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
 };
+for (const p of PRIVATE) ROOMS[p.key] = { kind: 'private', pid: p.id, level: 0, rect: [p.x0, p.z0, p.x1, p.z1], ceil: p.ceil, vis: ['vip'] };
 for (const h of Object.values(HALL)) {
   const a = h.toWorld(-h.width / 2, -1.25), b = h.toWorld(h.width / 2, h.depthIn);
   ROOMS[h.key] = { kind: 'hall', hall: h.id, level: h.y0, rect: [Math.min(a.x, b.x), Math.min(a.z, b.z), Math.max(a.x, b.x), Math.max(a.z, b.z)], ceil: h.ceil, vis: ['corridor', 'spine'] };

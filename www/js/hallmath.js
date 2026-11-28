@@ -119,6 +119,7 @@ export function makeHall(s) {
   // the rake (people walking the side aisles stay below the picture). Local y (above the front floor); halls.py and film9.js read this.
   if (s.panels) { const d0 = Math.max(0, h.screenD(s.width / 2)), d1 = depthIn * 0.74, W2 = s.width / 2 - 0.3;
     h.sideScreen = { d0, d1, yb0: s.hB, yb1: Math.max(s.hB, hallFloor(h, W2, d1) + 2.4), yt: s.hB + H }; }
+  h.vip = vipLayout(h);
   return h;
 }
 // v12b Dolby Atmos (the user, 11-18: "make sure about ... dolby atmos"): two rows of overhead speakers over the seats, clear of each
@@ -143,6 +144,28 @@ export function hallSeats(h) {
 }
 // floor height (above the hall's front floor) at local (u, d): row platforms, the side aisles' steps (each riser split into equal steps
 // taken out of the lower platform, in front of the riser), the rear aisle level with the last row
+// v14e VIP boxes (the user, 11-27, with photos of Dubai's IMAX: curved walnut boxes with lit edges over the rear rows; "do it for every one
+// of the halls"): a gallery along the rear wall GY over the rear aisle, a stair up to it that starts just past the entrance door and climbs
+// along the rear wall towards the middle, and five boxes in front of the gallery from there to the far wall, rented for the visit (vip.js;
+// 11-28 the user: plain premium boxes in every hall, the themes are the private screens' own). Box 1 is the one nearest the stair. halls.py builds them from this, world9.js walks on it. Local frame: u across (to the viewer's right), d from the picture,
+// y above the hall's front floor (y0); the rear aisle is at total. s: the door's side; the stair climbs towards -s.
+export function vipLayout(h) {
+  const GY = 3.0, GD = 1.3, BD = 3.0, n = 17, rise = GY / n, tread = 0.27, run = (n - 1) * tread, W2 = h.width / 2, s = Math.sign(h.entryU) || 1;
+  const depth = h.depthIn, top = h.total, u0 = h.entryU - s * 1.3, u1 = u0 - s * run, uG = u1 - s * 1.0;   // past the door's opening and jamb; a landing at the top
+  const a = s > 0 ? -(W2 - 0.4) : uG + 0.3, b = s > 0 ? uG - 0.3 : W2 - 0.4, g = 0.5, bw = (b - a - 4 * g) / 5;
+  const boxes = [0, 1, 2, 3, 4].map((i) => { const ua = a + i * (bw + g), ub = ua + bw; return { i, n: s > 0 ? 5 - i : i + 1, u0: ua, u1: ub, uc: (ua + ub) / 2, d0: depth - GD - BD, d1: depth - GD, rc: Math.min(1.1, bw / 2 - 0.3) }; });
+  return { GY, GD, BD, y: top + GY, s, stair: { u0, u1, d0: depth - GD, d1: depth, n, rise, tread, run }, gallery: { u0: s > 0 ? -(W2 - 0.12) : u1, u1: s > 0 ? u1 : W2 - 0.12, d0: depth - GD, d1: depth }, boxes };
+}
+// the floor of the VIP level at (u, d) in the hall's frame for feet at local height yl: the stair (solid to the aisle), the gallery and the
+// boxes (only when you are up there: under them runs the rear aisle); null where there is none
+export function vipFloor(h, u, d, yl) {
+  const V = h.vip; if (!V) return null; const S = V.stair, top = h.total, lo = Math.min(S.u0, S.u1), hi = Math.max(S.u0, S.u1);
+  if (d >= S.d0 && d <= S.d1 + 0.05 && u >= lo - 0.02 && u <= hi + 0.02) { const t = (S.u0 - u) * V.s / S.tread, i = Math.floor(t); return top + Math.max(0, Math.min(S.n - 1, i + 1)) * S.rise; }
+  if (yl < top + V.GY * 0.5) return null;
+  const G = V.gallery; if (d >= G.d0 - 0.02 && d <= G.d1 + 0.05 && u >= G.u0 - 0.02 && u <= G.u1 + 0.02) return V.y;
+  for (const b of V.boxes) if (d >= b.d0 - 0.05 && d <= b.d1 + 0.02 && u >= b.u0 - 0.05 && u <= b.u1 + 0.05) return V.y;
+  return null;
+}
 export function hallFloor(h, u, d) {
   let { a, e } = h.toRow(u, d); if (h.rowK && Math.abs(a) > h.aisle[1]) { e = h.edgeE(d); a = Math.sign(a) * (h.aisle[1] - 0.01); }   // v14c the straight steps past the aisle
   const rows = h.rows, aa = Math.abs(a), inAisle = aa >= h.aisle[0] - 0.05;

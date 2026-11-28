@@ -1,0 +1,20 @@
+{
+ "room": "pvWinter",
+ "res": 2048,
+ "hall": true,
+ "hash": "v9.af94aae4054a",
+ "maps": [
+  "pvWinter_h.png",
+  "pvWinter_f.png",
+  "pvWinter_s.png"
+ ],
+ "scale": [
+  1.8385899372100845,
+  0.2700240304209534,
+  1.000873327255249
+ ],
+ "avg": 0.029842647925659355,
+ "glb": "pvWinter.glb",
+ "verts": 3780,
+ "tris": 1260
+}
