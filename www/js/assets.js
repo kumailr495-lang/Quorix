@@ -78,7 +78,8 @@ function prepare(scene, name) {
 export const TWO_SIDED = { sofa_curve: [17], rope_velvet: [0], lamp_post: [3], bollard_light: [1], // v10 (seethru.mjs --assets): the 3D letters and hall numbers are open at the back, a tap and a restroom part too
   letters_lumiere_lit: [0, 1], letters_max: [0, 1], letters_curve: [0, 1], letters_classic: [0, 1], letters_x270: [0, 1], num_1: [0, 1], num_2: [0, 1], num_3: [0, 1], num_4: [0, 1], tap_brass: [0, 1, 2], car_taxi: [80, 81, 90, 91], car_sedan: [80, 81],
   // v14b (the user, 11-26: "hollow", photos looking down on the lounge furniture): the photoscans are open shells (no underside, open seams)
-  scan_chesterfield: [0], scan_armchair: [0, 1], scan_coffee_table: [0], scan_cine_camera: [0, 1], scan_concrete_table: [0], food_popcorn: [0, 1, 2, 3, 4, 5] };
+  scan_chesterfield: [0], scan_armchair: [0, 1], scan_coffee_table: [0], scan_cine_camera: [0, 1], scan_concrete_table: [0], food_popcorn: [0, 1, 2, 3, 4, 5],
+  bed_modern: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] };   // v14e the Home screen's bed (the v14 flat's model): its duvet, pillows and throw are open shells
 const CHECK = typeof location !== 'undefined' && /[?&]assetcheck=1/.test(location.search);
 // ?assetcheck=1: the open edges of a glTF node are counted over all its primitives together. A mesh with several materials comes in as one
 // primitive per material, and each of those is open along its seams with the others (a car's paint, trim and glass) while the whole is

@@ -192,7 +192,7 @@ async function boot() {
   // v14 (the user, 11-21: "the armrest tablet ... appears out of seat"): in your seat the tablet rises out of the armrest on its arm first
   const armTab = new ArmTablet(world);
   { const open0 = tablet.open.bind(tablet), close0 = tablet.close.bind(tablet);
-    tablet.open = (tab, o = {}) => { const s = player.seated && ticket ? seatOf(ticket) : null, h = s && s.npc === 'player' && world.hallById(ticket.hall);   // v14e only from the seat you sit in (not from a VIP box's sofa)
+    tablet.open = (tab, o = {}) => { const hh = player.seated && room && room.startsWith('hall') ? world.hallByKey(room) : null, s = hh ? hh.seats.find((q) => q.npc === 'player') || null : null, h = s && hh;   // v14e the seat you sit in, ticket or not   // v14e only from the seat you sit in (not from a VIP box's sofa)
       if (s && h && room === h.key && !o.server && !armTab.group.visible) { sound.tablet && sound.tablet(true); armTab.show(h, s, () => open0(tab, o)); return; } open0(tab, o); };
     tablet.close = () => { close0(); armTab.hide(); }; }
   // v14e (the user, 11-27: "the home should be in theatre as you can rent it"; Dubai's IMAX VIP boxes, "for every one of the halls"): the
@@ -205,13 +205,13 @@ async function boot() {
     if (!ok) { ui.toast(t('vip.short', { name: nm, price: credits.fmt(price) }), 2800, 'error'); return; }
     sound.click(); ui.toast(t('vip.yours', { name: nm }), 4600); career.event && career.event('vip');
   }
-  function takeRemote(box) { if (remote.held) return; box.remote.m.visible = false; remoteBox = box; remote.pickUp(); ui.toast(t('vip.remoteHint'), 3600); }
-  function dropRemote() { if (!remote.held) return; remote.putDown(); if (remoteBox) remoteBox.remote.m.visible = true; remoteBox = null; }
+  function takeRemote(box) { if (remote.held) return; box.remote.m.visible = false; box.remote.m.userData.away = true; remoteBox = box; remote.pickUp(); ui.toast(t('vip.remoteHint'), 3600); }
+  function dropRemote() { if (!remote.held) return; remote.putDown(); if (remoteBox) { remoteBox.remote.m.userData.away = false; remoteBox.remote.m.visible = true; } remoteBox = null; }
   // v14e the private screens: rent at the door (Quick play opens them free), the remote on the table, the phone's Go (rent, then a fade in)
   function rentPrivate(id) { const p = BLD.PRIVATE.find((q) => q.id === id), nm = t('vip.' + p.theme), ok = privates.rent(id, (pr) => game === 'quick' || credits.spend(pr, 'pv:' + p.theme), game === 'flow');
     if (!ok) { ui.toast(t('vip.short', { name: nm, price: credits.fmt(p.price) }), 2800, 'error'); sound.liftDeny && sound.liftDeny(); return; }
     sound.click(); ui.toast(t('pv.yours', { name: nm }), 4200); career.event && career.event('vip'); }
-  function takeRemotePv(R) { if (remote.held) return; R.m.visible = false; remoteBox = { remote: R, pv: R.h }; remote.pickUp(); ui.toast(t('vip.remoteHint'), 3600); }
+  function takeRemotePv(R) { if (remote.held) return; R.m.visible = false; R.m.userData.away = true; remoteBox = { remote: R, pv: R.h }; remote.pickUp(); ui.toast(t('vip.remoteHint'), 3600); }
   function pvGo(h) { const id = h.p.id; if (!privates.isRented(id)) { rentPrivate(id); if (!privates.isRented(id)) return; } const e = privates.entry(h); dropRemote(); if (player.seated) stand(); travel(e.x, e.z, e.yaw, null, 0); }
   // the phone's VIP app: rent (if not yet yours), then a quick fade into the box, facing the picture
   // v14e (the user, 11-27: "an option to teleport to other theatres quickly"): the phone's screens row works in Story too, once you are past the
@@ -601,7 +601,7 @@ async function boot() {
   else { const sn = snapLoad(); if (sn && settings.lang) setTimeout(() => resumeSnap(sn), 900 + hold); }
   window.__lumiere = { THREE, vip, remote, privates, engine, world, player, shows, sound, voice, intro, traffic, ui, crowd, together, input, talk, mats, director, settings, bill, booking, tablet, guide, life, credits, phone, career, jobs, buildMs: performance.now() - t0,
     get ticket() { return ticket; }, get game() { return game; }, get mode() { return mode; }, book: (tk) => bought(tk), jumpToSeat, ringBell, sitSeat, sitSpot, startTalk, takeItem, useItem, binItem, enterPlay, toMenu, newGame, remotePlay,
-    B: BLD, recliner, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, ready: true };
+    B: BLD, recliner, pose: (p) => { dbg = p; }, debugCam: (c) => { dbg = c ? [c.p[0], c.p[1], c.p[2], 0, 0] : null; }, sitSeat: (q) => sitSeat(q), ready: true };
   // the phone bench (docs/V9-AUDIT.md, "Device check"): a fixed camera route through every room with frame times, draws and triangles
   if (Q.get('bench')) import('./bench.js').then((m) => setTimeout(() => m.runBench(window.__lumiere), 2600)).catch((e) => console.error('[bench]', e));
 }

@@ -27,7 +27,11 @@ Blender checks, not on the phone. Flicker, frame rate, sound, the camera and tou
 6. **The tablet sending you to the MAX.** It never picks a hall for you now. Films, streams and your videos show a Play in row: the hall
    you are in is chosen; elsewhere you choose. The phone's screens row (one tap to any hall) now works in Story too once you are past
    the ticket gate.
-7. **Lag.** The halls' far rows use a third, lighter seat model (about 30 % of the second); the VIP boxes use the light armrests.
+7. **Lag.** The halls' far rows use a third, lighter seat model (about 30 % of the second); the VIP boxes use the light armrests; the
+   remotes lying in boxes and rooms are flat copies (2 draws each instead of 26) and exist only where you rented. Measured in the
+   headless engine (Medium): lobby 125-192 draws and 0.63-0.67 M triangles, the corridor 119 draws and 0.45 M, the street 223 draws
+   and 0.57 M, the MAX from a seat 30 draws and 0.39 M (the gallery 0.23 M). The lobby is still the heaviest view: frame rate needs
+   your phone.
 8. **The escalators' start.** Each step's tread reaches 38 cm ahead of its edge, so when it dropped under the comb plate it was still
    in sight: a 6 cm jump at the bottom and the top. The steps now slide under the plates level.
 9. **The intro's sound delay and the taxi's tyres.** The sounds are decoded while the game loads (they waited for your first tap, then
@@ -37,7 +41,29 @@ Blender checks, not on the phone. Flicker, frame rate, sound, the camera and tou
     answers. The room bar is Chat, Mic and Emote (wave, clap, cheer, dance). The console errors came from relays in Trystero's default
     list that no longer exist (404, 502): the game now uses six large public relays that answered from here.
 11. **Layout and emptiness.** Every hero view (lobby, street, mezzanine, corridor, halls, restrooms, the private floor) was rendered and
-    reviewed; see the changes listed below.
+    reviewed. The private floor and the VIP galleries are the additions; the private lift first stood inside the east waiting area and
+    was moved to the glass corner (the olive tree that stood in front of its doors is gone). The lobby itself was not refurnished.
+
+## Your last message (11-28)
+12. **Home feels like a home.** Bedside tables with lamps on both sides of the bed, a round rug under it, an armchair reading corner,
+    three more plants and two framed paintings, on top of the sofa, coffee table, shelves, speakers and lamps.
+13. **The private lift is easier to see.** A lit ring on the floor round it (open at its doors), a bigger PRIVATE SCREENS sign over the
+    doors, and inside a lit display in a black bezel that says where it goes (▲ PRIVATE FLOOR or ▼ LOBBY). It rides: the doors close,
+    it hums, the doors open on the other floor.
+14. **Brighter private rooms.** Space 0.40 → 0.72, Home 0.50 → 0.62, Jungle 0.42 → 0.58, Winter 0.50 → 0.60, Drive-in 0.34 → 0.45,
+    the lounge 0.62 → 0.70 (room light levels).
+15. **Hide controls without pausing.** An eye button in the top right hides the controls; the faint eye brings them back.
+16. **The armrest tablet** rises out of the armrest of whatever seat you sit in (Quick play and seats without a ticket too).
+17. **VIP galleries without z-fighting.** The stair's cheek wall, the gallery parapet's caps and the boxes' caps no longer share planes
+    with their neighbours; the four halls were rebuilt and re-baked.
+
+## Not in 14.3 (said plainly)
+- Sitting in the cars and car interiors, and walkable corridors to the private floor (it is reached by the lift ride): not built.
+- ScreenX: unchanged from 14.2.
+- Films with no sound: one cause is fixed. When the WebView decodes no sound (AC-3, E-AC-3 or DTS audio, common in downloaded films),
+  the app hands the sound to the phone's own player; that check ran once, 4 s after the picture, and a film still loading or paused
+  then never got it. It now looks again every 2 s for a minute. If the phone's own player cannot decode the sound either (many phones
+  have no Dolby or DTS decoder), the film stays silent and a message says so. Files with AAC, MP3 or Opus sound always play.
 
 # LUMIÈRE 14.2 (2026-11-27)
 

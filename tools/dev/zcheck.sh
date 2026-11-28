@@ -13,6 +13,11 @@ node tools/dev/seethru.mjs "$OUT" --no-static --step 1.0 --dump-points "$OUT/eye
 node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi kerb --dump-tris "$OUT/engine.json"
 "$B" --background --factory-startup --python tools/blender/arch/zcheck.py -- --eyes "$OUT/eyes.json" --engine "$OUT/engine.json" --json "$OUT/z.json" \
   2>&1 | grep -vE '^(Blender|Read |$)'
+# v14e the private floor: reached by the lift, so it has its own eye points (a 0.5 m grid, seated at every sit spot), every screen rented
+node tools/dev/wingz.mjs "$OUT"
+echo "== the private floor"
+"$B" --background --factory-startup --python tools/blender/arch/zcheck.py -- --eyes "$OUT/wing_eyes.json" --engine "$OUT/wing_engine.json" \
+  --json "$OUT/zwing.json" vip pvHome pvJungle pvWinter pvSpace pvDrive 2>&1 | grep -vE '^(Blender|Read |$)'
 # v11 W5: the taxi's cabin, seen from the back seat during the Story arrival (never drawn with the taxi's outside)
 node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi cabin --dump-points "$OUT/cabin_eyes.json"
 node tools/dev/seethru.mjs "$OUT" --no-static --grid --taxi cabin --dump-tris "$OUT/cabin.json"

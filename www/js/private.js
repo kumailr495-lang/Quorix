@@ -25,7 +25,10 @@ function kit(p) {
       ['side_table', -2.45, 5.6, 0, {}], ['side_table', 2.45, 5.6, 0, {}], ['table_lamp', -2.45, 5.6, 0.85, { collide: false }], ['table_lamp', 2.45, 5.6, 0.85, { collide: false }],
       ['bed_modern', 0, rd + 0.1, R, { swap: { velvet_charcoal: [LEATHER, [0.46, 0.27, 0.15]], wool_charcoal: [VELVET, [0.6, 0.5, 0.38]] } }], ['speaker_tower', -4.1, 1.15, 0, {}], ['speaker_tower', 4.1, 1.15, 0, {}],
       ['shelf_unit', -4.55, 7.0, 0, { yaw: Math.PI / 2 }], ['shelf_unit', 4.55, 7.0, 0, { yaw: -Math.PI / 2 }], ['planter_tall', -4.3, 12.9, 0, {}], ['planter_tall', 4.3, 12.9, 0, {}],
-      ['torchere_deco', -3.7, 11.9, 0, { collide: false }], ['torchere_deco', 3.7, 11.9, 0, { collide: false }]];
+      ['torchere_deco', -3.7, 11.9, 0, { collide: false }], ['torchere_deco', 3.7, 11.9, 0, { collide: false }],
+      ['side_table', -1.55, rd + 0.9, R, {}], ['side_table', 1.55, rd + 0.9, R, {}], ['table_lamp', -1.55, rd + 0.9, R + 0.85, { collide: false }], ['table_lamp', 1.55, rd + 0.9, R + 0.85, { collide: false }],
+      ['rug_round', 0, rd, R, { scale: 0.9, collide: false, swap: { velvet_navy: [VELVET, [0.55, 0.42, 0.3]], carpet_deco: [VELVET, [0.42, 0.3, 0.2]] } }],
+      ['scan_armchair', -3.6, 3.2, 0, { yaw: 0.6 }], ['planter_tall', -4.3, 2.0, 0, {}], ['planter_tall', 4.3, 2.0, 0, {}], ['planter_tall', 4.3, 8.6, 0, {}]];
     case 'jungle': return [['scan_lounge_chair', -2.1, 5.4, 0, {}], ['scan_lounge_chair', 0, 5.4, 0, {}], ['scan_lounge_chair', 2.1, 5.4, 0, {}],
       ['scan_lounge_chair', -1.1, rd, R, {}], ['scan_lounge_chair', 1.1, rd, R, {}], ['olive_tree', -3.6, 2.2, 0, { scale: 0.8, collide: false }], ['olive_tree', 3.6, 2.2, 0, { scale: 0.8, collide: false }],
       ['planter_tall', -4.4, 4.0, 0, {}], ['planter_tall', 4.4, 4.0, 0, {}], ['planter_tall', -4.4, 7.2, 0, {}], ['planter_tall', 4.4, 7.2, 0, {}], ['planter_tall', -4.4, 12.6, 0, {}], ['planter_tall', 4.4, 12.6, 0, {}],
@@ -171,21 +174,25 @@ export class Privates {
   }
   // the remote on a side table near the front row (or on the coffee table)
   _remote(h) { const p = h.p, spot = { home: [0, 3.9, 0.49], jungle: [3.15, 5.4, 0.85], winter: [0, 5.75, 0.85], space: [1.05, 5.4, 0.85], drive: [0, 10.6, 0.85] }[p.theme], w = p.toWorld(spot[0], spot[1]);
-    const r = makeRemote(); r.position.set(w.x, spot[2] + 0.003, w.z); r.rotation.y = faceYaw(p) + 0.4; r.name = 'pv-remote'; h.room.group.add(r); this.remotes[p.id] = { m: r, at: { x: w.x, y: spot[2] + 0.02, z: w.z }, h }; }
+    const r = makeRemote({ flat: true }); r.visible = false; r.position.set(w.x, spot[2] + 0.003, w.z); r.rotation.y = faceYaw(p) + 0.4; r.name = 'pv-remote'; h.room.group.add(r); this.remotes[p.id] = { m: r, at: { x: w.x, y: spot[2] + 0.02, z: w.z }, h }; }
   // ---------------------------------------------------------------- the lift cars
   _pod(roomKey, x, z, yaw, dir) {
     const room = this.world.rooms[roomKey], grp = new THREE.Group(); grp.position.set(x, 0, z); grp.rotation.y = yaw; grp.updateMatrixWorld(true); grp.name = 'pv-lift-' + roomKey; room.group.add(grp);
     const bake = (acc) => { const g = toGeometry(acc); g.applyMatrix4(grp.matrixWorld); room.lights.bake(g); g.applyMatrix4(grp.matrixWorld.clone().invert()); return new THREE.Mesh(g, this.world.mats.litFor(room.U, g)); };
     grp.add(bake(podShell()));
     const glow = new THREE.Mesh(new THREE.RingGeometry(POD_R - 0.4, POD_R - 0.3, 48), new THREE.MeshBasicMaterial({ color: 0xffd6a0, toneMapped: false })); glow.rotation.x = Math.PI / 2; glow.position.y = POD_H - 0.006; grp.add(glow);
+    const fl = new THREE.Mesh(new THREE.RingGeometry(POD_R + 0.35, POD_R + 0.45, 64, 1, -(Math.PI - GAP - 0.25), 2 * (Math.PI - GAP - 0.25)), new THREE.MeshBasicMaterial({ color: 0xffc070, toneMapped: false })); fl.rotation.x = -Math.PI / 2; fl.rotation.z = Math.PI / 2; fl.position.y = 0.008; grp.add(fl);   // a lit ring on the floor round the car (open in front of its doors)
+    { const c2 = makeCanvas(512, 128), g2 = c2.getContext('2d'); g2.fillStyle = '#050505'; g2.fillRect(0, 0, 512, 128); g2.fillStyle = '#ffb347'; g2.font = `600 52px ${SANS}`; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.__fit = [12, 500]; g2.fillText(dir === 'up' ? '\u25B2  PRIVATE FLOOR' : '\u25BC  LOBBY', 256, 66); g2.__fit = null;
+      const t2 = new THREE.CanvasTexture(c2); t2.colorSpace = THREE.SRGBColorSpace; const ind = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.2), new THREE.MeshBasicMaterial({ map: t2, toneMapped: false })); ind.position.set(0, POD_H - 0.32, -1.15); grp.add(ind);
+      const bz = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.26, 0.06), new THREE.MeshBasicMaterial({ color: 0x0b0a0a })); bz.position.set(0, POD_H - 0.32, -1.185); grp.add(bz); }   // a display in a black bezel set into the back wall (a flat panel's ends would sink into the curve)   // inside, on the back wall: where this car goes
     for (const sg of [-1, 1]) { const ang = sg * (GAP + 0.09), r = POD_R + 0.046, st = new THREE.Mesh(new THREE.PlaneGeometry(0.05, POD_H - 0.1), new THREE.MeshBasicMaterial({ color: 0xffc98a, toneMapped: false }));
       st.position.set(r * Math.sin(ang), POD_H / 2, r * Math.cos(ang)); st.rotation.y = ang; grp.add(st); }   // 6 mm off the bronze, facing out
     const leaves = [-1, 1].map((s) => { const m = bake(leafGeo()); const piv = new THREE.Group(); piv.add(m); m.rotation.y = s > 0 ? 0 : -GAP; grp.add(piv); return { piv, s }; });
     // the sign over the doors, outside: where the car goes
     const c = makeCanvas(512, 96), g = c.getContext('2d'); g.fillStyle = '#0b0a0a'; g.fillRect(0, 0, 512, 96); g.fillStyle = '#e8c27a'; g.font = `500 44px ${SERIF}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     if ('letterSpacing' in g) g.letterSpacing = '8px'; g.__fit = [16, 496]; g.fillText(dir === 'up' ? 'PRIVATE SCREENS' : 'LOBBY', 256, 50); g.__fit = null;
-    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.3), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false })); sign.position.set(0, POD_H + 0.32, POD_R + 0.125); grp.add(sign);   // 1 cm in front of its board
-    const post = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.36, 0.06), new THREE.MeshBasicMaterial({ color: 0x2a1d12 })); post.position.set(0, POD_H + 0.32, POD_R + 0.085); grp.add(post);
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.375), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false })); sign.position.set(0, POD_H + 0.32, POD_R + 0.125); grp.add(sign);   // 1 cm in front of its board
+    const post = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.44, 0.06), new THREE.MeshBasicMaterial({ color: 0x2a1d12 })); post.position.set(0, POD_H + 0.32, POD_R + 0.085); grp.add(post);
     // walls: the shell's arc (outside it, a thick ring of segments) and the doors' chord while they are shut
     const W = this.world.walls, i0 = W.S.length / 6, wp = (a) => { const r = POD_R + 0.1; const lx = r * Math.sin(a), lz = r * Math.cos(a); return [x + lx * Math.cos(yaw) + lz * Math.sin(yaw), z - lx * Math.sin(yaw) + lz * Math.cos(yaw)]; };
     for (let k = 0; k < 12; k++) { const a = GAP + (Math.PI * 2 - 2 * GAP) * k / 12, b = GAP + (Math.PI * 2 - 2 * GAP) * (k + 1) / 12, [ax, az] = wp(a), [bx, bz] = wp(b); W.add(ax, az, bx, bz, -0.1, POD_H + 0.2, 1); }
@@ -201,7 +208,7 @@ export class Privates {
   isRented(id) { return !!this.rented[id]; }
   price(id) { return PV_PRICE[id]; }
   rent(id, pay, keep = false) { if (this.rented[id]) return true; if (pay && !pay(PV_PRICE[id])) return false; this.rented[id] = true; this._doors(); if (keep) this._save(); return true; }
-  _doors() { for (const [id, d] of Object.entries(this.doors)) d.locked = !this.rented[id]; }
+  _doors() { for (const [id, d] of Object.entries(this.doors)) d.locked = !this.rented[id]; for (const [id, R] of Object.entries(this.remotes || {})) R.m.visible = !!this.rented[id] && !R.m.userData.away; }   // a remote only in a rented room
   setMode(story) { this.rented = {}; if (story) for (const k of this._load()) this.rented[k] = true; this._doors(); }
   _day() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
   _load() { try { const o = JSON.parse(localStorage.getItem('lumiere.pv.v1') || 'null'); return o && o.day === this._day() && Array.isArray(o.keys) ? o.keys.filter((k) => typeof k === 'string' && PV_PRICE[k]) : []; } catch (e) { return []; } }

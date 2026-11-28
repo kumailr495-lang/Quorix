@@ -67,7 +67,7 @@ export class VIP {
   // a remote on the box's side (it plays the hall's show for you once the box is yours)
   _remote(box) {
     // on the box's right-hand ledge (the parapet's cap, 0.89 m up), along it, half way back
-    const { h, b, room } = box, r = makeRemote(), q = at(h, b, box.w / 2, 1.5); r.position.set(q.x, q.y + 0.893, q.z); r.rotation.y = h.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    const { h, b, room } = box, r = makeRemote({ flat: true }), q = at(h, b, box.w / 2, 1.5); r.visible = false; r.position.set(q.x, q.y + 0.893, q.z); r.rotation.y = h.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
     r.traverse((o) => { if (o.material && o.name.startsWith('hit:')) o.visible = false; }); r.name = 'vip-remote'; room.group.add(r); box.remote = { m: r, at: { x: q.x, y: q.y + 0.91, z: q.z } };
   }
   // keep: a Story rental, kept on this phone until midnight (Quick play's free boxes are not kept)
@@ -76,7 +76,7 @@ export class VIP {
     this.rented[box.key] = true; this._rope1(box); if (keep) this._save(); return true;
   }
   // the rope up (solid) or down (put away) for the box's state
-  _rope1(box) { const W = this.world.walls, R = box.rope, on = !this.rented[box.key]; R.m.visible = on;
+  _rope1(box) { const W = this.world.walls, R = box.rope, on = !this.rented[box.key]; R.m.visible = on; if (box.remote) box.remote.m.visible = !on && !box.remote.m.userData.away;   // the remote lies there only in a rented box
     if (!R.ys) { R.ys = []; for (let i = R.i0; i < R.i1; i++) R.ys.push(W.S[6 * i + 4], W.S[6 * i + 5]); }
     if (on) for (let i = R.i0, k = 0; i < R.i1; i++, k += 2) { W.S[6 * i + 4] = R.ys[k]; W.S[6 * i + 5] = R.ys[k + 1]; } else W.off(R.i0, R.i1); }
   // a new game: Story brings back today's kept rentals, Quick starts with every box roped (opened free on the spot)

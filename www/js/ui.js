@@ -70,6 +70,7 @@ export class UI {
     for (const b of document.querySelectorAll('.adv-toggle')) b.addEventListener('click', (e) => { e.stopPropagation(); this.sound.click(); const box = b.nextElementSibling; box.hidden = !box.hidden; b.classList.toggle('on', !box.hidden); if (!box.hidden) box.scrollIntoView({ block: 'nearest' }); });
     tap('#tkOk', () => { this.closeModal('#ticket'); }); tap('#tkJump', () => { $('#ticket').hidden = true; this.hooks.onModal(this.modalOpen()); this.hooks.jumpToSeat(); });
     tap('#ticketChip', () => this.hooks.ticketInfo());
+    tap('#bHide', () => { this.sound.click(); this.setHidden(true); });   // v14e (the user: "we have to pause the game to hide the controls")
     tap('#psHide', () => { this.closeModal('#pause'); this.hooks.onPause && this.hooks.onPause(false); this.setHidden(true); }); tap('#bShow', () => { this.sound.click(); this.setHidden(false); });
     tap('#bMenu', () => { this.sound.click(); this.openPause(); }); tap('#psLeaveMp', () => { this.sound.click(); this.closeModal('#pause'); this.hooks.leaveRoom && this.hooks.leaveRoom(); }); tap('#bRemote', () => { this.sound.click(); this.hooks.openRemote(); }); tap('#bBell', () => { this.hooks.ringBell(); });
     tap('#psResume', () => { this.closeModal('#pause'); this.hooks.onPause && this.hooks.onPause(false); }); tap('#psSettings', () => { $('#pause').hidden = true; this.openSettings(); this._fromPause = true; }); tap('#psQuit', () => { this.closeModal('#pause'); this.hooks.onQuit(); });

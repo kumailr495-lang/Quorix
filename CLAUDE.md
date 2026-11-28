@@ -137,6 +137,10 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - **Sound**: sound9 decodes the recordings while the game loads (OfflineAudioContext) and hands them to the live context at the tap.
 - **Multiplayer**: mpui.js panel = two cards, then a room view (`stateLine`), the bar = Chat, Mic, Emote; mp.js `RELAYS` (six relays that
   answered on 11-28; Trystero's default list had dead ones).
+- **14.3 last pass** (the user, 11-28, 20 % usage left): Home dressed (bedside tables + lamps, rug_round, armchair, plants, two paintings
+  `PIC({ room: 'pvHome' ... })`), the lift: floor ring open at the doors (RingGeometry theta 0 = the car's back after the x/z turns),
+  bigger sign, in-car display in a bezel; the east olive tree removed (it blocked the lift); LEVEL raised for pv rooms; HUD `#bHide`;
+  main.js tablet.open finds the seat you sit in (`s.npc === 'player'`), not the ticket's; film9 no-sound check retries every 2 s.
 - **Lessons**: editing a running shell script (bake9.sh) breaks the run at its end (the bakes were done; check with check-bakes); a `// `
   comment pasted into a one-line statement swallows the rest of the line: run `node tools/dev/lint-comments.mjs www/js/*.js` after every
   batch of edits (it caught three); point sprites sized in pixels at 1 m blew up into blobs (size them in metres).

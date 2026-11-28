@@ -460,7 +460,8 @@ def vip_level(acc, glow, lit, h, th, gq, W2, depth, top, ceil):
     lit.line((u0 - s * 0.3, top + 0.15, S['d0'] + 0.6), (u1 + s * 0.3, top + (n - 1) * rise + 0.15, S['d0'] + 0.6), AMB, 0.05, 1.5, 'f', (s, -0.3, 0))
     # its walnut cheek wall on the hall's side, 10 cm, 2 mm into the stair; the top runs 1 m over the nosings, a light strip under the top
     yA, yB = top + rise + 1.0, Y + 1.0
-    acc.prism_z([(u0, top - 0.01), (u1, top - 0.01), (u1, yB), (u0, yA)], S['d0'] - 0.1, S['d0'] + 0.002, MAT['wood'], WAL)
+    ca, cb = u0 + s * 0.01, u1 - s * 0.01   # 1 cm past the stair's foot and top (their end faces shared its planes: zcheck)
+    acc.prism_z([(ca, top - 0.01), (cb, top - 0.01), (cb, yB), (ca, yA)], S['d0'] - 0.1, S['d0'] + 0.002, MAT['wood'], WAL)
     zg = S['d0'] - 0.106; gq((u0, yA - 0.09, zg), (u1, yB - 0.09, zg), (u1, yB - 0.05, zg), (u0, yA - 0.05, zg), (0, 0, -1), LED, 1.8)
     lit.line((u0, yA - 0.1, S['d0'] - 0.3), (u1, yB - 0.1, S['d0'] - 0.3), LED, 0.06, 2.0, 'f', (0, -0.3, -1))
     # ---- the gallery: walnut slab, carpet on top, its soffit's downlights over the rear aisle
@@ -479,10 +480,11 @@ def vip_level(acc, glow, lit, h, th, gq, W2, depth, top, ceil):
     spans, cur = [], ga
     for b in bx: spans.append((cur, b['u0'] - 0.05 + 0.002)); cur = b['u1'] + 0.05 - 0.002
     spans.append((cur, gb))
+    spans = [(a - 0.012 if (s < 0 and abs(a - ga) < 1e-6) else a, c + 0.012 if (s > 0 and abs(c - gb) < 1e-6) else c) for a, c in spans]   # past the slab's end at the stair
     for a, c in spans:
         if c - a < 0.05: continue
         acc.box(a, Y - 0.1, G['d0'] + 0.006, c, Y + 0.85, G['d0'] + 0.1, MAT['wood'], WAL)   # the boxes' height: one line of caps and lights along the wall
-        acc.box(a, Y + 0.848, G['d0'] + 0.0, c, Y + 0.89, G['d0'] + 0.11, MAT['leather'], CAP)
+        acc.box(a - 0.01, Y + 0.842, G['d0'] + 0.0, c + 0.01, Y + 0.884, G['d0'] + 0.11, MAT['leather'], CAP)   # 6 mm off the boxes' caps, 1 cm past its parapet
         gq((a + 0.02, Y + 0.76, G['d0']), (c - 0.02, Y + 0.76, G['d0']), (c - 0.02, Y + 0.8, G['d0']), (a + 0.02, Y + 0.8, G['d0']), (0, 0, -1), LED, 1.8)
     # the gallery's far end (away from the stair): a parapet across it, behind the front one (2 mm into its back), 6 mm in from its end
     ea, eb = (gb - 0.1, gb - 0.006) if s < 0 else (ga + 0.006, ga + 0.1)
@@ -504,7 +506,8 @@ def vip_box(acc, gq, lit, b, Y, dback, WAL, CAP, LED):
     belly = [(-0.05 + 0.65 * (1 - math.cos(math.pi / 2 * k / 7)), Y - 0.55 * math.sin(math.pi / 2 * k / 7)) for k in range(1, 8)]
     prof = [(-0.05, Y + 0.85), (-0.05, Y)] + belly + [(0.6, Y - 0.02), (0.05, Y - 0.02), (0.05, Y + 0.85)]
     acc.sweep(P, prof, MAT['wood'], WAL, closed=True, cap=True)
-    acc.sweep(P, [(-0.06, Y + 0.89), (-0.06, Y + 0.848), (0.06, Y + 0.848), (0.06, Y + 0.89)], MAT['leather'], CAP, closed=True, cap=True)   # the cap, 2 mm into the top
+    Pc = [(P[0][0], P[0][1] + 0.01)] + P[1:-1] + [(P[-1][0], P[-1][1] + 0.01)]   # 1 cm past the tub's ends
+    acc.sweep(Pc, [(-0.06, Y + 0.89), (-0.06, Y + 0.848), (0.06, Y + 0.848), (0.06, Y + 0.89)], MAT['leather'], CAP, closed=True, cap=True)   # the cap, 2 mm into the top
     # the floor: the outline closed along the gallery's face (it abuts the gallery's floor), 2 mm under the parapet's inside edge
     fm, fc = VIP_FLOOR
     poly = [(ua, dback)] + P[1:-1] + [(ub, dback)]

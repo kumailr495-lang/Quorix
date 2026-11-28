@@ -26,15 +26,18 @@ function bodyGeo() {
   const g = new THREE.ExtrudeGeometry(s, { depth: T - 0.004, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 2, curveSegments: 6 });
   g.rotateX(-Math.PI / 2); g.translate(0, 0, 0); return g;   // the face up (+y), its top at y = T - 0.002
 }
-function faceTex() {
+function faceTex(flat = false) {
   const c = document.createElement('canvas'); c.width = 160; c.height = 544; const g = c.getContext('2d'), sx = c.width / W, sz = c.height / L, X = (x) => (x + W / 2) * sx, Z = (z) => (z + L / 2) * sz;
   const gr = g.createLinearGradient(0, 0, 0, c.height); gr.addColorStop(0, '#1c1c20'); gr.addColorStop(1, '#0f0f12'); g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
   g.strokeStyle = 'rgba(201,163,94,0.55)'; g.lineWidth = 2; g.beginPath(); g.arc(X(0), Z(0), 0.027 * sx, 0, Math.PI * 2); g.stroke();   // the brass ring round the middle keys
   g.fillStyle = '#c9a35e'; g.font = `600 ${Math.round(0.0075 * sz)}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('LUMIÈRE', X(0), Z(0.072));
   g.fillStyle = 'rgba(240,226,196,0.7)'; g.font = `500 ${Math.round(0.0045 * sz)}px Inter, sans-serif`; g.fillText('VOL', X(0), Z(0.036)); g.fillText('VIP', X(0), Z(0.081));
+  if (flat) for (const k of KEYS) { const r = k.r * sx; g.drawImage(keyTex(k.icon, k.col).image, X(k.x) - r, Z(k.z) - r, 2 * r, 2 * r); }   // the keys printed on (no key meshes)
   return new THREE.CanvasTexture(c);
 }
+const KT = new Map();
 function keyTex(icon, col) {
+  const id = icon + col; if (KT.has(id)) return KT.get(id);
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = col; g.beginPath(); g.arc(32, 32, 31, 0, Math.PI * 2); g.fill();
   g.strokeStyle = g.fillStyle = icon === 'play' ? '#1a1206' : '#f2e6cc'; g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round';
   if (icon === 'power') { g.beginPath(); g.arc(32, 34, 14, -Math.PI * 0.32, Math.PI * 1.32); g.stroke(); g.beginPath(); g.moveTo(32, 14); g.lineTo(32, 32); g.stroke(); }
@@ -43,13 +46,17 @@ function keyTex(icon, col) {
   else if (icon === 'minus' || icon === 'plus') { g.beginPath(); g.moveTo(18, 32); g.lineTo(46, 32); if (icon === 'plus') { g.moveTo(32, 18); g.lineTo(32, 46); } g.stroke(); }
   else if (icon === 'sun') { g.beginPath(); g.arc(32, 32, 8, 0, Math.PI * 2); g.fill(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(32 + Math.cos(a) * 13, 32 + Math.sin(a) * 13); g.lineTo(32 + Math.cos(a) * 19, 32 + Math.sin(a) * 19); g.stroke(); } }
   else if (icon === 'film') { g.strokeRect(17, 21, 30, 22); g.beginPath(); g.moveTo(17, 27); g.lineTo(47, 27); g.moveTo(17, 37); g.lineTo(47, 37); g.stroke(); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; KT.set(id, t); return t;
 }
 // one remote model: body, its printed face, the keys (meshes named key:<id>)
-export function makeRemote() {
-  const grp = new THREE.Group(), body = new THREE.Mesh(bodyGeo(), new THREE.MeshBasicMaterial({ color: 0x141417 })); grp.add(body);
-  const ft = faceTex(); ft.colorSpace = THREE.SRGBColorSpace; const face = new THREE.Mesh(faceGeo(), new THREE.MeshBasicMaterial({ map: ft })); face.position.y = TOP + 0.0005; grp.add(face);
-  const keys = [];
+// v14e (11-28, a draw-call count): a remote with key meshes is 26 draws; the ones lying on ledges and tables are flat (body + a face with
+// the keys printed on: 2 draws), share one geometry, texture and material set, and only the one in your hand has real keys
+const SH = {}; const shared = (k, f) => SH[k] || (SH[k] = f());
+export function makeRemote(o = {}) {
+  const grp = new THREE.Group(), body = new THREE.Mesh(shared('bg', bodyGeo), shared('bm', () => new THREE.MeshBasicMaterial({ color: 0x141417 }))); grp.add(body);
+  const fm = o.flat ? shared('ff', () => { const t = faceTex(true); t.colorSpace = THREE.SRGBColorSpace; return new THREE.MeshBasicMaterial({ map: t }); }) : (() => { const t = faceTex(); t.colorSpace = THREE.SRGBColorSpace; return new THREE.MeshBasicMaterial({ map: t }); })();
+  const face = new THREE.Mesh(shared('fg', faceGeo), fm); face.position.y = TOP + 0.0005; grp.add(face);
+  const keys = []; if (o.flat) { grp.userData.keys = keys; grp.userData.face = face; return grp; }
   for (const k of KEYS) { const m = new THREE.Mesh(new THREE.CylinderGeometry(k.r, k.r * 1.04, 0.003, 20), [new THREE.MeshBasicMaterial({ color: 0x2a2a2e }), new THREE.MeshBasicMaterial({ map: keyTex(k.icon, k.col) }), new THREE.MeshBasicMaterial({ color: 0x111111 })]);
     m.position.set(k.x, KEY_Y, k.z); m.name = 'key:' + k.id; grp.add(m); keys.push(m); }
   grp.userData.keys = keys; grp.userData.face = face; return grp;
@@ -64,7 +71,7 @@ export class Remote {
   putDown() { if (!this.held) return; this.held = false; this.inHand.visible = false; if (this.inHand.parent) this.inHand.parent.remove(this.inHand); this.sound && this.sound.click && this.sound.click(); }
   // in the right hand at the bottom right of the view, tilted towards you so its face can be read and pressed
   update(dt) { if (!this.held) return; this.k = Math.min(1, this.k + dt * 3); const e = 1 - Math.pow(1 - this.k, 3), cam = this.engine.vmCam, a = cam.aspect || 1.6;
-    this.inHand.position.set(0.05, -0.022 - (1 - e) * 0.12, -0.2); this.inHand.rotation.set(0.62, -0.14, 0.05);   // v14e higher and less tilted: at 0.86 rad its near end (the volume keys) fell off the bottom of a 62 degree view
+    this.inHand.position.set(0.085, -0.022 - (1 - e) * 0.12, -0.2); this.inHand.rotation.set(0.62, -0.14, 0.05);   // v14e higher and less tilted: at 0.86 rad its near end (the volume keys) fell off the bottom of a 62 degree view
     for (const id in this.pushT) { const m = this.inHand.userData.keys.find((q) => q.name === 'key:' + id); this.pushT[id] -= dt; if (m) m.position.y = KEY_Y - (this.pushT[id] > 0 ? 0.0012 : 0); if (this.pushT[id] <= 0) delete this.pushT[id]; } }
   // a tap at (x, y) CSS pixels: the key under it, pressed; true if a key took the tap
   tap(x, y) {

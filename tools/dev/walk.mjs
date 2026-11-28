@@ -32,6 +32,7 @@ await p.evaluate(() => {
       if (typeof act === 'string' && act.startsWith('until-lift:')) {   // stand still until the lift has arrived at that floor with its doors open (game time, not wall time)
         P.keys.KeyW = false; const f = L.world.lift, k = +act.slice(11); if (!w.t) w.t = performance.now();
         if ((f.level === k && f.state === 'idle' && f.doors[k] > 0.8) || performance.now() - w.t > 90000) { i++; lastMove = performance.now(); } requestAnimationFrame(step); return; }
+      if (act === 'pvride') { if (!L.privates.ride) L.privates.startRide(P, L.sound); w[2] = 'wait'; w[3] = 60000; }   // v14e the private lift: ride (the car-to-car jump counts as one teleport)
       if (act === 'wait') { P.keys.KeyW = false; if (!w.t) w.t = performance.now(); if (performance.now() - w.t > (w[3] || 3000)) { i++; lastMove = performance.now(); } requestAnimationFrame(step); return; }
       if (typeof act === 'string' && act.startsWith('lift:')) { L.world.lift.call(+act.slice(5)); w[2] = null; }   // press the lift's call button for that floor
       if (d < 0.35) { path_.push(`${i}:${P.x.toFixed(1)},${P.y.toFixed(2)},${P.z.toFixed(1)} ${L.world.roomAt(P.x, P.y, P.z)}`); i++; requestAnimationFrame(step); return; }
@@ -50,6 +51,16 @@ const walks = await p.evaluate(async () => {
   out.push({ label: 'street to lobby (main doors)', start: [0.6, 0, 25.2], pts: [[0.6, 22], [0, 19], [0, 15.5]], room: 'lobby', y: 0 });
   out.push({ label: 'lobby to restrooms and back', start: [18.6, 0, 3.0], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
   out.push({ label: 'lobby to the men\'s restroom and back (v14d its own door)', start: [18.6, 0, 3.0], pts: [[19.8, -4.0], [20.6, -7.0], [23.3, -7.0], [24.6, -5.9], [27, -9], [24.6, -5.9], [23.3, -7.0], [20.0, -7.0], [19.6, -4.0]], room: 'lobby', y: 0 });
+  // v14e the private floor: the lobby's lift car up to the lounge and back, and walks into two rented screens
+  { const LP = B.VIP.lobbyPod, WP = B.VIP.pod;
+    out.push({ label: 'private lift: lobby car up to the lounge', start: [LP.x - 3.4, 0, LP.z], pts: [[LP.x - 0.2, LP.z], [LP.x - 0.2, LP.z, 'pvride'], [212, -6.5]], room: 'vip', y: 0, tele: 1 });
+    out.push({ label: 'private lift: lounge car down to the lobby', start: [212, 0, -6.5], pts: [[WP.x, WP.z - 0.2], [WP.x, WP.z - 0.2, 'pvride'], [LP.x - 3.2, LP.z]], room: 'lobby', y: 0, tele: 1 });
+    out.push({ label: 'private floor: lounge into Home, round the bed to the sofa', start: [212, 0, -8], pts: [[203, -5], [199.2, -5], [197.8, -3.0], [195.6, -3.0], [193.4, -3.0], [192.6, -3.4]], room: 'pvHome', y: 0, rent: true });
+    out.push({ label: 'private floor: lounge into the drive-in', start: [216, 0, -12], pts: [[222, -18.4], [222, -21.6], [220, -24], [212, -26]], room: 'pvDrive', y: 0, rent: true });
+    out.push({ label: 'private floor: lounge into Space and back out', start: [212, 0, -12], pts: [[221, -15], [225.5, -15], [228, -13.4], [225.5, -15], [221, -15], [214, -13]], room: 'vip', y: 0, rent: true }); }
+  // v14e the VIP gallery: in at a hall's door, up the stair beside it and along the gallery to its last box
+  for (const id of ['MAX', 'CLASSIC']) { const H = B.HALL[id], V = H.vip, S_ = V.stair, dm = (S_.d0 + S_.d1) / 2, at = (u, d) => { const w = H.toWorld(u, d); return [+w.x.toFixed(3), +w.z.toFixed(3)]; }, a0 = at(H.entryU, H.depthIn - 0.7);
+    out.push({ label: `${H.key}: up the VIP stair to the gallery`, start: [a0[0], H.y0 + H.total, a0[1]], pts: [at(S_.u0 + V.s * 0.35, dm), at(S_.u1 + V.s * 0.2, dm), at(S_.u1 - V.s * 1.2, dm), at(V.boxes[V.s > 0 ? 0 : 4].uc, dm)], room: H.key, y: H.y0 + V.y }); }
   out.push({ label: 'up escalator to the bridge', start: [9.7, 0, 6.8], pts: [[9.7, 5.2], [9.7, 2.6], [9.7, 0.6], [9.7, -1], [9.7, -6], [9.7, -10.6], [9.7, -12.3], [10.2, -15.5], [0, -18]], room: 'corridor', y: B.L1 });
   // v11 the core: the lift's door is on the landing behind the gate; the car opens at its other end onto the first-floor gallery (v11: its
   // doors open on a call, so the walk calls it first, as the player presses the button)
@@ -102,7 +113,7 @@ console.log(navHits.length ? `NAV edges blocked: ${navHits.length}\n` + navHits.
 const ZONE = await p.evaluate(() => window.__lumiere.B.ZONE);
 let pass = 0; const results = [], only = process.argv.indexOf('--only') > 0 ? process.argv[process.argv.indexOf('--only') + 1] : null;
 for (const w of walks.filter((x) => !only || x.label.includes(only))) {
-  const r = await p.evaluate(async (w) => { const L = window.__lumiere, g = L.world.gate; if (w.shut) { g.always = false; g.passUntil = 0; } L.player.place(w.start[0], w.start[2], 0, 0, w.start[1]); await new Promise((q) => setTimeout(q, 300)); const res = await window.__auto(w.pts, w.label); g.always = true; return res; }, w);
+  const r = await p.evaluate(async (w) => { const L = window.__lumiere, g = L.world.gate; if (w.shut) { g.always = false; g.passUntil = 0; } if (w.rent && L.privates) for (const q of L.B.PRIVATE) L.privates.rent(q.id, null, false); L.player.place(w.start[0], w.start[2], 0, 0, w.start[1]); await new Promise((q) => setTimeout(q, 300)); const res = await window.__auto(w.pts, w.label); g.always = true; return res; }, w);
   const q = r.ok ? r.end : r.pos, inZone = !!q && q[0] > ZONE.x0 && q[0] < ZONE.x1 && q[2] > ZONE.z0 && q[2] < ZONE.z1 && q[1] < 1;
   const okEnd = w.stayOut ? !inZone : r.ok && r.end[3] === w.room && Math.abs(r.end[1] - w.y) < 0.3 && r.tele === (w.tele || 0) && !(w.exitZone && inZone); if (okEnd) pass++;
   if (!okEnd && process.argv.includes('--debug')) console.log(JSON.stringify(r.path), await p.evaluate(() => { const f = window.__lumiere.world.lift; return JSON.stringify({ y: f.y, level: f.level, state: f.state, doors: f.doors }); }));

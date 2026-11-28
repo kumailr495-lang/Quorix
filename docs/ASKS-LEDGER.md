@@ -10,7 +10,7 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | Ask (the user's words, shortened) | Status in 14.3 |
 |---|---|
 | "The app flickers like almost everywhere" | Done in the engine: textures and skinned-mesh bones uploaded before the frame instead of in the middle of it (three.js uploads them mid-pass under MSAA, Android Chromium's known flicker), and a Smooth edges switch in Settings. Needs the phone to confirm |
-| "The home teleports you to an apartment ... the home should be in the theatre, rentable, not editable" | Done: the apartment Suite is gone. The private floor is in the cinema: a lift by the lobby's east waiting area rides (doors shut, about 4 s) up to a lounge with five themed screens, rented at their doors, not editable |
+| "The home teleports you to an apartment ... the home should be in the theatre, rentable, not editable" | Done: the apartment Suite is gone. The private floor is in the cinema: a round lift in the lobby's east front corner, by the glass, rides (doors shut, about 4 s) up to a lounge with five themed screens, rented at their doors, not editable |
 | "Where are the jungle and the others? Home, jungle, winter, drive-in, space" | Done: five private screens: Home (sofa, a bed on the riser, shelves, speakers), Jungle (timber beams, plants, fireflies), Winter (log cabin, fireplace, snow), Space (ribbed walls, violet light, stars, a planet), Drive-in (an 11 m night sky, parked cars in bays, string lights, a moon) |
 | "The remote's buttons are glitched", "can't play videos in the home", "the remote stays in your hand after you leave" | Done: the face and keys no longer float (they sat 3 and 5 mm over the body), a tap picks the nearest key (overlapping hit areas pressed the neighbour), its Films key opens your videos and they play at once in your own screen or box; leaving the box or room puts it back |
 | "VIP areas should be actual VIP seats in the same theatre" (Dubai photos), "somewhat premium seats in every theatre" | Done: every hall has a VIP gallery over its back rows, a stair up past the entrance, and five walnut boxes with LED edges, leather club recliners and crimson carpet, rented at their velvet rope or from the phone |
@@ -19,7 +19,15 @@ something exists but not what was asked. **Open** means not built. Nothing here 
 | "The escalators' starting point is glitched" | Done: the steps dropped 6 cm at each comb plate while still in sight; they now slide under the plates at the landing's height |
 | "The intro's sounds have a huge delay", "the tyres don't move or turn" | Done: the sounds decode while the game loads (they waited for the first tap); the taxi's wheels roll with its speed and the front pair steers with its turning |
 | "The multiplayer host/join UI is bad, 1000 errors" | Done: Host and Join as two cards, a room view with the code big (Copy, Share, QR), who is here and the connection's state with Try again; the room bar is Chat, Mic and Emote; six public relays that answer instead of Trystero's list (several were gone: 404/502 errors in the console) |
-| "Improve the layout, remove the emptiness", "you ignored the pics you took" | See the 14.3 release notes: every hero view was shot and reviewed |
+| "Improve the layout, remove the emptiness", "you ignored the pics you took" | Partly: every hero view was rendered and reviewed; the private floor and the VIP galleries add five rooms and a level in each hall; the lift was moved out of the waiting area it first stood in. The lobby itself was not refurnished in this build |
+| 11-28 (last message, 20 % usage left): "make the home actually feel like home" | Done: bedside tables and lamps, a rug, an armchair corner, plants, two framed paintings added to the sofa, bed, shelves and speakers |
+| "The thing which takes us there ... make it ride, much more visible" | Done: a lit floor ring open at its doors, a bigger sign, a display inside saying where it goes; the olive tree that blocked its doors is gone. It rides (doors shut, hum, other floor). Corridors to it: open (not built) |
+| "Make the space one more visible" | Done: Space's light level 0.40 → 0.72; the other private rooms raised too |
+| "The armrest tablet should come from the seat upward" | Done: it rises out of the armrest of any seat you sit in (it needed your ticket's seat before) |
+| "Hide controls should be an option without pausing" | Done: an eye button in the HUD |
+| "Movies sometimes have no sound" | Partly: the hand-over to the phone's own player for Dolby/DTS sound checked once at 4 s and missed slow starts; it now retries for a minute. Phones with no Dolby/DTS decoder stay silent on those files |
+| "Sit in cars, front or back seat, detailed interiors, collisions" | Open: not built in 14.3 |
+| "ScreenX much more good" | Open: unchanged in 14.3 |
 
 ## 11-27: the 14.1 phone test (17 points) and the 11-26 lists repeated (14.2)
 

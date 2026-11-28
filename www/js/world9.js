@@ -38,7 +38,7 @@ export const LIFE = {
   espresso: [-21.12, 0.96, -12.3, Math.PI / 2],   // zones12.py espresso_lever, its back 3.4 cm under the bottle shelves' ends, 4.4 cm under their lips
   fountain: [0, 0, 10.0, 0],   // statue12.py fountain_muse
 };
-export const LEVEL = { vip: 0.62, pvHome: 0.5, pvJungle: 0.42, pvWinter: 0.5, pvSpace: 0.4, pvDrive: 0.34, hallMax: 0.4, hallCurve: 0.4, hallClassic: 0.44, hall270: 0.4, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
+export const LEVEL = { vip: 0.7, pvHome: 0.62, pvJungle: 0.58, pvWinter: 0.6, pvSpace: 0.72, pvDrive: 0.45, hallMax: 0.4, hallCurve: 0.4, hallClassic: 0.44, hall270: 0.4, lobby: 0.42, corridor: 0.22, spine: 0.8, wc: 0.55, street: 0.15 };   // v12 street: 0.25 read black with no fill, 0.3 with a strong fill an evening; midnight is a low fill, darker fronts and 0.15
 function scaleLights(L, k) { const A = L.L; for (let i = 0; i < A.length; i += 14) { A[i + 3] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 4] *= A[i + 7] ? Math.min(k, 10) : k; A[i + 5] *= A[i + 7] ? Math.min(k, 10) : k; }
   for (const ch of ['h', 'f']) for (const s of ['up', 'down']) L.amb[ch][s] = L.amb[ch][s].map((v) => v * (ch === 'h' ? k : Math.min(k, 10))); }   // a face lower than STEP_UP above your feet is a step you walk over; above HEAD it is overhead
 
@@ -452,7 +452,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.85, -13.55], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   // v12 (the user: "trees inside like a medieval tree"): an old olive tree in a travertine bowl in each front corner, by the glass (seen
   // from the street too); they replace the corner palms
-  for (const x of [-20.5, 16.2]) add('lobby', 'olive_tree', x, 0, 16.0, x < 0 ? 0.6 : 2.4, { collide: false, round: 0.8 });   // v14e the east one 4.3 m in: the private lift stands in that corner (private.js)
+  add('lobby', 'olive_tree', -20.5, 0, 16.0, 0.6, { collide: false, round: 0.8 });   // v14e the east one is gone: it stood in front of the private lift's doors (private.js)
   for (const [x, yaw] of [[-6.0, 0.35], [6.0, -0.35]]) add('lobby', 'poster_totem', x, 0, 16.3, yaw);   // v10: out of the fountain court; v11 its posters: TOTEM_POSTERS
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
@@ -672,6 +672,7 @@ const ARTWORK = { art_1: ['vangogh_self', 0.785], art_2: ['two_sisters', 0.806],
 export const fitArt = (id, mw, mh) => { const a = ARTWORK[id][1]; return mw / mh > a ? { w: +(mh * a).toFixed(3), h: mh } : { w: mw, h: +(mw / a).toFixed(3) }; };
 const FRAMED = [
   ...LIFE.kettles.map((k, i) => PIC({ id: 'kettlehead_' + i, x: k[0] + 0.268, y: k[1] + 0.90, z: k[2], yaw: Math.PI / 2, w: 0.56, h: 0.085, emit: 0.85, frame: 'none' })),   // v12c
+  PIC({ room: 'pvHome', id: 'art_7', x: 190.2, y: 2.15, z: -0.2 - 0.034, yaw: Math.PI, ...fitArt('art_7', 1.3, 1.0), emit: 0.15 }), PIC({ room: 'pvHome', id: 'art_6', x: 190.2, y: 2.15, z: -9.8 + 0.034, yaw: 0, ...fitArt('art_6', 1.3, 1.0), emit: 0.15 }),   // v14e the Home screen's paintings
   PIC({ id: 'photowall', x: -7.0, y: 1.30, z: -5.48, yaw: 0, w: 3.10, h: 2.36, emit: 0.35, frame: 'thin' }),   // v12 between the backdrop stand's posts (7 mm into each, and into its top bar)
   PIC({ id: 'plaque_muse', x: 0, y: 0.86, z: 10.0 + 1.082 * Math.cos(Math.PI / 8) + 0.034, yaw: 0, w: 0.62, h: 0.19, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the fountain plinth's front flat (statue12.py PA)
   PIC({ id: 'plaque_proj', x: CORE.x0 - 1.2 - 0.5 - 0.034, y: 0.62, z: -3.0, yaw: -Math.PI / 2, w: 0.42, h: 0.12, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the projector's plinth (world9.js DRESS)

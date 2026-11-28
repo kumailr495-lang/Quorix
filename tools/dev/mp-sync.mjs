@@ -31,7 +31,8 @@ const seat = (P, k) => P.evaluate((k) => { const L = window.__lumiere, h = L.wor
 const clock = (P) => P.evaluate(() => { const L = window.__lumiere, s = L.shows.get('CLASSIC'); return { state: s.state, title: s.src && s.src.title, kind: s.src && s.src.kind, start: Math.round(Date.now() + (s.startAt - performance.now())), at: Date.now(), ct: L.shows.video.currentTime, want: (s.seek || 0) + (performance.now() - s.startAt) / 1000, host: L.together.mp.host }; });
 const A = await page('A'), B = await page('B'), C = await page('C'); console.log('A, B, C loaded');
 await A.click('#mnTogether'); await A.fill('#mpName', 'Alice'); await A.evaluate(() => document.querySelector('#mpAv button:nth-child(3)').click());   /* v14d: the look picker is folded away under "Your look" */ await A.click('#mpHost'); await A.waitForTimeout(300);
-const code = ((await A.textContent('#mpStatus')).match(/[A-Z0-9]{6}/) || [])[0]; console.log('room', code);
+// v14e the host's room view stays open (its code, QR and who is in): read the code, then Go to the cinema
+const code = await A.evaluate(() => window.__lumiere.together.mp.code); console.log('room', code); await A.click('#mpPanel .btn.primary');
 await B.click('#mnTogether'); await B.fill('#mpName', 'Bob'); await B.evaluate(() => document.querySelector('#mpAv button:nth-child(10)').click()); await B.fill('#mpCode', code); await B.click('#mpJoin');
 console.log('A+B connected after', await waitN(A, 2), 's /', await waitN(B, 2), 's'); await A.waitForTimeout(2500);
 console.log('seats', await seat(A, 0), await seat(B, 1));

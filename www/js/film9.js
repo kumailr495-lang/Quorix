@@ -169,9 +169,10 @@ export class Shows {
         this.sound.startFilm(s.hall.key, { video: v, hall: s.hall }); this.hooks.onPicture && this.hooks.onPicture(id);
         // v14 a film whose sound this phone cannot decode (AC-3, E-AC-3, DTS in many downloaded films) plays without sound: say so once
         // the Android app plays it through the phone's own player instead (MainActivity audioStart); a browser says what is wrong
-        if (s.src.kind !== 'film' && !s.src.song) setTimeout(() => { if (s.state !== 'playing' || s.music || !v.videoWidth || v.paused || v.currentTime < 3 || v.webkitAudioDecodedByteCount !== 0 || this._nat) return;
-          const M = media, vol = this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1;
-          if (M && M.audioStart && M.audioStart(v.currentSrc || v.src, v.currentTime, v.playbackRate, vol)) { this._nat = { s }; this.sound.nativeMute = true; } else if (this.hooks.onNoAudio) this.hooks.onNoAudio(); }, 4000);   // v14d the page's own copy goes quiet while the phone's player plays (two copies sounded like an echo)
+        if (s.src.kind !== 'film' && !s.src.song) { let tries = 0; const chk = () => { if (s.state !== 'playing' || s.music || this._nat) return;
+          if (!v.videoWidth || v.paused || v.currentTime < 3) { if (++tries < 30) setTimeout(chk, 2000); return; }   /* v14e still loading or paused: look again (one look at 4 s missed slow starts, which then stayed silent) */
+          if (v.webkitAudioDecodedByteCount !== 0) return; const M = media, vol = this.sound.film && this.sound.film.vol != null ? this.sound.film.vol : 1;
+          if (M && M.audioStart && M.audioStart(v.currentSrc || v.src, v.currentTime, v.playbackRate, vol)) { this._nat = { s }; this.sound.nativeMute = true; } else if (this.hooks.onNoAudio) this.hooks.onNoAudio(); }; setTimeout(chk, 4000); }   // v14d the page's own copy goes quiet while the phone's player plays (two copies sounded like an echo)
         if (s.src.kind === 'film') { const go = () => s.track && this.director.startTrack(id, s.track.cues, () => v.currentTime); if (s.track) go(); else loadTrack(s.src.filmId).then((tr) => { s.track = tr; go(); }); } else this.director.startLive(id, this.now); };
       if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(() => show()); else v.addEventListener('playing', () => setTimeout(show, 120), { once: true });
       // v14c Music Night: a song has no picture (no frame ever arrives): once it plays, the screen becomes its light show
