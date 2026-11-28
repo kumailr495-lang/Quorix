@@ -51,13 +51,12 @@ const walks = await p.evaluate(async () => {
   out.push({ label: 'street to lobby (main doors)', start: [0.6, 0, 25.2], pts: [[0.6, 22], [0, 19], [0, 15.5]], room: 'lobby', y: 0 });
   out.push({ label: 'lobby to restrooms and back', start: [18.6, 0, 3.0], pts: [[20.5, -1], [23.4, -1], [26, -2.2], [23.4, -1], [19, -1]], room: 'lobby', y: 0 });
   out.push({ label: 'lobby to the men\'s restroom and back (v14d its own door)', start: [18.6, 0, 3.0], pts: [[19.8, -4.0], [20.6, -7.0], [23.3, -7.0], [24.6, -5.9], [27, -9], [24.6, -5.9], [23.3, -7.0], [20.0, -7.0], [19.6, -4.0]], room: 'lobby', y: 0 });
-  // v14e the private floor: the lobby's lift car up to the lounge and back, and walks into two rented screens
-  { const LP = B.VIP.lobbyPod, WP = B.VIP.pod;
-    out.push({ label: 'private lift: lobby car up to the lounge', start: [LP.x - 3.4, 0, LP.z], pts: [[LP.x - 0.2, LP.z], [LP.x - 0.2, LP.z, 'pvride'], [212, -6.5]], room: 'vip', y: 0, tele: 1 });
-    out.push({ label: 'private lift: lounge car down to the lobby', start: [212, 0, -6.5], pts: [[WP.x, WP.z - 0.2], [WP.x, WP.z - 0.2, 'pvride'], [LP.x - 3.2, LP.z]], room: 'lobby', y: 0, tele: 1 });
-    out.push({ label: 'private floor: lounge into Home, round the bed to the sofa', start: [212, 0, -8], pts: [[203, -5], [199.2, -5], [197.8, -3.0], [195.6, -3.0], [193.4, -3.0], [192.6, -3.4]], room: 'pvHome', y: 0, rent: true });
-    out.push({ label: 'private floor: lounge into the drive-in', start: [216, 0, -12], pts: [[222, -18.4], [222, -21.6], [220, -24], [212, -26]], room: 'pvDrive', y: 0, rent: true });
-    out.push({ label: 'private floor: lounge into Space and back out', start: [212, 0, -12], pts: [[221, -15], [225.5, -15], [228, -13.4], [225.5, -15], [221, -15], [214, -13]], room: 'vip', y: 0, rent: true }); }
+  // v14e the private wing behind the halls: walked to from the lobby through the spine (no lift), beside the travelator, then into rented screens
+  out.push({ label: 'private wing: lobby through the spine to the lounge', start: [0, 0, -11.5], pts: [[0, -13.2], [0, -14.9], [2.6, -15.2], [2.6, -88.75], [0, -88.95], [0, -91.2], [0, -93.4]], room: 'vip', y: 0 });
+  out.push({ label: 'private wing: lounge back to the lobby', start: [0, 0, -93.4], pts: [[0, -91.2], [0, -88.95], [2.6, -88.75], [2.6, -15.2], [0, -14.9], [0, -13.0], [0, -11.0]], room: 'lobby', y: 0 });
+  out.push({ label: 'private wing: lounge into Home, past the bed to the sofa', start: [-6, 0, -96], pts: [[-9.0, -94.8], [-12.8, -94.8], [-13.85, -92.2], [-18.75, -92.2], [-19.4, -93.2]], room: 'pvHome', y: 0, rent: true });
+  out.push({ label: 'private wing: lounge into the drive-in', start: [4, 0, -101.8], pts: [[10, -108.2], [10, -111.4], [8, -113.8], [0, -115.8]], room: 'pvDrive', y: 0, rent: true });
+  out.push({ label: 'private wing: lounge into Space and back out', start: [0, 0, -101.8], pts: [[9, -104.8], [13.5, -104.8], [16, -103.2], [13.5, -104.8], [9, -104.8], [2, -102.8]], room: 'vip', y: 0, rent: true });
   // v14e the VIP gallery: in at a hall's door, up the stair beside it and along the gallery to its last box
   for (const id of ['MAX', 'CLASSIC']) { const H = B.HALL[id], V = H.vip, S_ = V.stair, dm = (S_.d0 + S_.d1) / 2, at = (u, d) => { const w = H.toWorld(u, d); return [+w.x.toFixed(3), +w.z.toFixed(3)]; }, a0 = at(H.entryU, H.depthIn - 0.7);
     out.push({ label: `${H.key}: up the VIP stair to the gallery`, start: [a0[0], H.y0 + H.total, a0[1]], pts: [at(S_.u0 + V.s * 0.35, dm), at(S_.u1 + V.s * 0.2, dm), at(S_.u1 - V.s * 1.2, dm), at(V.boxes[V.s > 0 ? 0 : 4].uc, dm)], room: H.key, y: H.y0 + V.y }); }

@@ -18,7 +18,7 @@ const p = await ctx.newPage(); const log = []; p.on('pageerror', (e) => log.push
 await p.goto(`http://127.0.0.1:${port}/index.html`); await p.waitForFunction(() => window.__lumiere && window.__lumiere.ready, null, { timeout: 300000 });
 await p.addScriptTag({ path: path.resolve('tools/dev/seethru-page.js') }); await p.evaluate(() => window.__st.init());
 const eyes = await p.evaluate(async () => { const L = window.__lumiere, W = L.world, B = L.B, P = L.privates, keys = ['vip', ...B.PRIVATE.map((q) => q.key)];
-  for (const q of B.PRIVATE) P.rent(q.id, null, false); L.player.place(212, -10, Math.PI, 0, 0); await new Promise((r) => setTimeout(r, 2500)); const out = [];
+  for (const q of B.PRIVATE) P.rent(q.id, null, false); L.player.place((B.VIP.x0 + B.VIP.x1) / 2, (B.VIP.z0 + B.VIP.z1) / 2 + 3, Math.PI, 0, 0); await new Promise((r) => setTimeout(r, 2500)); const out = [];
   for (const R of [B.VIP, ...B.PRIVATE]) for (let x = R.x0 + 0.3; x < R.x1 - 0.2; x += 0.5) for (let z = R.z0 + 0.3; z < R.z1 - 0.2; z += 0.5) { const rk = W.roomAt(x, 0.1, z); if (!keys.includes(rk)) continue; const y = W.floorY(x, z, 0.1), q = { x, z }; if (W.collide(q, 0.24, y) > 0.001) continue; out.push({ tag: rk, x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3), eye: 1.62 }); }
   for (const s of W.sitSpots) if (keys.includes(s.room)) out.push({ tag: s.room, x: +s.x.toFixed(3), y: +(s.y - 0.45).toFixed(3), z: +s.z.toFixed(3), eye: 1.15 });
   return out; });

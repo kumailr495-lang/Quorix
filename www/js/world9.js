@@ -12,7 +12,7 @@ import { Acc, toGeometry, M, MAT, boxGeo } from './geom.js';
 import { HALL, L1, ROOMS, DOORS, ESC, escProfile, LIFT, GALLERY, TRAVELATOR, GATE, LOBBY, MEZZ, SPINE, BRIDGE, FLANK_W, LINK_W, PANTRY, FLANK_E, LINK_E, WC, STREET, EXIT_PASSAGES, CORE, COUNTERS , PRIVATE, VIP as LOUNGE } from './building.js';
 import { hallSeats, hallFloor, vipFloor, SEAT, SCREEN_GAP, WALL } from './hallmath.js';
 import { vipDress } from './vip.js';
-import { privateDress, PV_PANELS } from './private.js';
+import { privateDress, spaceSkyMat, PV_PANELS } from './private.js';
 import { ASSETS, assetGeometry, placeAsset } from './assets.js';
 import { texturesReady, named, LEAF_IDS } from './library.js';
 import { makeCanvas, SANS, SERIF, readerBoard } from './textures.js';
@@ -49,9 +49,10 @@ export function roomAt(x, y, z) {
   for (const h of HALLS) { const q = h.toLocal(x, z); if (Math.abs(q.u) <= h.width / 2 + 0.05 && q.d >= -SCREEN_GAP - WALL && q.d <= h.depthIn + WALL) return h.key; }
   if (y > L1 - 1.2) for (const r of CORR) if (IN(r, x, z)) return 'corridor';
   if (IN(SPINE, x, z) && z < SPINE.z1 - 0.02) return 'spine';
+  if (z <= SPINE.z0 && z > SPINE.z0 - 0.42 && Math.abs(x - LOUNGE.pod.x) < 1.4) return 'spine';   // v14e the wing door's threshold in the spine's end wall
+  if (z < SPINE.z0 - 0.3) { if (IN(LOUNGE, x, z, 0.05)) return 'vip'; for (const p of PRIVATE) if (IN(p, x, z, 0.05)) return p.key; }   // v14e the private wing behind the halls (private.js)
   for (const p of EXIT_PASSAGES) if (IN(p, x, z, WALL + 0.05) && y < p.ceil) return 'spine';   // v12b the exit passages (and their doors' thresholds in the halls' walls) belong to the spine (before the corridor's ground-floor fallback: two run under the bridge)
   if (IN(LOBBY, x, z)) return 'lobby';
-  if (x > 150) { if (IN(LOUNGE, x, z, 0.05)) return 'vip'; for (const p of PRIVATE) if (IN(p, x, z, 0.05)) return p.key; }   // v14e the private floor (private.js)
   if (IN(WC, x, z)) return 'wc';
   if (IN(STREET, x, z, 0.5)) return 'street';
   if (x > STREET.x0 - 6.5 && x < STREET.x1 + 6.5 && z > STREET.z0 - 0.5 && z < STREET.far + 0.5) return 'street';   // v12: the street's ends, up to the blocks across them
@@ -427,7 +428,7 @@ export const PANEL_DRAW = { ...PV_PANELS,
 };
 // ---------------------------------------------------------------- props: the furniture of each room (Kiln / Blender assets), lit per vertex
 // v12 where no guest stands: inside the heritage exhibit's rope, on the photo set (npc9.js millNet reads world.keepOut)
-const KEEP_OUT = [[CORE.x0 - 2.3, -4.2, CORE.x0, -1.8], [-8.9, -5.9, -5.1, -4.1], [LOUNGE.lobbyPod.x - 1.7, LOUNGE.lobbyPod.z - 1.7, LOUNGE.lobbyPod.x + 1.7, LOUNGE.lobbyPod.z + 1.7]];   // v14e the private lift
+const KEEP_OUT = [[CORE.x0 - 2.3, -4.2, CORE.x0, -1.8], [-8.9, -5.9, -5.1, -4.1]];   // v14e the private lift
 // v13 the lobby's ceiling (tools/blender/arch/lobby12.py FIELD_DROP and STEP): the dropped field 0.75 m under the roof, the halo's dome two 0.32 m steps above it
 const LOBBY_FIELD = LOBBY.ceil - 0.75, LOBBY_DOME = LOBBY.ceil - 0.75 + 2 * 0.32;
 const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
@@ -452,7 +453,7 @@ const RAD = Math.PI / 180, FACADE_Z = LOBBY.z1, DRESS = (() => {
   for (const [x, z] of [[-8, 16.4], [8, 16.4], [-20.85, -13.55], [20.9, 9.5], [-6.5, -12.9], [6.5, -12.9]]) add('lobby', 'planter_tall', x, 0, z);
   // v12 (the user: "trees inside like a medieval tree"): an old olive tree in a travertine bowl in each front corner, by the glass (seen
   // from the street too); they replace the corner palms
-  add('lobby', 'olive_tree', -20.5, 0, 16.0, 0.6, { collide: false, round: 0.8 });   // v14e the east one is gone: it stood in front of the private lift's doors (private.js)
+  for (const x of [-20.5, 20.5]) add('lobby', 'olive_tree', x, 0, 16.0, x < 0 ? 0.6 : 2.4, { collide: false, round: 0.8 });
   for (const [x, yaw] of [[-6.0, 0.35], [6.0, -0.35]]) add('lobby', 'poster_totem', x, 0, 16.3, yaw);   // v10: out of the fountain court; v11 its posters: TOTEM_POSTERS
   // the box-office queue: two rope lines guiding you to the counter
   const posts = []; for (const x of [-14.4, -13.0]) for (let z = 5.6; z <= 12.6; z += 1.75) { add('lobby', 'stanchion', x, 0, z); posts.push([x, z]); }
@@ -672,7 +673,7 @@ const ARTWORK = { art_1: ['vangogh_self', 0.785], art_2: ['two_sisters', 0.806],
 export const fitArt = (id, mw, mh) => { const a = ARTWORK[id][1]; return mw / mh > a ? { w: +(mh * a).toFixed(3), h: mh } : { w: mw, h: +(mw / a).toFixed(3) }; };
 const FRAMED = [
   ...LIFE.kettles.map((k, i) => PIC({ id: 'kettlehead_' + i, x: k[0] + 0.268, y: k[1] + 0.90, z: k[2], yaw: Math.PI / 2, w: 0.56, h: 0.085, emit: 0.85, frame: 'none' })),   // v12c
-  PIC({ room: 'pvHome', id: 'art_7', x: 190.2, y: 2.15, z: -0.2 - 0.034, yaw: Math.PI, ...fitArt('art_7', 1.3, 1.0), emit: 0.15 }), PIC({ room: 'pvHome', id: 'art_6', x: 190.2, y: 2.15, z: -9.8 + 0.034, yaw: 0, ...fitArt('art_6', 1.3, 1.0), emit: 0.15 }),   // v14e the Home screen's paintings
+  ...(() => { const p = PRIVATE.find((q) => q.key === 'pvHome'), a = p.toWorld(-(4.8 - 0.034), 4.55), b = p.toWorld(4.8 - 0.034, 4.55); return [PIC({ room: 'pvHome', id: 'art_7', x: a.x, y: 2.15, z: a.z, yaw: Math.PI, ...fitArt('art_7', 1.3, 1.0), emit: 0.15 }), PIC({ room: 'pvHome', id: 'art_6', x: b.x, y: 2.15, z: b.z, yaw: 0, ...fitArt('art_6', 1.3, 1.0), emit: 0.15 })]; })(),   // v14e the Home screen's paintings, on its side walls
   PIC({ id: 'photowall', x: -7.0, y: 1.30, z: -5.48, yaw: 0, w: 3.10, h: 2.36, emit: 0.35, frame: 'thin' }),   // v12 between the backdrop stand's posts (7 mm into each, and into its top bar)
   PIC({ id: 'plaque_muse', x: 0, y: 0.86, z: 10.0 + 1.082 * Math.cos(Math.PI / 8) + 0.034, yaw: 0, w: 0.62, h: 0.19, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the fountain plinth's front flat (statue12.py PA)
   PIC({ id: 'plaque_proj', x: CORE.x0 - 1.2 - 0.5 - 0.034, y: 0.62, z: -3.0, yaw: -Math.PI / 2, w: 0.42, h: 0.12, emit: 0.2, frame: 'thin', depth: 0.03 }),   // v12 on the projector's plinth (world9.js DRESS)
@@ -932,6 +933,7 @@ export async function buildWorld(engine, mats, onProgress = () => {}) {
         if (def.kind === 'street') for (const [a, b] of [[STREET.x0 - 6, STREET.x0 + 2], [STREET.x1 - 2, STREET.x1 + 6]]) world.walls.add(a, STREET.far, b, STREET.far, -1, 3, 1); }
       // glass (balustrades, the facade, screens) is drawn see-through on its own: the shell keeps every other face
       const glass = splitGlass(m.geometry); if (glass) { const gm = new THREE.Mesh(glass, mats.glassMat()); gm.renderOrder = 3; gm.matrixAutoUpdate = false; gm.name = key + '-glass'; group.add(gm); }
+      if (key === 'pvSpace') { const sk = splitIds(m.geometry, new Set([MAT.powder])); if (sk) { const sm = new THREE.Mesh(sk, spaceSkyMat()); sm.matrixAutoUpdate = false; sm.frustumCulled = false; sm.name = key + '-sky'; group.add(sm); } }   // v14e Space's walls and ceiling are open space (private.js spaceSkyMat)
     } else console.warn(`[lumiere] room ${key}: no matching bake (${bk ? bk.hash : 'none'} vs ${x ? x.hash : 'no extras'}); run tools/bake/bake9.sh`);
     if (x && x.glow) { const P = b64f(x.glow.pos), C = b64f(x.glow.col), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('color', new THREE.BufferAttribute(C, 3)); g.setAttribute('grp', new THREE.BufferAttribute(new Float32Array(P.length / 3), 1));
       const m = new THREE.Mesh(g, mats.glowMat(U)); m.matrixAutoUpdate = false; m.name = key + '-glow'; group.add(m); }

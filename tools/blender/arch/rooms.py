@@ -861,7 +861,9 @@ def build_spine(S):
     zH, H2 = SP['zHi'], SP['ceilHi']; hz = lambda z: H2 if z < zH else H
     slab(acc, x0, zH, x1, z1, H + 0.15, 0.15, MAT['paint'], C['white']); slab(acc, x0, z0 - 0.4, x1, zH, H2 + 0.15, 0.15, MAT['paint'], C['white'])
     acc.box(x0, H, zH - 0.15, x1, H2 + 0.15, zH, MAT['paint'], C['white'])
-    acc.wall((x1, z0 - 0.2), (x0, z0 - 0.2), -0.3, H2 + 0.15, 0.4, MAT['slats'], C['oak'])   # far end
+    de = next(q for q in S['DOORS'] if q['id'] == 'pvEntry'); ew, eh = de['w'] + 0.24, de['h'] + 0.12   # v14e the far end opens into the private wing
+    acc.wall((x1, z0 - 0.2), (x0, z0 - 0.2), -0.3, H2 + 0.15, 0.4, MAT['slats'], C['oak'], openings=[(x1 - (de['x'] + ew / 2), x1 - (de['x'] - ew / 2), eh, -0.3)])   # far end
+    door_reveal_x(acc, de, z0, 1, ew, eh, MAT['metal'], C['concrete'])
     acc.wall((x0, z1 - 0.03), (x1, z1 - 0.03), 0.0, H, 0.06, MAT['slats'], C['oak'], openings=[(x1 - 1.6, x1 + 1.6, 3.0, 0.0)])   # lobby end, around the exit door
     # side walls are the halls' screen walls (built by the halls); here: oak slat lining on them, broken by the exit passages' mouths
     PS = S['EXIT_PASSAGES']; DD = {d['id']: d for d in S['DOORS']}
@@ -954,7 +956,7 @@ def build_spine(S):
             glow_facing(glow, (sx * 1.6 - 0.15, 0.003, zz), (sx * 1.6 + 0.15, 0.003, zz), (sx * 1.6 + 0.0, 0.003, zz + 0.35), (sx * 1.6 - 0.0, 0.003, zz + 0.35), (0, 1, 0), C['green'], 0.7)   # they faced down
     # v9.1 (the user: "empty spaces", "exit nonsense"): the way out reads as a cinema's exit gallery, not a blank tube: lit "now showing"
     # cases on the free stretches of wall between the exit doors and their stairs, a dark plinth line along both walls
-    panels = [{'id': 'exitwall', 'x': 0, 'y': 2.3, 'z': z0 + 0.01, 'yaw': 0, 'w': 6.0, 'h': 2.6, 'emit': 1}]
+    panels = [{'id': 'exitwall', 'x': 0, 'y': 4.65, 'z': z0 + 0.01, 'yaw': 0, 'w': 6.0, 'h': 2.6, 'emit': 1}]
     films = ['sintel', 'cosmos', 'bunny', 'hero', 'wingit', 'agent327', 'llamigos', 'glasshalf', 'coffeerun']; k_ = 0
     for sx in (x0, x1):
         busy = [(p['z0'] - 1.2, p['z1'] + 1.2) for p in PS if (p['side'] < 0) == (sx < 0)]   # v12b: clear of the passages' mouths

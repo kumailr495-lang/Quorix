@@ -137,6 +137,12 @@ books a seat, and watches a house film or **their own video** (gallery file or l
 - **Sound**: sound9 decodes the recordings while the game loads (OfflineAudioContext) and hands them to the live context at the tap.
 - **Multiplayer**: mpui.js panel = two cards, then a room view (`stateLine`), the bar = Chat, Mic, Emote; mp.js `RELAYS` (six relays that
   answered on 11-28; Trystero's default list had dead ones).
+- **The private wing moved (11-28, the user: "at the same places the other ones are, in corridors")**: building.js `WING` shifts VIP and
+  PRIVATE as one block (dx -212, dz SPINE.z0 - 0.4): the lounge's front meets the spine's far end wall; door `pvEntry` (slide) in both walls
+  (rooms.py build_spine opening + door_reveal_x; vip14.py build_vip portal); `spineOut` opens both ways (the halls' exits stay one-way, so
+  the ticket zone holds). No lift (private.js `this.pods = []`). Signs: private.js `_wayfind`. Space: vip14 'space' walls/ceiling are
+  library `powder`, world9 splits them into a mesh with private.js `spaceSkyMat` (stars, nebula, sun, planet by view direction).
+  Prop heights: measure the GLB (`$S/t/bbox.mjs` style, gltf-transform getBounds); the side table is 0.55 m, not 0.85.
 - **14.3 last pass** (the user, 11-28, 20 % usage left): Home dressed (bedside tables + lamps, rug_round, armchair, plants, two paintings
   `PIC({ room: 'pvHome' ... })`), the lift: floor ring open at the doors (RingGeometry theta 0 = the car's back after the x/z turns),
   bigger sign, in-car display in a bezel; the east olive tree removed (it blocked the lift); LEVEL raised for pv rooms; HUD `#bHide`;

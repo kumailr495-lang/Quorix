@@ -58,10 +58,10 @@ def build_vip(S):
     PV = {p['id']: p for p in S['PRIVATE']}
     # floor: Nero Marquina like the lobby's, a crimson runner from the lift to the drive-in's door in a brass frame (6 mm above, 2 mm in)
     acc.box(X0, -0.3, Z0, X1, 0.0, Z1, MAT['nero'], lin('#e8e8e8'))
-    rx0, rx1 = V['pod']['x'] - 1.3, V['pod']['x'] + 1.3
-    acc.box(rx0, -0.002, Z0 + T + 0.4, rx1, 0.006, V['pod']['z'] - 1.5, MAT['carpet'], lin('#5a0f17'))
-    for xa, xb in ((rx0 - 0.05, rx0), (rx1, rx1 + 0.05)): acc.box(xa, -0.002, Z0 + T + 0.35, xb, 0.008, V['pod']['z'] - 1.45, MAT['brass'], BRASS)
-    acc.box(rx0 - 0.05, -0.002, Z0 + T + 0.35, rx1 + 0.05, 0.008, Z0 + T + 0.4, MAT['brass'], BRASS)
+    rx0, rx1, rz1 = V['pod']['x'] - 1.3, V['pod']['x'] + 1.3, Z1 - T - 0.45   # v14e the lift is gone: the runner starts inside the wing's door
+    acc.box(rx0, -0.002, Z0 + T + 0.4, rx1, 0.006, rz1, MAT['carpet'], lin('#5a0f17'))
+    for xa, xb in ((rx0 - 0.05, rx0), (rx1, rx1 + 0.05)): acc.box(xa, -0.002, Z0 + T + 0.4, xb, 0.008, rz1, MAT['brass'], BRASS)
+    for za, zb in ((Z0 + T + 0.35, Z0 + T + 0.4), (rz1, rz1 + 0.05)): acc.box(rx0 - 0.05, -0.002, za, rx1 + 0.05, 0.008, zb, MAT['brass'], BRASS)
     # ceiling: a dark field with a lit coffer down the middle
     acc.box(X0, H, Z0, X1, H + 0.25, Z1, MAT['matte'], lin('#141216'))
     cx0, cx1, cz0, cz1 = X0 + 4.0, X1 - 4.0, Z0 + 3.0, Z1 - 4.2
@@ -82,7 +82,8 @@ def build_vip(S):
     acc.wall((X0 + T / 2, Z1), (X0 + T / 2, Z0), -0.3, H + 0.25, T, MAT['acoustic'], BUR, openings=openings['w'])
     acc.wall((X1 - T / 2, Z0), (X1 - T / 2, Z1), -0.3, H + 0.25, T, MAT['acoustic'], BUR, openings=openings['e'])
     acc.wall((X0 + T, Z0 + T / 2), (X1 - T, Z0 + T / 2), -0.3, H + 0.25, T, MAT['acoustic'], BUR, openings=openings['n'])
-    acc.wall((X1 - T, Z1 - T / 2), (X0 + T, Z1 - T / 2), -0.3, H + 0.25, T, MAT['acoustic'], BUR)
+    de = next(q for q in S['DOORS'] if q['id'] == 'pvEntry'); ew, eh = de['w'] + 0.2, de['h'] + 0.15   # v14e the wing's door from the spine
+    acc.wall((X1 - T, Z1 - T / 2), (X0 + T, Z1 - T / 2), -0.3, H + 0.25, T, MAT['acoustic'], BUR, openings=[((X1 - T) - (de['x'] + ew / 2), (X1 - T) - (de['x'] - ew / 2), eh, -0.3)])
     # wainscot: fluted walnut 30 mm proud on every wall between the openings (stopped 1 cm short of each portal's frame)
     def wainscot(axis, plane, sgn, a0, a1, cuts):
         segs, s = [], a0
@@ -101,7 +102,7 @@ def build_vip(S):
     cut_e = [(door_of(S, pid)['z'] - JW(door_of(S, pid)), door_of(S, pid)['z'] + JW(door_of(S, pid))) for pid, p in PV.items() if p['theme'] != 'drive' and door_of(S, pid)['x'] >= X1 - 0.01]
     dd = door_of(S, 'DRIVE'); cut_n = [(dd['x'] - JW(dd), dd['x'] + JW(dd))]
     wainscot('x', X0 + T, 1, Z0 + T, Z1 - T, cut_w); wainscot('x', X1 - T, -1, Z0 + T, Z1 - T, cut_e)
-    wainscot('z', Z0 + T, 1, X0 + T + 0.028, X1 - T - 0.028, cut_n); wainscot('z', Z1 - T, -1, X0 + T + 0.028, X1 - T - 0.028, [(V['pod']['x'] - 1.698, V['pod']['x'] + 1.698)])
+    wainscot('z', Z0 + T, 1, X0 + T + 0.028, X1 - T - 0.028, cut_n); wainscot('z', Z1 - T, -1, X0 + T + 0.028, X1 - T - 0.028, [(de['x'] - JW(de), de['x'] + JW(de))])
     # the portals: a brass frame round each door, its name panel above (private.js draws the name: panel pvsign_<id>), a light strip on
     # each jamb's inner edge; the reveals back to the leaves
     panels = []
@@ -136,10 +137,14 @@ def build_vip(S):
                 xs = d['x'] + s * (hw + 1.55); acc.box(xs - 0.62, 0.75, plane - 0.002, xs + 0.62, 2.45, plane + 0.08, MAT['brass'], BRASS)
             panels.append({'id': 'pvart_' + pid, 'x': d['x'] - (hw + 1.55), 'y': 1.6, 'z': plane + 0.092, 'w': 1.12, 'h': 1.58, 'yaw': 0.0, 'emit': True})
             panels.append({'id': 'pvinfo', 'x': d['x'] + (hw + 1.55), 'y': 1.6, 'z': plane + 0.092, 'w': 1.12, 'h': 1.58, 'yaw': 0.0, 'emit': True})
-    # the lift's wall: a brass surround behind the car (the car itself is private.js's), a recessed light over it
-    pz = V['pod']['z']; acc.box(V['pod']['x'] - 1.7, -0.01, Z1 - T - 0.03, V['pod']['x'] + 1.7, 3.4, Z1 - T + 0.002, MAT['brass'], lin('#8a6a3a'))
-    acc.box(V['pod']['x'] - 1.6, 3.2, Z1 - T - 0.04, V['pod']['x'] + 1.6, 3.35, Z1 - T - 0.025, MAT['matte'], BLACK)
-    lit.spot((V['pod']['x'], H - 0.1, pz - 1.6), WARM, 0.7, 6.0, 'h', (0, -1, 0.25), 30, 70)
+    # v14e the wing's door from the spine: a walnut portal like the rooms' (jambs, head, light strips on the jambs' inner faces), its reveal
+    plane, ehw = Z1 - T, ew / 2; reveal(acc, de, plane, -1, MAT['brass'], BRASS, ew, eh)
+    for s in (-1, 1):
+        xa, xb = sorted((de['x'] + s * ehw, de['x'] + s * (ehw + 0.4))); za, zb = sorted((plane + 0.002, plane - pw)); acc.box(xa, -0.01, za, xb, eh + 0.45, zb, MAT['wood'], WALNUT)
+        xe = de['x'] + s * (ehw - 0.006); gf(glow, (xe, 0.05, plane - 0.05), (xe, 0.05, plane - pw + 0.04), (xe, eh, plane - pw + 0.04), (xe, eh, plane - 0.05), (-s, 0, 0), WARM, 1.6)
+        lit.line((de['x'] + s * (ehw - 0.05), 0.1, plane - 0.2), (de['x'] + s * (ehw - 0.05), eh - 0.1, plane - 0.2), WARM, 0.18, 2.5, 'f', (-s, 0, -0.3))
+    acc.box(de['x'] - ehw - 0.4, eh, plane - pw, de['x'] + ehw + 0.4, eh + 0.45, plane + 0.002, MAT['wood'], WALNUT)
+    lit.spot((de['x'], H - 0.1, plane - 1.6), WARM, 0.7, 6.0, 'h', (0, -1, -0.25), 30, 70)
     lit.ambient(lin('#2a2026'), lin('#120c0e'), 0.05, 'h')
     return acc, glow, lit, {'panels': panels}
 
@@ -150,7 +155,7 @@ THEMES = {
     'home': dict(floor=('oak', '#b48c62'), wall=('rubber', '#d6cbbb'), low=('fluted', '#5a3c28'), ceil=('rubber', '#efeae2'), mask='#0d0c0f', house=('#ffd2a6', 0.8), acc='#ffb36b'),
     'jungle': dict(floor=('wood', '#4a3423'), wall=('acoustic', '#1f3a26'), low=('stone', '#5b5a4c'), ceil=('matte', '#0b1710'), mask='#06100a', house=('#d8f0c0', 0.55), acc='#7cff9a'),
     'winter': dict(floor=('microcement', '#dfe6ec'), wall=('oak', '#c9b291'), low=None, ceil=('wood', '#8a6a4a'), mask='#0c0d10', house=('#ffe7c8', 0.7), acc='#9fd4ff'),
-    'space': dict(floor=('powder', '#22252b'), wall=('powder', '#2b2f37'), low=('perf', '#3a3f48'), ceil=('matte', '#05060a'), mask='#020205', house=('#c8d6ff', 0.5), acc='#7a6bff'),
+    'space': dict(floor=('nero', '#9aa0aa'), wall=('powder', '#2b2f37'), low=None, ceil=('powder', '#05060a'), mask='#020205', house=('#c8d6ff', 0.5), acc='#7a6bff'),   # v14e walls and ceiling: the engine's open space
     'drive': dict(floor=('asphalt', '#3a3b3f'), wall=('matte', '#06070a'), low=None, ceil=('matte', '#020306'), mask='#020203', house=('#ffe2bf', 0.45), acc='#ffcf7a'),
 }
 
@@ -169,12 +174,12 @@ def theatre(S, pid):
     xs_wall = X0 if f < 0 else X1                                              # the wall behind the picture
     xd_wall = X1 if f < 0 else X0                                              # the wall with the door (on the lounge)
     if p['theme'] != 'drive':
-        acc.wall((xs_wall - f * T / 2, Z0 + T), (xs_wall - f * T / 2, Z1 - T), -0.3, H + 0.25, T, MAT['matte'], lin(th['mask']))
+        sp = p['theme'] == 'space'; acc.wall((xs_wall - f * T / 2, Z0 + T), (xs_wall - f * T / 2, Z1 - T), -0.3, H + 0.25, T, m('wall') if sp else MAT['matte'], c('wall') if sp else lin(th['mask']))
         acc.wall((xd_wall + f * T / 2, Z0 + T), (xd_wall + f * T / 2, Z1 - T), -0.3, H + 0.25, T, m('wall'), c('wall'),
                  openings=[(d['z'] - w_open / 2 - (Z0 + T), d['z'] + w_open / 2 - (Z0 + T), h_open, -0.3)])
         acc.wall((X0, Z0 + T / 2), (X1, Z0 + T / 2), -0.3, H + 0.25, T, m('wall'), c('wall'))
         acc.wall((X1, Z1 - T / 2), (X0, Z1 - T / 2), -0.3, H + 0.25, T, m('wall'), c('wall'))
-        reveal(acc, d, xd_wall + f * T, f, m('wall'), c('wall'), w_open, h_open)
+        reveal(acc, d, xd_wall + f * T, f, MAT['metal'] if sp else m('wall'), lin('#2a2d33') if sp else c('wall'), w_open, h_open)
     else:   # the drive-in: the door is in the south wall (the lounge's north wall's other face)
         acc.wall((X0 + T / 2, Z0 + T), (X0 + T / 2, Z1 - T), -0.3, H + 0.25, T, MAT['matte'], lin(th['mask']))
         acc.wall((X1 - T / 2, Z1 - T), (X1 - T / 2, Z0 + T), -0.3, H + 0.25, T, m('wall'), c('wall'))
@@ -227,11 +232,14 @@ def theatre(S, pid):
     if p['theme'] != 'drive':
         for zp, sg in ((Z0 + T, 1), (Z1 - T, -1)):
             za_, zb_ = sorted((zp - sg * 0.002, zp + sg * 0.3)); xa_, xb_ = X0 + T + 0.3, X1 - T - 0.3
-            acc.box(xa_, H - 0.38, za_, xb_, H - 0.35, zb_, MAT['matte'] if p['theme'] != 'home' else MAT['rubber'], c('ceil'))
-            zg = zp + sg * 0.15; gf(glow, (xa_ + 0.05, H - 0.344, zg - 0.04), (xb_ - 0.05, H - 0.344, zg - 0.04), (xb_ - 0.05, H - 0.344, zg + 0.04), (xa_ + 0.05, H - 0.344, zg + 0.04), (0, 1, 0), hc, 1.2)
+            if p['theme'] != 'space': acc.box(xa_, H - 0.38, za_, xb_, H - 0.35, zb_, MAT['matte'] if p['theme'] != 'home' else MAT['rubber'], c('ceil'))
+            zg = zp + sg * 0.15
+            if p['theme'] != 'space': gf(glow, (xa_ + 0.05, H - 0.344, zg - 0.04), (xb_ - 0.05, H - 0.344, zg - 0.04), (xb_ - 0.05, H - 0.344, zg + 0.04), (xa_ + 0.05, H - 0.344, zg + 0.04), (0, 1, 0), hc, 1.2)
             lit.line((xa_ + 0.2, H - 0.3, zg), (xb_ - 0.2, H - 0.3, zg), hc, hk * 0.6, 6.0, 'h', (0, 1, sg * 0.3))
         pts = [W_(u, dd) for u in (-2.4, 2.4) for dd in (5.2, 8.0, 11.0)]
-        downlights(lit, acc, glow, pts, H, hc, hk, 5.0)
+        if p['theme'] != 'space': downlights(lit, acc, glow, pts, H, hc, hk, 5.0)
+        else:
+            for x_, z_ in pts: lit.spot((x_, H - 0.05, z_), hc, hk, 5.0, 'h', (0, -1, 0), 25, 62)
     else:   # the drive-in's sky: lamp-post light over the lots (house), string lights (fixed) are the engine's bulbs over the light here
         for u, dd in ((-8, 10), (8, 10), (-8, 22), (8, 22), (0, 16)):
             x_, z_ = W_(u, dd); lit.point((x_, 5.5, z_), hc, hk * 1.4, 12.0, 'h')
@@ -276,13 +284,6 @@ def theme_extras(acc, glow, lit, p, th, W_, X0, X1, Z0, Z1, H):
         lit.point((xf, 0.5, zp - 1.2), lin('#ff8a3a'), 0.6, 7.0, 'f')
         acc.box(xf - 1.25, 1.55, zp - 0.9, xf + 1.25, 1.65, zp - 0.74, MAT['wood'], lin('#5a412c'))   # the mantel
     elif t == 'space':
-        # wall ribs (metal) every 1.5 m with a violet LED in each rib's face; a viewport recess on each side wall for the stars (private.js)
-        for zp, sg in ((Z0 + T, 1), (Z1 - T, -1)):
-            for k in range(9):
-                x_ = X0 + T + 0.75 + k * (X1 - X0 - 2 * T - 1.5) / 8; za, zb = sorted((zp - sg * 0.002, zp + sg * 0.12))
-                acc.box(x_ - 0.09, -0.01, za, x_ + 0.09, H + 0.002, zb, MAT['metal'], lin('#3a3e46'))
-                zg = zp + sg * 0.126; gf(glow, (x_ - 0.02, 0.2, zg), (x_ + 0.02, 0.2, zg), (x_ + 0.02, H - 0.3, zg), (x_ - 0.02, H - 0.3, zg), (0, 0, sg), lin('#7a6bff'), 1.8)
-            lit.line((X0 + T + 1, 0.3, zp + sg * 0.4), (X1 - T - 1, 0.3, zp + sg * 0.4), lin('#7a6bff'), 0.12, 3.0, 'f', (0, 0.5, sg))
         # floor light lines down both aisles (glow 6 mm above the floor in a dark channel)
         for u in (-3.0, 3.0):
             (xa, za), (xb, zb) = W_(u, 1.5), W_(u, p['depth'] - 0.6); xa, xb = sorted((xa, xb))

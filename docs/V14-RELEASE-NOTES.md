@@ -45,20 +45,27 @@ Blender checks, not on the phone. Flicker, frame rate, sound, the camera and tou
     was moved to the glass corner (the olive tree that stood in front of its doors is gone). The lobby itself was not refurnished.
 
 ## Your last message (11-28)
-12. **Home feels like a home.** Bedside tables with lamps on both sides of the bed, a round rug under it, an armchair reading corner,
-    three more plants and two framed paintings, on top of the sofa, coffee table, shelves, speakers and lamps.
-13. **The private lift is easier to see.** A lit ring on the floor round it (open at its doors), a bigger PRIVATE SCREENS sign over the
-    doors, and inside a lit display in a black bezel that says where it goes (▲ PRIVATE FLOOR or ▼ LOBBY). It rides: the doors close,
-    it hums, the doors open on the other floor.
-14. **Brighter private rooms.** Space 0.40 → 0.72, Home 0.50 → 0.62, Jungle 0.42 → 0.58, Winter 0.50 → 0.60, Drive-in 0.34 → 0.45,
-    the lounge 0.62 → 0.70 (room light levels).
-15. **Hide controls without pausing.** An eye button in the top right hides the controls; the faint eye brings them back.
-16. **The armrest tablet** rises out of the armrest of whatever seat you sit in (Quick play and seats without a ticket too).
-17. **VIP galleries without z-fighting.** The stair's cheek wall, the gallery parapet's caps and the boxes' caps no longer share planes
+12. **The private screens are in the building's corridors now, not up a lift.** The whole wing (its lounge, Home, Jungle, Winter, Space
+    and the big Drive-in) stands behind the halls at the far end of the ground-floor corridor between them (the spine). From the lobby,
+    walk through the door under the LED wall (a PRIVATE SCREENS sign over it; that door used to open only outwards), along the corridor
+    beside the moving walkway, and through the glass doors at its end into the lounge; the screens open off it. The lift is gone. The
+    phone's VIP app can still take you straight there.
+13. **Home: what was placed wrong.** Measured every piece: the four table lamps floated 30 cm above their tables (they stood at 0.85 m
+    on tables 0.55 m tall), the round rug under the bed hung 40 cm over the edges of the raised platform, and a plant pot stood half
+    inside that platform. All three are fixed. Home also has bedside tables with lamps, an armchair corner, plants and two paintings.
+14. **Space is open space, not a room with particles.** Like watching in a VR headset: the walls and ceiling are gone from sight and you
+    sit on a black deck floating in space, with stars all round that twinkle, a nebula band, the sun behind you and a blue planet with
+    clouds turning off to the front left. The screen floats in front of you. (The stars are drawn by direction, so they stay put as you
+    move, like a real sky.)
+15. **Brighter private rooms.** Home 0.50 → 0.62, Jungle 0.42 → 0.58, Winter 0.50 → 0.60, Drive-in 0.34 → 0.45, the lounge
+    0.62 → 0.70 (room light levels).
+16. **Hide controls without pausing.** An eye button in the top right hides the controls; the faint eye brings them back.
+17. **The armrest tablet** rises out of the armrest of whatever seat you sit in (Quick play and seats without a ticket too).
+18. **VIP galleries without z-fighting.** The stair's cheek wall, the gallery parapet's caps and the boxes' caps no longer share planes
     with their neighbours; the four halls were rebuilt and re-baked.
 
 ## Not in 14.3 (said plainly)
-- Sitting in the cars and car interiors, and walkable corridors to the private floor (it is reached by the lift ride): not built.
+- Sitting in the cars and car interiors: not built.
 - ScreenX: unchanged from 14.2.
 - Films with no sound: one cause is fixed. When the WebView decodes no sound (AC-3, E-AC-3 or DTS audio, common in downloaded films),
   the app hands the sound to the phone's own player; that check ran once, 4 s after the picture, and a film still loading or paused

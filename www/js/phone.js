@@ -115,7 +115,7 @@ export class Phone {
     const dim = 'rgba(246,236,216,.07)', line = 'rgba(246,236,216,.3)', gold = '#e0b25a';
     if (!up) {
       box([STREET.x0 + 4, 18, STREET.x1 - 4, 28], 'rgba(130,140,160,.10)', null); label(t('map.street'), 26, 23, { c: '#99846f', s: 11 });
-      box([LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], 'rgba(246,236,216,.10)', line); box([WC.x0, WC.z0, WC.x1, WC.z1], dim, line); box([SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], dim, line);
+      box([LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], 'rgba(246,236,216,.10)', line); box([WC.x0, WC.z0, WC.x1, WC.z1], dim, line); box([SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], dim, line); label('\u25B2 ' + t('map.private'), 0, -17.4, { c: gold, s: 11 });   /* v14e the wing is at the corridor's far end, off this map */
       box([CORE.x0, -9.8, CORE.x1, CORE.z1], 'rgba(224,178,90,.12)', 'rgba(224,178,90,.5)');
       const B = COUNTERS.boxOffice, F = COUNTERS.concessions; box([B.x0, B.z0, B.x1, B.z1], 'rgba(224,178,90,.18)', null); box([F.x0, F.z0, F.x1, F.z1], 'rgba(224,178,90,.18)', null);
       label(t('map.tickets'), -12.5, 9.6, { s: 14 }); label(t('map.food'), -11.5, -3.6, { s: 14 }); label(t('map.cafe'), -15.5, -11.4, { s: 13 }); label(t('map.lobby'), 1, 6, { s: 17, w: 700, c: gold });

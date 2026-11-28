@@ -11,6 +11,7 @@ import { VIP as LOUNGE, PRIVATE } from './building.js';
 import { MAT, Acc, toGeometry, M } from './geom.js';
 import { makeCanvas, SANS, SERIF } from './textures.js';
 import { makeRemote } from './remote.js';
+import { G } from './materials.js';
 
 export const PV_PRICE = Object.fromEntries(PRIVATE.map((p) => [p.id, p.price]));
 const VELVET = MAT.velvet, LEATHER = MAT.leather;
@@ -22,13 +23,13 @@ function kit(p) {
   const R = p.riser ? p.riser.y : 0, rd = p.riser ? (p.riser.d0 + p.riser.d1) / 2 : 0;
   switch (p.theme) {
     case 'home': return [['sofa_curve', 0, 5.7, 0, {}], ['scan_coffee_table', 0, 3.9, 0, {}], ['rug_rect', 0, 5.0, 0, { collide: false, yaw: Math.PI / 2 }],
-      ['side_table', -2.45, 5.6, 0, {}], ['side_table', 2.45, 5.6, 0, {}], ['table_lamp', -2.45, 5.6, 0.85, { collide: false }], ['table_lamp', 2.45, 5.6, 0.85, { collide: false }],
+      ['side_table', -2.45, 5.6, 0, {}], ['side_table', 2.45, 5.6, 0, {}], ['table_lamp', -2.45, 5.6, 0.548, { collide: false }], ['table_lamp', 2.45, 5.6, 0.548, { collide: false }],
       ['bed_modern', 0, rd + 0.1, R, { swap: { velvet_charcoal: [LEATHER, [0.46, 0.27, 0.15]], wool_charcoal: [VELVET, [0.6, 0.5, 0.38]] } }], ['speaker_tower', -4.1, 1.15, 0, {}], ['speaker_tower', 4.1, 1.15, 0, {}],
       ['shelf_unit', -4.55, 7.0, 0, { yaw: Math.PI / 2 }], ['shelf_unit', 4.55, 7.0, 0, { yaw: -Math.PI / 2 }], ['planter_tall', -4.3, 12.9, 0, {}], ['planter_tall', 4.3, 12.9, 0, {}],
       ['torchere_deco', -3.7, 11.9, 0, { collide: false }], ['torchere_deco', 3.7, 11.9, 0, { collide: false }],
-      ['side_table', -1.55, rd + 0.9, R, {}], ['side_table', 1.55, rd + 0.9, R, {}], ['table_lamp', -1.55, rd + 0.9, R + 0.85, { collide: false }], ['table_lamp', 1.55, rd + 0.9, R + 0.85, { collide: false }],
-      ['rug_round', 0, rd, R, { scale: 0.9, collide: false, swap: { velvet_navy: [VELVET, [0.55, 0.42, 0.3]], carpet_deco: [VELVET, [0.42, 0.3, 0.2]] } }],
-      ['scan_armchair', -3.6, 3.2, 0, { yaw: 0.6 }], ['planter_tall', -4.3, 2.0, 0, {}], ['planter_tall', 4.3, 2.0, 0, {}], ['planter_tall', 4.3, 8.6, 0, {}]];
+      ['side_table', -1.55, rd + 0.9, R, {}], ['side_table', 1.55, rd + 0.9, R, {}], ['table_lamp', -1.55, rd + 0.9, R + 0.548, { collide: false }], ['table_lamp', 1.55, rd + 0.9, R + 0.548, { collide: false }],
+      ['rug_round', 0, rd, R, { scale: 0.62, collide: false, swap: { velvet_navy: [VELVET, [0.55, 0.42, 0.3]], carpet_deco: [VELVET, [0.42, 0.3, 0.2]] } }],
+      ['scan_armchair', -3.6, 3.2, 0, { yaw: 0.6 }], ['planter_tall', -4.3, 2.0, 0, {}], ['planter_tall', 4.3, 2.0, 0, {}], ['planter_tall', 4.3, 7.95, 0, {}]];
     case 'jungle': return [['scan_lounge_chair', -2.1, 5.4, 0, {}], ['scan_lounge_chair', 0, 5.4, 0, {}], ['scan_lounge_chair', 2.1, 5.4, 0, {}],
       ['scan_lounge_chair', -1.1, rd, R, {}], ['scan_lounge_chair', 1.1, rd, R, {}], ['olive_tree', -3.6, 2.2, 0, { scale: 0.8, collide: false }], ['olive_tree', 3.6, 2.2, 0, { scale: 0.8, collide: false }],
       ['planter_tall', -4.4, 4.0, 0, {}], ['planter_tall', 4.4, 4.0, 0, {}], ['planter_tall', -4.4, 7.2, 0, {}], ['planter_tall', 4.4, 7.2, 0, {}], ['planter_tall', -4.4, 12.6, 0, {}], ['planter_tall', 4.4, 12.6, 0, {}],
@@ -95,6 +96,37 @@ const FLY_V = `uniform float uT; uniform float uS; attribute float aS; varying f
   gl_Position = projectionMatrix * mv; gl_PointSize = 0.035 * uS / max(0.3, -mv.z); vA = 0.35 + 0.65 * pow(0.5 + 0.5 * sin(t * 3.0 + aS * 9.0), 3.0); }`;
 const STAR_V = `uniform float uT; uniform float uS; attribute float aS; varying float vA; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
   gl_PointSize = max(1.5, (0.035 + 0.04 * aS) * uS / max(0.3, -mv.z)); vA = 0.45 + 0.55 * (0.5 + 0.5 * sin(uT * (1.0 + 2.0 * aS) + aS * 40.0)); }`;
+// v14e (the user, 11-28: "not a packed room with some particles ... like it's in Irusu", a VR headset): Space's walls and ceiling show
+// open space by view direction alone (no parallax, so they read as infinitely far): you sit on a deck floating in space. Twinkling stars,
+// a nebula band, the sun behind you and a planet off to the front left, turning. world9.js draws the room's powder faces with it.
+const SKY_V = `varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const SKY_F = `uniform float uTime; uniform vec3 uSun; uniform vec3 uPl; uniform float uPlR; varying vec3 vW;
+float h3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float n3(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(h3(i), h3(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h3(i + vec3(0.0, 1.0, 0.0)), h3(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+    mix(mix(h3(i + vec3(0.0, 0.0, 1.0)), h3(i + vec3(1.0, 0.0, 1.0)), f.x), mix(h3(i + vec3(0.0, 1.0, 1.0)), h3(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z); }
+float fbm(vec3 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 3; i++) { s += a * n3(p); p = p * 2.07 + 11.7; a *= 0.5; } return s / 0.875; }
+vec3 stars(vec3 d, float k, float th, float sz, float tw) { vec3 g = d * k, c = floor(g); float r = h3(c + k * 0.01); if (r < th) return vec3(0.0);
+  vec3 sp = c + 0.5 + (vec3(h3(c + 1.7), h3(c + 3.1), h3(c + 5.3)) - 0.5) * 0.5; float b = smoothstep(sz, 0.0, length(g - sp)) * (0.35 + 0.65 * (r - th) / (1.0 - th));
+  b *= 1.0 - tw + tw * (0.5 + 0.5 * sin(uTime * (1.3 + 3.0 * h3(c + 9.0)) + r * 60.0)); return mix(vec3(1.0, 0.84, 0.72), vec3(0.78, 0.88, 1.0), h3(c + 2.0)) * b; }
+void main() {
+  vec3 d = normalize(vW - cameraPosition), col = vec3(0.008, 0.009, 0.02);
+  float band = exp(-pow(dot(d, normalize(vec3(0.3, 0.75, -0.6))) * 2.2, 2.0));
+  float n = fbm(d * 2.4 + vec3(0.0, 0.0, uTime * 0.003)), m = fbm(d * 5.0 - 3.1);
+  col += vec3(0.36, 0.1, 0.48) * smoothstep(0.4, 0.85, n) * (0.25 + band);
+  col += vec3(0.07, 0.22, 0.48) * smoothstep(0.48, 0.92, m) * band;
+  col += stars(d, 150.0, 0.86, 0.38, 0.55) * 2.4 + stars(d, 380.0, 0.9, 0.34, 0.0) * 1.3;
+  float sd = max(dot(d, uSun), 0.0); col += vec3(1.0, 0.9, 0.76) * (pow(sd, 1600.0) * 8.0 + pow(sd, 60.0) * 0.3 + pow(sd, 6.0) * 0.05);
+  vec3 C = uPl * 100.0; float R = 100.0 * sin(uPlR), b = dot(d, C), c0 = max(dot(C, C) - b * b, 0.0), disc = R * R - c0;
+  if (b > 0.0) { col += vec3(0.3, 0.55, 1.0) * exp(-max(sqrt(c0) - R, 0.0) / (R * 0.04)) * 0.45;
+    if (disc > 0.0) { vec3 P = d * (b - sqrt(disc)), N = normalize(P - C); float a = uTime * 0.012, ca = cos(a), sa = sin(a); vec3 Q = vec3(N.x * ca - N.z * sa, N.y, N.x * sa + N.z * ca);
+      float land = smoothstep(0.5, 0.56, fbm(Q * 2.3 + 4.0)), cl = smoothstep(0.55, 0.78, fbm(Q * 4.6 + vec3(uTime * 0.005, 0.0, 0.0)));
+      vec3 sf = mix(vec3(0.03, 0.09, 0.26), mix(vec3(0.12, 0.26, 0.09), vec3(0.45, 0.36, 0.22), smoothstep(0.5, 0.7, fbm(Q * 6.0))), land); sf = mix(sf, vec3(0.95), cl * 0.85);
+      float li = max(dot(N, uSun), 0.0), rim = pow(1.0 - max(dot(N, -d), 0.0), 2.5);
+      col = sf * (0.02 + 1.15 * li) + vec3(0.3, 0.55, 1.0) * rim * (0.12 + 0.9 * li); } }
+  gl_FragColor = vec4(col, 1.0);
+}`;
+export function spaceSkyMat() { return new THREE.ShaderMaterial({ vertexShader: SKY_V, fragmentShader: SKY_F, uniforms: { uTime: G.uTime, uSun: { value: new THREE.Vector3(-0.45, 0.5, 0.74).normalize() }, uPl: { value: new THREE.Vector3(0.554, 0.259, -0.791).normalize() }, uPlR: { value: 0.4 } } }); }
 const PLANET_V = `varying vec3 vN; varying vec3 vP; void main() { vN = normalize(normalMatrix * normal); vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const PLANET_F = `uniform float uT; uniform vec3 uA; uniform vec3 uB; varying vec3 vN; varying vec3 vP; void main() { float b = sin(vP.y * 18.0 + sin(vP.x * 6.0 + uT * 0.3) * 1.5) * 0.5 + 0.5;
   vec3 c = mix(uA, uB, b * 0.7); float rim = pow(1.0 - abs(vN.z), 2.2); c += vec3(0.4, 0.55, 1.0) * rim * 0.9;
@@ -136,9 +168,8 @@ export class Privates {
     this.remotes = {}; for (const h of this.halls) this._remote(h);
     // the two lift cars: the lobby's (its doors to the lobby) and the lounge's (to the lounge)
     const LP = LOUNGE.lobbyPod, WP = LOUNGE.pod;
-    this.pods = [this._pod('lobby', LP.x, LP.z, LP.yaw, 'up'), this._pod('vip', WP.x, WP.z, Math.PI, 'down')];   // the lounge's car faces north, into the lounge
-    { const W = world.walls; for (const s of [-1, 1]) W.add(WP.x + s * (POD_R + 0.1), WP.z, WP.x + s * (POD_R + 0.1), LOUNGE.z1 - 0.2, -0.1, POD_H + 0.2, 1); }   // no way round behind it to the wall
-    this.ride = null;
+    this.pods = []; void LP; void WP;   // v14e no lift: the wing is walked to through the spine (building.js WING); _pod stays for reference
+    this.ride = null; this._wayfind(world);
   }
   // a private room as a show hall (film9 reads id, key, name, room, picMat, slate, curtains, seats and cfg: W, H, aspect)
   _hall(p, room) {
@@ -161,10 +192,7 @@ export class Privates {
     const W2 = (p.z1 - p.z0) / 2 - 0.4, D = p.depth;
     if (p.theme === 'winter') add(SNOW_V, '#ffffff', scatter(260, -W2, W2, 1.5, D - 1, 0.6, p.ceil - 0.3), (m) => { m.uniforms.uH.value = p.ceil - 0.6; });
     if (p.theme === 'jungle') add(FLY_V, '#c8ff6a', scatter(70, -W2, W2, 1.5, D - 1, 0.5, 3.2));
-    if (p.theme === 'space' || p.theme === 'drive') add(STAR_V, '#e8eeff', scatter(p.theme === 'drive' ? 900 : 420, -W2 - 0.2, W2 + 0.2, 0.5, D, p.ceil - 0.08, p.ceil - 0.02));
-    if (p.theme === 'space') { const pm = new THREE.ShaderMaterial({ vertexShader: PLANET_V, fragmentShader: PLANET_F, uniforms: { uT: { value: 0 }, uA: { value: new THREE.Color(0.28, 0.16, 0.42) }, uB: { value: new THREE.Color(0.95, 0.62, 0.38) } } });
-      const pl = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 20), pm), w = p.toWorld(-3.4, 9.5); pl.position.set(w.x, p.ceil - 1.4, w.z); pl.name = 'pv-planet'; group.add(pl); this.mats.push(pm); this.fx.push(pl);
-      const rg = new THREE.Mesh(new THREE.RingGeometry(0.82, 1.12, 48), new THREE.MeshBasicMaterial({ color: 0xc8b8ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })); rg.rotation.x = -1.2; pl.add(rg); }
+    if (p.theme === 'drive') add(STAR_V, '#e8eeff', scatter(900, -W2 - 0.2, W2 + 0.2, 0.5, D, p.ceil - 0.08, p.ceil - 0.02));
     if (p.theme === 'drive') {   // the moon over the lot, string lights from the lamp posts to the screen's towers
       const moon = new THREE.Mesh(new THREE.CircleGeometry(1.1, 40), new THREE.MeshBasicMaterial({ color: 0xf4ecd8, toneMapped: false })), w = p.toWorld(9, 22); moon.position.set(w.x, p.ceil - 0.05, w.z); moon.rotation.x = Math.PI / 2; group.add(moon);
       const bulbs = [], geo = new THREE.SphereGeometry(0.05, 10, 8), mat = new THREE.MeshBasicMaterial({ color: 0xffc47a, toneMapped: false });
@@ -176,6 +204,17 @@ export class Privates {
   _remote(h) { const p = h.p, spot = { home: [0, 3.9, 0.49], jungle: [3.15, 5.4, 0.85], winter: [0, 5.75, 0.85], space: [1.05, 5.4, 0.85], drive: [0, 10.6, 0.85] }[p.theme], w = p.toWorld(spot[0], spot[1]);
     const r = makeRemote({ flat: true }); r.visible = false; r.position.set(w.x, spot[2] + 0.003, w.z); r.rotation.y = faceYaw(p) + 0.4; r.name = 'pv-remote'; h.room.group.add(r); this.remotes[p.id] = { m: r, at: { x: w.x, y: spot[2] + 0.02, z: w.z }, h }; }
   // ---------------------------------------------------------------- the lift cars
+  // v14e the way there: a lit sign over the spine's door in the lobby (in the strip under the LED wall) and one over the wing's door
+  _wayfind(world) {
+    const sign = (roomKey, x, y, z, w, h, l1, l2) => { const room = world.rooms[roomKey]; if (!room) return; const c = makeCanvas(1024, Math.round(1024 * h / w)), g = c.getContext('2d'), H = c.height;
+      g.fillStyle = '#0b0a0a'; g.fillRect(0, 0, 1024, H); g.strokeStyle = '#c9a35e'; g.lineWidth = 6; g.strokeRect(6, 6, 1012, H - 12); g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = '#e8c27a'; g.font = `500 ${Math.round(H * (l2 ? 0.42 : 0.56))}px ${SERIF}`; if ('letterSpacing' in g) g.letterSpacing = '10px'; g.__fit = [30, 994]; g.fillText(l1, 512, l2 ? H * 0.38 : H * 0.53); g.__fit = null;
+      if (l2) { if ('letterSpacing' in g) g.letterSpacing = '2px'; g.fillStyle = '#f3e7cf'; g.font = `500 ${Math.round(H * 0.2)}px ${SANS}`; g.__fit = [30, 994]; g.fillText(l2, 512, H * 0.76); g.__fit = null; }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+      m.position.set(x, y, z); m.name = 'pv-wayfind'; room.group.add(m); };
+    sign('lobby', 0, 3.3, -13.6 + 0.012, 2.9, 0.5, 'PRIVATE SCREENS', 'Home \u00b7 Jungle \u00b7 Winter \u00b7 Space \u00b7 Drive-in \u2014 straight through this corridor');
+    sign('spine', LOUNGE.pod.x, 3.06, LOUNGE.z1 + 0.4 + 0.012, 2.4, 0.36, 'PRIVATE SCREENS');
+  }
   _pod(roomKey, x, z, yaw, dir) {
     const room = this.world.rooms[roomKey], grp = new THREE.Group(); grp.position.set(x, 0, z); grp.rotation.y = yaw; grp.updateMatrixWorld(true); grp.name = 'pv-lift-' + roomKey; room.group.add(grp);
     const bake = (acc) => { const g = toGeometry(acc); g.applyMatrix4(grp.matrixWorld); room.lights.bake(g); g.applyMatrix4(grp.matrixWorld.clone().invert()); return new THREE.Mesh(g, this.world.mats.litFor(room.U, g)); };

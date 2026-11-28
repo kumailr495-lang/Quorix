@@ -59,7 +59,7 @@ export const DOORS = [
   { id: 'main', rooms: ['street', 'lobby'], kind: 'slide', axis: 'x', x: 0, z: FACADE, w: 4.0, h: 3.0, y: 0 },
   { id: 'wc', rooms: ['lobby', 'wc'], kind: 'open', axis: 'z', x: 22, z: -1.0, w: 2.2, h: 2.6, y: 0 },   // v14d the women's (the user, 11-26: "washrooms not separated")
   { id: 'wcM', rooms: ['lobby', 'wc'], kind: 'open', axis: 'z', x: 22, z: -7.0, w: 1.6, h: 2.6, y: 0 },   // v14d the men's: its own door, its own half of the vestibule
-  { id: 'spineOut', rooms: ['spine', 'lobby'], kind: 'pair', axis: 'x', x: 0, z: -14, w: 3.2, h: 3.0, y: 0, oneWay: 'spine' },
+  { id: 'spineOut', rooms: ['spine', 'lobby'], kind: 'pair', axis: 'x', x: 0, z: -14, w: 3.2, h: 3.0, y: 0 },
   { id: 'mezzPortal', rooms: ['lobby', 'corridor'], kind: 'open', axis: 'x', x: 10.2, z: -14, w: 5.6, h: 3.4, y: L1 },
 ];
 // every hall: the front floor is lifted so its rear aisle is level with L1 (no stairs on the way in); the rear entry door at L1 (in only).
@@ -116,9 +116,17 @@ export const PRIVATE = [
   { id: 'SPACE', key: 'pvSpace', theme: 'space', name: 'SPACE', price: 500, x0: 224, x1: 239, z0: -20, z1: -10, ceil: 5.0, f: 1, screen: { x: 238.35, zc: -15, W: 7.2, H: 3.5, hB: 1.0 }, riser: { d0: 8.4, d1: 11.4, y: 0.28 }, door: { x: 224, z: -15, w: 1.8 } },
   { id: 'DRIVE', key: 'pvDrive', theme: 'drive', name: 'DRIVE-IN', price: 500, x0: 194, x1: 230, z0: -48, z1: -20, ceil: 11.0, f: -1, screen: { x: 195.4, zc: -34, W: 17.0, H: 7.6, hB: 1.8 }, riser: null, door: { x: 222, z: -20, w: 2.4 } },
 ];
+// v14e (the user, 11-28: "the rooms ... should be at the same places the other ones are, in corridors"): no lift. The wing stands behind
+// the halls at the spine's far end, walked to through the spine (its lobby door opens both ways now; the halls' exits still only open
+// out). The numbers above are the wing's own plan; WING moves it there as one block, its lounge's front against the spine's end wall.
+export const WING = { dx: -212, dz: SPINE.z0 - 0.4 };
+for (const o of [VIP, ...PRIVATE]) { o.x0 += WING.dx; o.x1 += WING.dx; o.z0 += WING.dz; o.z1 += WING.dz; if (o.screen) { o.screen.x += WING.dx; o.screen.zc += WING.dz; } if (o.door) { o.door.x += WING.dx; o.door.z += WING.dz; } }
+VIP.pod.x += WING.dx; VIP.pod.z += WING.dz;
 export const PRIVATE_BY_ID = Object.fromEntries(PRIVATE.map((p) => [p.id, p]));
 // their doors on the lounge's walls: a pair of leaves each, locked until you rent the room (private.js opens them for you then)
 for (const p of PRIVATE) DOORS.push({ id: 'pv' + p.id, rooms: ['vip', p.key], kind: 'pair', axis: p.theme === 'drive' ? 'x' : 'z', x: p.door.x, z: p.door.z, w: p.door.w, h: 2.5, y: 0, priv: p.id });
+// v14e the wing's door from the spine: automatic glass in the spine's end wall, the lounge's front
+DOORS.push({ id: 'pvEntry', rooms: ['spine', 'vip'], kind: 'slide', axis: 'x', x: VIP.pod.x, z: VIP.z1, w: 2.2, h: 2.7, y: 0 });
 // a private room's own frame, as a hall's: u across the picture (to the viewer's right), d from the picture plane into the room
 for (const p of PRIVATE) { const f = p.f; p.toWorld = (u, d) => ({ x: p.screen.x - f * d, z: p.screen.zc + f * u }); p.toLocal = (x, z) => ({ u: (z - p.screen.zc) * f, d: (p.screen.x - x) * f }); p.depth = Math.abs((f > 0 ? p.x0 : p.x1) - p.screen.x); }
 // rooms: kind drives the Blender builder; level = the lowest floor in it; vis = rooms drawn when you are in it (portal culling)
@@ -127,8 +135,8 @@ export const ROOMS = {
   lobby: { kind: 'lobby', level: 0, rect: [LOBBY.x0, LOBBY.z0, LOBBY.x1, LOBBY.z1], ceil: LOBBY.ceil, vis: ['street', 'wc', 'corridor', 'spine'] },
   wc: { kind: 'wc', level: 0, rect: [WC.x0, WC.z0, WC.x1, WC.z1], ceil: WC.ceil, vis: ['lobby'] },
   corridor: { kind: 'corridor', level: L1, rect: [BRIDGE.x0, LINK_W.z0, BRIDGE.x1, BRIDGE.z1], ceil: L1 + 4.2, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
-  vip: { kind: 'vip', level: 0, rect: [VIP.x0, VIP.z0, VIP.x1, VIP.z1], ceil: VIP.ceil, vis: PRIVATE.map((p) => p.key) },
-  spine: { kind: 'spine', level: 0, rect: [SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], ceil: SPINE.ceil, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270'] },
+  vip: { kind: 'vip', level: 0, rect: [VIP.x0, VIP.z0, VIP.x1, VIP.z1], ceil: VIP.ceil, vis: [...PRIVATE.map((p) => p.key), 'spine'] },
+  spine: { kind: 'spine', level: 0, rect: [SPINE.x0, SPINE.z0, SPINE.x1, SPINE.z1], ceil: SPINE.ceil, vis: ['lobby', 'hallMax', 'hallCurve', 'hallClassic', 'hall270', 'vip'] },
 };
 for (const p of PRIVATE) ROOMS[p.key] = { kind: 'private', pid: p.id, level: 0, rect: [p.x0, p.z0, p.x1, p.z1], ceil: p.ceil, vis: ['vip'] };
 for (const h of Object.values(HALL)) {
