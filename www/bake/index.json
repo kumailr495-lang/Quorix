@@ -1,0 +1,251 @@
+{
+ "rooms": {
+  "corridor": {
+   "avg": 0.05540129804507538,
+   "glb": "corridor.glb",
+   "hall": false,
+   "hash": "v9.4775077da5d7",
+   "maps": [
+    "corridor_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    1.5263153028259557,
+    0.0,
+    0.0
+   ]
+  },
+  "hall270": {
+   "avg": 0.013075446566076876,
+   "glb": "hall270.glb",
+   "hall": true,
+   "hash": "v9.0ff601f7c265",
+   "maps": [
+    "hall270_h.jpg",
+    "hall270_f.jpg",
+    "hall270_s.jpg"
+   ],
+   "probes": "hall270_probes.json",
+   "res": 2048,
+   "scale": [
+    0.16212754114568467,
+    0.13880897871280748,
+    0.9706548452377319
+   ]
+  },
+  "hallClassic": {
+   "avg": 0.025199988604978435,
+   "glb": "hallClassic.glb",
+   "hall": true,
+   "hash": "v9.bee4e8ac1843",
+   "maps": [
+    "hallClassic_h.jpg",
+    "hallClassic_f.jpg",
+    "hallClassic_s.jpg"
+   ],
+   "probes": "hallClassic_probes.json",
+   "res": 2048,
+   "scale": [
+    0.6624200788906374,
+    0.12150796373933537,
+    0.9646350145339966
+   ]
+  },
+  "hallCurve": {
+   "avg": 0.03568255927979057,
+   "glb": "hallCurve.glb",
+   "hall": true,
+   "hash": "v9.aa57e3a16ad9",
+   "maps": [
+    "hallCurve_h.jpg",
+    "hallCurve_f.jpg",
+    "hallCurve_s.jpg"
+   ],
+   "probes": "hallCurve_probes.json",
+   "res": 2048,
+   "scale": [
+    0.7020476148637139,
+    0.47351856318115987,
+    0.9042986035346985
+   ]
+  },
+  "hallMax": {
+   "avg": 0.011561483959849461,
+   "glb": "hallMax.glb",
+   "hall": true,
+   "hash": "v9.2082351c282c",
+   "maps": [
+    "hallMax_h.jpg",
+    "hallMax_f.jpg",
+    "hallMax_s.jpg"
+   ],
+   "probes": "hallMax_probes.json",
+   "res": 2048,
+   "scale": [
+    0.3832561137984631,
+    0.17748994802238144,
+    0.9707331657409668
+   ]
+  },
+  "lobby": {
+   "avg": 0.06690077687739766,
+   "glb": "lobby.glb",
+   "hall": false,
+   "hash": "v9.70361f2094f8",
+   "maps": [
+    "lobby_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    2.19110088754581,
+    0.0,
+    0.0
+   ]
+  },
+  "pvDrive": {
+   "avg": 0.006209923144206837,
+   "glb": "pvDrive.glb",
+   "hall": true,
+   "hash": "v9.2e6b5df7a937",
+   "maps": [
+    "pvDrive_h.jpg",
+    "pvDrive_f.jpg",
+    "pvDrive_s.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    0.02767745347321036,
+    0.031384554708531916,
+    1.0022625923156738
+   ]
+  },
+  "pvHome": {
+   "avg": 0.07576168486529301,
+   "glb": "pvHome.glb",
+   "hall": true,
+   "hash": "v9.161354c5379a",
+   "maps": [
+    "pvHome_h.jpg",
+    "pvHome_f.jpg",
+    "pvHome_s.jpg"
+   ],
+   "res": 1024,
+   "scale": [
+    3.196220052957537,
+    0.20059420150518548,
+    1.001593828201294
+   ]
+  },
+  "pvJungle": {
+   "avg": 0.017730674233999957,
+   "glb": "pvJungle.glb",
+   "hall": true,
+   "hash": "v9.50c9ae87907e",
+   "maps": [
+    "pvJungle_h.jpg",
+    "pvJungle_f.jpg",
+    "pvJungle_s.jpg"
+   ],
+   "res": 1024,
+   "scale": [
+    1.0672922233343085,
+    0.20129249571890753,
+    1.0014235973358154
+   ]
+  },
+  "pvSpace": {
+   "avg": 0.01570696041750971,
+   "glb": "pvSpace.glb",
+   "hall": true,
+   "hash": "v9.ff1c3f220c8e",
+   "maps": [
+    "pvSpace_h.jpg",
+    "pvSpace_f.jpg",
+    "pvSpace_s.jpg"
+   ],
+   "res": 1024,
+   "scale": [
+    1.2976313242912254,
+    0.2141491387375507,
+    1.001949429512024
+   ]
+  },
+  "pvWinter": {
+   "avg": 0.030232994462176442,
+   "glb": "pvWinter.glb",
+   "hall": true,
+   "hash": "v9.d343da9275fe",
+   "maps": [
+    "pvWinter_h.jpg",
+    "pvWinter_f.jpg",
+    "pvWinter_s.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    1.8433750598430614,
+    0.28164462149140873,
+    1.0008658170700073
+   ]
+  },
+  "spine": {
+   "avg": 0.2349569635524772,
+   "glb": "spine.glb",
+   "hall": false,
+   "hash": "v9.a6932cbaa221",
+   "maps": [
+    "spine_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    1.3944382762959018,
+    0.0,
+    0.0
+   ]
+  },
+  "street": {
+   "avg": 0.042127122929009636,
+   "glb": "street.glb",
+   "hall": false,
+   "hash": "v9.225a7295ffb4",
+   "maps": [
+    "street_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    1.291775842666648,
+    0.0,
+    0.0
+   ]
+  },
+  "vip": {
+   "avg": 0.01873813480100845,
+   "glb": "vip.glb",
+   "hall": false,
+   "hash": "v9.0fc146f5da6d",
+   "maps": [
+    "vip_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    1.0456714182835862,
+    0.0,
+    0.0
+   ]
+  },
+  "wc": {
+   "avg": 0.10486510668556744,
+   "glb": "wc.glb",
+   "hall": false,
+   "hash": "v9.a64b618ceddd",
+   "maps": [
+    "wc_h.jpg"
+   ],
+   "res": 2048,
+   "scale": [
+    0.7406117832660677,
+    0.0,
+    0.0
+   ]
+  }
+ }
+}

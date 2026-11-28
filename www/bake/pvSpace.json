@@ -1,0 +1,20 @@
+{
+ "room": "pvSpace",
+ "res": 1024,
+ "hall": true,
+ "hash": "v9.ff1c3f220c8e",
+ "maps": [
+  "pvSpace_h.png",
+  "pvSpace_f.png",
+  "pvSpace_s.png"
+ ],
+ "scale": [
+  1.2976313242912254,
+  0.2141491387375507,
+  1.001949429512024
+ ],
+ "avg": 0.01570696041750971,
+ "glb": "pvSpace.glb",
+ "verts": 828,
+ "tris": 276
+}

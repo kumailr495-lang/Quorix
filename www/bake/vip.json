@@ -1,0 +1,18 @@
+{
+ "room": "vip",
+ "res": 2048,
+ "hall": false,
+ "hash": "v9.0fc146f5da6d",
+ "maps": [
+  "vip_h.png"
+ ],
+ "scale": [
+  1.0456714182835862,
+  0.0,
+  0.0
+ ],
+ "avg": 0.01873813480100845,
+ "glb": "vip.glb",
+ "verts": 4428,
+ "tris": 1476
+}

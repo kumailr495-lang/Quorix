@@ -1,0 +1,20 @@
+{
+ "room": "pvHome",
+ "res": 1024,
+ "hall": true,
+ "hash": "v9.161354c5379a",
+ "maps": [
+  "pvHome_h.png",
+  "pvHome_f.png",
+  "pvHome_s.png"
+ ],
+ "scale": [
+  3.196220052957537,
+  0.20059420150518548,
+  1.001593828201294
+ ],
+ "avg": 0.07576168486529301,
+ "glb": "pvHome.glb",
+ "verts": 2124,
+ "tris": 708
+}

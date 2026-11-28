@@ -1,0 +1,7 @@
+{
+  "hud.recline": {"en": "Recline", "es": "Reclinar", "hi": "पीछे झुकाएँ", "ur": "پیچھے جھکائیں"},
+  "hud.sitUp": {"en": "Sit up", "es": "Incorporarse", "hi": "सीधे बैठें", "ur": "سیدھے بیٹھیں"},
+  "hud.cupIn": {"en": "Put it in the cup holder", "es": "Ponerlo en el portavasos", "hi": "कप होल्डर में रखें", "ur": "کپ ہولڈر میں رکھیں"},
+  "hud.cupOut": {"en": "Take it from the cup holder", "es": "Tomarlo del portavasos", "hi": "कप होल्डर से उठाएँ", "ur": "کپ ہولڈر سے اٹھائیں"},
+  "toast.cupFull": {"en": "Both cup holders are in use", "es": "Los dos portavasos están ocupados", "hi": "दोनों कप होल्डर भरे हैं", "ur": "دونوں کپ ہولڈر بھرے ہیں"}
+}

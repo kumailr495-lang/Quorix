@@ -1,0 +1,68 @@
+{
+ "goal.enter": {
+  "en": "Go inside",
+  "es": "Entra al cine",
+  "hi": "अंदर चलिए",
+  "ur": "اندر چلیں"
+ },
+ "goal.ticket": {
+  "en": "Buy a ticket",
+  "es": "Compra tu entrada",
+  "hi": "टिकट खरीदिए",
+  "ur": "ٹکٹ خریدیں"
+ },
+ "goal.gate": {
+  "en": "Show your ticket",
+  "es": "Muestra tu entrada",
+  "hi": "टिकट दिखाइए",
+  "ur": "ٹکٹ دکھائیں"
+ },
+ "goal.up": {
+  "en": "Take the escalator",
+  "es": "Sube por la escalera",
+  "hi": "एस्केलेटर से ऊपर",
+  "ur": "ایسکلیٹر سے اوپر"
+ },
+ "goal.hall": {
+  "en": "To {name}",
+  "es": "A {name}",
+  "hi": "{name} की ओर",
+  "ur": "{name} کی طرف"
+ },
+ "goal.seat": {
+  "en": "Seat {seat}",
+  "es": "Butaca {seat}",
+  "hi": "सीट {seat}",
+  "ur": "سیٹ {seat}"
+ },
+ "goal.exit": {
+  "en": "Way out",
+  "es": "Salida",
+  "hi": "बाहर का रास्ता",
+  "ur": "باہر کا راستہ"
+ },
+ "set.goal": {
+  "en": "Show the way",
+  "es": "Mostrar el camino",
+  "hi": "रास्ता दिखाएँ",
+  "ur": "راستہ دکھائیں"
+ },
+ "set.more": {
+  "en": "More",
+  "es": "Más",
+  "hi": "और",
+  "ur": "مزید"
+ },
+ "set.advanced": {
+  "en": "More options",
+  "es": "Más opciones",
+  "hi": "और विकल्प",
+  "ur": "مزید اختیارات"
+ },
+ "hud.leave": {
+  "en": "Leave",
+  "es": "Salir",
+  "hi": "बाहर चलें",
+  "ur": "باہر چلیں"
+ }
+}

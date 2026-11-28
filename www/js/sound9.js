@@ -1,0 +1,192 @@
+// LUMIERE v9 sound, on top of the v8 synthesis (sound.js):
+//  * a low-latency context (v8 used 'playback': taps and picture drifted from the sound on phones);
+//  * the film through "Lumière Sphere": the picture's stereo is spread over virtual speakers placed in the hall (screen left, centre and
+//    right, both side walls, the rear corners and four overhead), heard from where your head is and how it is turned, so turning your
+//    head moves the sound like in a real room;
+//  * volume up to 250 %: the gain goes before a brick-wall limiter, so loud never means clipped;
+//  * real recordings (BigSoundBank, CC0) for applause, cheering, the lobby murmur, the street, escalators, the lift, the popcorn machine,
+//    toilets, taps and the taxi; the v8 formant voices stay only for laughs and screams, quieter (no CC0 recordings of those were reachable).
+//  * v10: the cafe (its room tone and, when you buy, the machine's pump and a cup), the fountain's water, the popcorn cart (BigSoundBank
+//    2561, 0913, 3049, 0410; CC0), each heard by how near you are
+import { Sound } from './sound.js';
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), rnd = (a, b) => a + Math.random() * (b - a);
+const FILES = ['applause_s', 'applause_m', 'applause_l', 'cheer1', 'cheer2', 'murmur', 'gasp_f', 'flush', 'tap', 'lid', 'car_door', 'car_door_in', 'car_ride', 'car_rain', 'car_start', 'escalator', 'lift', 'beep', 'ticket', 'popcorn', 'street', 'lounge', 'cafe', 'fountain', 'espresso', 'cup'];
+export class Sound9 extends Sound {
+  constructor() { super(); this.buf = {}; this.loops = {}; this.sphere = null; this.boost = 1; this._pre = this._predecode(); this._pre.then((o) => { this._preBuf = o; }); }
+  // v14e (the user, 11-27: "the intro is a bit glitched in terms of sounds, there's a huge delay"): the recordings were fetched and decoded
+  // only after the first tap, so the taxi's rain, doors and street came in seconds late. They decode while the game loads now (an offline
+  // context needs no tap); the live context takes the buffers as it starts
+  _predecode() { let oc = null; try { const O = window.OfflineAudioContext || window.webkitOfflineAudioContext; oc = new O(2, 2, 48000); } catch (e) { return Promise.resolve({}); }
+    const out = {}; return Promise.all(FILES.map(async (n) => { try { const r = await fetch(`snd/${n}.ogg`); if (!r.ok) return; out[n] = await oc.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* decoded again later, or the synth stands in */ } })).then(() => out); }
+  _build() {
+    // v14 (the user, 11-21: "most of the sounds are distorted and glitched"): 'playback' buffers again. The low-latency buffers of v9 ran
+    // dry on a busy low-end phone (crackles); the film plays its own sound in step with its picture, so only taps wait a little longer
+    this.latency = 'playback'; super._build(); const c = this.ctx;
+    // limiter after the master: -1 dBFS ceiling, so the film's boost (up to 2.5x) never clips. v14 (the user, 11-20: "the sounds are
+    // glitching and distorted at some points"): the hard knee and 0.12 s release pumped and crackled on bass when the film, the applause and
+    // the crowd stacked up; a 6 dB knee, slower release and 3 dB of headroom before it (trim) keep it clean
+    const lim = c.createDynamicsCompressor(); lim.threshold.value = -2; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.3;
+    this.master.disconnect(); const pre = c.createDynamicsCompressor(); pre.threshold.value = -18; pre.knee.value = 10; pre.ratio.value = 2.5; pre.attack.value = 0.01; pre.release.value = 0.3;
+    const trim = c.createGain(); trim.gain.value = 0.71; this.master.connect(trim); trim.connect(pre); pre.connect(lim); lim.connect(c.destination);
+    // the synth murmur and lounge tones give way to the recordings
+    for (const g of [this.murA, this.murB]) g.disconnect();
+    if (this._preBuf) Object.assign(this.buf, this._preBuf);   // already decoded: the first sounds (the taxi's) play at once
+    this._loadAll();
+  }
+  async _loadAll() {
+    const pre = await this._pre.catch(() => ({}));
+    await Promise.all(FILES.map(async (n) => { if (pre[n]) { this.buf[n] = pre[n]; return; } try { const r = await fetch(`snd/${n}.ogg`); if (!r.ok) return; this.buf[n] = await this.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* the synth stands in */ } }));
+    for (const [n, dest] of [['murmur', this.master], ['lounge', this.master], ['street', this.master], ['escalator', this.master], ['popcorn', this.master], ['cafe', this.master], ['fountain', this.master]]) this._loop(n, dest);
+  }
+  _loop(n, dest) { const b = this.buf[n]; if (!b || this.loops[n]) return; const c = this.ctx, s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(dest); s.start(0, Math.random() * b.duration); this.loops[n] = g; }
+  _ambientTick() {
+    super._ambientTick(); if (!this.ready || this.muted) return; const a = this.listener, t = this.ctx.currentTime, L = this.loops, inHall = a.room && a.room.startsWith('hall'), dark = a.dark;
+    const set = (n, v, tau = 0.8) => { if (L[n]) L[n].gain.setTargetAtTime(v, t, tau); };
+    set('murmur', a.room === 'lobby' ? 0.08 + 0.22 * (a.people || 0) : a.room === 'corridor' ? 0.03 : inHall && !dark ? 0.1 * (a.people || 0) : 0);
+    set('lounge', a.room === 'lobby' ? 0.05 : a.room === 'wc' ? 0.015 : 0, 1.5);
+    set('street', a.room === 'street' ? 0.5 : a.room === 'lobby' ? 0.08 * clamp(1 - Math.abs(18 - a.z) / 14) : 0);
+    set('escalator', a.room === 'lobby' ? 0.12 * clamp(1 - (a.escDist ?? 99) / 9) : 0, 0.4);
+    set('popcorn', a.room === 'lobby' ? 0.25 * clamp(1 - (a.popcornDist ?? 99) / 8) * (0.15 + 0.85 * (a.popcornRate ?? 1)) : 0, 0.5);   // v12c louder while the kettles pop (anim12.js)
+    set('cafe', a.room === 'lobby' ? 0.32 * clamp(1 - (a.cafeDist ?? 99) / 10) ** 1.5 : 0, 0.6);
+    set('fountain', a.room === 'lobby' ? 0.3 * clamp(1 - (a.fountainDist ?? 99) / 11) ** 1.6 : a.room === 'street' ? 0.02 : 0, 0.5);
+    this.music.gain.setTargetAtTime(0, t, 0.5);   // the recorded bar ambience replaces the synth lounge chords
+  }
+  _pops() {}
+  // ---------------- one-shots from recordings (fall back to the synth) ----------------
+  play(n, o = {}) {
+    if (!this.ready || this.muted) return null; const b = this.buf[n]; if (!b) return null; const c = this.ctx, s = c.createBufferSource(), g = c.createGain(), t = c.currentTime + (o.when || 0);
+    s.buffer = b; s.playbackRate.value = o.rate || 1; g.gain.value = o.gain ?? 0.6; s.connect(g);
+    if (o.x != null && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = this._panFor(o.x, o.z); g.connect(p); p.connect(o.bus || this.master); } else g.connect(o.bus || this.master);
+    if (o.fadeIn) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.gain ?? 0.6, t + o.fadeIn); }
+    s.start(t, o.offset || 0); if (o.dur) { g.gain.setTargetAtTime(0.0001, t + o.dur, 0.4); s.stop(t + o.dur + 2); } return { s, g };
+  }
+  flush() { if (!this.play('flush', { gain: 0.5, dur: 9 })) super.flush(); }
+  water(sec = 2.6) { if (!this.play('tap', { gain: 0.5, dur: sec })) super.water(sec); }
+  lock() { if (!this.play('lid', { gain: 0.35, dur: 1.2 })) super.lock(); }
+  pay() { if (!this.play('beep', { gain: 0.35 })) super.pay(); }
+  espresso() { if (!this.play('espresso', { gain: 0.55 })) { super.pour(); return; } this.play('cup', { gain: 0.45, when: 4.1 }); }   // v10: the barista makes it
+  ticket() { if (!this.play('ticket', { gain: 0.45 })) super.ticket(); }
+  carDoor(inside) { this.play(inside ? 'car_door_in' : 'car_door', { gain: 0.6 }); }
+  carRide(on) { if (on && !this._ride) this._ride = this.play('car_ride', { gain: 0.35, fadeIn: 1.2, dur: 22 }); else if (!on && this._ride) { try { this._ride.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5); } catch (e) { /* ended */ } this._ride = null; } }
+  // v11 rain on the taxi's roof, heard from inside (BigSoundBank 1293, CC0), for the night ride
+  // v12 a power recliner's motor (the user: "actual reclining and sounds"): a geared hum that rises as it starts, a faint whine over it,
+  // a soft low thump as it stops; dur in seconds
+  recliner(dur = 2.2) {
+    if (!this.ready || this.muted) return; const c = this.ctx, t = c.currentTime;
+    const osc = c.createOscillator(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(46, t); osc.frequency.linearRampToValueAtTime(60, t + 0.3); osc.frequency.setValueAtTime(60, t + dur - 0.25); osc.frequency.linearRampToValueAtTime(38, t + dur);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 480; lp.Q.value = 2.2; const g = c.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.18); g.gain.setValueAtTime(0.1, t + dur - 0.2); g.gain.linearRampToValueAtTime(0, t + dur);
+    const wh = c.createOscillator(); wh.type = 'triangle'; wh.frequency.setValueAtTime(800, t); wh.frequency.linearRampToValueAtTime(960, t + dur); const gw = c.createGain();
+    gw.gain.setValueAtTime(0, t); gw.gain.linearRampToValueAtTime(0.01, t + 0.25); gw.gain.setValueAtTime(0.01, t + dur - 0.2); gw.gain.linearRampToValueAtTime(0, t + dur);
+    const th = c.createOscillator(); th.type = 'sine'; th.frequency.setValueAtTime(88, t + dur); th.frequency.exponentialRampToValueAtTime(40, t + dur + 0.18); const tg = c.createGain();
+    tg.gain.setValueAtTime(0, t + dur); tg.gain.linearRampToValueAtTime(0.15, t + dur + 0.012); tg.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.22);
+    osc.connect(lp); lp.connect(g); g.connect(this.master); wh.connect(gw); gw.connect(this.master); th.connect(tg); tg.connect(this.master);
+    osc.start(t); wh.start(t); th.start(t + dur); osc.stop(t + dur + 0.05); wh.stop(t + dur + 0.05); th.stop(t + dur + 0.25);
+  }
+  // a cup set into (or lifted from) a holder: a short hollow knock
+  cupKnock(up = false) {
+    if (!this.ready || this.muted) return; const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sine';
+    o.frequency.setValueAtTime(up ? 380 : 540, t); o.frequency.exponentialRampToValueAtTime(up ? 520 : 260, t + 0.07); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.14);
+  }
+  // v12 a car out on the street, synthesised where it is (a panner): the hiss of its tyres on the wet road (filtered noise: at city speed
+  // that is most of what a car sounds like at night) and its engine's low note. The handle takes the car's place, its speed in metres a
+  // second and a level from 0 to 1 each frame, and fades the sound out when the car is gone
+  // v14 tyre squeal (vehicles.js): band-passed noise near 2.4 kHz with a fast flutter; set(amount 0..1, x, z)
+  screech() {
+    if (!this.ready) return null; const c = this.ctx; if (!this._noise) return null;
+    const src = c.createBufferSource(); src.buffer = this._noise; src.loop = true; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 9; const g = c.createGain(); g.gain.value = 0;
+    const lfo = c.createOscillator(); lfo.frequency.value = 23; const lg = c.createGain(); lg.gain.value = 0; lfo.connect(lg); lg.connect(g.gain);
+    const p = c.createPanner(); p.panningModel = 'equalpower'; p.distanceModel = 'inverse'; p.refDistance = 3; p.rolloffFactor = 1.1;
+    src.connect(bp); bp.connect(g); g.connect(p); p.connect(this.master); src.start(); lfo.start(); const to = (prm, v, tau = 0.06) => prm.setTargetAtTime(v, c.currentTime, tau);
+    return { set: (a, x, z) => { const m = this.muted ? 0 : a * 0.09; to(g.gain, m); to(lg.gain, m * 0.4); to(bp.frequency, 2100 + 700 * a); if (x != null) { if (p.positionX) { to(p.positionX, x, 0.05); to(p.positionZ, z, 0.05); } else p.setPosition(x, 0.4, z); } } };
+  }
+  // v14 a car's two-tone horn (a fifth apart, square waves through a low-pass), a motorbike's single higher beep
+  horn(kind = 'car') {
+    if (!this.ready || this.muted) return; const c = this.ctx, t0 = c.currentTime, out = c.createGain(); out.gain.value = 0; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; out.connect(lp); lp.connect(this.master);
+    for (const f of kind === 'moto' ? [520] : [392, 494]) { const o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(out); o.start(t0); o.stop(t0 + 0.62); }
+    out.gain.setValueAtTime(0, t0); out.gain.linearRampToValueAtTime(0.06, t0 + 0.02); out.gain.setValueAtTime(0.06, t0 + 0.5); out.gain.linearRampToValueAtTime(0, t0 + 0.6);
+  }
+  vehicle() {
+    if (!this.ready) return null; const c = this.ctx;
+    if (!this._noise) { const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this._noise = b; }
+    const src = c.createBufferSource(); src.buffer = this._noise; src.loop = true; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 0.6; const hiss = c.createGain(); hiss.gain.value = 0;
+    const osc = c.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 30; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150; const eng = c.createGain(); eng.gain.value = 0;
+    const p = c.createPanner(); p.panningModel = 'equalpower'; p.distanceModel = 'inverse'; p.refDistance = 3; p.rolloffFactor = 1.1; p.maxDistance = 140;
+    src.connect(bp); bp.connect(hiss); hiss.connect(p); osc.connect(lp); lp.connect(eng); eng.connect(p); p.connect(this.master); src.start(0, Math.random() * 2); osc.start();
+    const to = (prm, v, tau = 0.15) => prm.setTargetAtTime(v, c.currentTime, tau); let dead = false;
+    return {
+      // gear (v14 vehicles.js gear()): { g, rpm } - the engine's note follows the revs (a four-cylinder: two pulses a turn), the filter opens with them
+      set: (x, z, v, k = 1, gear = null) => { if (dead) return; const u = clamp(v / 9, 0, 1.3), m = this.muted ? 0 : k; if (p.positionX) { to(p.positionX, x, 0.05); to(p.positionY, 0.5, 0.05); to(p.positionZ, z, 0.05); } else p.setPosition(x, 0.5, z);
+        to(hiss.gain, (0.055 * u + 0.003) * m, 0.2); to(bp.frequency, 800 + 1000 * u);
+        if (gear) { const r = clamp((gear.rpm - 900) / 5200, 0, 1); to(osc.frequency, gear.rpm / 30, 0.08); to(lp.frequency, 140 + 420 * r, 0.1); to(eng.gain, (0.022 + 0.04 * r) * m, 0.1); }
+        else { to(eng.gain, (0.02 + 0.035 * u) * m); to(osc.frequency, 26 + 36 * u); } },
+      stop: () => { if (dead) return; dead = true; to(hiss.gain, 0, 0.3); to(eng.gain, 0, 0.3); try { src.stop(c.currentTime + 1.6); osc.stop(c.currentTime + 1.6); } catch (e) { /* stopped already */ } },
+    };
+  }
+  carRain(on) { if (on && !this._rain) this._rain = this.play('car_rain', { gain: 0.5, fadeIn: 0.8, dur: 24 }); else if (!on && this._rain) { try { this._rain.g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.35); } catch (e) { /* ended */ } this._rain = null; } }
+  liftHum() { this.play('lift', { gain: 0.35, dur: 6 }); }
+  ding() { this.chime(); }
+  // v11 the lift's buttons: a short beep on a press, two low notes when a press is refused (no ticket for the screens)
+  liftBeep() { if (this.ready && !this.muted) this._tone(this.master, 1046.5, 0.07, 0.035, 'sine', 5000); }
+  liftDeny() { if (!this.ready || this.muted) return; this._tone(this.master, 392, 0.12, 0.04, 'triangle', 2000); this._tone(this.master, 330, 0.16, 0.04, 'triangle', 2000, 1, 0.14); }
+  // ---------------- crowd: recorded applause and cheering, a recorded gasp; laughs and screams stay synthetic and quieter ----------------
+  crowd(type, n, k, x, z, inRoom) {
+    if (!this.ready || this.muted) return; const lvl = 0.6 + 0.4 * (k ?? 1), bus = this.crowdIn;
+    if (type === 'applause' || type === 'end') { const name = n < 25 ? 'applause_s' : n < 110 ? 'applause_m' : 'applause_l'; if (this.play(name, { gain: 0.55 * lvl, x, z, bus, fadeIn: 0.25, rate: rnd(0.97, 1.03) })) return; }
+    if (type === 'cheer' || type === 'climax') { if (this.play(Math.random() < 0.5 ? 'cheer1' : 'cheer2', { gain: 0.35 * lvl, x, z, bus, rate: rnd(0.95, 1.05) })) { this.play('applause_s', { gain: 0.3 * lvl, x, z, bus, when: 0.4 }); return; } }
+    if (type === 'gasp' || type === 'wow') { for (let i = 0; i < Math.min(4, 1 + Math.floor(n / 25)); i++) this.play('gasp_f', { gain: 0.12 * lvl, x: x + rnd(-6, 6), z: z + rnd(-6, 6), bus, rate: rnd(0.8, 1.15), when: rnd(0, 0.25) }); return; }
+    super.crowd(type, Math.max(1, Math.round(n * 0.55)), (k ?? 1) * 0.75, x, z, inRoom);
+  }
+  // ---------------- the film: "Lumière Sphere" ----------------
+  // speakers: [x, y, z, feed] in world metres; feed L, R, C (mid), S (side difference, decorrelated), T (overhead, high band)
+  sphereFor(hall) {
+    const H = hall.cfg, y0 = H.y0, W = H.W, w = H.width, S = [], P = (u, d, y, f, g = 1) => { const p = H.toWorld(u, d); S.push([p.x, y0 + y, p.z, f, g]); };
+    P(-W * 0.4, 0, H.hB + H.H * 0.5, 'L'); P(0, 0, H.hB + H.H * 0.5, 'C'); P(W * 0.4, 0, H.hB + H.H * 0.5, 'R');
+    for (const s of [-1, 1]) { P(s * w / 2, H.depthIn * 0.35, H.total * 0.6 + 2.6, s < 0 ? 'SL' : 'SR', 0.8); P(s * w / 2, H.depthIn * 0.7, H.total * 0.8 + 2.6, s < 0 ? 'SL' : 'SR', 0.8); P(s * w * 0.42, H.depthIn, H.total + 2.4, s < 0 ? 'SL' : 'SR', 0.7); }
+    const top = [];   // v14b (the user, 11-26: "remove the dolby atmos"): stereo round the room, no height layer
+    for (const t of top) P(t.u, t.d, H.ceil - 0.5, t.u < 0 ? 'TL' : 'TR', 1.8 / Math.max(4, top.length));
+    return S;
+  }
+  startFilm(hallKey, src) {
+    if (!this.ready) { this._pendingFilm = [hallKey, src]; return; }
+    if (!src || !src.video || !src.hall) return super.startFilm(hallKey, src);
+    // v10 (the user: "the sound has a delay"): routed through Web Audio, the film's sound reaches the speaker after the phone's audio
+    // output latency (often 100-250 ms on Android) while its picture does not wait for it. By default the film plays its own sound,
+    // which the media pipeline keeps in step with the picture; its level follows the room (volume) and a captured copy feeds the
+    // audience's ears (level, reactions). The speaker sphere stays as an option (Settings, surround), and once a film has been routed
+    // through it this session the element's sound stays there.
+    if (!this.surround && !this.videoSrc) { super.startFilm(hallKey, { direct: src.video }); this.film.video = src.video; this._tap(src.video); return; }
+    this.stopFilm(); this.film = { hall: hallKey, gain: 1, nodes: [], video: src.video };
+    const c = this.ctx; if (!this.videoSrc || this.videoSrc._el !== src.video) { try { this.videoSrc = c.createMediaElementSource(src.video); this.videoSrc._el = src.video; } catch (e) { console.warn('[lumiere] film audio routing failed', e); return; } }
+    this.videoSrc.disconnect(); const split = c.createChannelSplitter(2), L = c.createGain(), R = c.createGain(); this.videoSrc.connect(split); split.connect(L, 0); split.connect(R, 1);
+    // the hall's speakers around the listener; their mix: L R C from the front, the difference (L - R) delayed to the sides and back,
+    // the high band of the mid overhead
+    const sum = c.createGain(); L.connect(sum); R.connect(sum); sum.gain.value = 0.5; const diff = c.createGain(), inv = c.createGain(); inv.gain.value = -1; L.connect(diff); R.connect(inv); inv.connect(diff); diff.gain.value = 0.6;
+    const dl = c.createDelay(0.05); dl.delayTime.value = 0.018; diff.connect(dl); const dr = c.createDelay(0.05); dr.delayTime.value = 0.024; const dinv = c.createGain(); dinv.gain.value = -1; diff.connect(dinv); dinv.connect(dr);
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2400; sum.connect(hp);
+    const feed = { L, R, C: sum, SL: dl, SR: dr, TL: hp, TR: hp }, out = c.createGain(); out.gain.value = 1; this.film.nodes.push(split, L, R, sum, diff, inv, dl, dr, dinv, hp, out);
+    for (const [x, y, z, f, g] of this.sphereFor(src.hall)) { const p = c.createPanner(); p.panningModel = 'equalpower'; p.distanceModel = 'inverse'; p.refDistance = 6; p.rolloffFactor = 0.35; p.positionX ? (p.positionX.value = x, p.positionY.value = y, p.positionZ.value = z) : p.setPosition(x, y, z);
+      const gg = c.createGain(); gg.gain.value = g * (f === 'C' ? 0.75 : 0.62); feed[f].connect(gg); gg.connect(p); p.connect(out); this.film.nodes.push(p, gg); }
+    // low end straight to the front (no panning: bass has no direction)
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 110; sum.connect(lp); const lg = c.createGain(); lg.gain.value = 0.8; lp.connect(lg); lg.connect(out); this.film.nodes.push(lp, lg);
+    out.connect(this.filmIn); this.film.out = out; this.sphere = true;
+    clearInterval(this._agcT); this._agcT = setInterval(() => this._agc(), 500);
+  }
+  // the audience listens to a captured copy of the film's sound (the element keeps its own output); no copy, no live reactions
+  _tap(v) {
+    try { if (this._tapSrc) this._tapSrc.disconnect(); this._tapSrc = null; const st = v.captureStream ? v.captureStream() : v.mozCaptureStream ? v.mozCaptureStream() : null;
+      if (!st || !st.getAudioTracks().length) return; this._tapSrc = this.ctx.createMediaStreamSource(st); this._tapSrc.connect(this.an); } catch (e) { console.warn('[lumiere] film level tap unavailable', e); }
+  }
+  stopFilm(hallKey) { if (this._tapSrc && (!hallKey || (this.film && this.film.hall === hallKey))) { try { this._tapSrc.disconnect(); } catch (e) { /* gone */ } this._tapSrc = null; }
+    if (this.film && this.film.out) { try { this.film.out.disconnect(); } catch (e) { /* gone */ } if (this.videoSrc) try { this.videoSrc.disconnect(); } catch (e) { /* gone */ } } this.sphere = null; super.stopFilm(hallKey); }
+  // the listener: your head (position and turn) for the virtual speakers
+  setHead(x, y, z, yaw, pitch) {
+    if (!this.ready) return; const L = this.ctx.listener, fx = -Math.sin(yaw) * Math.cos(pitch), fy = Math.sin(pitch), fz = -Math.cos(yaw) * Math.cos(pitch), t = this.ctx.currentTime;
+    if (!(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(fx) && Number.isFinite(fy) && Number.isFinite(fz))) return;   // v14c a non-finite head threw and stopped the rest of the frame
+    if (L.positionX) { L.positionX.setTargetAtTime(x, t, 0.03); L.positionY.setTargetAtTime(y, t, 0.03); L.positionZ.setTargetAtTime(z, t, 0.03); L.forwardX.setTargetAtTime(fx, t, 0.03); L.forwardY.setTargetAtTime(fy, t, 0.03); L.forwardZ.setTargetAtTime(fz, t, 0.03); L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; }
+    else { L.setPosition(x, y, z); L.setOrientation(fx, fy, fz, 0, 1, 0); }
+  }
+  // film level: 0..2.5 (250 %); the limiter keeps it clean
+  setVolumes(v) { if (v && v.film != null) v.film = clamp(v.film, 0, 2.5); super.setVolumes(v); }
+}

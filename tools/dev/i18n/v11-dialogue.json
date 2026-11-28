@@ -1,0 +1,932 @@
+{
+ "host.hello": {
+  "en": [
+   "Good evening.",
+   "Evening. Tickets are on your left.",
+   "Welcome in.",
+   "Hello. The box office is on the left."
+  ],
+  "es": [
+   "Buenas noches.",
+   "Buenas. Las entradas, a tu izquierda.",
+   "Adelante, pasa.",
+   "Hola. La taquilla está a la izquierda."
+  ],
+  "hi": [
+   "गुड ईवनिंग।",
+   "हैलो। टिकट बाईं तरफ़ मिलेंगे।",
+   "आइए, अंदर आइए।",
+   "हैलो। बॉक्स ऑफिस बाईं तरफ़ है।"
+  ],
+  "ur": [
+   "گڈ ایوننگ۔",
+   "ہیلو۔ ٹکٹ بائیں طرف ملیں گے۔",
+   "آئیے، اندر آئیے۔",
+   "ہیلو۔ باکس آفس بائیں طرف ہے۔"
+  ]
+ },
+ "host.back": {
+  "en": [
+   "Welcome back.",
+   "Evening again.",
+   "Back for another one?"
+  ],
+  "es": [
+   "Bienvenido de nuevo.",
+   "Buenas otra vez.",
+   "¿Otra película?"
+  ],
+  "hi": [
+   "फिर से वेलकम।",
+   "फिर आ गए आप।",
+   "एक और फ़िल्म?"
+  ],
+  "ur": [
+   "پھر سے ویلکم۔",
+   "پھر آ گئے آپ۔",
+   "ایک اور فلم؟"
+  ]
+ },
+ "host.tickets": {
+  "en": [
+   "The box office. Long counter on your left."
+  ],
+  "es": [
+   "La taquilla. El mostrador largo, a tu izquierda."
+  ],
+  "hi": [
+   "बॉक्स ऑफिस। बाईं तरफ़ वाला लंबा काउंटर।"
+  ],
+  "ur": [
+   "باکس آفس۔ بائیں طرف والا لمبا کاؤنٹر۔"
+  ]
+ },
+ "host.food": {
+  "en": [
+   "Snacks are past the box office. Coffee is in the far corner."
+  ],
+  "es": [
+   "La comida, pasando la taquilla. El café, en la esquina del fondo."
+  ],
+  "hi": [
+   "स्नैक्स बॉक्स ऑफिस के आगे हैं। कॉफ़ी पीछे कोने में मिलेगी।"
+  ],
+  "ur": [
+   "اسنیکس باکس آفس کے آگے ہیں۔ کافی پیچھے کونے میں ملے گی۔"
+  ]
+ },
+ "host.wc": {
+  "en": [
+   "On the right, past the escalators."
+  ],
+  "es": [
+   "A la derecha, pasando las escaleras mecánicas."
+  ],
+  "hi": [
+   "दाईं तरफ़, एस्केलेटर के आगे।"
+  ],
+  "ur": [
+   "دائیں طرف، ایسکلیٹر کے آگے۔"
+  ]
+ },
+ "host.gate": {
+  "en": [
+   "Show your ticket to the usher by the escalators."
+  ],
+  "es": [
+   "Enseña tu entrada al acomodador, junto a las escaleras."
+  ],
+  "hi": [
+   "एस्केलेटर के पास अशर को टिकट दिखा दीजिए।"
+  ],
+  "ur": [
+   "ایسکلیٹر کے پاس اشر کو ٹکٹ دکھا دیجیے۔"
+  ]
+ },
+ "box.hello": {
+  "en": [
+   "Hi. Which film?",
+   "Evening. What are you seeing?",
+   "Next. What will it be?"
+  ],
+  "es": [
+   "Hola. ¿Qué película?",
+   "Buenas. ¿Qué vas a ver?",
+   "Siguiente. ¿Qué va a ser?"
+  ],
+  "hi": [
+   "हाय। कौन सी फ़िल्म?",
+   "गुड ईवनिंग। क्या देखेंगे?",
+   "अगला। बताइए।"
+  ],
+  "ur": [
+   "ہائے۔ کون سی فلم؟",
+   "گڈ ایوننگ۔ کیا دیکھیں گے؟",
+   "اگلا۔ بتائیے۔"
+  ]
+ },
+ "box.pick": {
+  "en": [
+   "Tonight's films are on the screen.",
+   "Four screens. Take your pick."
+  ],
+  "es": [
+   "Las películas de hoy están en la pantalla.",
+   "Cuatro salas. Elige."
+  ],
+  "hi": [
+   "आज की फ़िल्में स्क्रीन पर हैं।",
+   "चार स्क्रीन हैं। चुन लीजिए।"
+  ],
+  "ur": [
+   "آج کی فلمیں اسکرین پر ہیں۔",
+   "چار اسکرین ہیں۔ چن لیجیے۔"
+  ]
+ },
+ "box.fmt.MAX": {
+  "en": [
+   "MAX. Biggest screen, loudest sound."
+  ],
+  "es": [
+   "MAX. La pantalla más grande y el sonido más fuerte."
+  ],
+  "hi": [
+   "MAX। सबसे बड़ी स्क्रीन, सबसे तेज़ साउंड।"
+  ],
+  "ur": [
+   "MAX۔ سب سے بڑی اسکرین، سب سے تیز ساؤنڈ۔"
+  ]
+ },
+ "box.fmt.CURVE": {
+  "en": [
+   "CURVE. Recliners and a curved screen. Quieter crowd."
+  ],
+  "es": [
+   "CURVE. Butacas reclinables y pantalla curva. Más tranquila."
+  ],
+  "hi": [
+   "CURVE। रिक्लाइनर सीटें, मुड़ी हुई स्क्रीन। भीड़ कम रहती है।"
+  ],
+  "ur": [
+   "CURVE۔ ریکلائنر سیٹیں، مڑی ہوئی اسکرین۔ بھیڑ کم رہتی ہے۔"
+  ]
+ },
+ "box.fmt.CLASSIC": {
+  "en": [
+   "CLASSIC. Ordinary seats, red curtains. The cheapest."
+  ],
+  "es": [
+   "CLASSIC. Butacas normales, cortinas rojas. La más barata."
+  ],
+  "hi": [
+   "CLASSIC। सादी सीटें, लाल पर्दे। सबसे सस्ता।"
+  ],
+  "ur": [
+   "CLASSIC۔ سادہ سیٹیں، لال پردے۔ سب سے سستا۔"
+  ]
+ },
+ "box.fmt.X270": {
+  "en": [
+   "270. The picture runs onto the side walls."
+  ],
+  "es": [
+   "270. La imagen sigue por las paredes laterales."
+  ],
+  "hi": [
+   "270। पिक्चर साइड की दीवारों तक जाती है।"
+  ],
+  "ur": [
+   "270۔ پکچر سائیڈ کی دیواروں تک جاتی ہے۔"
+  ]
+ },
+ "box.ticket": {
+  "en": [
+   "Your ticket. The usher is by the escalators.",
+   "Here. Show it at the gate."
+  ],
+  "es": [
+   "Tu entrada. El acomodador está junto a las escaleras.",
+   "Toma. Enséñala en el control."
+  ],
+  "hi": [
+   "ये आपका टिकट। अशर एस्केलेटर के पास है।",
+   "लीजिए। गेट पर दिखा दीजिएगा।"
+  ],
+  "ur": [
+   "یہ آپ کا ٹکٹ۔ اشر ایسکلیٹر کے پاس ہے۔",
+   "لیجیے۔ گیٹ پر دکھا دیجیے گا۔"
+  ]
+ },
+ "box.again": {
+  "en": [
+   "You already have a ticket. Another one?",
+   "You're booked for tonight. Something else?"
+  ],
+  "es": [
+   "Ya tienes entrada. ¿Otra?",
+   "Ya tienes reserva para hoy. ¿Algo más?"
+  ],
+  "hi": [
+   "आपके पास टिकट है। एक और चाहिए?",
+   "आज की बुकिंग हो चुकी है। और कुछ?"
+  ],
+  "ur": [
+   "آپ کے پاس ٹکٹ ہے۔ ایک اور چاہیے؟",
+   "آج کی بکنگ ہو چکی ہے۔ اور کچھ؟"
+  ]
+ },
+ "bar.hello": {
+  "en": [
+   "Hi. What can I get you?",
+   "Go ahead.",
+   "What will it be?"
+  ],
+  "es": [
+   "Hola. ¿Qué te pongo?",
+   "Dime.",
+   "¿Qué va a ser?"
+  ],
+  "hi": [
+   "हाय। क्या दूँ?",
+   "बोलिए।",
+   "क्या लेंगे?"
+  ],
+  "ur": [
+   "ہائے۔ کیا دوں؟",
+   "بولیے۔",
+   "کیا لیں گے؟"
+  ]
+ },
+ "bar.what": {
+  "en": [
+   "Salted, caramel or cheese.",
+   "Which one?"
+  ],
+  "es": [
+   "Saladas, de caramelo o de queso.",
+   "¿Cuáles?"
+  ],
+  "hi": [
+   "सॉल्टेड, कैरेमल या चीज़।",
+   "कौन सा?"
+  ],
+  "ur": [
+   "سالٹڈ، کیریمل یا چیز۔",
+   "کون سا؟"
+  ]
+ },
+ "bar.bye": {
+  "en": [
+   "Enjoy the film.",
+   "Thank you.",
+   "Next, please."
+  ],
+  "es": [
+   "Disfruta la película.",
+   "Gracias.",
+   "Siguiente, por favor."
+  ],
+  "hi": [
+   "फ़िल्म एन्जॉय कीजिए।",
+   "थैंक यू।",
+   "अगला, प्लीज़।"
+  ],
+  "ur": [
+   "فلم انجوائے کیجیے۔",
+   "تھینک یو۔",
+   "اگلا، پلیز۔"
+  ]
+ },
+ "ush.ask": {
+  "en": [
+   "Ticket, please.",
+   "Evening. Your ticket?",
+   "Can I see your ticket?"
+  ],
+  "es": [
+   "La entrada, por favor.",
+   "Buenas. ¿Tu entrada?",
+   "¿Me enseñas la entrada?"
+  ],
+  "hi": [
+   "टिकट, प्लीज़।",
+   "गुड ईवनिंग। टिकट?",
+   "टिकट दिखाएँगे?"
+  ],
+  "ur": [
+   "ٹکٹ، پلیز۔",
+   "گڈ ایوننگ۔ ٹکٹ؟",
+   "ٹکٹ دکھائیں گے؟"
+  ]
+ },
+ "ush.check.MAX": {
+  "en": [
+   "MAX. Upstairs, on the left.",
+   "MAX. Up the escalator, then left."
+  ],
+  "es": [
+   "MAX. Arriba, a la izquierda.",
+   "MAX. Sube la escalera y a la izquierda."
+  ],
+  "hi": [
+   "MAX। ऊपर, बाईं तरफ़।",
+   "MAX। एस्केलेटर से ऊपर, फिर बाएँ।"
+  ],
+  "ur": [
+   "MAX۔ اوپر، بائیں طرف۔",
+   "MAX۔ ایسکلیٹر سے اوپر، پھر بائیں۔"
+  ]
+ },
+ "ush.check.CURVE": {
+  "en": [
+   "CURVE. Upstairs, far end on the left.",
+   "CURVE. Left side, all the way back."
+  ],
+  "es": [
+   "CURVE. Arriba, al fondo a la izquierda.",
+   "CURVE. Lado izquierdo, hasta el final."
+  ],
+  "hi": [
+   "CURVE। ऊपर, बाईं तरफ़ आख़िर में।",
+   "CURVE। बाईं ओर, सबसे पीछे।"
+  ],
+  "ur": [
+   "CURVE۔ اوپر، بائیں طرف آخر میں۔",
+   "CURVE۔ بائیں جانب، سب سے پیچھے۔"
+  ]
+ },
+ "ush.check.CLASSIC": {
+  "en": [
+   "CLASSIC. Upstairs, on the right.",
+   "CLASSIC. Up, then right."
+  ],
+  "es": [
+   "CLASSIC. Arriba, a la derecha.",
+   "CLASSIC. Sube y a la derecha."
+  ],
+  "hi": [
+   "CLASSIC। ऊपर, दाईं तरफ़।",
+   "CLASSIC। ऊपर जाकर दाएँ।"
+  ],
+  "ur": [
+   "CLASSIC۔ اوپر، دائیں طرف۔",
+   "CLASSIC۔ اوپر جا کر دائیں۔"
+  ]
+ },
+ "ush.check.X270": {
+  "en": [
+   "270. Upstairs, right side, far end.",
+   "270. On the right, at the end."
+  ],
+  "es": [
+   "270. Arriba, a la derecha, al fondo.",
+   "270. A la derecha, al final."
+  ],
+  "hi": [
+   "270। ऊपर, दाईं तरफ़ आख़िर में।",
+   "270। दाईं ओर, सबसे आख़िर में।"
+  ],
+  "ur": [
+   "270۔ اوپر، دائیں طرف آخر میں۔",
+   "270۔ دائیں جانب، سب سے آخر میں۔"
+  ]
+ },
+ "ush.tear": {
+  "en": [
+   "Keep the stub.",
+   "This half is yours."
+  ],
+  "es": [
+   "Guarda el resguardo.",
+   "Esta mitad es tuya."
+  ],
+  "hi": [
+   "ये हिस्सा रख लीजिए।",
+   "ये आधा आपका है।"
+  ],
+  "ur": [
+   "یہ حصہ رکھ لیجیے۔",
+   "یہ آدھا آپ کا ہے۔"
+  ]
+ },
+ "ush.lead": {
+  "en": [
+   "Follow me.",
+   "This way.",
+   "The escalator is here."
+  ],
+  "es": [
+   "Sígueme.",
+   "Por aquí.",
+   "La escalera está aquí."
+  ],
+  "hi": [
+   "मेरे साथ आइए।",
+   "इस तरफ़।",
+   "एस्केलेटर यहाँ है।"
+  ],
+  "ur": [
+   "میرے ساتھ آئیے۔",
+   "اس طرف۔",
+   "ایسکلیٹر یہاں ہے۔"
+  ]
+ },
+ "ush.seat": {
+  "en": [
+   "This one is yours.",
+   "Here's your seat.",
+   "Here you are."
+  ],
+  "es": [
+   "Este es el tuyo.",
+   "Aquí está tu asiento.",
+   "Aquí es."
+  ],
+  "hi": [
+   "ये आपकी है।",
+   "ये रही आपकी सीट।",
+   "यहीं है।"
+  ],
+  "ur": [
+   "یہ آپ کی ہے۔",
+   "یہ رہی آپ کی سیٹ۔",
+   "یہیں ہے۔"
+  ]
+ },
+ "ush.enjoy": {
+  "en": [
+   "Enjoy the film.",
+   "The exit is down by the screen afterwards.",
+   "Have a good show."
+  ],
+  "es": [
+   "Disfruta la película.",
+   "Al terminar, la salida está abajo, junto a la pantalla.",
+   "Buena función."
+  ],
+  "hi": [
+   "फ़िल्म एन्जॉय कीजिए।",
+   "बाद में एग्ज़िट नीचे स्क्रीन के पास है।",
+   "शो अच्छा रहे।"
+  ],
+  "ur": [
+   "فلم انجوائے کیجیے۔",
+   "بعد میں ایگزٹ نیچے اسکرین کے پاس ہے۔",
+   "شو اچھا رہے۔"
+  ]
+ },
+ "ush.locate": {
+  "en": [
+   "Shall I walk you, or do you know the way?",
+   "Do you want me to take you up?"
+  ],
+  "es": [
+   "¿Te acompaño, o ya sabes el camino?",
+   "¿Quieres que te lleve?"
+  ],
+  "hi": [
+   "मैं छोड़ दूँ, या रास्ता पता है?",
+   "ऊपर तक ले चलूँ?"
+  ],
+  "ur": [
+   "میں چھوڑ دوں، یا راستہ پتا ہے؟",
+   "اوپر تک لے چلوں؟"
+  ]
+ },
+ "ush.noTicket": {
+  "en": [
+   "No ticket, no entry. The box office is over there.",
+   "You need a ticket first."
+  ],
+  "es": [
+   "Sin entrada no se pasa. La taquilla está allí.",
+   "Primero necesitas una entrada."
+  ],
+  "hi": [
+   "बिना टिकट एंट्री नहीं। बॉक्स ऑफिस उधर है।",
+   "पहले टिकट ले आइए।"
+  ],
+  "ur": [
+   "بغیر ٹکٹ انٹری نہیں۔ باکس آفس ادھر ہے۔",
+   "پہلے ٹکٹ لے آئیے۔"
+  ]
+ },
+ "srv.arrive": {
+  "en": [
+   "You rang?",
+   "Yes, what do you need?",
+   "What can I get you?"
+  ],
+  "es": [
+   "¿Has llamado?",
+   "Dime, ¿qué necesitas?",
+   "¿Qué te traigo?"
+  ],
+  "hi": [
+   "आपने बुलाया?",
+   "जी, बताइए।",
+   "क्या लाऊँ?"
+  ],
+  "ur": [
+   "آپ نے بلایا؟",
+   "جی، بتائیے۔",
+   "کیا لاؤں؟"
+  ]
+ },
+ "srv.menu": {
+  "en": [
+   "Popcorn, nachos, drinks, coffee.",
+   "Food, or the tablet?"
+  ],
+  "es": [
+   "Palomitas, nachos, bebidas, café.",
+   "¿Comida, o la tableta?"
+  ],
+  "hi": [
+   "पॉपकॉर्न, नाचोज़, ड्रिंक्स, कॉफ़ी।",
+   "खाना, या टैबलेट?"
+  ],
+  "ur": [
+   "پاپ کارن، ناچوز، ڈرنکس، کافی۔",
+   "کھانا، یا ٹیبلٹ؟"
+  ]
+ },
+ "srv.order": {
+  "en": [
+   "One moment.",
+   "Got it.",
+   "Coming up."
+  ],
+  "es": [
+   "Un momento.",
+   "Entendido.",
+   "Ahora mismo."
+  ],
+  "hi": [
+   "एक मिनट।",
+   "ठीक है।",
+   "अभी लाता हूँ।"
+  ],
+  "ur": [
+   "ایک منٹ۔",
+   "ٹھیک ہے۔",
+   "ابھی لاتا ہوں۔"
+  ]
+ },
+ "srv.hand": {
+  "en": [
+   "Here you go.",
+   "There you are.",
+   "Careful, it's full."
+  ],
+  "es": [
+   "Aquí tienes.",
+   "Toma.",
+   "Cuidado, está lleno."
+  ],
+  "hi": [
+   "ये लीजिए।",
+   "लीजिए।",
+   "ध्यान से, भरा हुआ है।"
+  ],
+  "ur": [
+   "یہ لیجیے۔",
+   "لیجیے۔",
+   "دھیان سے، بھرا ہوا ہے۔"
+  ]
+ },
+ "srv.tablet": {
+  "en": [
+   "Tap the screen to wake it.",
+   "It's yours for the show. You can order on it."
+  ],
+  "es": [
+   "Toca la pantalla para encenderla.",
+   "Es tuya durante la función. Puedes pedir desde ahí."
+  ],
+  "hi": [
+   "स्क्रीन पर टैप कीजिए, चालू हो जाएगा।",
+   "शो तक ये आपका है। इसी से ऑर्डर कर सकते हैं।"
+  ],
+  "ur": [
+   "اسکرین پر ٹیپ کیجیے، چالو ہو جائے گا۔",
+   "شو تک یہ آپ کا ہے۔ اسی سے آرڈر کر سکتے ہیں۔"
+  ]
+ },
+ "srv.back": {
+  "en": [
+   "Anything else?",
+   "Is that all?",
+   "Need anything more?"
+  ],
+  "es": [
+   "¿Algo más?",
+   "¿Es todo?",
+   "¿Necesitas algo más?"
+  ],
+  "hi": [
+   "और कुछ?",
+   "बस इतना ही?",
+   "और कुछ चाहिए?"
+  ],
+  "ur": [
+   "اور کچھ؟",
+   "بس اتنا ہی؟",
+   "اور کچھ چاہیے؟"
+  ]
+ },
+ "srv.trash": {
+  "en": [
+   "I'll take that.",
+   "Let me clear that."
+  ],
+  "es": [
+   "Me llevo eso.",
+   "Te lo retiro."
+  ],
+  "hi": [
+   "ये मैं ले जाता हूँ।",
+   "ये हटा देता हूँ।"
+  ],
+  "ur": [
+   "یہ میں لے جاتا ہوں۔",
+   "یہ ہٹا دیتا ہوں۔"
+  ]
+ },
+ "srv.bye": {
+  "en": [
+   "Enjoy the film.",
+   "Ring if you need me.",
+   "I'll leave you to it."
+  ],
+  "es": [
+   "Disfruta la película.",
+   "Llama si me necesitas.",
+   "Te dejo tranquilo."
+  ],
+  "hi": [
+   "फ़िल्म एन्जॉय कीजिए।",
+   "ज़रूरत हो तो घंटी बजा दीजिए।",
+   "मैं चलता हूँ।"
+  ],
+  "ur": [
+   "فلم انجوائے کیجیے۔",
+   "ضرورت ہو تو گھنٹی بجا دیجیے۔",
+   "میں چلتا ہوں۔"
+  ]
+ },
+ "srv.recall": {
+  "en": [
+   "Something else?",
+   "One second."
+  ],
+  "es": [
+   "¿Algo más?",
+   "Un segundo."
+  ],
+  "hi": [
+   "और कुछ चाहिए?",
+   "एक सेकंड।"
+  ],
+  "ur": [
+   "اور کچھ چاہیے؟",
+   "ایک سیکنڈ۔"
+  ]
+ },
+ "guest.bump": {
+  "en": [
+   "Hey. Watch it.",
+   "Sorry, my fault.",
+   "Careful.",
+   "Didn't see you there."
+  ],
+  "es": [
+   "Eh. Cuidado.",
+   "Perdón, culpa mía.",
+   "Cuidado.",
+   "No te había visto."
+  ],
+  "hi": [
+   "अरे। देखकर चलिए।",
+   "सॉरी, मेरी ग़लती।",
+   "ध्यान से।",
+   "आप दिखे नहीं।"
+  ],
+  "ur": [
+   "ارے۔ دیکھ کر چلیے۔",
+   "سوری، میری غلطی۔",
+   "دھیان سے۔",
+   "آپ دکھے نہیں۔"
+  ]
+ },
+ "guest.stare": {
+  "en": [
+   "Can I help you?",
+   "Do I know you?",
+   "What is it?"
+  ],
+  "es": [
+   "¿Te puedo ayudar?",
+   "¿Nos conocemos?",
+   "¿Qué pasa?"
+  ],
+  "hi": [
+   "जी, कुछ काम है?",
+   "क्या हम मिले हैं?",
+   "क्या बात है?"
+  ],
+  "ur": [
+   "جی، کچھ کام ہے؟",
+   "کیا ہم ملے ہیں؟",
+   "کیا بات ہے؟"
+  ]
+ },
+ "guest.talk.curt": {
+  "en": [
+   "Sorry, I'm waiting for someone.",
+   "Not now.",
+   "I'm fine, thanks.",
+   "Ask the staff.",
+   "I'd rather not talk."
+  ],
+  "es": [
+   "Perdona, estoy esperando a alguien.",
+   "Ahora no.",
+   "Estoy bien, gracias.",
+   "Pregunta al personal.",
+   "Prefiero no hablar."
+  ],
+  "hi": [
+   "सॉरी, किसी का इंतज़ार है।",
+   "अभी नहीं।",
+   "ठीक हूँ, थैंक्स।",
+   "स्टाफ़ से पूछ लीजिए।",
+   "अभी बात नहीं करनी।"
+  ],
+  "ur": [
+   "سوری، کسی کا انتظار ہے۔",
+   "ابھی نہیں۔",
+   "ٹھیک ہوں، تھینکس۔",
+   "اسٹاف سے پوچھ لیجیے۔",
+   "ابھی بات نہیں کرنی۔"
+  ]
+ },
+ "guest.talk.plain": {
+  "en": [
+   "Evening. Just waiting for it to start.",
+   "No idea, sorry. Try the desk.",
+   "First time here.",
+   "Busy tonight.",
+   "The queue was shorter last week."
+  ],
+  "es": [
+   "Buenas. Esperando a que empiece.",
+   "Ni idea, perdona. Pregunta en el mostrador.",
+   "Es mi primera vez aquí.",
+   "Hay gente esta noche.",
+   "La semana pasada había menos cola."
+  ],
+  "hi": [
+   "हैलो। बस शुरू होने का इंतज़ार है।",
+   "पता नहीं, सॉरी। काउंटर पर पूछिए।",
+   "यहाँ पहली बार आना हुआ है।",
+   "आज भीड़ है।",
+   "पिछले हफ़्ते लाइन छोटी थी।"
+  ],
+  "ur": [
+   "ہیلو۔ بس شروع ہونے کا انتظار ہے۔",
+   "پتا نہیں، سوری۔ کاؤنٹر پر پوچھیے۔",
+   "یہاں پہلی بار آنا ہوا ہے۔",
+   "آج بھیڑ ہے۔",
+   "پچھلے ہفتے لائن چھوٹی تھی۔"
+  ]
+ },
+ "guest.talk.warm": {
+  "en": [
+   "Hi. Seeing the late one too?",
+   "Get the caramel popcorn.",
+   "The recliner screen is worth it.",
+   "Enjoy the film."
+  ],
+  "es": [
+   "Hola. ¿También vas a la última?",
+   "Pide las palomitas de caramelo.",
+   "La sala de las reclinables merece la pena.",
+   "Disfruta la película."
+  ],
+  "hi": [
+   "हाय। आप भी लेट शो के लिए?",
+   "कैरेमल पॉपकॉर्न ले लीजिए।",
+   "रिक्लाइनर वाली स्क्रीन बढ़िया है।",
+   "फ़िल्म एन्जॉय कीजिए।"
+  ],
+  "ur": [
+   "ہائے۔ آپ بھی لیٹ شو کے لیے؟",
+   "کیریمل پاپ کارن لے لیجیے۔",
+   "ریکلائنر والی اسکرین بڑھیا ہے۔",
+   "فلم انجوائے کیجیے۔"
+  ]
+ },
+ "drv.arrive": {
+  "en": [
+   "Lumière. Here we are.",
+   "This is it."
+  ],
+  "es": [
+   "Lumière. Ya estamos.",
+   "Aquí es."
+  ],
+  "hi": [
+   "लूमियर। आ गए।",
+   "यही है।"
+  ],
+  "ur": [
+   "لومیئر۔ آ گئے۔",
+   "یہی ہے۔"
+  ]
+ },
+ "drv.bye": {
+  "en": [
+   "Have a good night.",
+   "Good night."
+  ],
+  "es": [
+   "Buenas noches.",
+   "Que vaya bien."
+  ],
+  "hi": [
+   "गुड नाइट।",
+   "ठीक है, चलता हूँ।"
+  ],
+  "ur": [
+   "گڈ نائٹ۔",
+   "ٹھیک ہے، چلتا ہوں۔"
+  ]
+ },
+ "drv.ride": {
+  "en": [
+   "Lumière. Two minutes.",
+   "Traffic is clearing.",
+   "It's the one with the gold sign."
+  ],
+  "es": [
+   "Lumière. Dos minutos.",
+   "El tráfico se está despejando.",
+   "Es el del letrero dorado."
+  ],
+  "hi": [
+   "लूमियर। दो मिनट।",
+   "ट्रैफ़िक खुल रहा है।",
+   "वही, सुनहरे बोर्ड वाला।"
+  ],
+  "ur": [
+   "لومیئر۔ دو منٹ۔",
+   "ٹریفک کھل رہا ہے۔",
+   "وہی، سنہرے بورڈ والا۔"
+  ]
+ },
+ "cafe.hello": {
+  "en": [
+   "Hi. What will it be?",
+   "A coffee?",
+   "Evening. What can I make you?"
+  ],
+  "es": [
+   "Hola. ¿Qué va a ser?",
+   "¿Un café?",
+   "Buenas. ¿Qué te preparo?"
+  ],
+  "hi": [
+   "हाय। क्या लेंगे?",
+   "कॉफ़ी चाहिए?",
+   "गुड ईवनिंग। क्या बनाऊँ?"
+  ],
+  "ur": [
+   "ہائے۔ کیا لیں گے؟",
+   "کافی چاہیے؟",
+   "گڈ ایوننگ۔ کیا بناؤں؟"
+  ]
+ },
+ "cafe.ready": {
+  "en": [
+   "Careful, it's hot.",
+   "There you go.",
+   "The lid is on."
+  ],
+  "es": [
+   "Cuidado, quema.",
+   "Aquí tienes.",
+   "Lleva la tapa puesta."
+  ],
+  "hi": [
+   "ध्यान से, गरम है।",
+   "ये लीजिए।",
+   "ढक्कन लगा है।"
+  ],
+  "ur": [
+   "دھیان سے، گرم ہے۔",
+   "یہ لیجیے۔",
+   "ڈھکن لگا ہے۔"
+  ]
+ }
+}

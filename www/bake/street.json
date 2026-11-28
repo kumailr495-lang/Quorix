@@ -1,0 +1,18 @@
+{
+ "room": "street",
+ "res": 2048,
+ "hall": false,
+ "hash": "v9.225a7295ffb4",
+ "maps": [
+  "street_h.png"
+ ],
+ "scale": [
+  1.291775842666648,
+  0.0,
+  0.0
+ ],
+ "avg": 0.042127122929009636,
+ "glb": "street.glb",
+ "verts": 214920,
+ "tris": 71640
+}

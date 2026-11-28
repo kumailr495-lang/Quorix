@@ -1,0 +1,19 @@
+{
+  "cafe.hello": {"en": ["Welcome to Café Lumière. What can I make you?", "Hi! A coffee before the film?", "Evening. Something warm?"],
+                 "es": ["Bienvenido al Café Lumière. ¿Qué te preparo?", "¡Hola! ¿Un café antes de la película?", "Buenas noches. ¿Algo calentito?"],
+                 "hi": ["कैफ़े लुमिएर में आपका स्वागत है। आपके लिए क्या बनाऊँ?", "नमस्ते! फ़िल्म से पहले कॉफ़ी?", "शुभ संध्या। कुछ गरम?"],
+                 "ur": ["کیفے لومیئر میں خوش آمدید۔ آپ کے لیے کیا بناؤں؟", "سلام! فلم سے پہلے کافی؟", "شام بخیر۔ کچھ گرم؟"]},
+  "cafe.ready": {"en": ["Here you are. Careful, it's hot.", "One for you. Enjoy the film.", "There you go. The lid is on tight."],
+                 "es": ["Aquí tienes. Cuidado, está caliente.", "Para ti. Disfruta la película.", "Listo. La tapa está bien cerrada."],
+                 "hi": ["लीजिए। ध्यान से, गरम है।", "यह आपके लिए। फ़िल्म का मज़ा लीजिए।", "लीजिए। ढक्कन अच्छे से बंद है।"],
+                 "ur": ["لیجیے۔ دھیان سے، گرم ہے۔", "یہ آپ کے لیے۔ فلم کا مزہ لیجیے۔", "لیجیے۔ ڈھکن اچھی طرح بند ہے۔"]},
+  "opt9.latte": {"en": "Café latte", "es": "Café con leche", "hi": "कैफ़े लाते", "ur": "کیفے لاتے"},
+  "opt9.cappuccino": {"en": "Cappuccino", "es": "Capuchino", "hi": "कैपुचीनो", "ur": "کیپوچینو"},
+  "opt9.espresso": {"en": "Espresso", "es": "Espresso", "hi": "एस्प्रेसो", "ur": "ایسپریسو"},
+  "opt9.hotchoc": {"en": "Hot chocolate", "es": "Chocolate caliente", "hi": "हॉट चॉकलेट", "ur": "ہاٹ چاکلیٹ"},
+  "item.latte": {"en": "café latte", "es": "café con leche", "hi": "कैफ़े लाते", "ur": "کیفے لاتے"},
+  "item.cappuccino": {"en": "cappuccino", "es": "capuchino", "hi": "कैपुचीनो", "ur": "کیپوچینو"},
+  "item.espresso": {"en": "espresso", "es": "espresso", "hi": "एस्प्रेसो", "ur": "ایسپریسو"},
+  "item.hotchoc": {"en": "hot chocolate", "es": "chocolate caliente", "hi": "हॉट चॉकलेट", "ur": "ہاٹ چاکلیٹ"},
+  "role9.barista": {"en": "Barista", "es": "Barista", "hi": "बरिस्ता", "ur": "باریسٹا"}
+}
